@@ -199,6 +199,7 @@ void _registerUserScopedSingletons() {
     () => ThemeMusicService(
       _getIt<MediaServerClient>(),
       _getIt<UserPreferences>(),
+      _getIt<PlaybackManager>(),
     ),
   );
   _getIt.registerLazySingletonAsync<SeerrRepository>(

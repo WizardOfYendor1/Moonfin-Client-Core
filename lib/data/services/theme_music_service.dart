@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:media_kit/media_kit.dart';
+import 'package:playback_core/playback_core.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../preference/user_preferences.dart';
@@ -10,6 +11,7 @@ import '../models/aggregated_item.dart';
 class ThemeMusicService {
   final MediaServerClient _client;
   final UserPreferences _prefs;
+  final PlaybackManager _playbackManager;
 
   Player? _player;
   String? _currentThemeSourceId;
@@ -20,12 +22,19 @@ class ThemeMusicService {
   bool _externalAudioActive = false;
   bool _playSuppressed = false;
   int _playGeneration = 0;
+  StreamSubscription<bool>? _mainPlaybackSub;
 
   static const _fadeDurationMs = 2000;
   static const _fadeStepMs = 50;
   static const _validTypes = {'Series', 'Movie', 'Season', 'Episode'};
 
-  ThemeMusicService(this._client, this._prefs);
+  ThemeMusicService(this._client, this._prefs, this._playbackManager) {
+    _mainPlaybackSub = _playbackManager.state.playingStream.listen((isPlaying) {
+      if (isPlaying) {
+        fadeOutAndStop();
+      }
+    });
+  }
 
   void registerDetailScreen(Object token) {
     _activeDetailScreens.add(token);
@@ -48,6 +57,7 @@ class ThemeMusicService {
 
   Future<void> playForItem(AggregatedItem item) async {
     if (!_prefs.get(UserPreferences.themeMusicEnabled)) return;
+    if (_playbackManager.state.isPlaying) return;
     if (_externalAudioActive) return;
     if (_playSuppressed) return;
     if (!_validTypes.contains(item.type)) {
@@ -205,6 +215,7 @@ class ThemeMusicService {
   }
 
   void dispose() {
+    _mainPlaybackSub?.cancel();
     stop();
   }
 }
