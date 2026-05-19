@@ -401,6 +401,9 @@ class MediaKitPlayerBackend implements PlayerBackend {
       downMixAudio:
           _prefs.get(UserPreferences.audioBehavior) ==
           AudioBehavior.downmixToStereo,
+      audioFallbackToStereoAac: _prefs.get(
+        UserPreferences.audioFallbackToStereoAac,
+      ),
       maxResolution: maxResolution,
       pgsDirectPlay: _prefs.get(UserPreferences.pgsDirectPlay),
       assDirectPlay: _prefs.get(UserPreferences.assDirectPlay),

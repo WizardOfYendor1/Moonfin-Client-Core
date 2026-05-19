@@ -86,6 +86,7 @@ dependencies {
     implementation("androidx.media3:media3-common:1.10.0")
     implementation("androidx.media3:media3-datasource:1.10.0")
     implementation("androidx.media3:media3-extractor:1.10.0")
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1")
 
     implementation("io.github.peerless2012:ass-media:0.4.0")
 }

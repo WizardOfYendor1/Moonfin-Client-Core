@@ -7,10 +7,12 @@ import android.media.AudioManager
 import android.os.Build
 
 object AudioCapabilities {
-    private val emptyCapabilities = mapOf(
+    private val baselineCapabilities = mapOf(
         "supportsAc3" to false,
         "supportsDts" to false,
         "supportsTrueHd" to false,
+        "supportsPcm" to true,
+        "supportsAac" to true,
     )
 
     private fun isBitstreamOutputDevice(device: AudioDeviceInfo): Boolean {
@@ -26,11 +28,11 @@ object AudioCapabilities {
 
     fun query(context: Context): Map<String, Boolean> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return emptyCapabilities
+            return baselineCapabilities
         }
 
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            ?: return emptyCapabilities
+            ?: return baselineCapabilities
 
         val encodings = audioManager
             .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
@@ -40,7 +42,7 @@ object AudioCapabilities {
             .toSet()
 
         if (encodings.isEmpty()) {
-            return emptyCapabilities
+            return baselineCapabilities
         }
 
         val supportsAc3 = encodings.contains(AudioFormat.ENCODING_AC3) ||
@@ -53,6 +55,8 @@ object AudioCapabilities {
             "supportsAc3" to supportsAc3,
             "supportsDts" to supportsDts,
             "supportsTrueHd" to supportsTrueHd,
+            "supportsPcm" to true,
+            "supportsAac" to true,
         )
     }
 }

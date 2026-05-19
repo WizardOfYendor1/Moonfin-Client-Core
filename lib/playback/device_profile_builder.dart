@@ -77,6 +77,7 @@ class DeviceProfileBuilder {
     bool trueHdEnabled = true,
     bool dtsEnabled = true,
     bool downMixAudio = false,
+    bool audioFallbackToStereoAac = true,
     MaxVideoResolution maxResolution = MaxVideoResolution.auto,
     bool pgsDirectPlay = true,
     bool assDirectPlay = true,
@@ -138,6 +139,7 @@ class DeviceProfileBuilder {
 
     final codecProfiles = _codecProfiles(
       downMixAudio: downMixAudio,
+      audioFallbackToStereoAac: audioFallbackToStereoAac,
       maxResolution: maxResolution,
       supportsAvc: supportsAvc,
       supportsAvcHigh10: supportsAvcHigh10,
@@ -244,6 +246,7 @@ class DeviceProfileBuilder {
 
   static List<Map<String, dynamic>> _codecProfiles({
     required bool downMixAudio,
+    required bool audioFallbackToStereoAac,
     required MaxVideoResolution maxResolution,
     required bool supportsAvc,
     required bool supportsAvcHigh10,
@@ -433,29 +436,6 @@ class DeviceProfileBuilder {
       );
     }
 
-    if (supportsHevc && hevcMainLevel > 0) {
-      profiles.add(
-        _codecProfile(
-          type: 'Video',
-          codec: 'hevc',
-          conditions: <Map<String, dynamic>>[
-            _condition(
-              condition: 'LessThanEqual',
-              property: 'VideoLevel',
-              value: '$hevcMainLevel',
-            ),
-          ],
-          applyConditions: <Map<String, dynamic>>[
-            _condition(
-              condition: 'Equals',
-              property: 'VideoProfile',
-              value: 'main',
-            ),
-          ],
-        ),
-      );
-    }
-
     profiles.add(
       _codecProfile(
         type: 'Video',
@@ -551,18 +531,13 @@ class DeviceProfileBuilder {
     if (!supportsHevcDolbyVisionEl) {
       if (!allowDolbyVisionProfile7ElDirectPlay) {
         unsupportedRangeTypesHevc.add('DOVI_WITH_EL');
-        if (!supportsHevcHdr10Plus && !knownHevcDoviHdr10PlusBug) {
-          unsupportedRangeTypesHevc.add('DOVI_WITH_ELHDR10_PLUS');
-        }
+        unsupportedRangeTypesHevc.add('DOVI_WITH_ELHDR10_PLUS');
       }
 
       if (!supportsHevcDolbyVision) {
         unsupportedRangeTypesHevc.add('DOVI');
         if (!supportsHevcHdr10) {
           unsupportedRangeTypesHevc.add('DOVI_WITH_HDR10');
-        }
-        if (!supportsHevcHdr10Plus && !knownHevcDoviHdr10PlusBug) {
-          unsupportedRangeTypesHevc.add('DOVI_WITH_HDR10_PLUS');
         }
       }
     }
@@ -590,7 +565,6 @@ class DeviceProfileBuilder {
     }
     if (!supportsDvProfile8) {
       unsupportedRangeTypesHevc.add('DOVI_WITH_HDR10');
-      unsupportedRangeTypesHevc.add('DOVI_WITH_HDR10_PLUS');
     }
 
     _addUnsupportedRangeProfiles(
@@ -616,6 +590,22 @@ class DeviceProfileBuilder {
         ],
       ),
     );
+
+    if (audioFallbackToStereoAac && !downMixAudio) {
+      profiles.add(
+        _codecProfile(
+          type: 'VideoAudio',
+          codec: 'aac',
+          conditions: <Map<String, dynamic>>[
+            _condition(
+              condition: 'LessThanEqual',
+              property: 'AudioChannels',
+              value: '2',
+            ),
+          ],
+        ),
+      );
+    }
 
     return profiles;
   }

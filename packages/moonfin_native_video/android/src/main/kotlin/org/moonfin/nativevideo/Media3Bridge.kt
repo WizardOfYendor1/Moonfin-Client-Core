@@ -50,6 +50,12 @@ object Media3Bridge {
     private var uiMetadata: Map<String, Any?> = fallbackUiMetadata
 
     @Volatile
+    private var preferFfmpegDecoder = false
+
+    @Volatile
+    private var sessionTunnelingDisabled = false
+
+    @Volatile
     private var activeView: Media3VideoView? = null
 
     @Volatile
@@ -94,10 +100,34 @@ object Media3Bridge {
         }
     }
 
+    fun preferFfmpegDecoderEnabled(): Boolean = preferFfmpegDecoder
+
+    fun sessionTunnelingDisabledEnabled(): Boolean = sessionTunnelingDisabled
+
+    fun setSessionTunnelingDisabledEnabled(value: Boolean) {
+        sessionTunnelingDisabled = value
+    }
+
     fun handleMethodCall(call: MethodCall, result: MethodChannel.Result) {
         if (call.method == "setUiMetadata") {
             uiMetadata = normalizeUiMetadata(call.arguments as? Map<*, *>)
             result.success(null)
+            return
+        }
+
+        if (call.method == "setDecoderPreferences") {
+            val args = call.arguments as? Map<*, *>
+            preferFfmpegDecoder = args?.get("preferFfmpeg") as? Boolean ?: false
+            (args?.get("tunnelingDisabled") as? Boolean)?.let {
+                sessionTunnelingDisabled = it
+            }
+
+            val view = activeView
+            if (view != null) {
+                view.handleControlCall(call, result)
+            } else {
+                result.success(null)
+            }
             return
         }
 
@@ -124,6 +154,7 @@ object Media3Bridge {
             "setSubtitleTrack",
             "disableSubtitleTrack",
             "setSubtitleRendererMode",
+            "disableTunnelingForSession",
             "addExternalSubtitle",
             "configureSubtitleStyle",
             -> {

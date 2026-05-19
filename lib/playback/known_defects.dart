@@ -7,6 +7,7 @@ class KnownDefects {
   static const Set<String> modelsWithDoViHdr10PlusBug = <String>{
     'AFTKA',
     'AFTKM',
+    'AFTKRT',
   };
 
   static const Set<String> modelsWithDolbyVisionProfile7ElDirectPlayDefault =

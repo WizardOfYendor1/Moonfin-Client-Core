@@ -1839,6 +1839,14 @@ class _VideoPlaybackScreen extends StatelessWidget {
             ),
           if (PlatformDetection.isAndroid && PlatformDetection.isTV)
             SwitchPreferenceTile(
+              preference: UserPreferences.preferExoPlayerFfmpeg,
+              title: 'Prefer software decoders',
+              subtitle:
+                  'Use FFmpeg (audio) and libgav1 (AV1) before hardware decoders. Disable if HDMI audio passthrough breaks.',
+              icon: Icons.memory,
+            ),
+          if (PlatformDetection.isAndroid && PlatformDetection.isTV)
+            SwitchPreferenceTile(
               preference: UserPreferences.useExternalPlayer,
               title: 'Use external player',
               subtitle:
@@ -2237,6 +2245,13 @@ class _AudioPreferencesScreen extends StatelessWidget {
               AudioBehavior.directStream => l10n.directStream,
               AudioBehavior.downmixToStereo => l10n.downmixToStereo,
             },
+          ),
+          SwitchPreferenceTile(
+            preference: UserPreferences.audioFallbackToStereoAac,
+            title: 'Stereo AAC fallback',
+            subtitle:
+                'Allow server fallback to stereo AAC when passthrough audio codecs fail.',
+            icon: Icons.hearing,
           ),
           SwitchPreferenceTile(
             preference: UserPreferences.ac3Enabled,

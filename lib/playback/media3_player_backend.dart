@@ -10,6 +10,9 @@ import 'device_profile_builder.dart';
 import 'known_defects.dart';
 
 class Media3PlayerBackend implements PlayerBackend {
+  static const _discontinuityWindowMs = 15000;
+  static const _discontinuityThreshold = 3;
+
   Media3PlayerBackend(this._prefs) {
     _eventSub = _events.receiveBroadcastStream().listen(
       _handleEvent,
@@ -46,6 +49,8 @@ class Media3PlayerBackend implements PlayerBackend {
 
   bool _disposed = false;
   bool _activityStarted = false;
+  bool _sessionTunnelingDisabled = false;
+  final List<int> _discontinuityTimestamps = <int>[];
 
   final _positionStream = StreamController<Duration>.broadcast();
   final _durationStream = StreamController<Duration>.broadcast();
@@ -130,6 +135,12 @@ class Media3PlayerBackend implements PlayerBackend {
             _tracksKnown) {
           _tracksReadyCompleter!.complete();
         }
+      case 'viewDisposed':
+        _activityStarted = false;
+        _isPlaying = false;
+        _isBuffering = false;
+        _playingStream.add(false);
+        _bufferingStream.add(false);
       case 'activityAction':
         _activityActionController.add(map.cast<String, dynamic>());
       case 'error':
@@ -140,6 +151,39 @@ class Media3PlayerBackend implements PlayerBackend {
         _playingStream.add(false);
         _bufferingStream.add(false);
         _completedStream.add(false);
+      case 'tunnelingDiscontinuity':
+        _onTunnelingDiscontinuity();
+    }
+  }
+
+  void _onTunnelingDiscontinuity() {
+    if (_sessionTunnelingDisabled) {
+      return;
+    }
+
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    _discontinuityTimestamps.removeWhere(
+      (timestamp) => nowMs - timestamp > _discontinuityWindowMs,
+    );
+    _discontinuityTimestamps.add(nowMs);
+
+    if (_discontinuityTimestamps.length < _discontinuityThreshold) {
+      return;
+    }
+
+    _discontinuityTimestamps.clear();
+    unawaited(disableTunnelingFallback());
+  }
+
+  Future<void> disableTunnelingFallback({bool persist = true}) async {
+    if (_sessionTunnelingDisabled) {
+      return;
+    }
+
+    _sessionTunnelingDisabled = true;
+    await _invoke<void>('disableTunnelingForSession');
+    if (persist) {
+      await _prefs.set(UserPreferences.tunnelingFallbackDisabled, true);
     }
   }
 
@@ -188,8 +232,17 @@ class Media3PlayerBackend implements PlayerBackend {
     _tracksKnown = false;
     _textTrackCount = 0;
     _tracksReadyCompleter = null;
+    _discontinuityTimestamps.clear();
+    _sessionTunnelingDisabled = _prefs.get(
+      UserPreferences.tunnelingFallbackDisabled,
+    );
 
     await _ensureActivityStarted();
+
+    await _invoke<void>('setDecoderPreferences', {
+      'preferFfmpeg': _prefs.get(UserPreferences.preferExoPlayerFfmpeg),
+      'tunnelingDisabled': _sessionTunnelingDisabled,
+    });
 
     await _invoke<void>('setSource', {
       'url': url,
@@ -222,6 +275,10 @@ class Media3PlayerBackend implements PlayerBackend {
   @override
   Future<void> stop() async {
     await _invoke<void>('stop');
+    if (_isPlaying) {
+      _isPlaying = false;
+      _playingStream.add(false);
+    }
     await _stopActivity();
   }
 
@@ -284,6 +341,9 @@ class Media3PlayerBackend implements PlayerBackend {
       downMixAudio:
           _prefs.get(UserPreferences.audioBehavior) ==
           AudioBehavior.downmixToStereo,
+      audioFallbackToStereoAac: _prefs.get(
+        UserPreferences.audioFallbackToStereoAac,
+      ),
       maxResolution: maxResolution,
       pgsDirectPlay: _prefs.get(UserPreferences.pgsDirectPlay),
       assDirectPlay: _prefs.get(UserPreferences.assDirectPlay),
@@ -428,6 +488,10 @@ class Media3PlayerBackend implements PlayerBackend {
   Future<void> setVolume(double volume) async {
     _volume = volume.clamp(0.0, 100.0);
     await _invoke<void>('setVolume', {'volume': _volume});
+  }
+
+  void resetVolumeState() {
+    _volume = 100.0;
   }
 
   @override

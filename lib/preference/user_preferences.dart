@@ -288,6 +288,11 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: false,
   );
 
+  static final tunnelingFallbackDisabled = Preference(
+    key: 'tunneling_fallback_disabled',
+    defaultValue: false,
+  );
+
   static final playerZoomMode = EnumPreference(
     key: 'player_zoom_mode',
     defaultValue: ZoomMode.fit,
@@ -317,6 +322,11 @@ class UserPreferences extends ChangeNotifier {
     key: 'audio_behavior',
     defaultValue: AudioBehavior.directStream,
     values: AudioBehavior.values,
+  );
+
+  static final audioFallbackToStereoAac = Preference(
+    key: 'audio_fallback_to_stereo_aac',
+    defaultValue: true,
   );
 
   static final audioNightMode = Preference(

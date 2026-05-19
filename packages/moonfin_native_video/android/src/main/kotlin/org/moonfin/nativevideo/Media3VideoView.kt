@@ -33,6 +33,8 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -40,6 +42,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.SubtitleView
@@ -162,8 +165,10 @@ class Media3VideoView(
     private val trackSelector = DefaultTrackSelector(context)
     private val audioPipeline = ExoPlayerAudioPipeline()
     private val audioAttributeState = AudioAttributeState()
+    private var preferFfmpegDecoder = Media3Bridge.preferFfmpegDecoderEnabled()
+    private var decoderPreferenceDirty = false
 
-    private val player: ExoPlayer
+    private var player: ExoPlayer
 
     private var ticker: Runnable? = null
     private var currentUrl: String? = null
@@ -183,6 +188,7 @@ class Media3VideoView(
     private var currentContainer: String? = null
     private var currentVideoRangeType: String? = null
     private var currentMediaType: String = "video"
+    private var sessionTunnelingDisabled = Media3Bridge.sessionTunnelingDisabledEnabled()
     private var isDisposed = false
     private var firstFrameRendered = false
     private val externalSubtitleConfigurations = mutableListOf<MediaItem.SubtitleConfiguration>()
@@ -270,16 +276,64 @@ class Media3VideoView(
         }
     }
 
+    private val analyticsListener = object : AnalyticsListener {
+        override fun onAudioSinkError(
+            eventTime: AnalyticsListener.EventTime,
+            audioSinkError: Exception,
+        ) {
+            val message = audioSinkError.message?.lowercase() ?: ""
+            val isDiscontinuityError =
+                audioSinkError is AudioSink.UnexpectedDiscontinuityException ||
+                    message.contains("discontinuity") ||
+                    message.contains("discontinu")
+            if (isDiscontinuityError) {
+                Media3Bridge.emitEvent(
+                    mapOf(
+                        "event" to "tunnelingDiscontinuity",
+                    ),
+                )
+            }
+        }
+    }
+
     init {
         applyTrackSelectorForCurrentSource()
 
+        player = createPlayer()
+
+        containerView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            applyVideoLayout()
+        }
+
+        refreshSubtitleRendererMode()
+
+        startTicker()
+        Media3Bridge.attachView(this)
+    }
+
+    override fun getView(): View = containerView
+
+    override fun dispose() {
+        isDisposed = true
+        stopTicker()
+        player.removeListener(listener)
+        player.removeAnalyticsListener(analyticsListener)
+        audioPipeline.release()
+        player.clearVideoSurface()
+        player.release()
+        Media3Bridge.detachView(this)
+    }
+
+    private fun createPlayer(): ExoPlayer {
         val renderersFactory = MoonfinRenderersFactory(context).apply {
             setEnableDecoderFallback(true)
-            setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            setExtensionRendererMode(extensionRendererModeForCurrentPreference())
         }
 
         val isLowRamDevice = context.getSystemService<ActivityManager>()?.isLowRamDevice == true
         val extractorsFactory = DefaultExtractorsFactory()
+            .setTsExtractorMode(TsExtractor.MODE_SINGLE_PMT)
+            .setTsExtractorPayloadReaderFactoryFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES)
             .setTsExtractorTimestampSearchBytes(
                 if (isLowRamDevice) TS_SEARCH_BYTES_LOW_RAM else TS_SEARCH_BYTES_DEFAULT,
             )
@@ -298,43 +352,31 @@ class Media3VideoView(
             setSubtitleParserFactory(assParserFactory)
         }
 
-        player = ExoPlayer.Builder(context, renderersFactory.withAssSupport(assHandler))
+        return ExoPlayer.Builder(context, renderersFactory.withAssSupport(assHandler))
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(bootMediaSourceFactory)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setPauseAtEndOfMediaItems(true)
-            .build().also {
+            .build()
+            .also {
                 assHandler.init(it)
+                if (useSurfaceView) {
+                    it.setVideoSurfaceView(videoView as SurfaceView)
+                } else {
+                    it.setVideoTextureView(videoView as TextureView)
+                }
+                it.addListener(listener)
+                it.addAnalyticsListener(analyticsListener)
             }
-
-        if (useSurfaceView) {
-            player.setVideoSurfaceView(videoView as SurfaceView)
-        } else {
-            player.setVideoTextureView(videoView as TextureView)
-        }
-        containerView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            applyVideoLayout()
-        }
-
-        refreshSubtitleRendererMode()
-
-        player.addListener(listener)
-
-        startTicker()
-        Media3Bridge.attachView(this)
     }
 
-    override fun getView(): View = containerView
-
-    override fun dispose() {
-        isDisposed = true
-        stopTicker()
+    private fun rebuildPlayerForDecoderPreference() {
         player.removeListener(listener)
-        audioPipeline.release()
+        player.removeAnalyticsListener(analyticsListener)
         player.clearVideoSurface()
         player.release()
-        Media3Bridge.detachView(this)
+        player = createPlayer()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -454,6 +496,16 @@ class Media3VideoView(
 
                 "setSubtitleRendererMode" -> {
                     updateSubtitleRendererMode(call.arguments)
+                    result.success(null)
+                }
+
+                "setDecoderPreferences" -> {
+                    updateDecoderPreferences(call.arguments)
+                    result.success(null)
+                }
+
+                "disableTunnelingForSession" -> {
+                    disableTunnelingForSession()
                     result.success(null)
                 }
 
@@ -579,6 +631,10 @@ class Media3VideoView(
                     updateSubtitleRendererMode(args)
                 }
 
+                "disableTunnelingForSession" -> {
+                    disableTunnelingForSession()
+                }
+
                 "addExternalSubtitle" -> addExternalSubtitle(args as? Map<*, *>)
                 "configureSubtitleStyle" -> configureSubtitleStyle(args as? Map<*, *>)
             }
@@ -594,6 +650,12 @@ class Media3VideoView(
         val args = arguments as? Map<*, *> ?: return
         val url = args["url"]?.toString() ?: return
         val startPositionMs = (args["startPositionMs"] as? Number)?.toLong() ?: 0L
+
+        if (decoderPreferenceDirty) {
+            rebuildPlayerForDecoderPreference()
+            decoderPreferenceDirty = false
+        }
+
         currentContainer = args["container"]
             ?.toString()
             ?.trim()
@@ -677,7 +739,10 @@ class Media3VideoView(
             !selectedExternalSubtitleUrl.isNullOrBlank() ||
             externalSubtitleConfigurations.isNotEmpty()
         val shouldEnableTunneling =
-            !isAudioContent && !hasExternalSubtitle && isHdrLikeRangeType(currentVideoRangeType)
+            !isAudioContent &&
+                !hasExternalSubtitle &&
+                !sessionTunnelingDisabled &&
+                isHdrLikeRangeType(currentVideoRangeType)
 
         val offloadMode = if (isAudioContent) {
             TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED
@@ -709,6 +774,36 @@ class Media3VideoView(
         requestedSubtitleRendererMode = nextMode
         refreshSubtitleRendererMode()
     }
+
+    private fun updateDecoderPreferences(arguments: Any?) {
+        val args = arguments as? Map<*, *> ?: return
+
+        val nextPreference = args["preferFfmpeg"] as? Boolean
+        if (nextPreference != null && preferFfmpegDecoder != nextPreference) {
+            preferFfmpegDecoder = nextPreference
+            decoderPreferenceDirty = true
+        }
+
+        val nextTunnelingDisabled = args["tunnelingDisabled"] as? Boolean
+        if (nextTunnelingDisabled != null && sessionTunnelingDisabled != nextTunnelingDisabled) {
+            sessionTunnelingDisabled = nextTunnelingDisabled
+            Media3Bridge.setSessionTunnelingDisabledEnabled(nextTunnelingDisabled)
+            applyTrackSelectorForCurrentSource()
+        }
+    }
+
+    private fun disableTunnelingForSession() {
+        if (sessionTunnelingDisabled) {
+            return
+        }
+        sessionTunnelingDisabled = true
+        Media3Bridge.setSessionTunnelingDisabledEnabled(true)
+        applyTrackSelectorForCurrentSource()
+    }
+
+    private fun extensionRendererModeForCurrentPreference(): Int =
+        if (preferFfmpegDecoder) DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+        else DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
 
     private fun updateZoomMode(arguments: Any?) {
         val args = arguments as? Map<*, *>

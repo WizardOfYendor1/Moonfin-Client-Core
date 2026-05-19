@@ -829,6 +829,8 @@ class _ContentRowsState extends State<_ContentRows>
     final wasOnHome = _lastObservedPath?.startsWith(Destinations.home) ?? false;
     _lastObservedPath = path;
 
+    _mainPlaybackActive = _playbackManager.state.isPlaying;
+
     if (!path.startsWith(Destinations.home)) {
       _finishSharedPreview(releaseResources: true);
       return;
@@ -838,6 +840,7 @@ class _ContentRowsState extends State<_ContentRows>
     // (e.g. login, server select). Pop-back from /item should keep the
     // user's previous focus in place.
     if (!wasOnHome) {
+      _mainPlaybackActive = _playbackManager.state.isPlaying;
       final shouldRebuild = _initialFocusResolved || _hasEverFocusedHomeContent;
       _initialFocusResolved = false;
       _hasEverFocusedHomeContent = false;
@@ -907,10 +910,12 @@ class _ContentRowsState extends State<_ContentRows>
   }
 
   void _schedulePreview(AggregatedItem item, {required Duration delay}) {
+    final mainPlaybackActive =
+        _mainPlaybackActive || _playbackManager.state.isPlaying;
     if (!widget.prefs.get(UserPreferences.episodePreviewEnabled) ||
         !_supportsEpisodePreview(item) ||
         _chromeFocusActive ||
-        _mainPlaybackActive) {
+        mainPlaybackActive) {
       return;
     }
 
@@ -963,9 +968,9 @@ class _ContentRowsState extends State<_ContentRows>
       _previewPlayer?.stop();
     }
     if (_previewUsingMedia3) {
-      unawaited(_media3PreviewBackend.setVolume(0));
       _previewUsingMedia3 = false;
       unawaited(_media3PreviewBackend.stop());
+      _media3PreviewBackend.resetVolumeState();
     }
     if (releaseResources || kIsWeb) {
       _previewPlayer?.dispose();
@@ -992,7 +997,9 @@ class _ContentRowsState extends State<_ContentRows>
   }
 
   Future<void> _startSharedPreview(AggregatedItem item, String previewKey) async {
-    if (_chromeFocusActive || _mainPlaybackActive || !_isHomeRouteActive()) {
+    final mainPlaybackActive =
+        _mainPlaybackActive || _playbackManager.state.isPlaying;
+    if (_chromeFocusActive || mainPlaybackActive || !_isHomeRouteActive()) {
       _finishSharedPreview(releaseResources: true);
       return;
     }
