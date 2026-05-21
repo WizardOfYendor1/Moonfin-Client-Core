@@ -4562,12 +4562,12 @@ class _ActionButtonsState extends State<_ActionButtons> {
   int? _effectiveSubtitleStreamIndex(
     List<Map<String, dynamic>> subtitleStreams,
   ) {
+    if (_selectedSubtitleIndex != null) {
+      return _selectedSubtitleIndex;
+    }
     final active = _activePlaybackSubtitleIndex();
     if (active != null) {
       return active;
-    }
-    if (_selectedSubtitleIndex != null) {
-      return _selectedSubtitleIndex;
     }
     final prefs = GetIt.instance<UserPreferences>();
     final defaultToNone = prefs.get(UserPreferences.subtitlesDefaultToNone);
@@ -5003,6 +5003,12 @@ class _ActionButtonsState extends State<_ActionButtons> {
             final prerolls = await _moviePrerollsForStart(item, startPosition);
             if (!context.mounted) return;
             final applyMainItemStreamOverrides = prerolls.isEmpty;
+            final selectedMediaSourceId = widget.selectedMediaSourceId;
+            final hasMainItemStreamOverrides =
+                audioStreamIndex != null ||
+                subtitleStreamIndex != null ||
+                (selectedMediaSourceId != null &&
+                    selectedMediaSourceId.isNotEmpty);
             final queue = prerolls.isEmpty
                 ? <AggregatedItem>[item]
                 : <AggregatedItem>[...prerolls, item];
@@ -5010,8 +5016,8 @@ class _ActionButtonsState extends State<_ActionButtons> {
                 !isAudio &&
                 await _shouldForceTranscodeForDolbyVision(context, [
                   item,
-                ], mediaSourceId: widget.selectedMediaSourceId);
-            await manager.playItems(
+                ], mediaSourceId: selectedMediaSourceId);
+            final playItemsFuture = manager.playItems(
               queue,
               startPosition: startPosition,
               audioStreamIndex: applyMainItemStreamOverrides
@@ -5021,11 +5027,20 @@ class _ActionButtonsState extends State<_ActionButtons> {
                   ? subtitleStreamIndex
                   : null,
               mediaSourceId: applyMainItemStreamOverrides
-                  ? widget.selectedMediaSourceId
+                  ? selectedMediaSourceId
                   : null,
               enableDirectPlay: !forceTranscode,
               enableDirectStream: !forceTranscode,
             );
+            if (!applyMainItemStreamOverrides && hasMainItemStreamOverrides) {
+              manager.setPendingItemOverrides(
+                itemId: item.id,
+                audioStreamIndex: audioStreamIndex,
+                subtitleStreamIndex: subtitleStreamIndex,
+                mediaSourceId: selectedMediaSourceId,
+              );
+            }
+            await playItemsFuture;
         }
       },
     );
@@ -5257,6 +5272,12 @@ class _ActionButtonsState extends State<_ActionButtons> {
     BuildContext context,
     List<Map<String, dynamic>> streams,
   ) async {
+    if (_selectedAudioIndex == null) {
+      final activeAudioIndex = _activePlaybackAudioIndex();
+      if (activeAudioIndex != null) {
+        _selectedAudioIndex = activeAudioIndex;
+      }
+    }
     final effectiveAudioIndex = _effectiveAudioStreamIndex(streams);
     final currentIdx = effectiveAudioIndex != null
         ? streams.indexWhere((s) => s['Index'] == effectiveAudioIndex)
@@ -5264,13 +5285,20 @@ class _ActionButtonsState extends State<_ActionButtons> {
     final result = await TrackSelectorDialog.show(
       context,
       title: AppLocalizations.of(context).audioTrack,
-      options: streams.map((s) {
+      options: streams.asMap().entries.map((entry) {
+        final trackNumber = entry.key + 1;
+        final s = entry.value;
         final display =
             s['DisplayTitle'] as String? ??
             s['Language'] as String? ??
             'Unknown';
         final codec = s['Codec'] as String?;
-        return TrackOption(label: display, subtitle: codec?.toUpperCase());
+        return TrackOption(
+          label: '$trackNumber - $display',
+          subtitle: codec?.toUpperCase(),
+          scrollLabel: true,
+          scrollSubtitle: true,
+        );
       }).toList(),
       selectedIndex: currentIdx >= 0 ? currentIdx : null,
     );
@@ -5582,6 +5610,12 @@ class _ActionButtonsState extends State<_ActionButtons> {
     List<Map<String, dynamic>> streams,
     List<Map<String, dynamic>> audioStreams,
   ) async {
+    if (_selectedSubtitleIndex == null) {
+      final activeSubtitleIndex = _activePlaybackSubtitleIndex();
+      if (activeSubtitleIndex != null) {
+        _selectedSubtitleIndex = activeSubtitleIndex;
+      }
+    }
     final canDownloadRemote = _canDownloadRemoteSubtitles(item);
     final effectiveSubtitleIndex = _effectiveSubtitleStreamIndex(streams);
     final currentIdx = effectiveSubtitleIndex != null
@@ -5594,13 +5628,26 @@ class _ActionButtonsState extends State<_ActionButtons> {
         : (streams.indexWhere((s) => s['IsDefault'] == true) + 1);
     final options = [
       TrackOption(label: AppLocalizations.of(context).none),
-      ...streams.map((s) {
+      ...streams.asMap().entries.map((entry) {
+        final trackNumber = entry.key + 1;
+        final s = entry.value;
         final display =
             s['DisplayTitle'] as String? ??
             s['Language'] as String? ??
             'Unknown';
-        final codec = s['Codec'] as String?;
-        return TrackOption(label: display, subtitle: codec?.toUpperCase());
+        final subtitleType =
+            ((s['Codec'] as String?) ?? 'Unknown').toUpperCase();
+        final deliveryMethod =
+            (s['DeliveryMethod'] as String?)?.trim().toLowerCase();
+        final location = s['IsExternal'] == true
+            ? 'External'
+            : (deliveryMethod == 'embed' ? 'Embedded' : 'Internal');
+        return TrackOption(
+          label: '$trackNumber - $display',
+          subtitle: '$subtitleType · $location',
+          scrollLabel: true,
+          scrollSubtitle: true,
+        );
       }),
     ];
     final downloadOptionIndex = canDownloadRemote ? options.length : null;

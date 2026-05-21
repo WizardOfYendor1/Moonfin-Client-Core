@@ -5,6 +5,7 @@ import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../preference/user_preferences.dart';
+import 'marquee_text.dart';
 import 'overlay_sheet.dart';
 
 Future<T?> showStyledPlayerDialog<T>(
@@ -98,11 +99,15 @@ class TrackOption {
   final String label;
   final String? subtitle;
   final int? labelMaxLines;
+  final bool scrollLabel;
+  final bool scrollSubtitle;
 
   const TrackOption({
     required this.label,
     this.subtitle,
     this.labelMaxLines = 1,
+    this.scrollLabel = false,
+    this.scrollSubtitle = false,
   });
 }
 
@@ -217,22 +222,39 @@ class _TrackRowState extends State<_TrackRow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.option.label,
-                      style: TextStyle(fontSize: 16, color: labelColor),
-                      maxLines: widget.option.labelMaxLines,
-                      overflow:
-                          widget.option.labelMaxLines == 1
-                              ? TextOverflow.ellipsis
-                              : null,
-                    ),
-                    if (widget.option.subtitle != null)
+                    if (widget.option.scrollLabel)
+                      MarqueeText(
+                        text: widget.option.label,
+                        style: TextStyle(fontSize: 16, color: labelColor),
+                      )
+                    else
                       Text(
-                        widget.option.subtitle!,
-                        style: TextStyle(fontSize: 12, color: subtitleColor),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        widget.option.label,
+                        style: TextStyle(fontSize: 16, color: labelColor),
+                        maxLines: widget.option.labelMaxLines,
+                        overflow:
+                            widget.option.labelMaxLines == 1
+                                ? TextOverflow.ellipsis
+                                : null,
                       ),
+                    if (widget.option.subtitle != null)
+                      (widget.option.scrollSubtitle
+                          ? MarqueeText(
+                              text: widget.option.subtitle!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: subtitleColor,
+                              ),
+                            )
+                          : Text(
+                              widget.option.subtitle!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: subtitleColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            )),
                   ],
                 ),
               ),
