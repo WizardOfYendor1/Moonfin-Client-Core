@@ -728,11 +728,11 @@ class _HomeScreenCategoryScreen extends StatefulWidget {
 class _HomeScreenCategoryScreenState extends State<_HomeScreenCategoryScreen> {
   final _prefs = GetIt.instance<UserPreferences>();
   static const _rowsTypeDescription =
-      'Moonfin V1 keeps per-row image type and info overlay. Moonfin V2 uses portrait-to-backdrop rows.';
+      'Classic keeps per-row image type and info overlay. Modern uses portrait-to-backdrop rows.';
 
   String _rowsStyleLabel(HomeRowsStyle style) => switch (style) {
-    HomeRowsStyle.v1 => 'Moonfin V1',
-    HomeRowsStyle.v2 => 'Moonfin V2',
+    HomeRowsStyle.v1 => 'Classic',
+    HomeRowsStyle.v2 => 'Modern',
   };
 
   void _reloadHomeRows() {

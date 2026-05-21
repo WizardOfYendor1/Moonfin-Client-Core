@@ -2224,8 +2224,10 @@ class _ContentRowsState extends State<_ContentRows>
     final viewportHeight = MediaQuery.of(context).size.height;
     final lastRowExtent = rowExtents.isEmpty ? 0.0 : rowExtents.last;
     final neededBottomPadding =
-        (viewportHeight - (overlayBottom + 8) - lastRowExtent)
-            .clamp(32.0, double.infinity);
+      (viewportHeight -
+          (overlayBottom + (_isHomeRowsStyleV2() ? 4.0 : 8.0)) -
+          lastRowExtent)
+        .clamp(_isHomeRowsStyleV2() ? 24.0 : 32.0, double.infinity);
 
     _ensureInitialHomeFocus(rows);
 
@@ -2968,13 +2970,19 @@ class _ContentRowsState extends State<_ContentRows>
     required double height,
     required Widget child,
   }) {
+    final isRowsV2 = _isHomeRowsStyleV2();
     return Column(
       key: key,
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 16, 8, 8),
+          padding: EdgeInsets.fromLTRB(
+            _kHomeRowLabelInset,
+              isRowsV2 ? 6 : 16,
+            8,
+              isRowsV2 ? 1 : 8,
+          ),
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
