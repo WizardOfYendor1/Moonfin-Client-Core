@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:developer' as developer;
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
@@ -31,23 +30,13 @@ const List<String> _kShuffleExcludeItemTypes = <String>[
 final Set<String> _shuffleIdsHydrationUnsupportedServers = <String>{};
 
 void _shuffleLogInfo(String message) {
-  assert(() {
-    developer.log(message, name: 'ShuffleFetch');
-    return true;
-  }());
+  final _ = message;
 }
 
 void _shuffleLogError(String message, Object error, StackTrace stackTrace) {
-  assert(() {
-    developer.log(
-      message,
-      name: 'ShuffleFetch',
-      level: 1000,
-      error: error,
-      stackTrace: stackTrace,
-    );
-    return true;
-  }());
+  final _ = message;
+  final __ = error;
+  final ___ = stackTrace;
 }
 
 bool _shouldDisableIdsHydrationForError(DioException error) {
@@ -361,6 +350,11 @@ Future<List<AggregatedItem>> fetchRandomItems({
         'fetchRandomItems no eligible libraries contentType=$contentType elapsedMs=${stopwatch.elapsedMilliseconds}',
       );
     }
+
+    _shuffleLogInfo(
+      'fetchRandomItems global random produced no items, skipping unscoped server-side random query contentType=$contentType elapsedMs=${stopwatch.elapsedMilliseconds}',
+    );
+    return const <AggregatedItem>[];
   }
 
   final scopedItems = await _fetchRandomItemsScoped(

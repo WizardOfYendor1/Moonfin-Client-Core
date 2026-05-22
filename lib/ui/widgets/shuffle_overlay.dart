@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -32,6 +33,7 @@ enum _ShuffleLoadTrigger { initial, random, library, genre }
 Future<void> showShuffleOverlay(BuildContext context) {
   final prefs = GetIt.instance<UserPreferences>();
   final contentType = prefs.get(UserPreferences.shuffleContentType);
+  final _ = contentType;
   return showFocusRestoringDialog<void>(
     context: context,
     useSafeArea: false,
@@ -93,6 +95,15 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
   void initState() {
     super.initState();
     _contentType = widget.initialContentType;
+    _logShuffleLoadInfo(
+      'overlay initialized',
+      context: {
+        'initialContentType': _contentType,
+        'isTv': PlatformDetection.isTV,
+        'useMobileUi': PlatformDetection.useMobileUi,
+        'useDesktopUi': PlatformDetection.useDesktopUi,
+      },
+    );
     _loadItems(
       requestInitialFocus: true,
       trigger: _ShuffleLoadTrigger.initial,
@@ -112,22 +123,57 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     super.dispose();
   }
 
-  void _logShuffleLoadInfo(String message) {
-    assert(() {
-      debugPrint('[ShuffleOverlay] $message');
-      return true;
-    }());
+  void _logShuffleLoadInfo(
+    String message, {
+    Map<String, Object?> context = const <String, Object?>{},
+  }) {
+    _logShuffleEvent(message, context: context);
   }
 
   void _logShuffleLoadError(
     String message,
     Object error,
-    StackTrace stackTrace,
+    StackTrace stackTrace, {
+    Map<String, Object?> context = const <String, Object?>{},
+  }
   ) {
-    assert(() {
-      debugPrint('[ShuffleOverlay] $message (${error.runtimeType}): $error');
-      return true;
-    }());
+    _logShuffleEvent(
+      message,
+      level: 1000,
+      context: context,
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  void _logShuffleEvent(
+    String message, {
+    int level = 800,
+    Map<String, Object?> context = const <String, Object?>{},
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    final _ = message;
+    final __ = level;
+    final ___ = context;
+    final ____ = error;
+    final _____ = stackTrace;
+  }
+
+  String _describeError(Object error) {
+    if (error is TimeoutException) {
+      return 'TimeoutException(message=${error.message ?? 'none'})';
+    }
+    if (error is DioException) {
+      final request = error.requestOptions;
+      return 'DioException('
+          'type=${error.type}, '
+          'status=${error.response?.statusCode}, '
+          'method=${request.method}, '
+          'uri=${request.uri}, '
+          'message=${error.message})';
+    }
+    return '${error.runtimeType}: $error';
   }
 
   Future<void> _loadItems({
@@ -135,6 +181,14 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     _ShuffleLoadTrigger trigger = _ShuffleLoadTrigger.random,
   }) async {
     final requestId = ++_loadRequestId;
+    _logShuffleLoadInfo(
+      'load requested',
+      context: {
+        'requestId': requestId,
+        'requestedTrigger': trigger.name,
+        'requestInitialFocus': requestInitialFocus,
+      },
+    );
     if (mounted) {
       setState(() {
         _loading = true;
@@ -149,6 +203,17 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
 
     for (var attempt = 1; attempt <= _kShuffleMaxAttempts; attempt++) {
       if (!mounted || requestId != _loadRequestId) return;
+      _logShuffleLoadInfo(
+        'load attempt start',
+        context: {
+          'requestId': requestId,
+          'attempt': attempt,
+          'maxAttempts': _kShuffleMaxAttempts,
+          'parentId': _activeLibraryId ?? 'none',
+          'genreName': _activeGenreName ?? 'none',
+          'limit': _kShuffleCardCount,
+        },
+      );
 
       try {
         final items = await fetchRandomItems(
@@ -169,7 +234,13 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
         });
 
         _logShuffleLoadInfo(
-          'trigger=$trigger attempt=$attempt success items=${items.length} elapsedMs=${stopwatch.elapsedMilliseconds}',
+          'load success',
+          context: {
+            'requestId': requestId,
+            'attempt': attempt,
+            'itemCount': items.length,
+            'elapsedMs': stopwatch.elapsedMilliseconds,
+          },
         );
 
         if (PlatformDetection.useMobileUi) {
@@ -189,17 +260,29 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
       } on TimeoutException catch (error, stackTrace) {
         lastError = error;
         _logShuffleLoadError(
-          'trigger=$trigger attempt=$attempt timeout elapsedMs=${stopwatch.elapsedMilliseconds}',
+          'load attempt timeout',
           error,
           stackTrace,
+          context: {
+            'requestId': requestId,
+            'attempt': attempt,
+            'elapsedMs': stopwatch.elapsedMilliseconds,
+            'errorDetail': _describeError(error),
+          },
         );
         break;
       } catch (error, stackTrace) {
         lastError = error;
         _logShuffleLoadError(
-          'trigger=$trigger attempt=$attempt failed elapsedMs=${stopwatch.elapsedMilliseconds}',
+          'load attempt failed',
           error,
           stackTrace,
+          context: {
+            'requestId': requestId,
+            'attempt': attempt,
+            'elapsedMs': stopwatch.elapsedMilliseconds,
+            'errorDetail': _describeError(error),
+          },
         );
 
         if (attempt >= _kShuffleMaxAttempts) {
@@ -212,7 +295,14 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
 
     if (!mounted || requestId != _loadRequestId) return;
     _logShuffleLoadInfo(
-      'trigger=$trigger failed attempts=$_kShuffleMaxAttempts elapsedMs=${stopwatch.elapsedMilliseconds} lastError=${lastError.runtimeType}',
+      'load failed after retries',
+      context: {
+        'requestId': requestId,
+        'failedTrigger': trigger.name,
+        'attempts': _kShuffleMaxAttempts,
+        'elapsedMs': stopwatch.elapsedMilliseconds,
+        'lastError': lastError == null ? 'none' : _describeError(lastError),
+      },
     );
     setState(() {
       _items = const <AggregatedItem>[];
@@ -264,6 +354,14 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
       _activeGenreName = null;
     });
 
+    _logShuffleLoadInfo(
+      'library selected',
+      context: {
+        'libraryId': selected.id,
+        'libraryName': selected.name,
+      },
+    );
+
     await _loadItems(
       requestInitialFocus: true,
       trigger: _ShuffleLoadTrigger.library,
@@ -288,6 +386,11 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
       _activeGenreName = selected;
       _activeLibraryId = null;
     });
+
+    _logShuffleLoadInfo(
+      'genre selected',
+      context: {'genre': selected},
+    );
 
     await _loadItems(
       requestInitialFocus: true,
@@ -518,7 +621,18 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     try {
       final details = await client.itemsApi.getItem(item.id);
       tmdbId = (details['ProviderIds'] as Map?)?['Tmdb'] as String?;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logShuffleLoadError(
+        'failed to resolve tmdb id from item details',
+        error,
+        stackTrace,
+        context: {
+          'itemId': item.id,
+          'serverId': item.serverId,
+          'cacheKey': cacheKey,
+          'errorDetail': _describeError(error),
+        },
+      );
       tmdbId = null;
     }
 
@@ -530,9 +644,7 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     List<AggregatedItem> items, {
     AggregatedItem? selectedItem,
   }) {
-    if (!_prefs.get(UserPreferences.enableAdditionalRatings)) {
-      return;
-    }
+    if (!_prefs.get(UserPreferences.enableAdditionalRatings)) return;
 
     final selectedKey = selectedItem == null
         ? null
@@ -565,7 +677,18 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
       _ratingsCache[cacheKey] = (result != null && result.isNotEmpty)
           ? result
           : const <String, double>{};
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _logShuffleLoadError(
+        'ratings prefetch failed',
+        error,
+        stackTrace,
+        context: {
+          'cacheKey': cacheKey,
+          'itemId': item.id,
+          'errorDetail': _describeError(error),
+        },
+      );
+    }
   }
 
   Future<void> _loadRatingsForSelected(AggregatedItem? item) async {
@@ -600,23 +723,41 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
 
     final tmdbId = await _resolveTmdbId(item);
 
-    if (!mounted || requestId != _ratingsRequestId) {
-      return;
-    }
+    if (!mounted || requestId != _ratingsRequestId) return;
 
     if (tmdbId == null || tmdbId.isEmpty) {
       _ratingsCache[cacheKey] = const <String, double>{};
       return;
     }
 
-    final result = await GetIt.instance<MdbListRepository>().getRatings(
-      tmdbId: tmdbId,
-      mediaType: item.type ?? 'Movie',
-    );
-
-    if (!mounted || requestId != _ratingsRequestId) {
+    Map<String, double>? result;
+    try {
+      result = await GetIt.instance<MdbListRepository>().getRatings(
+        tmdbId: tmdbId,
+        mediaType: item.type ?? 'Movie',
+      );
+    } catch (error, stackTrace) {
+      _logShuffleLoadError(
+        'load ratings for selected remote request failed',
+        error,
+        stackTrace,
+        context: {
+          'ratingsRequestId': requestId,
+          'cacheKey': cacheKey,
+          'tmdbId': tmdbId,
+          'errorDetail': _describeError(error),
+        },
+      );
+      if (mounted && requestId == _ratingsRequestId) {
+        _ratingsCache[cacheKey] = const <String, double>{};
+        setState(() {
+          _selectedRatings = const <String, double>{};
+        });
+      }
       return;
     }
+
+    if (!mounted || requestId != _ratingsRequestId) return;
 
     final resolvedRatings = (result != null && result.isNotEmpty)
         ? result
@@ -755,12 +896,15 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     final watchedBehavior = _prefs.get(
       UserPreferences.watchedIndicatorBehavior,
     );
+    final disablePosterOpacity =
+        ThemeRegistry.active.id == ThemeRegistry.neonPulseId;
 
     if (PlatformDetection.useMobileUi) {
       return _buildMobileCardsArea(
         focusColor: focusColor,
         cardFocusExpansion: cardFocusExpansion,
         watchedBehavior: watchedBehavior,
+        disablePosterOpacity: disablePosterOpacity,
       );
     }
 
@@ -768,6 +912,7 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
       focusColor: focusColor,
       cardFocusExpansion: cardFocusExpansion,
       watchedBehavior: watchedBehavior,
+      disablePosterOpacity: disablePosterOpacity,
     );
   }
 
@@ -796,10 +941,16 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
             ),
             SizedBox(height: isMobile ? 12 : 14),
             OutlinedButton.icon(
-              onPressed: () => _loadItems(
-                requestInitialFocus: true,
-                trigger: _activeLoadTrigger,
-              ),
+              onPressed: () {
+                _logShuffleLoadInfo(
+                  'error state retry pressed',
+                  context: {'retryTrigger': _activeLoadTrigger.name},
+                );
+                _loadItems(
+                  requestInitialFocus: true,
+                  trigger: _activeLoadTrigger,
+                );
+              },
               icon: const Icon(Icons.refresh_rounded),
               label: Text(l10n.tryAgain),
             ),
@@ -813,6 +964,7 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     required Color focusColor,
     required dynamic cardFocusExpansion,
     required dynamic watchedBehavior,
+    required bool disablePosterOpacity,
   }) {
     final isTv = PlatformDetection.isTV;
 
@@ -868,7 +1020,9 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
                         scale: index == _selectedIndex ? centerScale : 0.9,
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 180),
-                          opacity: index == _selectedIndex ? 1.0 : 0.55,
+                          opacity: disablePosterOpacity
+                              ? 1.0
+                              : (index == _selectedIndex ? 1.0 : 0.55),
                           child: _buildCarouselCard(
                             index: index,
                             cardWidth: cardWidth,
@@ -893,6 +1047,7 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
     required Color focusColor,
     required dynamic cardFocusExpansion,
     required dynamic watchedBehavior,
+    required bool disablePosterOpacity,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -933,7 +1088,9 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
 
                       final distance = (page - index).abs().clamp(0.0, 1.0);
                       final scale = 1.0 - (distance * 0.18);
-                      final opacity = 1.0 - (distance * 0.45);
+                      final opacity = disablePosterOpacity
+                          ? 1.0
+                          : (1.0 - (distance * 0.45));
                       final yOffset = distance * 12;
 
                       return Center(
@@ -1052,8 +1209,12 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
                   compact: isMobile,
                   dense: tvDense,
                   onTap: () {
+                    _logShuffleLoadInfo('library shuffle action pressed');
                     if (_loading &&
                         _activeLoadTrigger == _ShuffleLoadTrigger.library) {
+                      _logShuffleLoadInfo(
+                        'library shuffle action ignored because request is already loading',
+                      );
                       return;
                     }
                     _pickLibrary();
@@ -1073,8 +1234,12 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
                   dense: tvDense,
                   primary: false,
                   onTap: () {
+                    _logShuffleLoadInfo('random shuffle action pressed');
                     if (_loading &&
                         _activeLoadTrigger == _ShuffleLoadTrigger.random) {
+                      _logShuffleLoadInfo(
+                        'random shuffle action ignored because request is already loading',
+                      );
                       return;
                     }
                     _loadItems(
@@ -1102,8 +1267,12 @@ class _ShuffleOverlayState extends State<_ShuffleOverlay> {
                   compact: isMobile,
                   dense: tvDense,
                   onTap: () {
+                    _logShuffleLoadInfo('genre shuffle action pressed');
                     if (_loading &&
                         _activeLoadTrigger == _ShuffleLoadTrigger.genre) {
+                      _logShuffleLoadInfo(
+                        'genre shuffle action ignored because request is already loading',
+                      );
                       return;
                     }
                     _pickGenre();
