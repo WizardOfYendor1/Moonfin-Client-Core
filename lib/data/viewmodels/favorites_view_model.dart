@@ -68,13 +68,13 @@ class FavoritesViewModel extends ChangeNotifier {
     required MediaServerClient client,
     required UserPreferences prefs,
     required MdbListRepository mdbListRepository,
-  })  : _client = client,
-        _prefs = prefs,
-        _mdbListRepository = mdbListRepository {
+  }) : _client = client,
+       _prefs = prefs,
+       _mdbListRepository = mdbListRepository {
     _sortBy = _prefs.get(UserPreferences.librarySortBy(_prefKey));
     _sortDirection = _prefs.get(UserPreferences.librarySortDirection(_prefKey));
     _imageType = _prefs.get(UserPreferences.libraryImageType(_prefKey));
-    _posterSize = _prefs.get(UserPreferences.posterSize);
+    _posterSize = _prefs.resolveLibraryPosterSize();
   }
 
   void setFocusedItem(AggregatedItem? item) {
@@ -172,11 +172,16 @@ class FavoritesViewModel extends ChangeNotifier {
         );
       }
       final rawItems = (response['Items'] as List?) ?? [];
-      return rawItems.cast<Map<String, dynamic>>().map((raw) => AggregatedItem(
-        id: raw['Id'] as String,
-        serverId: _client.baseUrl,
-        rawData: raw,
-      )).toList();
+      return rawItems
+          .cast<Map<String, dynamic>>()
+          .map(
+            (raw) => AggregatedItem(
+              id: raw['Id'] as String,
+              serverId: _client.baseUrl,
+              rawData: raw,
+            ),
+          )
+          .toList();
     } catch (_) {
       return const [];
     }
@@ -212,7 +217,7 @@ class FavoritesViewModel extends ChangeNotifier {
   Future<void> setPosterSize(PosterSize value) async {
     if (_posterSize == value) return;
     _posterSize = value;
-    await _prefs.set(UserPreferences.posterSize, value);
+    await _prefs.set(UserPreferences.libraryPosterSize, value);
     notifyListeners();
   }
 }

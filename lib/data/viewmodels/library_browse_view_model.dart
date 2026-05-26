@@ -36,7 +36,8 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   bool _totalCountKnown = true;
   bool _hasMoreFromPageSize = false;
 
-  bool get hasMore => _totalCountKnown ? _items.length < _totalCount : _hasMoreFromPageSize;
+  bool get hasMore =>
+      _totalCountKnown ? _items.length < _totalCount : _hasMoreFromPageSize;
 
   String _libraryName = '';
   String get libraryName => _libraryName;
@@ -162,7 +163,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
     );
     _letterFilter = _prefs.get(UserPreferences.libraryLetterFilter(_prefKey));
     _imageType = _prefs.get(UserPreferences.libraryImageType(_imagePrefKey));
-    _posterSize = _prefs.get(UserPreferences.posterSize);
+    _posterSize = _readScopedPosterSize();
   }
 
   String get _prefKey => genreId ?? libraryId;
@@ -172,6 +173,14 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       return libraryId;
     }
     return _prefKey;
+  }
+
+  PosterSize _readScopedPosterSize() => isPlaylistBrowse
+      ? _prefs.resolvePlaylistPosterSize()
+      : _prefs.resolveLibraryPosterSize();
+
+  void _refreshPosterSizeFromScope() {
+    _posterSize = _readScopedPosterSize();
   }
 
   Future<void> load() async {
@@ -204,6 +213,8 @@ class LibraryBrowseViewModel extends ChangeNotifier {
         _collectionType = (parentData['CollectionType'] as String?)
             ?.toLowerCase();
       }
+
+      _refreshPosterSizeFromScope();
 
       if (!_imageTypeSynced) {
         await _syncImageTypeFromServer();
@@ -395,7 +406,11 @@ class LibraryBrowseViewModel extends ChangeNotifier {
         .map((raw) {
           final id = raw['Id'] as String?;
           if (id == null || id.isEmpty) return null;
-          return AggregatedItem(id: id, serverId: _client.baseUrl, rawData: raw);
+          return AggregatedItem(
+            id: id,
+            serverId: _client.baseUrl,
+            rawData: raw,
+          );
         })
         .whereType<AggregatedItem>()
         .toList();
@@ -615,7 +630,11 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   Future<void> setPosterSize(PosterSize value) async {
     if (_posterSize == value) return;
     _posterSize = value;
-    await _prefs.set(UserPreferences.posterSize, value);
+    if (isPlaylistBrowse) {
+      await _prefs.set(UserPreferences.playlistPosterSize, value);
+    } else {
+      await _prefs.set(UserPreferences.libraryPosterSize, value);
+    }
     notifyListeners();
   }
 

@@ -47,6 +47,8 @@ class _AllGenresScreenState extends State<AllGenresScreen> {
 
   ImageType get _imageType => _prefs.get(UserPreferences.allGenresImageType);
 
+  PosterSize get _posterSize => _prefs.resolveLibraryPosterSize();
+
   List<GenreCardData> _genres = [];
   bool _isLoading = true;
 
@@ -118,7 +120,9 @@ class _AllGenresScreenState extends State<AllGenresScreen> {
     await Future.wait(toLoad.map(_loadGenreItems));
 
     if (!_disposed && _genres.length > _initialArtworkBatch) {
-      unawaited(_loadGenreArtworkAsync(_genres.skip(_initialArtworkBatch).toList()));
+      unawaited(
+        _loadGenreArtworkAsync(_genres.skip(_initialArtworkBatch).toList()),
+      );
     }
   }
 
@@ -252,7 +256,7 @@ class _AllGenresScreenState extends State<AllGenresScreen> {
   }
 
   double _cardWidth() {
-    final posterSize = _prefs.get(UserPreferences.posterSize);
+    final posterSize = _posterSize;
     final baseWidth = switch (_imageType) {
       ImageType.thumb => posterSize.landscapeHeight * (16 / 9),
       ImageType.banner => posterSize.landscapeHeight * (16 / 9),
@@ -275,13 +279,14 @@ class _AllGenresScreenState extends State<AllGenresScreen> {
   }
 
   Future<void> _showSettingsDialog() async {
-    final previousPosterSize = _prefs.get(UserPreferences.posterSize);
+    final previousPosterSize = _posterSize;
     final previousImageType = _imageType;
     await showFocusRestoringDialog(
       context: context,
       builder: (_) => PosterSizeSettingsDialog(
         prefs: _prefs,
         imageTypePreference: UserPreferences.allGenresImageType,
+        posterSizePreference: UserPreferences.libraryPosterSize,
       ),
     );
 
@@ -296,17 +301,14 @@ class _AllGenresScreenState extends State<AllGenresScreen> {
       await _loadGenreArtwork();
     }
 
-    if (previousPosterSize != _prefs.get(UserPreferences.posterSize) ||
-        previousImageType != _imageType) {
+    if (previousPosterSize != _posterSize || previousImageType != _imageType) {
       setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) =>
-      RequestInitialFocus(
-        child: _buildContent(context),
-      );
+      RequestInitialFocus(child: _buildContent(context));
 
   Widget _buildContent(BuildContext context) {
     final isMobile = _isCompact(context);
@@ -441,5 +443,3 @@ class _AllGenresScreenState extends State<AllGenresScreen> {
     );
   }
 }
-
-

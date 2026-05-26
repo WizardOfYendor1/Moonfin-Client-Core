@@ -30,11 +30,26 @@ class UserPreferences extends ChangeNotifier {
 
   bool containsPreferenceKey(String key) => _store.containsKey(key);
 
-  bool containsPreference<T>(Preference<T> pref) => _store.containsKey(pref.key);
+  bool containsPreference<T>(Preference<T> pref) =>
+      _store.containsKey(pref.key);
 
   AudioOutputMode resolveAudioOutputMode() => get(audioOutputMode);
 
   AudioFallbackCodec resolveAudioFallbackCodec() => get(audioFallbackCodec);
+
+  PosterSize resolveLibraryPosterSize() {
+    if (containsPreference(libraryPosterSize)) {
+      return get(libraryPosterSize);
+    }
+    return get(posterSize);
+  }
+
+  PosterSize resolvePlaylistPosterSize() {
+    if (containsPreference(playlistPosterSize)) {
+      return get(playlistPosterSize);
+    }
+    return get(posterSize);
+  }
 
   bool resolveAc3PassthroughEnabled() => get(ac3PassthroughEnabled);
 
@@ -73,6 +88,18 @@ class UserPreferences extends ChangeNotifier {
 
   static final posterSize = EnumPreference(
     key: 'poster_size',
+    defaultValue: PosterSize.medium,
+    values: PosterSize.values,
+  );
+
+  static final libraryPosterSize = EnumPreference(
+    key: 'poster_size_library',
+    defaultValue: PosterSize.medium,
+    values: PosterSize.values,
+  );
+
+  static final playlistPosterSize = EnumPreference(
+    key: 'poster_size_playlist',
     defaultValue: PosterSize.medium,
     values: PosterSize.values,
   );

@@ -10,12 +10,14 @@ class PosterSizeSettingsDialog extends StatefulWidget {
   final UserPreferences prefs;
   final VoidCallback? onChanged;
   final EnumPreference<ImageType>? imageTypePreference;
+  final EnumPreference<PosterSize>? posterSizePreference;
 
   const PosterSizeSettingsDialog({
     super.key,
     required this.prefs,
     this.onChanged,
     this.imageTypePreference,
+    this.posterSizePreference,
   });
 
   @override
@@ -27,7 +29,9 @@ class _PosterSizeSettingsDialogState extends State<PosterSizeSettingsDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final currentSize = widget.prefs.get(UserPreferences.posterSize);
+    final posterSizePreference =
+        widget.posterSizePreference ?? UserPreferences.posterSize;
+    final currentSize = widget.prefs.get(posterSizePreference);
     final currentImageType = widget.imageTypePreference != null
         ? widget.prefs.get(widget.imageTypePreference!)
         : null;
@@ -127,6 +131,8 @@ class _PosterSizeSettingsDialogState extends State<PosterSizeSettingsDialog> {
   }
 
   Widget _posterSizeTile(PosterSize size, bool selected) {
+    final posterSizePreference =
+        widget.posterSizePreference ?? UserPreferences.posterSize;
     final label = switch (size) {
       PosterSize.small => 'Small',
       PosterSize.medium => 'Medium',
@@ -135,7 +141,7 @@ class _PosterSizeSettingsDialogState extends State<PosterSizeSettingsDialog> {
     };
     return InkWell(
       onTap: () {
-        widget.prefs.set(UserPreferences.posterSize, size);
+        widget.prefs.set(posterSizePreference, size);
         widget.onChanged?.call();
         setState(() {});
       },

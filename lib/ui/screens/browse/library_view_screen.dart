@@ -110,8 +110,9 @@ class _LibraryViewScreenState extends State<LibraryViewScreen> {
                 onHome: () => context.go(Destinations.home),
                 onBrowse: () =>
                     context.push(Destinations.library(widget.libraryId)),
-                onGenres: () =>
-                    context.push(Destinations.libraryGenresOf(widget.libraryId)),
+                onGenres: () => context.push(
+                  Destinations.libraryGenresOf(widget.libraryId),
+                ),
               ),
               Expanded(child: _buildBody()),
             ],
@@ -139,9 +140,11 @@ class _LibraryViewScreenState extends State<LibraryViewScreen> {
       );
     }
 
-    final posterSize = _prefs.get(UserPreferences.posterSize);
+    final posterSize = _prefs.resolveLibraryPosterSize();
     final desktopScale = _desktopUiScaleFactor();
-    final watchedBehavior = _prefs.get(UserPreferences.watchedIndicatorBehavior);
+    final watchedBehavior = _prefs.get(
+      UserPreferences.watchedIndicatorBehavior,
+    );
     final suppressFocusGlow = ThemeRegistry.active.borders.focusGlow.isNotEmpty;
     final focusColor = Color(_prefs.get(UserPreferences.focusColor).colorValue);
     final cardExpansion = _prefs.get(UserPreferences.cardFocusExpansion);
@@ -186,7 +189,13 @@ class _LibraryViewScreenState extends State<LibraryViewScreen> {
               onFocus: () => _onItemFocused(item),
               onHoverStart: () => _onItemFocused(item),
               onHoverEnd: () => _vm.setFocusedItem(null),
-              onTap: () => context.push(Destinations.itemOrPhoto(item.id, serverId: item.serverId, type: item.type)),
+              onTap: () => context.push(
+                Destinations.itemOrPhoto(
+                  item.id,
+                  serverId: item.serverId,
+                  type: item.type,
+                ),
+              ),
             );
           }).toList(),
         );

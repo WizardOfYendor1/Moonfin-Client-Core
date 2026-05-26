@@ -53,6 +53,8 @@ class _LibraryGenresScreenState extends State<LibraryGenresScreen> {
   ImageType get _imageType =>
       _prefs.get(UserPreferences.libraryImageType(widget.libraryId));
 
+  PosterSize get _posterSize => _prefs.resolveLibraryPosterSize();
+
   @override
   void initState() {
     super.initState();
@@ -290,11 +292,10 @@ class _LibraryGenresScreenState extends State<LibraryGenresScreen> {
   double _cardWidth() {
     final desktopScale = _desktopUiScaleFactor();
     if (_collectionType == 'music') {
-      return _prefs.get(UserPreferences.posterSize).portraitHeight.toDouble() *
-          desktopScale;
+      return _posterSize.portraitHeight.toDouble() * desktopScale;
     }
 
-    final posterSize = _prefs.get(UserPreferences.posterSize);
+    final posterSize = _posterSize;
     final baseWidth = switch (_imageType) {
       ImageType.thumb => posterSize.landscapeHeight * (16 / 9),
       ImageType.banner => posterSize.landscapeHeight * (16 / 9),
@@ -335,9 +336,7 @@ class _LibraryGenresScreenState extends State<LibraryGenresScreen> {
 
   @override
   Widget build(BuildContext context) =>
-      RequestInitialFocus(
-        child: _buildContent(context),
-      );
+      RequestInitialFocus(child: _buildContent(context));
 
   Widget _buildContent(BuildContext context) {
     final isMobile = _isCompact(context);
@@ -362,8 +361,9 @@ class _LibraryGenresScreenState extends State<LibraryGenresScreen> {
             children: [
               _GenresHeader(
                 libraryName: _libraryName,
-                onBack: () =>
-                    PlatformDetection.isWeb ? context.popOrHome() : context.pop(),
+                onBack: () => PlatformDetection.isWeb
+                    ? context.popOrHome()
+                    : context.pop(),
               ),
               Expanded(child: _buildBody()),
             ],
@@ -467,8 +467,8 @@ class _GenresHeader extends StatelessWidget {
     final isMobile = _isCompact(context);
     final desktopScale = PlatformDetection.useDesktopUi
         ? GetIt.instance<UserPreferences>()
-            .get(UserPreferences.desktopUiScale)
-            .scaleFactor
+              .get(UserPreferences.desktopUiScale)
+              .scaleFactor
         : 1.0;
     final topPadding = isMobile ? MediaQuery.of(context).padding.top : 8.0;
     final horizontalPadding = isMobile
