@@ -179,6 +179,9 @@ class MediaKitPlayerBackend implements PlayerBackend {
   bool _didNotifyNativeHandle = false;
   bool _didConfigureAppleMobileLibassFont = false;
   Map<String, String>? _appliedAudioPassthroughProperties;
+  bool _audioPassthroughApplyInProgress = false;
+  bool _audioPassthroughApplyQueued = false;
+  bool _isDisposed = false;
   String? _appliedCustomMpvConfPath;
   DateTime? _appliedCustomMpvConfMtime;
   static final Map<String, _ParsedMpvConfCacheEntry> _parsedMpvConfCache =
@@ -279,7 +282,9 @@ class MediaKitPlayerBackend implements PlayerBackend {
     this._prefs,
     this._onNativeHandleReady,
     this._hwDecodingEnabled,
-  );
+  ) {
+    _prefs.addListener(_onPreferencesChanged);
+  }
 
   factory MediaKitPlayerBackend(
     UserPreferences prefs, {
@@ -409,6 +414,7 @@ class MediaKitPlayerBackend implements PlayerBackend {
       eac3JocPassthroughEnabled: _prefs.resolveEac3JocPassthroughEnabled(),
       dtsCorePassthroughEnabled: _prefs.resolveDtsCorePassthroughEnabled(),
       dtsHdPassthroughEnabled: _prefs.resolveDtsHdPassthroughEnabled(),
+      dtsXPassthroughEnabled: _prefs.resolveDtsXPassthroughEnabled(),
       trueHdPassthroughEnabled: _prefs.resolveTrueHdPassthroughEnabled(),
       trueHdAtmosPassthroughEnabled: _prefs.resolveTrueHdAtmosPassthroughEnabled(),
       downMixAudio: _prefs.resolveAudioOutputMode() == AudioOutputMode.forceStereo,
@@ -528,6 +534,7 @@ class MediaKitPlayerBackend implements PlayerBackend {
     required bool eac3JocPassthroughEnabled,
     required bool dtsCorePassthroughEnabled,
     required bool dtsHdPassthroughEnabled,
+    required bool dtsXPassthroughEnabled,
     required bool trueHdPassthroughEnabled,
     required bool trueHdAtmosPassthroughEnabled,
   }) {
@@ -542,7 +549,7 @@ class MediaKitPlayerBackend implements PlayerBackend {
     if (eac3PassthroughEnabled || eac3JocPassthroughEnabled) {
       codecs.add('eac3');
     }
-    if (dtsHdPassthroughEnabled) {
+    if (dtsHdPassthroughEnabled || dtsXPassthroughEnabled) {
       codecs.add('dts-hd');
     } else if (dtsCorePassthroughEnabled) {
       codecs.add('dts');
@@ -561,6 +568,7 @@ class MediaKitPlayerBackend implements PlayerBackend {
     required bool eac3JocPassthroughEnabled,
     required bool dtsCorePassthroughEnabled,
     required bool dtsHdPassthroughEnabled,
+    required bool dtsXPassthroughEnabled,
     required bool trueHdPassthroughEnabled,
     required bool trueHdAtmosPassthroughEnabled,
     required bool includeAudioExclusive,
@@ -572,6 +580,7 @@ class MediaKitPlayerBackend implements PlayerBackend {
       eac3JocPassthroughEnabled: eac3JocPassthroughEnabled,
       dtsCorePassthroughEnabled: dtsCorePassthroughEnabled,
       dtsHdPassthroughEnabled: dtsHdPassthroughEnabled,
+      dtsXPassthroughEnabled: dtsXPassthroughEnabled,
       trueHdPassthroughEnabled: trueHdPassthroughEnabled,
       trueHdAtmosPassthroughEnabled: trueHdAtmosPassthroughEnabled,
     );
@@ -597,6 +606,7 @@ class MediaKitPlayerBackend implements PlayerBackend {
         eac3JocPassthroughEnabled: _prefs.resolveEac3JocPassthroughEnabled(),
         dtsCorePassthroughEnabled: _prefs.resolveDtsCorePassthroughEnabled(),
         dtsHdPassthroughEnabled: _prefs.resolveDtsHdPassthroughEnabled(),
+        dtsXPassthroughEnabled: _prefs.resolveDtsXPassthroughEnabled(),
         trueHdPassthroughEnabled: _prefs.resolveTrueHdPassthroughEnabled(),
         trueHdAtmosPassthroughEnabled:
             _prefs.resolveTrueHdAtmosPassthroughEnabled(),
@@ -636,6 +646,31 @@ class MediaKitPlayerBackend implements PlayerBackend {
         _appliedAudioPassthroughProperties = null;
       }
     } catch (_) {}
+  }
+
+  void _onPreferencesChanged() {
+    if (_isDisposed) {
+      return;
+    }
+
+    if (_audioPassthroughApplyInProgress) {
+      _audioPassthroughApplyQueued = true;
+      return;
+    }
+
+    _audioPassthroughApplyInProgress = true;
+    unawaited(_drainAudioPassthroughApplyQueue());
+  }
+
+  Future<void> _drainAudioPassthroughApplyQueue() async {
+    try {
+      do {
+        _audioPassthroughApplyQueued = false;
+        await _applyAudioPassthroughOptions();
+      } while (_audioPassthroughApplyQueued && !_isDisposed);
+    } finally {
+      _audioPassthroughApplyInProgress = false;
+    }
   }
 
   Future<void> _applyCustomMpvConfIfEnabled() async {
@@ -1289,6 +1324,8 @@ class MediaKitPlayerBackend implements PlayerBackend {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _prefs.removeListener(_onPreferencesChanged);
     _player.dispose();
   }
 }

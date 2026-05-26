@@ -979,10 +979,6 @@ class _MediaBarState extends State<MediaBar>
   }
 
   bool _supportsEmbeddedYouTubePreview() {
-    if (PlatformDetection.isAndroid && PlatformDetection.isTV) {
-      return false;
-    }
-
     return _embeddedYouTubeAvailable &&
         (PlatformDetection.isWeb ||
             PlatformDetection.isAndroid ||

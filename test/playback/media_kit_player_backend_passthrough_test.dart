@@ -12,6 +12,7 @@ void main() {
         eac3JocPassthroughEnabled: true,
         dtsCorePassthroughEnabled: true,
         dtsHdPassthroughEnabled: true,
+        dtsXPassthroughEnabled: true,
         trueHdPassthroughEnabled: true,
         trueHdAtmosPassthroughEnabled: true,
       );
@@ -27,6 +28,7 @@ void main() {
         eac3JocPassthroughEnabled: false,
         dtsCorePassthroughEnabled: false,
         dtsHdPassthroughEnabled: true,
+        dtsXPassthroughEnabled: false,
         trueHdPassthroughEnabled: true,
         trueHdAtmosPassthroughEnabled: false,
       );
@@ -42,6 +44,7 @@ void main() {
         eac3JocPassthroughEnabled: false,
         dtsCorePassthroughEnabled: true,
         dtsHdPassthroughEnabled: false,
+        dtsXPassthroughEnabled: false,
         trueHdPassthroughEnabled: false,
         trueHdAtmosPassthroughEnabled: false,
       );
@@ -57,6 +60,7 @@ void main() {
         eac3JocPassthroughEnabled: false,
         dtsCorePassthroughEnabled: true,
         dtsHdPassthroughEnabled: true,
+        dtsXPassthroughEnabled: false,
         trueHdPassthroughEnabled: false,
         trueHdAtmosPassthroughEnabled: false,
       );
@@ -72,11 +76,28 @@ void main() {
         eac3JocPassthroughEnabled: true,
         dtsCorePassthroughEnabled: false,
         dtsHdPassthroughEnabled: false,
+        dtsXPassthroughEnabled: false,
         trueHdPassthroughEnabled: false,
         trueHdAtmosPassthroughEnabled: true,
       );
 
       expect(codecs, equals(<String>['eac3', 'truehd']));
+    });
+
+    test('maps DTS:X toggle to dts-hd passthrough string', () {
+      final codecs = MediaKitPlayerBackend.passthroughCodecsFromPreferences(
+        audioOutputMode: AudioOutputMode.auto,
+        ac3PassthroughEnabled: false,
+        eac3PassthroughEnabled: false,
+        eac3JocPassthroughEnabled: false,
+        dtsCorePassthroughEnabled: false,
+        dtsHdPassthroughEnabled: false,
+        dtsXPassthroughEnabled: true,
+        trueHdPassthroughEnabled: false,
+        trueHdAtmosPassthroughEnabled: false,
+      );
+
+      expect(codecs, equals(<String>['dts-hd']));
     });
   });
 
@@ -90,6 +111,7 @@ void main() {
             eac3JocPassthroughEnabled: false,
             dtsCorePassthroughEnabled: false,
             dtsHdPassthroughEnabled: false,
+            dtsXPassthroughEnabled: false,
             trueHdPassthroughEnabled: true,
             trueHdAtmosPassthroughEnabled: false,
             includeAudioExclusive: true,
@@ -108,6 +130,7 @@ void main() {
             eac3JocPassthroughEnabled: true,
             dtsCorePassthroughEnabled: true,
             dtsHdPassthroughEnabled: true,
+            dtsXPassthroughEnabled: true,
             trueHdPassthroughEnabled: true,
             trueHdAtmosPassthroughEnabled: true,
             includeAudioExclusive: true,
@@ -126,6 +149,7 @@ void main() {
             eac3JocPassthroughEnabled: false,
             dtsCorePassthroughEnabled: true,
             dtsHdPassthroughEnabled: true,
+            dtsXPassthroughEnabled: false,
             trueHdPassthroughEnabled: false,
             trueHdAtmosPassthroughEnabled: false,
             includeAudioExclusive: false,

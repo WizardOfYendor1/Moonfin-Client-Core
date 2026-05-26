@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
@@ -13,7 +15,7 @@ class PreferenceBinding<T> extends ValueNotifier<T> {
   @override
   set value(T newValue) {
     super.value = newValue;
-    _store.set(_preference, newValue);
+    unawaited(_store.set(_preference, newValue));
     GetIt.instance<UserPreferences>().notifyPreferenceChanged();
   }
 

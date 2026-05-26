@@ -251,7 +251,7 @@ Future<void> _migrateAndroidMobileAudioDefaults(
 }
 
 Future<void> migrateAudioPreferenceSplit(PreferenceStore store) async {
-  const migrationKey = 'pref_audio_preference_split_v1';
+  const migrationKey = 'pref_audio_preference_split_v2';
 
   if (store.getBool(migrationKey) == true) {
     return;
@@ -291,10 +291,12 @@ Future<void> migrateAudioPreferenceSplit(PreferenceStore store) async {
   }
 
   if (store.containsKey(_legacyDtsEnabledKey)) {
-    final legacyDts =
-        store.getBool(_legacyDtsEnabledKey) ?? false;
+    final legacyDts = store.getBool(_legacyDtsEnabledKey) ?? false;
     await setBoolIfMissing(UserPreferences.dtsCorePassthroughEnabled, legacyDts);
     await setBoolIfMissing(UserPreferences.dtsHdPassthroughEnabled, legacyDts);
+    await setBoolIfMissing(UserPreferences.dtsXPassthroughEnabled, legacyDts);
+  } else {
+    await setBoolIfMissing(UserPreferences.dtsXPassthroughEnabled, false);
   }
 
   if (store.containsKey(_legacyTrueHdEnabledKey)) {

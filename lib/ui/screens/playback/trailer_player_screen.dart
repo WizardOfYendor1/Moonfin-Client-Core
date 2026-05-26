@@ -38,9 +38,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen> {
   }
 
   bool get _supportsEmbeddedYouTubePlatform {
-    return (PlatformDetection.isAndroid && !PlatformDetection.isTV) ||
+    return PlatformDetection.isAndroid ||
         PlatformDetection.isIOS ||
-      PlatformDetection.isMacOS;
+        PlatformDetection.isMacOS;
   }
 
   @override

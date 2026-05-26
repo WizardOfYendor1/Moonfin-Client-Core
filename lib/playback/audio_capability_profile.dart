@@ -20,7 +20,9 @@ class AudioCapabilityProfile {
     required this.canPassthroughEac3Joc,
     required this.canPassthroughDts,
     required this.canPassthroughDtsHd,
+    this.canPassthroughDtsX = false,
     required this.canPassthroughTrueHd,
+    this.canPassthroughTrueHdJoc = false,
     required this.maxPcmChannels,
     required this.activeRouteType,
     required this.routeSupportsHdAudio,
@@ -38,7 +40,9 @@ class AudioCapabilityProfile {
       canPassthroughEac3Joc = false,
       canPassthroughDts = false,
       canPassthroughDtsHd = false,
+      canPassthroughDtsX = false,
       canPassthroughTrueHd = false,
+      canPassthroughTrueHdJoc = false,
       maxPcmChannels = 8,
       activeRouteType = AudioRouteType.other,
       routeSupportsHdAudio = false;
@@ -55,7 +59,9 @@ class AudioCapabilityProfile {
   final bool canPassthroughEac3Joc;
   final bool canPassthroughDts;
   final bool canPassthroughDtsHd;
+  final bool canPassthroughDtsX;
   final bool canPassthroughTrueHd;
+  final bool canPassthroughTrueHdJoc;
 
   final int maxPcmChannels;
   final AudioRouteType activeRouteType;
@@ -67,7 +73,9 @@ class AudioCapabilityProfile {
       canPassthroughEac3Joc ||
       canPassthroughDts ||
       canPassthroughDtsHd ||
-      canPassthroughTrueHd;
+      canPassthroughDtsX ||
+      canPassthroughTrueHd ||
+      canPassthroughTrueHdJoc;
 
   bool get hasMultichannelCapability =>
       maxPcmChannels > 2 || hasCompressedPassthroughRoute;
@@ -123,10 +131,20 @@ class AudioCapabilityProfile {
         'canPassthroughDtsHd',
         defaultValue: legacyDts,
       ),
+      canPassthroughDtsX: _readBool(
+        values,
+        'canPassthroughDtsX',
+        defaultValue: false,
+      ),
       canPassthroughTrueHd: _readBool(
         values,
         'canPassthroughTrueHd',
         defaultValue: legacyTrueHd,
+      ),
+      canPassthroughTrueHdJoc: _readBool(
+        values,
+        'canPassthroughTrueHdJoc',
+        defaultValue: false,
       ),
       maxPcmChannels: _readInt(values, 'maxPcmChannels', defaultValue: 8),
       activeRouteType: activeRouteType,
@@ -140,7 +158,9 @@ class AudioCapabilityProfile {
 
   Map<String, dynamic> toMap() {
     final supportsAc3 = canPassthroughAc3 || canPassthroughEac3;
-    final supportsDts = canPassthroughDts || canPassthroughDtsHd;
+    final supportsDts =
+        canPassthroughDts || canPassthroughDtsHd || canPassthroughDtsX;
+    final supportsTrueHd = canPassthroughTrueHd || canPassthroughTrueHdJoc;
 
     return <String, dynamic>{
       'canDecodeAc3': canDecodeAc3,
@@ -154,13 +174,15 @@ class AudioCapabilityProfile {
       'canPassthroughEac3Joc': canPassthroughEac3Joc,
       'canPassthroughDts': canPassthroughDts,
       'canPassthroughDtsHd': canPassthroughDtsHd,
+      'canPassthroughDtsX': canPassthroughDtsX,
       'canPassthroughTrueHd': canPassthroughTrueHd,
+      'canPassthroughTrueHdJoc': canPassthroughTrueHdJoc,
       'maxPcmChannels': maxPcmChannels,
       'activeRouteType': activeRouteType.name,
       'routeSupportsHdAudio': routeSupportsHdAudio,
       'supportsAc3': supportsAc3,
       'supportsDts': supportsDts,
-      'supportsTrueHd': canPassthroughTrueHd,
+      'supportsTrueHd': supportsTrueHd,
       'supportsPcm': true,
       'supportsAac': true,
     };

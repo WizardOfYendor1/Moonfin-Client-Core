@@ -34,8 +34,10 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.mediacodec.MediaCodecInfo
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -90,6 +92,64 @@ private class MoonfinRenderersFactory(
 
         out.add(videoRendererBuilder.build())
     }
+
+    override fun buildAudioRenderers(
+        context: Context,
+        extensionRendererMode: Int,
+        mediaCodecSelector: MediaCodecSelector,
+        enableDecoderFallback: Boolean,
+        audioSink: AudioSink,
+        eventHandler: Handler,
+        eventListener: AudioRendererEventListener,
+        out: ArrayList<Renderer>,
+    ) {
+        super.buildAudioRenderers(
+            context,
+            extensionRendererMode,
+            FlacWorkaroundMediaCodecSelector(mediaCodecSelector),
+            enableDecoderFallback,
+            audioSink,
+            eventHandler,
+            eventListener,
+            out,
+        )
+    }
+}
+
+/**
+ * Wraps a [MediaCodecSelector] to exclude the Google software FLAC decoders
+ * (`c2.android.flac.decoder` and the older `OMX.google.flac.decoder`).
+ *
+ * Those decoders crash with
+ * `DecoderInputBuffer$InsufficientCapacityException: Buffer too small (32768 < N)`
+ * on many 16-bit FLAC streams because the Media3 FLAC extractor underestimates
+ * the maximum frame size. By filtering them out we allow Media3 to fall through
+ * to the bundled `FfmpegAudioRenderer`, which decodes FLAC correctly. All other
+ * audio mime types (AAC, AC3, E-AC3, TrueHD, DTS, ...) are passed through
+ * untouched so hardware decode and passthrough to AVRs are preserved.
+ */
+private class FlacWorkaroundMediaCodecSelector(
+    private val delegate: MediaCodecSelector,
+) : MediaCodecSelector {
+    override fun getDecoderInfos(
+        mimeType: String,
+        requiresSecureDecoder: Boolean,
+        requiresTunnelingDecoder: Boolean,
+    ): List<MediaCodecInfo> {
+        val infos = delegate.getDecoderInfos(
+            mimeType,
+            requiresSecureDecoder,
+            requiresTunnelingDecoder,
+        )
+        if (mimeType.equals(MimeTypes.AUDIO_FLAC, ignoreCase = true)) {
+            return infos.filterNot { info -> isBuggyFlacDecoder(info.name) }
+        }
+        return infos
+    }
+
+    private fun isBuggyFlacDecoder(name: String): Boolean =
+        name.equals("c2.android.flac.decoder", ignoreCase = true) ||
+            name.equals("OMX.google.flac.decoder", ignoreCase = true)
 }
 
 @UnstableApi

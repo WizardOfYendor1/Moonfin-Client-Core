@@ -6,6 +6,7 @@ import '../migration/migration_context.dart';
 
 class PreferenceStore {
   SharedPreferences? _prefs;
+  final Set<Future<void>> _pendingWrites = <Future<void>>{};
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -43,31 +44,54 @@ class PreferenceStore {
   }
 
   Future<void> set<T>(Preference<T> preference, T value) async {
-    final key = preference.key;
+    final write = (() async {
+      final key = preference.key;
 
-    if (preference is EnumPreference) {
-      await _requirePrefs.setString(key, (value as Enum).name);
-      return;
-    }
+      if (preference is EnumPreference) {
+        await _requirePrefs.setString(key, (value as Enum).name);
+        return;
+      }
 
-    switch (value) {
-      case int v:
-        await _requirePrefs.setInt(key, v);
-      case double v:
-        await _requirePrefs.setDouble(key, v);
-      case bool v:
-        await _requirePrefs.setBool(key, v);
-      case String v:
-        await _requirePrefs.setString(key, v);
-      case List<String> v:
-        await _requirePrefs.setStringList(key, v);
-      default:
-        throw ArgumentError('Unsupported preference type: ${value.runtimeType}');
+      switch (value) {
+        case int v:
+          await _requirePrefs.setInt(key, v);
+        case double v:
+          await _requirePrefs.setDouble(key, v);
+        case bool v:
+          await _requirePrefs.setBool(key, v);
+        case String v:
+          await _requirePrefs.setString(key, v);
+        case List<String> v:
+          await _requirePrefs.setStringList(key, v);
+        default:
+          throw ArgumentError('Unsupported preference type: ${value.runtimeType}');
+      }
+    })();
+
+    await _trackWrite(write);
+  }
+
+  Future<void> flushPendingWrites() async {
+    while (_pendingWrites.isNotEmpty) {
+      await Future.wait(_pendingWrites.toList(growable: false));
     }
   }
 
-  Future<void> delete<T>(Preference<T> preference) =>
-      _requirePrefs.remove(preference.key);
+  Future<T> _trackWrite<T>(Future<T> write) {
+    final marker = write.then<void>((_) {}, onError: (_) {});
+    _pendingWrites.add(marker);
+    marker.whenComplete(() => _pendingWrites.remove(marker));
+    return write;
+  }
+
+  Future<T> _trackSharedPrefsWrite<T>(Future<T> Function() action) {
+    final write = action();
+    return _trackWrite(write);
+  }
+
+  Future<void> delete<T>(Preference<T> preference) async {
+    await _trackSharedPrefsWrite(() => _requirePrefs.remove(preference.key));
+  }
 
   Future<void> reset<T>(Preference<T> preference) => set(preference, preference.defaultValue);
 
@@ -82,28 +106,29 @@ class PreferenceStore {
 
   String? getString(String key) => _requirePrefs.getString(key);
   Future<bool> setString(String key, String value) =>
-      _requirePrefs.setString(key, value);
+      _trackSharedPrefsWrite(() => _requirePrefs.setString(key, value));
 
   int? getInt(String key) => _requirePrefs.getInt(key);
   Future<bool> setInt(String key, int value) =>
-      _requirePrefs.setInt(key, value);
+      _trackSharedPrefsWrite(() => _requirePrefs.setInt(key, value));
 
   bool? getBool(String key) => _requirePrefs.getBool(key);
   Future<bool> setBool(String key, bool value) =>
-      _requirePrefs.setBool(key, value);
+      _trackSharedPrefsWrite(() => _requirePrefs.setBool(key, value));
 
   double? getDouble(String key) => _requirePrefs.getDouble(key);
   Future<bool> setDouble(String key, double value) =>
-      _requirePrefs.setDouble(key, value);
+      _trackSharedPrefsWrite(() => _requirePrefs.setDouble(key, value));
 
   List<String>? getStringList(String key) => _requirePrefs.getStringList(key);
   Future<bool> setStringList(String key, List<String> value) =>
-      _requirePrefs.setStringList(key, value);
+      _trackSharedPrefsWrite(() => _requirePrefs.setStringList(key, value));
 
   bool containsKey(String key) => _requirePrefs.containsKey(key);
 
-  Future<bool> remove(String key) => _requirePrefs.remove(key);
-  Future<bool> clear() => _requirePrefs.clear();
+  Future<bool> remove(String key) =>
+      _trackSharedPrefsWrite(() => _requirePrefs.remove(key));
+  Future<bool> clear() => _trackSharedPrefsWrite(() => _requirePrefs.clear());
 
   static final _versionKey = 'store_version';
 
@@ -114,6 +139,6 @@ class PreferenceStore {
     body(context);
     final currentVersion = _requirePrefs.getInt(_versionKey) ?? -1;
     final newVersion = await context.applyMigrations(currentVersion, this);
-    await _requirePrefs.setInt(_versionKey, newVersion);
+    await _trackSharedPrefsWrite(() => _requirePrefs.setInt(_versionKey, newVersion));
   }
 }

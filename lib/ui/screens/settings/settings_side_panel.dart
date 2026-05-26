@@ -1911,7 +1911,7 @@ class _VideoPlaybackScreen extends StatelessWidget {
                 DolbyVisionProfile7DirectPlayBehavior.auto =>
                   l10n.settingsAutoAftkrtEnabled,
                 DolbyVisionProfile7DirectPlayBehavior.enabled =>
-                  l10n.settingsEnabledOnThisDevice,
+                  'Supported on this device',
                 DolbyVisionProfile7DirectPlayBehavior.disabled =>
                   l10n.settingsDisabledPreferTranscode,
               },
@@ -2296,7 +2296,9 @@ class _AudioPreferencesScreenState extends State<_AudioPreferencesScreen> {
       if (profile.canPassthroughEac3Joc) 'EAC3 JOC',
       if (profile.canPassthroughDts) 'DTS',
       if (profile.canPassthroughDtsHd) 'DTS-HD',
+      if (profile.canPassthroughDtsX) 'DTS:X',
       if (profile.canPassthroughTrueHd) 'TrueHD',
+      if (profile.canPassthroughTrueHdJoc) 'TrueHD JOC',
     ];
 
     final routeSubtitleParts = <String>[
@@ -2339,8 +2341,8 @@ class _AudioPreferencesScreenState extends State<_AudioPreferencesScreen> {
     }
 
     final status = isSupported
-        ? l10n.settingsEnabledOnThisDevice
-        : l10n.settingsDisabledPreferTranscode;
+      ? 'Supported on this device'
+      : 'Not Supported on this device';
     return '$baseSubtitle\n${l10n.status}: $status';
   }
 
@@ -2471,6 +2473,17 @@ class _AudioPreferencesScreenState extends State<_AudioPreferencesScreen> {
                   icon: Icons.high_quality,
                 ),
                 SwitchPreferenceTile(
+                  preference: UserPreferences.dtsXPassthroughEnabled,
+                  title: 'DTS:X (DTS UHD) Passthrough',
+                  subtitle: _capabilitySubtitle(
+                    l10n,
+                    baseSubtitle:
+                        'Bitstream DTS:X (DTS UHD) to external decoder.',
+                    isSupported: PlatformDetection.supportsDtsXAudio,
+                  ),
+                  icon: Icons.high_quality,
+                ),
+                SwitchPreferenceTile(
                   preference: UserPreferences.trueHdPassthroughEnabled,
                   title: l10n.settingsAudioTrueHdPassthrough,
                   subtitle: _capabilitySubtitle(
@@ -2482,14 +2495,12 @@ class _AudioPreferencesScreenState extends State<_AudioPreferencesScreen> {
                 ),
                 SwitchPreferenceTile(
                   preference: UserPreferences.trueHdAtmosPassthroughEnabled,
-                  title: l10n.settingsAudioTrueHdAtmosPassthrough,
+                  title: 'TrueHD with Atmos (JOC) Passthrough',
                   subtitle: _capabilitySubtitle(
                     l10n,
                     baseSubtitle:
                         l10n.settingsAudioBitstreamTrueHdAtmosToExternalDecoder,
-                    isSupported:
-                        PlatformDetection.supportsTrueHdAudio &&
-                        PlatformDetection.routeSupportsHdAudio,
+                    isSupported: PlatformDetection.supportsTrueHdJocAudio,
                   ),
                   icon: Icons.graphic_eq,
                 ),

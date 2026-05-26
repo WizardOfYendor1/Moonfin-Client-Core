@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
 /// YouTube stream resolver with multi-strategy fallback.
-/// Tries Piped → Invidious → Innertube API.
+/// Tries Innertube → Piped → Invidious fallback.
 /// Returns a direct streamable URL or null if resolution fails.
 class YouTubeStreamResolver {
   static const _resolveTimeout = Duration(seconds: 8);
@@ -133,6 +133,9 @@ class YouTubeStreamResolver {
   }
 
   static Future<String?> _doResolve(String videoId) async {
+    final innertube = await _tryInnertube(videoId);
+    if (innertube != null) return innertube;
+
     for (final base in _pipedBases) {
       final piped = await _tryPiped(videoId, base);
       if (piped != null) return piped;
@@ -142,9 +145,6 @@ class YouTubeStreamResolver {
       final invidious = await _tryInvidious(videoId, base);
       if (invidious != null) return invidious;
     }
-
-    final innertube = await _tryInnertube(videoId);
-    if (innertube != null) return innertube;
 
     return null;
   }
@@ -213,6 +213,23 @@ class YouTubeStreamResolver {
 
   static Future<String?> _tryInnertube(String videoId) async {
     const clients = [
+      _InnertubeClient(
+        name: 'ANDROID_VR',
+        nameId: '28',
+        version: '1.60.19',
+        userAgent:
+            'com.google.android.apps.youtube.vr.oculus/1.60.19 '
+            '(Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip',
+        apiKey: 'AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w',
+        platform: 'MOBILE',
+        extra: {
+          'deviceMake': 'Oculus',
+          'deviceModel': 'Quest 3',
+          'osName': 'Android',
+          'osVersion': '12L',
+          'androidSdkVersion': '32',
+        },
+      ),
       _InnertubeClient(
         name: 'TVHTML5_SIMPLY_EMBEDDED_PLAYER',
         nameId: '85',
@@ -328,24 +345,20 @@ class YouTubeStreamResolver {
       return hlsUrl;
     }
 
+    final dashUrl = streamingData['dashManifestUrl'] as String?;
+    if (dashUrl != null && dashUrl.isNotEmpty) {
+      return dashUrl;
+    }
+
     final formats = (streamingData['formats'] as List?)
             ?.whereType<Map<String, dynamic>>()
-            .where((s) => (s['url'] as String?) != null)
+            .where((s) =>
+                (s['url'] as String?) != null &&
+                _streamHasAudio(s))
             .toList() ??
         const <Map<String, dynamic>>[];
     if (formats.isNotEmpty) {
       return _pickBestUrl(formats);
-    }
-
-    final adaptiveFormats = (streamingData['adaptiveFormats'] as List?)
-            ?.whereType<Map<String, dynamic>>()
-            .where((s) =>
-                (s['url'] as String?) != null &&
-                ((s['mimeType'] as String?)?.startsWith('video/') ?? false))
-            .toList() ??
-        const <Map<String, dynamic>>[];
-    if (adaptiveFormats.isNotEmpty) {
-      return _pickBestUrl(adaptiveFormats);
     }
 
     return null;
@@ -376,10 +389,7 @@ class YouTubeStreamResolver {
     final container = (stream['container'] as String? ?? '').toLowerCase();
     final quality = _qualityFromStream(stream);
 
-    final hasAudio =
-      ((stream['videoOnly'] as bool?) == false) ||
-        mime.contains('mp4a') ||
-        mime.contains('audio');
+    final hasAudio = _streamHasAudio(stream);
     final isMp4 = mime.contains('video/mp4') || container == 'mp4';
     final isH264 = mime.contains('avc1') || mime.contains('h264');
     final isVp9 = mime.contains('vp9') || mime.contains('vp09');
@@ -414,6 +424,17 @@ class YouTubeStreamResolver {
         .first
         .trim();
     return int.tryParse(qualityStr) ?? 0;
+  }
+
+  static bool _streamHasAudio(Map<String, dynamic> stream) {
+    final mime = (stream['mimeType'] as String? ?? '').toLowerCase();
+    final audioCodec = (stream['audioCodec'] as String? ?? '').toLowerCase();
+    return ((stream['videoOnly'] as bool?) == false) ||
+        mime.contains('mp4a') ||
+        mime.contains('opus') ||
+        mime.contains('vorbis') ||
+        mime.contains('audio') ||
+        audioCodec.isNotEmpty;
   }
 }
 

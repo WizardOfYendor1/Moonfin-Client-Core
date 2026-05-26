@@ -349,6 +349,7 @@ class Media3PlayerBackend implements PlayerBackend {
       eac3JocPassthroughEnabled: _prefs.resolveEac3JocPassthroughEnabled(),
       dtsCorePassthroughEnabled: _prefs.resolveDtsCorePassthroughEnabled(),
       dtsHdPassthroughEnabled: _prefs.resolveDtsHdPassthroughEnabled(),
+      dtsXPassthroughEnabled: _prefs.resolveDtsXPassthroughEnabled(),
       trueHdPassthroughEnabled: _prefs.resolveTrueHdPassthroughEnabled(),
       trueHdAtmosPassthroughEnabled: _prefs.resolveTrueHdAtmosPassthroughEnabled(),
       downMixAudio: _prefs.resolveAudioOutputMode() == AudioOutputMode.forceStereo,

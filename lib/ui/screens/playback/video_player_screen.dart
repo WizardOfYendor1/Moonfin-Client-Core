@@ -1458,6 +1458,38 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     final container =
         (mediaSource?['Container'] as String?)?.toUpperCase() ?? l10n.unknown;
+    String resolveFileName() {
+      String? basenameFromPath(String? rawPath) {
+        final path = rawPath?.trim();
+        if (path == null || path.isEmpty) {
+          return null;
+        }
+        final segments = path.split(RegExp(r'[\\/]'));
+        final last = segments.isNotEmpty ? segments.last.trim() : '';
+        return last.isEmpty ? null : last;
+      }
+
+      final sourcePathName = basenameFromPath(mediaSource?['Path'] as String?);
+      if (sourcePathName != null) {
+        return sourcePathName;
+      }
+
+      if (item is String) {
+        final offlinePathName = basenameFromPath(item);
+        if (offlinePathName != null) {
+          return offlinePathName;
+        }
+      }
+
+      final sourceName = (mediaSource?['Name'] as String?)?.trim();
+      if (sourceName != null && sourceName.isNotEmpty) {
+        return sourceName;
+      }
+
+      return l10n.unknown;
+    }
+
+    final fileName = resolveFileName();
     final bitrate = mediaSource?['Bitrate'] as int?;
     final overrideMbps = _manager.maxBitrateOverrideMbps;
 
@@ -1484,6 +1516,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
 
     final playbackRows = <Map<String, dynamic>>[
+      row('File Name', fileName),
       row(l10n.playMethod, methodLabel, highlight: true),
       if (resolution != null &&
           playMethod == StreamPlayMethod.transcode &&

@@ -56,102 +56,105 @@ class PlatformDetection {
   static bool get supportsDoViProfile8 => _supportsDoViProfile8;
 
   static bool get hasAudioCapabilities => _audioCapabilities.isNotEmpty;
-    static Map<String, dynamic> get audioCapabilitiesSnapshot =>
+  static Map<String, dynamic> get audioCapabilitiesSnapshot =>
       Map<String, dynamic>.from(_audioCapabilities);
   static bool get supportsAc3Audio => _audioCapabilityBool('supportsAc3');
   static bool get supportsDtsAudio => _audioCapabilityBool('supportsDts');
   static bool get supportsTrueHdAudio => _audioCapabilityBool('supportsTrueHd');
-    static bool get supportsEac3Audio => _audioCapabilityBool('canPassthroughEac3');
-    static bool get supportsDtsHdAudio => _audioCapabilityBool('canPassthroughDtsHd');
-    static bool get supportsEac3JocAudio =>
+  static bool get supportsEac3Audio => _audioCapabilityBool('canPassthroughEac3');
+  static bool get supportsDtsHdAudio => _audioCapabilityBool('canPassthroughDtsHd');
+  static bool get supportsDtsXAudio => _audioCapabilityBool('canPassthroughDtsX');
+  static bool get supportsEac3JocAudio =>
       _audioCapabilityBool('canPassthroughEac3Joc');
-    static int get maxPcmChannelsAudio => _audioCapabilityInt('maxPcmChannels');
-    static String get activeAudioRouteType =>
+  static bool get supportsTrueHdJocAudio =>
+      _audioCapabilityBool('canPassthroughTrueHdJoc');
+  static int get maxPcmChannelsAudio => _audioCapabilityInt('maxPcmChannels');
+  static String get activeAudioRouteType =>
       _audioCapabilityString('activeRouteType') ?? 'other';
-    static bool get routeSupportsHdAudio =>
+  static bool get routeSupportsHdAudio =>
       _audioCapabilityBool('routeSupportsHdAudio');
 
-    static bool get supportsAvc => _capabilityBool('supportsAvc');
-    static bool get supportsAvcHigh10 => _capabilityBool('supportsAvcHigh10');
-    static int get avcMainLevel => _capabilityInt('avcMainLevel');
-    static int get avcHigh10Level => _capabilityInt('avcHigh10Level');
+  static bool get supportsAvc => _capabilityBool('supportsAvc');
+  static bool get supportsAvcHigh10 => _capabilityBool('supportsAvcHigh10');
+  static int get avcMainLevel => _capabilityInt('avcMainLevel');
+  static int get avcHigh10Level => _capabilityInt('avcHigh10Level');
 
-    static bool get supportsHevc => _capabilityBool('supportsHevc');
-    static bool get supportsHevcMain10 => _capabilityBool('supportsHevcMain10');
-    static int get hevcMainLevel => _capabilityInt('hevcMainLevel');
-    static int get hevcMain10Level => _capabilityInt('hevcMain10Level');
-    static bool get supportsHevcDolbyVision =>
+  static bool get supportsHevc => _capabilityBool('supportsHevc');
+  static bool get supportsHevcMain10 => _capabilityBool('supportsHevcMain10');
+  static int get hevcMainLevel => _capabilityInt('hevcMainLevel');
+  static int get hevcMain10Level => _capabilityInt('hevcMain10Level');
+  static bool get supportsHevcDolbyVision =>
       _capabilityBool('supportsHevcDolbyVision');
-    static bool get supportsHevcDolbyVisionEl =>
+  static bool get supportsHevcDolbyVisionEl =>
       _capabilityBool('supportsHevcDolbyVisionEl');
-    static bool get supportsHevcHdr10 => _capabilityBool('supportsHevcHdr10');
-    static bool get supportsHevcHdr10Plus =>
+  static bool get supportsHevcHdr10 => _capabilityBool('supportsHevcHdr10');
+  static bool get supportsHevcHdr10Plus =>
       _capabilityBool('supportsHevcHdr10Plus');
 
-    static bool get supportsAv1 => _capabilityBool('supportsAv1');
-    static bool get supportsAv1Main10 => _capabilityBool('supportsAv1Main10');
-    static bool get supportsAv1DolbyVision =>
+  static bool get supportsAv1 => _capabilityBool('supportsAv1');
+  static bool get supportsAv1Main10 => _capabilityBool('supportsAv1Main10');
+  static bool get supportsAv1DolbyVision =>
       _capabilityBool('supportsAv1DolbyVision');
-    static bool get supportsAv1Hdr10 => _capabilityBool('supportsAv1Hdr10');
-    static bool get supportsAv1Hdr10Plus =>
+  static bool get supportsAv1Hdr10 => _capabilityBool('supportsAv1Hdr10');
+  static bool get supportsAv1Hdr10Plus =>
       _capabilityBool('supportsAv1Hdr10Plus');
 
-    static bool get supportsVc1 => _capabilityBool('supportsVc1');
+  static bool get supportsVc1 => _capabilityBool('supportsVc1');
 
-    static int get maxResolutionAvcWidth =>
+  static int get maxResolutionAvcWidth =>
       _resolutionInt('maxResolutionAvc', 'width');
-    static int get maxResolutionAvcHeight =>
+  static int get maxResolutionAvcHeight =>
       _resolutionInt('maxResolutionAvc', 'height');
-    static int get maxResolutionHevcWidth =>
+  static int get maxResolutionHevcWidth =>
       _resolutionInt('maxResolutionHevc', 'width');
-    static int get maxResolutionHevcHeight =>
+  static int get maxResolutionHevcHeight =>
       _resolutionInt('maxResolutionHevc', 'height');
-    static int get maxResolutionAv1Width =>
+  static int get maxResolutionAv1Width =>
       _resolutionInt('maxResolutionAv1', 'width');
-    static int get maxResolutionAv1Height =>
+  static int get maxResolutionAv1Height =>
       _resolutionInt('maxResolutionAv1', 'height');
-    static int get maxResolutionVc1Width =>
+  static int get maxResolutionVc1Width =>
       _resolutionInt('maxResolutionVc1', 'width');
-    static int get maxResolutionVc1Height =>
+  static int get maxResolutionVc1Height =>
       _resolutionInt('maxResolutionVc1', 'height');
 
-    static Size? maxResolutionFor(String codec) {
-      final normalized = codec.trim().toLowerCase();
-      int width;
-      int height;
-      switch (normalized) {
-        case 'h264':
-        case 'avc':
-          width = maxResolutionAvcWidth;
-          height = maxResolutionAvcHeight;
-        case 'hevc':
-        case 'h265':
-          width = maxResolutionHevcWidth;
-          height = maxResolutionHevcHeight;
-        case 'av1':
-          width = maxResolutionAv1Width;
-          height = maxResolutionAv1Height;
-        case 'vc1':
-          width = maxResolutionVc1Width;
-          height = maxResolutionVc1Height;
-        default:
-          return null;
-      }
-
-      if (width <= 0 || height <= 0) {
+  static Size? maxResolutionFor(String codec) {
+    final normalized = codec.trim().toLowerCase();
+    int width;
+    int height;
+    switch (normalized) {
+      case 'h264':
+      case 'avc':
+        width = maxResolutionAvcWidth;
+        height = maxResolutionAvcHeight;
+      case 'hevc':
+      case 'h265':
+        width = maxResolutionHevcWidth;
+        height = maxResolutionHevcHeight;
+      case 'av1':
+        width = maxResolutionAv1Width;
+        height = maxResolutionAv1Height;
+      case 'vc1':
+        width = maxResolutionVc1Width;
+        height = maxResolutionVc1Height;
+      default:
         return null;
-      }
-
-      return Size(width.toDouble(), height.toDouble());
     }
 
-    static bool get knownHevcDoviHdr10PlusBug =>
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+
+    return Size(width.toDouble(), height.toDouble());
+  }
+
+  static bool get knownHevcDoviHdr10PlusBug =>
       _capabilityBool('knownHevcDoviHdr10PlusBug');
 
-    static String? get deviceModel => _capabilityString('deviceModel');
-    static String? get deviceBoard => _capabilityString('deviceBoard');
-    static String? get deviceHardware => _capabilityString('deviceHardware');
-    static String? get deviceSocModel => _capabilityString('deviceSocModel');
+  static String? get deviceModel => _capabilityString('deviceModel');
+  static String? get deviceBoard => _capabilityString('deviceBoard');
+  static String? get deviceHardware => _capabilityString('deviceHardware');
+  static String? get deviceSocModel => _capabilityString('deviceSocModel');
 
   static void setDisplayHdrTypes(Iterable<String>? values) {
     _displayHdrTypes

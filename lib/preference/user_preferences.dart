@@ -26,6 +26,8 @@ class UserPreferences extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> flushPendingWrites() => _store.flushPendingWrites();
+
   bool containsPreferenceKey(String key) => _store.containsKey(key);
 
   bool containsPreference<T>(Preference<T> pref) => _store.containsKey(pref.key);
@@ -45,6 +47,8 @@ class UserPreferences extends ChangeNotifier {
   bool resolveDtsCorePassthroughEnabled() => get(dtsCorePassthroughEnabled);
 
   bool resolveDtsHdPassthroughEnabled() => get(dtsHdPassthroughEnabled);
+
+  bool resolveDtsXPassthroughEnabled() => get(dtsXPassthroughEnabled);
 
   bool resolveTrueHdPassthroughEnabled() => get(trueHdPassthroughEnabled);
 
@@ -377,6 +381,11 @@ class UserPreferences extends ChangeNotifier {
 
   static final dtsHdPassthroughEnabled = Preference(
     key: 'pref_passthrough_dts_hd',
+    defaultValue: false,
+  );
+
+  static final dtsXPassthroughEnabled = Preference(
+    key: 'pref_passthrough_dts_x',
     defaultValue: false,
   );
 

@@ -82,6 +82,7 @@ class DeviceProfileBuilder {
     bool eac3JocPassthroughEnabled = false,
     bool dtsCorePassthroughEnabled = false,
     bool dtsHdPassthroughEnabled = false,
+    bool dtsXPassthroughEnabled = false,
     bool trueHdPassthroughEnabled = false,
     bool trueHdAtmosPassthroughEnabled = false,
     bool downMixAudio = false,
@@ -146,6 +147,7 @@ class DeviceProfileBuilder {
                   eac3JocPassthroughEnabled: eac3JocPassthroughEnabled,
                   dtsCorePassthroughEnabled: dtsCorePassthroughEnabled,
                   dtsHdPassthroughEnabled: dtsHdPassthroughEnabled,
+                  dtsXPassthroughEnabled: dtsXPassthroughEnabled,
                   trueHdPassthroughEnabled: trueHdPassthroughEnabled,
                   trueHdAtmosPassthroughEnabled: trueHdAtmosPassthroughEnabled,
                 ),
@@ -323,19 +325,12 @@ class DeviceProfileBuilder {
     required bool eac3JocPassthroughEnabled,
     required bool dtsCorePassthroughEnabled,
     required bool dtsHdPassthroughEnabled,
+    required bool dtsXPassthroughEnabled,
     required bool trueHdPassthroughEnabled,
     required bool trueHdAtmosPassthroughEnabled,
   }) {
     if (_isAudioCodecDecodeSupported(codec, capabilityProfile)) {
       return true;
-    }
-
-    final passthroughSupported = _isAudioCodecPassthroughSupported(
-      codec,
-      capabilityProfile,
-    );
-    if (!passthroughSupported) {
-      return false;
     }
 
     return _isAudioCodecPassthroughEnabled(
@@ -345,6 +340,7 @@ class DeviceProfileBuilder {
       eac3JocPassthroughEnabled: eac3JocPassthroughEnabled,
       dtsCorePassthroughEnabled: dtsCorePassthroughEnabled,
       dtsHdPassthroughEnabled: dtsHdPassthroughEnabled,
+      dtsXPassthroughEnabled: dtsXPassthroughEnabled,
       trueHdPassthroughEnabled: trueHdPassthroughEnabled,
       trueHdAtmosPassthroughEnabled: trueHdAtmosPassthroughEnabled,
     );
@@ -365,32 +361,8 @@ class DeviceProfileBuilder {
       case 'truehd':
       case 'mlp':
         return capabilityProfile.canDecodeTrueHd;
-      case 'flac':
-        return capabilityProfile.canDecodeFlac;
       default:
         return true;
-    }
-  }
-
-  static bool _isAudioCodecPassthroughSupported(
-    String codec,
-    AudioCapabilityProfile capabilityProfile,
-  ) {
-    switch (codec) {
-      case 'ac3':
-        return capabilityProfile.canPassthroughAc3;
-      case 'eac3':
-        return capabilityProfile.canPassthroughEac3 ||
-            capabilityProfile.canPassthroughEac3Joc;
-      case 'dts':
-      case 'dca':
-        return capabilityProfile.canPassthroughDts ||
-            capabilityProfile.canPassthroughDtsHd;
-      case 'truehd':
-      case 'mlp':
-        return capabilityProfile.canPassthroughTrueHd;
-      default:
-        return false;
     }
   }
 
@@ -401,6 +373,7 @@ class DeviceProfileBuilder {
     required bool eac3JocPassthroughEnabled,
     required bool dtsCorePassthroughEnabled,
     required bool dtsHdPassthroughEnabled,
+    required bool dtsXPassthroughEnabled,
     required bool trueHdPassthroughEnabled,
     required bool trueHdAtmosPassthroughEnabled,
   }) {
@@ -411,7 +384,12 @@ class DeviceProfileBuilder {
         return eac3PassthroughEnabled || eac3JocPassthroughEnabled;
       case 'dts':
       case 'dca':
-        return dtsCorePassthroughEnabled || dtsHdPassthroughEnabled;
+        return dtsCorePassthroughEnabled ||
+            dtsHdPassthroughEnabled ||
+            dtsXPassthroughEnabled;
+      case 'dtsx':
+      case 'dtsuhd':
+        return dtsXPassthroughEnabled;
       case 'truehd':
       case 'mlp':
         return trueHdPassthroughEnabled || trueHdAtmosPassthroughEnabled;

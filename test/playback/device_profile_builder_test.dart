@@ -113,7 +113,9 @@ AudioCapabilityProfile _capabilityProfile({
   bool canPassthroughEac3Joc = false,
   bool canPassthroughDts = false,
   bool canPassthroughDtsHd = false,
+  bool canPassthroughDtsX = false,
   bool canPassthroughTrueHd = false,
+  bool canPassthroughTrueHdJoc = false,
   int maxPcmChannels = 8,
   AudioRouteType activeRouteType = AudioRouteType.other,
   bool routeSupportsHdAudio = false,
@@ -130,7 +132,9 @@ AudioCapabilityProfile _capabilityProfile({
     canPassthroughEac3Joc: canPassthroughEac3Joc,
     canPassthroughDts: canPassthroughDts,
     canPassthroughDtsHd: canPassthroughDtsHd,
+    canPassthroughDtsX: canPassthroughDtsX,
     canPassthroughTrueHd: canPassthroughTrueHd,
+    canPassthroughTrueHdJoc: canPassthroughTrueHdJoc,
     maxPcmChannels: maxPcmChannels,
     activeRouteType: activeRouteType,
     routeSupportsHdAudio: routeSupportsHdAudio,
@@ -248,23 +252,84 @@ void main() {
       expect(codecs, contains('mlp'));
     });
 
-    test('removes codec when decode and passthrough are both unavailable', () {
+    test('keeps DTS codec when DTS:X passthrough is enabled and supported', () {
       final profile = DeviceProfileBuilder.build(
         downMixAudio: false,
         audioCapabilityProfile: _capabilityProfile(
-          canDecodeAc3: false,
-          canDecodeEac3: false,
-          canPassthroughAc3: false,
-          canPassthroughEac3: false,
+          canDecodeDts: false,
+          canDecodeDtsHd: false,
+          canPassthroughDts: false,
+          canPassthroughDtsHd: false,
+          canPassthroughDtsX: true,
         ),
-        ac3PassthroughEnabled: true,
-        eac3PassthroughEnabled: true,
+        dtsCorePassthroughEnabled: false,
+        dtsHdPassthroughEnabled: false,
+        dtsXPassthroughEnabled: true,
       );
 
       final codecs = _videoDirectPlayAudioCodecs(profile);
-      expect(codecs, isNot(contains('ac3')));
-      expect(codecs, isNot(contains('eac3')));
+      expect(codecs, contains('dts'));
+      expect(codecs, contains('dca'));
     });
+
+    test('keeps TrueHD codec when TrueHD JOC passthrough is enabled and supported', () {
+      final profile = DeviceProfileBuilder.build(
+        downMixAudio: false,
+        audioCapabilityProfile: _capabilityProfile(
+          canDecodeTrueHd: false,
+          canPassthroughTrueHd: false,
+          canPassthroughTrueHdJoc: true,
+        ),
+        trueHdPassthroughEnabled: false,
+        trueHdAtmosPassthroughEnabled: true,
+      );
+
+      final codecs = _videoDirectPlayAudioCodecs(profile);
+      expect(codecs, contains('truehd'));
+      expect(codecs, contains('mlp'));
+    });
+
+    test(
+      'includes codec when user passthrough toggle is on, even if probe did not detect support',
+      () {
+        final profile = DeviceProfileBuilder.build(
+          downMixAudio: false,
+          audioCapabilityProfile: _capabilityProfile(
+            canDecodeAc3: false,
+            canDecodeEac3: false,
+            canPassthroughAc3: false,
+            canPassthroughEac3: false,
+          ),
+          ac3PassthroughEnabled: true,
+          eac3PassthroughEnabled: true,
+        );
+
+        final codecs = _videoDirectPlayAudioCodecs(profile);
+        expect(codecs, contains('ac3'));
+        expect(codecs, contains('eac3'));
+      },
+    );
+
+    test(
+      'removes codec when decode unsupported and passthrough toggle is off',
+      () {
+        final profile = DeviceProfileBuilder.build(
+          downMixAudio: false,
+          audioCapabilityProfile: _capabilityProfile(
+            canDecodeAc3: false,
+            canDecodeEac3: false,
+            canPassthroughAc3: false,
+            canPassthroughEac3: false,
+          ),
+          ac3PassthroughEnabled: false,
+          eac3PassthroughEnabled: false,
+        );
+
+        final codecs = _videoDirectPlayAudioCodecs(profile);
+        expect(codecs, isNot(contains('ac3')));
+        expect(codecs, isNot(contains('eac3')));
+      },
+    );
 
     test('eac3_5_1 fallback sets HLS MPEG-TS targets in preferred order', () {
       final profile = DeviceProfileBuilder.build(
