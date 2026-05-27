@@ -19,10 +19,14 @@ Future<void> showExitConfirmationDialog(BuildContext context) async {
         cancelLabel: l10n.cancel,
         exitLabel: l10n.exit,
         cancelFocus: cancelFocus,
-        onCancel: () =>
-            OverlaySheetController.closeAdaptive(sheetContext, false),
-        onExit: () =>
-            OverlaySheetController.closeAdaptive(sheetContext, true),
+        onCancel: () => OverlaySheetController.closeAdaptive<bool>(
+          sheetContext,
+          result: false,
+        ),
+        onExit: () => OverlaySheetController.closeAdaptive<bool>(
+          sheetContext,
+          result: true,
+        ),
       ),
     );
     if (result == true) {

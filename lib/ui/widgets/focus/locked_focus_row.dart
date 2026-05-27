@@ -1,9 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../util/focus/dpad_keys.dart';
 import '../../../util/focus/key_event_utils.dart';
 import '../../../util/focus/scroll_utils.dart';
 import 'hub_focus_memory.dart';
+
+const _kSelectLongPressDuration = Duration(milliseconds: 500);
 
 typedef LockedFocusItemBuilder<T> = Widget Function(
   BuildContext context,
@@ -72,6 +77,8 @@ class LockedFocusRowState<T> extends State<LockedFocusRow<T>> {
   List<GlobalKey> _itemKeys = const [];
   int _focusedIndex = 0;
   bool _hasRowFocus = false;
+  Timer? _selectHoldTimer;
+  bool _selectLongPressFired = false;
 
   @override
   void initState() {
@@ -108,6 +115,7 @@ class LockedFocusRowState<T> extends State<LockedFocusRow<T>> {
 
   @override
   void dispose() {
+    _selectHoldTimer?.cancel();
     _focusNode.removeListener(_onRowFocusChange);
     if (_ownsFocusNode) _focusNode.dispose();
     if (_ownsScrollController) _scrollController.dispose();
@@ -174,13 +182,46 @@ class LockedFocusRowState<T> extends State<LockedFocusRow<T>> {
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
     if (widget.items.isEmpty) return KeyEventResult.ignored;
 
-    final select = handleOneShotSelect(event, () {
-      final idx = _focusedIndex;
-      if (idx >= 0 && idx < widget.items.length) {
-        widget.onTap?.call(idx, widget.items[idx]);
+    if (event.logicalKey.isSelectKey) {
+      if (widget.onLongPress != null) {
+        if (event is KeyDownEvent) {
+          _selectLongPressFired = false;
+          _selectHoldTimer?.cancel();
+          _selectHoldTimer = Timer(_kSelectLongPressDuration, () {
+            if (!mounted || !_focusNode.hasFocus) return;
+            final idx = _focusedIndex;
+            if (idx < 0 || idx >= widget.items.length) return;
+            _selectLongPressFired = true;
+            widget.onLongPress!(idx, widget.items[idx]);
+          });
+          return KeyEventResult.handled;
+        }
+        if (event is KeyRepeatEvent) {
+          return KeyEventResult.handled;
+        }
+        if (event is KeyUpEvent) {
+          _selectHoldTimer?.cancel();
+          _selectHoldTimer = null;
+          final fired = _selectLongPressFired;
+          _selectLongPressFired = false;
+          if (!fired) {
+            final idx = _focusedIndex;
+            if (idx >= 0 && idx < widget.items.length) {
+              widget.onTap?.call(idx, widget.items[idx]);
+            }
+          }
+          return KeyEventResult.handled;
+        }
+      } else {
+        final select = handleOneShotSelect(event, () {
+          final idx = _focusedIndex;
+          if (idx >= 0 && idx < widget.items.length) {
+            widget.onTap?.call(idx, widget.items[idx]);
+          }
+        });
+        if (select != KeyEventResult.ignored) return select;
       }
-    });
-    if (select != KeyEventResult.ignored) return select;
+    }
 
     if (widget.onBack != null) {
       final back = handleBackKeyAction(event, widget.onBack!);

@@ -106,7 +106,14 @@ abstract class ItemsApi {
     List<String>? itemIds,
   });
 
+  Future<Map<String, dynamic>> createCollection({
+    required String name,
+    List<String>? itemIds,
+  });
+
   Future<void> addToPlaylist(String playlistId, List<String> itemIds);
+
+  Future<void> addToCollection(String collectionId, List<String> itemIds);
 
   Future<void> removeFromPlaylist(String playlistId, List<String> entryIds);
 

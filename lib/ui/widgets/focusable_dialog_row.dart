@@ -1,16 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 import 'package:moonfin/preference/user_preferences.dart';
 
+import '../../util/focus/dpad_keys.dart';
+
 class FocusableDialogRow extends StatefulWidget {
   final IconData? icon;
   final Widget Function(double size, Color color)? iconBuilder;
   final String label;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool autofocus;
   final bool dimmed;
+  final Duration longPressDuration;
 
   const FocusableDialogRow({
     super.key,
@@ -18,8 +24,10 @@ class FocusableDialogRow extends StatefulWidget {
     this.iconBuilder,
     required this.label,
     required this.onTap,
+    this.onLongPress,
     this.autofocus = false,
     this.dimmed = false,
+    this.longPressDuration = const Duration(milliseconds: 500),
   });
 
   @override
@@ -31,15 +39,40 @@ class _FocusableDialogRowState extends State<FocusableDialogRow> {
   final _focusNode = FocusNode();
   bool _isFocused = false;
   bool _isHovered = false;
+  Timer? _longPressTimer;
+  bool _longPressFired = false;
+  bool _selectPressed = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() => setState(() => _isFocused = _focusNode.hasFocus));
+    _focusNode.addListener(() {
+      if (!mounted) return;
+      final hasFocus = _focusNode.hasFocus;
+      setState(() => _isFocused = hasFocus);
+      if (!hasFocus) {
+        _longPressTimer?.cancel();
+        _longPressTimer = null;
+        _longPressFired = false;
+        _selectPressed = false;
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_focusNode.hasFocus) return;
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0.5,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+        );
+      });
+    });
   }
 
   @override
   void dispose() {
+    _longPressTimer?.cancel();
     _focusNode.dispose();
     super.dispose();
   }
@@ -57,12 +90,42 @@ class _FocusableDialogRowState extends State<FocusableDialogRow> {
       focusNode: _focusNode,
       autofocus: widget.autofocus,
       onKeyEvent: (_, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.select ||
-                event.logicalKey == LogicalKeyboardKey.enter)) {
-          widget.onTap();
+        if (!event.logicalKey.isSelectKey) {
+          return KeyEventResult.ignored;
+        }
+
+        if (event is KeyDownEvent) {
+          if (_selectPressed) return KeyEventResult.handled;
+          _selectPressed = true;
+          _longPressFired = false;
+          _longPressTimer?.cancel();
+          _longPressTimer = Timer(widget.longPressDuration, () {
+            if (!mounted || !_focusNode.hasFocus) return;
+            _longPressFired = true;
+            (widget.onLongPress ?? widget.onTap).call();
+          });
           return KeyEventResult.handled;
         }
+
+        if (event is KeyRepeatEvent) {
+          return KeyEventResult.handled;
+        }
+
+        if (event is KeyUpEvent) {
+          if (!_selectPressed) {
+            return KeyEventResult.handled;
+          }
+          _selectPressed = false;
+          _longPressTimer?.cancel();
+          _longPressTimer = null;
+          final triggered = _longPressFired;
+          _longPressFired = false;
+          if (!triggered) {
+            widget.onTap();
+          }
+          return KeyEventResult.handled;
+        }
+
         return KeyEventResult.ignored;
       },
       child: MouseRegion(
@@ -71,6 +134,7 @@ class _FocusableDialogRowState extends State<FocusableDialogRow> {
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
+          onLongPress: widget.onLongPress ?? widget.onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             width: double.infinity,

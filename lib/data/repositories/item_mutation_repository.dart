@@ -28,4 +28,29 @@ class ItemMutationRepository {
   Future<void> clearRating(String itemId) async {
     await _client.userLibraryApi.deleteUserRating(itemId);
   }
+
+  Future<void> addToCollection(String collectionId, List<String> itemIds) async {
+    await _client.itemsApi.addToCollection(collectionId, itemIds);
+  }
+
+  Future<Map<String, dynamic>> createCollection({
+    required String name,
+    List<String>? itemIds,
+  }) async {
+    return _client.itemsApi.createCollection(name: name, itemIds: itemIds);
+  }
+
+  Future<void> refreshMetadata(
+    String itemId, {
+    bool? recursive,
+    bool? replaceAllMetadata,
+    bool? replaceAllImages,
+  }) async {
+    await _client.adminItemsApi.refreshItem(
+      itemId,
+      recursive: recursive,
+      replaceAllMetadata: replaceAllMetadata,
+      replaceAllImages: replaceAllImages,
+    );
+  }
 }

@@ -40,6 +40,7 @@ import '../../widgets/track_action_dialog.dart';
 import '../../widgets/track_selector_dialog.dart';
 import '../../widgets/remote_play_to_session_dialog.dart';
 import '../../widgets/fullscreen_backdrop_switcher.dart';
+import '../../widgets/focus/context_menu_sheet.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/focus/step_scroll.dart';
 import '../../widgets/overlay_sheet.dart';
@@ -1086,6 +1087,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: viewModel.similar,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: ctrl,
           ),
         ),
@@ -1178,6 +1180,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: viewModel.parentCollectionItems,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               collectionFocusNode,
               ctrl,
@@ -1206,6 +1209,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: viewModel.similar,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               similarFocusNode,
               ctrl,
@@ -1383,6 +1387,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: viewModel.similar,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               similarFocusNode,
               ctrl,
@@ -1617,6 +1622,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: viewModel.similar,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               similarFocusNode,
               ctrl,
@@ -1913,6 +1919,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: viewModel.similar,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               similarFocusNode,
               ctrl,
@@ -2204,6 +2211,19 @@ class _DetailContentState extends State<_DetailContent> {
     await viewModel.renamePlaylist(newName);
   }
 
+  void _showItemContextMenu(AggregatedItem item) {
+    unawaited(
+      showContextMenu(
+        context,
+        item,
+        onChanged: () {
+          if (!mounted) return;
+          setState(() {});
+        },
+      ),
+    );
+  }
+
   List<Widget> _buildBoxSetContent(BuildContext context, AggregatedItem item) {
     final l10n = AppLocalizations.of(context);
     int releaseSort(AggregatedItem a, AggregatedItem b) {
@@ -2262,6 +2282,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: movies,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               moviesFocusNode,
               ctrl,
@@ -2283,6 +2304,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: series,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               seriesFocusNode,
               ctrl,
@@ -2305,6 +2327,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: other,
             imageApi: viewModel.imageApi,
             prefs: prefs,
+            onItemLongPress: _showItemContextMenu,
             scrollController: _trackSectionScrollController(
               otherFocusNode,
               ctrl,
@@ -7327,6 +7350,7 @@ class _SimilarRow extends StatelessWidget {
   final ScrollController? scrollController;
   final FocusNode? firstItemFocusNode;
   final KeyEventResult Function(int index, KeyEvent event)? onItemKeyEvent;
+  final ValueChanged<AggregatedItem>? onItemLongPress;
 
   const _SimilarRow({
     required this.items,
@@ -7335,6 +7359,7 @@ class _SimilarRow extends StatelessWidget {
     this.scrollController,
     this.firstItemFocusNode,
     this.onItemKeyEvent,
+    this.onItemLongPress,
   });
 
   @override
@@ -7384,6 +7409,9 @@ class _SimilarRow extends StatelessWidget {
             onKeyEvent: onItemKeyEvent == null
                 ? null
                 : (_, event) => onItemKeyEvent!(index, event),
+            onLongPress: onItemLongPress == null
+                ? null
+                : () => onItemLongPress!(item),
             onTap: () => context.push(
               Destinations.item(item.id, serverId: item.serverId),
             ),

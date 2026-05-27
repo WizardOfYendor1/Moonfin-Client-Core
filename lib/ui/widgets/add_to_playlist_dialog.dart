@@ -182,6 +182,7 @@ class _AddToPlaylistDialogState extends State<AddToPlaylistDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
+        clipBehavior: Clip.antiAlias,
         constraints: const BoxConstraints(minWidth: 340, maxWidth: 440),
         decoration: BoxDecoration(
           color: AppColorScheme.surface.withValues(alpha: 0.9),

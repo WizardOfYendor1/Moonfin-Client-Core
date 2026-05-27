@@ -2658,6 +2658,11 @@ class _ContentRowsState extends State<_ContentRows>
             _finishSharedPreview();
           }
         },
+        onLongPress: (_, item) => showContextMenu(
+          context,
+          item,
+          onChanged: () => setState(() {}),
+        ),
         onTap: (_, item) {
           _finishSharedPreview(releaseResources: true);
           if (row.rowType == HomeRowType.libraryTiles) {

@@ -176,9 +176,11 @@ class OverlaySheetController {
         barrierDismissible: barrierDismissible,
         barrierColor: effectiveBarrierColor,
         animationDuration: animationDuration,
-        onClosed: () {
+        onClosed: (restoreFocus) {
           entry.remove();
-          if (previousFocus != null && previousFocus.canRequestFocus) {
+          if (restoreFocus &&
+              previousFocus != null &&
+              previousFocus.canRequestFocus) {
             previousFocus.requestFocus();
           }
         },
@@ -188,10 +190,17 @@ class OverlaySheetController {
     return completer.future;
   }
 
-  static void closeAdaptive<T>(BuildContext context, [T? result]) {
+  static Future<void> closeAdaptive<T>(
+    BuildContext context, {
+    T? result,
+    bool restoreFocus = true,
+  }) {
     final scope =
-        context.dependOnInheritedWidgetOfExactType<_OverlaySheetScope>();
-    scope?.close(result);
+        context
+            .getElementForInheritedWidgetOfExactType<_OverlaySheetScope>()
+            ?.widget as _OverlaySheetScope?;
+    if (scope == null) return Future.value();
+    return scope.close(result, restoreFocus: restoreFocus);
   }
 }
 
@@ -203,7 +212,7 @@ class _OverlaySheet<T> extends StatefulWidget {
   final bool barrierDismissible;
   final Color barrierColor;
   final Duration animationDuration;
-  final VoidCallback onClosed;
+  final void Function(bool restoreFocus) onClosed;
 
   const _OverlaySheet({
     required this.completer,
@@ -227,6 +236,8 @@ class _OverlaySheetState<T> extends State<_OverlaySheet<T>>
   late Animation<Offset> _slide;
   final FocusScopeNode _scopeNode = FocusScopeNode(debugLabel: 'OverlaySheet');
   bool _closing = false;
+  bool _restoreFocusOnClose = true;
+  Future<void>? _closeFuture;
 
   @override
   void initState() {
@@ -261,15 +272,17 @@ class _OverlaySheetState<T> extends State<_OverlaySheet<T>>
     super.dispose();
   }
 
-  void _close([T? result]) {
-    if (_closing) return;
+  Future<void> _close([T? result, bool restoreFocus = true]) {
+    if (_closing) return _closeFuture ?? Future.value();
+    _restoreFocusOnClose = restoreFocus;
     _closing = true;
-    _controller.reverse().whenComplete(() {
+    _closeFuture = _controller.reverse().whenComplete(() {
       if (!widget.completer.isCompleted) {
         widget.completer.complete(result);
       }
-      widget.onClosed();
+      widget.onClosed(_restoreFocusOnClose);
     });
+    return _closeFuture!;
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -286,7 +299,8 @@ class _OverlaySheetState<T> extends State<_OverlaySheet<T>>
   @override
   Widget build(BuildContext context) {
     return _OverlaySheetScope(
-      close: (result) => _close(result as T?),
+      close: (result, {restoreFocus = true}) =>
+          _close(result as T?, restoreFocus),
       child: FadeTransition(
         opacity: _fade,
         child: Stack(
@@ -323,7 +337,7 @@ class _OverlaySheetState<T> extends State<_OverlaySheet<T>>
 }
 
 class _OverlaySheetScope extends InheritedWidget {
-  final void Function(Object? result) close;
+  final Future<void> Function(Object? result, {bool restoreFocus}) close;
   const _OverlaySheetScope({required this.close, required super.child});
 
   @override

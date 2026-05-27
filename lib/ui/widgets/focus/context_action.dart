@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:server_core/server_core.dart';
 
+import '../../../auth/repositories/user_repository.dart';
 import '../../../data/models/aggregated_item.dart';
 import '../../../data/repositories/item_mutation_repository.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../navigation/destinations.dart';
+import '../add_to_collection_dialog.dart';
+import '../add_to_playlist_dialog.dart';
 
 class ItemContextAction {
   final IconData icon;
@@ -26,6 +31,11 @@ List<ItemContextAction> contextActionsFor(
 }) {
   final l10n = AppLocalizations.of(context);
   final mutations = GetIt.instance<ItemMutationRepository>();
+  final client = GetIt.instance<MediaServerClient>();
+  final isAdminUser =
+      GetIt.instance<UserRepository>().currentUser?.isAdministrator ?? false;
+  final canRefreshMetadata =
+      client.serverType == ServerType.jellyfin && isAdminUser;
   final actions = <ItemContextAction>[];
   final type = item.type;
 
@@ -60,6 +70,84 @@ List<ItemContextAction> contextActionsFor(
         onChanged?.call();
       },
     ));
+
+    actions.add(ItemContextAction(
+      icon: Icons.collections_bookmark,
+      label: '${l10n.add} ${l10n.collections}',
+      onSelect: () async {
+        if (!context.mounted) return;
+        final added = await AddToCollectionDialog.show(
+          context,
+          itemIds: [item.id],
+        );
+        if (added == true) {
+          onChanged?.call();
+        }
+      },
+    ));
+
+    actions.add(ItemContextAction(
+      icon: Icons.playlist_add,
+      label: l10n.addToPlaylist,
+      onSelect: () async {
+        if (!context.mounted) return;
+        final added = await AddToPlaylistDialog.show(
+          context,
+          itemIds: [item.id],
+        );
+        if (added == true) {
+          onChanged?.call();
+        }
+      },
+    ));
+
+    if (canRefreshMetadata) {
+      actions.add(ItemContextAction(
+        icon: Icons.refresh,
+        label: l10n.adminRefreshMetadata,
+        onSelect: () async {
+          try {
+            await mutations.refreshMetadata(item.id);
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l10n.adminMetadataRefreshRequested)),
+            );
+            onChanged?.call();
+          } on DioException catch (e) {
+            final status = e.response?.statusCode;
+            final data = e.response?.data;
+            final serverMessage = data is String
+                ? data
+                : (data is Map<String, dynamic>
+                      ? (data['message'] ?? data['Message'])?.toString()
+                      : null);
+            final fallback = switch (status) {
+              401 => 'Unauthorized',
+              403 => 'Forbidden',
+              404 => 'Not found',
+              _ => 'HTTP ${status ?? 'error'}',
+            };
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  l10n.adminMetadataRefreshFailed(
+                    (serverMessage != null && serverMessage.isNotEmpty)
+                        ? serverMessage
+                        : fallback,
+                  ),
+                ),
+              ),
+            );
+          } catch (e) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l10n.adminMetadataRefreshFailed('$e'))),
+            );
+          }
+        },
+      ));
+    }
   }
 
   if (type == 'Episode' && (item.seriesId?.isNotEmpty ?? false)) {

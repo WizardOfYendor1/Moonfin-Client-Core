@@ -309,9 +309,29 @@ class JellyfinItemsApi implements ItemsApi {
   }
 
   @override
+  Future<Map<String, dynamic>> createCollection({
+    required String name,
+    List<String>? itemIds,
+  }) async {
+    final response = await _dio.post(
+      '/Collections',
+      data: {'Name': name, 'Ids': ?itemIds},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  @override
   Future<void> addToPlaylist(String playlistId, List<String> itemIds) async {
     await _dio.post(
       '/Playlists/$playlistId/Items',
+      queryParameters: {'Ids': itemIds.join(',')},
+    );
+  }
+
+  @override
+  Future<void> addToCollection(String collectionId, List<String> itemIds) async {
+    await _dio.post(
+      '/Collections/$collectionId/Items',
       queryParameters: {'Ids': itemIds.join(',')},
     );
   }

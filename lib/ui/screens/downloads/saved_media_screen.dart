@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +21,7 @@ import '../../widgets/offline_image.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/sync_indicator.dart';
 import '../../widgets/focus/request_initial_focus.dart';
+import '../../../util/focus/dpad_keys.dart';
 
 class SavedMediaScreen extends ConsumerStatefulWidget {
   const SavedMediaScreen({super.key});
@@ -417,7 +420,7 @@ class _SavedMediaScreenState extends ConsumerState<SavedMediaScreen> {
   }
 }
 
-class _DownloadedCard extends StatelessWidget {
+class _DownloadedCard extends StatefulWidget {
   final DownloadedItem item;
   final String? title;
   final VoidCallback onTap;
@@ -433,42 +436,98 @@ class _DownloadedCard extends StatelessWidget {
   });
 
   @override
+  State<_DownloadedCard> createState() => _DownloadedCardState();
+}
+
+class _DownloadedCardState extends State<_DownloadedCard> {
+  final _focusNode = FocusNode();
+  Timer? _longPressTimer;
+  bool _longPressFired = false;
+
+  @override
+  void dispose() {
+    _longPressTimer?.cancel();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: OfflineImage(
-                localPath: item.posterPath,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: (_, event) {
+        if (!event.logicalKey.isSelectKey) {
+          return KeyEventResult.ignored;
+        }
+
+        if (event is KeyDownEvent) {
+          _longPressFired = false;
+          _longPressTimer?.cancel();
+          if (widget.onLongPress != null) {
+            _longPressTimer = Timer(const Duration(milliseconds: 500), () {
+              if (!mounted || !_focusNode.hasFocus) return;
+              _longPressFired = true;
+              widget.onLongPress!();
+            });
+          } else {
+            _longPressTimer = null;
+          }
+          return KeyEventResult.handled;
+        }
+
+        if (event is KeyRepeatEvent) {
+          return KeyEventResult.handled;
+        }
+
+        if (event is KeyUpEvent) {
+          _longPressTimer?.cancel();
+          _longPressTimer = null;
+          final fired = _longPressFired;
+          _longPressFired = false;
+          if (!fired) {
+            widget.onTap();
+          }
+          return KeyEventResult.handled;
+        }
+
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: OfflineImage(
+                  localPath: widget.item.posterPath,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title ?? item.name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColorScheme.onSurface, fontSize: 12),
-          ),
-          if (subtitle != null)
+            const SizedBox(height: 6),
             Text(
-              subtitle!,
-              maxLines: 1,
+              widget.title ?? widget.item.name,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppColorScheme.onSurface.withValues(alpha: 0.54),
-                fontSize: 11,
-              ),
+              style: TextStyle(color: AppColorScheme.onSurface, fontSize: 12),
             ),
-        ],
+            if (widget.subtitle != null)
+              Text(
+                widget.subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColorScheme.onSurface.withValues(alpha: 0.54),
+                  fontSize: 11,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -89,7 +89,10 @@ class _ActionRow extends StatelessWidget {
       borderRadius: 6,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       onPressed: () async {
-        OverlaySheetController.closeAdaptive<void>(context);
+        await OverlaySheetController.closeAdaptive<void>(
+          context,
+          restoreFocus: false,
+        );
         await action.onSelect();
       },
       child: Row(
