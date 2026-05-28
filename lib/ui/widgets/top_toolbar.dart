@@ -279,11 +279,18 @@ class _TopToolbarState extends State<TopToolbar> {
 
   void _restoreFocusBelowToolbar() {
     final focusContent = NavigationLayout.focusContentFromNavbarNotifier.value;
-    if (focusContent != null) {
+    if (focusContent != null && widget.activeRoute == Destinations.home) {
       focusContent();
-      return;
+      final primary = FocusManager.instance.primaryFocus;
+      if (_isUsableOutsideToolbar(primary)) {
+        return;
+      }
     }
 
+    _restoreFocusBelowToolbarFallback();
+  }
+
+  void _restoreFocusBelowToolbarFallback() {
     final previous = _previousFocus;
     if (previous != null && _isUsableOutsideToolbar(previous)) {
       previous.requestFocus();
