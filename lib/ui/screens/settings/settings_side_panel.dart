@@ -2014,10 +2014,12 @@ class _VideoPlaybackScreen extends StatelessWidget {
                     ),
               icon: Icons.video_settings,
               labelOf: (v) => switch (v) {
-                PlaybackEnginePreference.media3 =>
-                  l10n.settingsPlaybackEngineMedia3Recommended,
-                PlaybackEnginePreference.mpv =>
-                  l10n.settingsPlaybackEngineMpvLegacy,
+                PlaybackEnginePreference.media3 => PlatformDetection.isTV
+                  ? l10n.settingsPlaybackEngineMedia3Recommended
+                  : l10n.settingsPlaybackEngineMedia3Legacy,
+                PlaybackEnginePreference.mpv => PlatformDetection.isTV
+                  ? l10n.settingsPlaybackEngineMpvLegacy
+                  : l10n.settingsPlaybackEngineMpvRecommended,
               },
             ),
           if (PlatformDetection.isAndroid && PlatformDetection.isTV)

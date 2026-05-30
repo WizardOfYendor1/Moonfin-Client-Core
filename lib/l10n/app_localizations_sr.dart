@@ -7044,7 +7044,13 @@ class AppLocalizationsSr extends AppLocalizations {
       '__АРБ_ТЕРМ_0__ (препоручено)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => '__АРБ_ТЕРМ_0__ (наслеђе)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => '__АРБ_ТЕРМ_0__ Замена';

@@ -7123,7 +7123,13 @@ class AppLocalizationsCa extends AppLocalizations {
   String get settingsPlaybackEngineMedia3Recommended => 'Media3 (recomanat)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => 'mpv (legat)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => 'Dolby Vision Alternativa';

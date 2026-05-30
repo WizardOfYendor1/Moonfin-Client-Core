@@ -7114,7 +7114,13 @@ class AppLocalizationsGl extends AppLocalizations {
   String get settingsPlaybackEngineMedia3Recommended => 'Media3 (recomendado)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => 'mpv (herdado)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => 'Dolby Vision Alternativa';

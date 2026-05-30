@@ -7067,7 +7067,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Media3 (рекомендуется)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => 'mpv (старый вариант)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => 'Резервный режим Dolby Vision';

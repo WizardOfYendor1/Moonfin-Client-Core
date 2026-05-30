@@ -7097,7 +7097,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsPlaybackEngineMedia3Recommended => 'Media3 (recommandé)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => 'mpv (ancien)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => 'Solution de repli Dolby Vision';

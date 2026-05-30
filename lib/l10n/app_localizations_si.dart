@@ -7009,7 +7009,13 @@ class AppLocalizationsSi extends AppLocalizations {
   String get settingsPlaybackEngineMedia3Recommended => 'Media3 (නිර්දේශිත)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => 'mpv (උරුමය)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => 'Dolby Vision පසුබැසීම';

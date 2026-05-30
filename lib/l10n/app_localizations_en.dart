@@ -6965,7 +6965,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPlaybackEngineMedia3Recommended => 'Media3 (recommended)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => 'mpv (legacy)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => 'Dolby Vision Fallback';
@@ -13999,7 +14005,13 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get settingsPlaybackEngineMedia3Recommended => 'Media3 (recommended)';
 
   @override
+  String get settingsPlaybackEngineMedia3Legacy => 'Media3 (legacy)';
+
+  @override
   String get settingsPlaybackEngineMpvLegacy => 'mpv (legacy)';
+
+  @override
+  String get settingsPlaybackEngineMpvRecommended => 'mpv (recommended)';
 
   @override
   String get settingsDolbyVisionFallback => 'Dolby Vision Fallback';

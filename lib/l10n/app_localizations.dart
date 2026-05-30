@@ -12497,11 +12497,23 @@ abstract class AppLocalizations {
   /// **'Media3 (recommended)'**
   String get settingsPlaybackEngineMedia3Recommended;
 
+  /// No description provided for @settingsPlaybackEngineMedia3Legacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Media3 (legacy)'**
+  String get settingsPlaybackEngineMedia3Legacy;
+
   /// No description provided for @settingsPlaybackEngineMpvLegacy.
   ///
   /// In en, this message translates to:
   /// **'mpv (legacy)'**
   String get settingsPlaybackEngineMpvLegacy;
+
+  /// No description provided for @settingsPlaybackEngineMpvRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'mpv (recommended)'**
+  String get settingsPlaybackEngineMpvRecommended;
 
   /// No description provided for @settingsDolbyVisionFallback.
   ///
