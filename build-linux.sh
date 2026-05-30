@@ -459,8 +459,15 @@ build_flutter_binary() {
   flutter_bin="$(resolve_flutter)"
   cd "$REPO_ROOT"
 
-  if [ -n "${MOONFIN_MPV_PREFIX:-}" ] && [ -d "${MOONFIN_MPV_PREFIX}/lib/pkgconfig" ]; then
-    export PKG_CONFIG_PATH="${MOONFIN_MPV_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+  if [ -n "${MOONFIN_MPV_PREFIX:-}" ] && [ -f "${MOONFIN_MPV_PREFIX}/lib/pkgconfig/mpv.pc" ]; then
+    local mpv_pc_dir="${TEMP_DIR}/mpv-pkgconfig"
+    rm -rf "$mpv_pc_dir"
+    mkdir -p "$mpv_pc_dir"
+    sed -e "s|^prefix=.*|prefix=${MOONFIN_MPV_PREFIX}|" \
+      "${MOONFIN_MPV_PREFIX}/lib/pkgconfig/mpv.pc" > "${mpv_pc_dir}/mpv.pc"
+
+    local sys_pc="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+    export PKG_CONFIG_PATH="${mpv_pc_dir}:${sys_pc}:${MOONFIN_MPV_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
     echo "Using conda-forge libmpv for the build: $(pkg-config --modversion mpv 2>/dev/null || echo '??')"
     echo "  pkg-config mpv libdir: $(pkg-config --variable=libdir mpv 2>/dev/null || true)"
   fi
