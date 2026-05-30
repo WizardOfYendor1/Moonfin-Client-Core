@@ -305,7 +305,8 @@ final appRouter = GoRouter(
       path: Destinations.folderBrowse,
       builder: (context, state) {
         final folderId = state.pathParameters['folderId']!;
-        return FolderBrowseScreen(folderId: folderId);
+        final serverId = state.uri.queryParameters['serverId'];
+        return FolderBrowseScreen(folderId: folderId, serverId: serverId);
       },
     ),
     GoRoute(

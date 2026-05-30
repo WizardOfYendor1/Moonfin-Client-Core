@@ -6,6 +6,7 @@ import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../data/models/aggregated_item.dart';
+import '../../../data/services/media_server_client_factory.dart';
 import '../../../data/viewmodels/folder_browse_view_model.dart';
 import '../../navigation/destinations.dart';
 import '../../widgets/focus/request_initial_focus.dart';
@@ -15,8 +16,13 @@ import '../../../l10n/app_localizations.dart';
 
 class FolderBrowseScreen extends StatefulWidget {
   final String folderId;
+  final String? serverId;
 
-  const FolderBrowseScreen({super.key, required this.folderId});
+  const FolderBrowseScreen({
+    super.key,
+    required this.folderId,
+    this.serverId,
+  });
 
   @override
   State<FolderBrowseScreen> createState() => _FolderBrowseScreenState();
@@ -31,7 +37,14 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
   @override
   void initState() {
     super.initState();
-    _vm = FolderBrowseViewModel(GetIt.instance<MediaServerClient>());
+    final serverId = widget.serverId;
+    final client = serverId != null && serverId.isNotEmpty
+        ? GetIt.instance<MediaServerClientFactory>().getClientIfExists(
+                serverId,
+              ) ??
+              GetIt.instance<MediaServerClient>()
+        : GetIt.instance<MediaServerClient>();
+    _vm = FolderBrowseViewModel(client, serverId: serverId);
     _vm.addListener(_onChanged);
     _scrollController.addListener(_onScroll);
     _vm.loadFolder(widget.folderId);
@@ -109,7 +122,7 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
     _lastItemTapAt = now;
 
     if (_vm.isNavigableFolder(item)) {
-      _scrollController.jumpTo(0);
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
       _vm.enterFolder(item);
     } else {
       context.push(
@@ -170,7 +183,9 @@ class _FolderBrowseScreenState extends State<FolderBrowseScreen> {
               return TextButton(
               onPressed: !isLast
                   ? () {
-                      _scrollController.jumpTo(0);
+                      if (_scrollController.hasClients) {
+                        _scrollController.jumpTo(0);
+                      }
                       _vm.navigateTo(i);
                     }
                   : null,
