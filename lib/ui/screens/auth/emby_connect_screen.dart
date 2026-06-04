@@ -206,8 +206,15 @@ class _EmbyConnectScreenState extends State<EmbyConnectScreen> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      RequestInitialFocus(child: _buildContent(context));
+  Widget build(BuildContext context) {
+    final showingCredentials =
+        _phase == _EmbyConnectPhase.credentials ||
+        _phase == _EmbyConnectPhase.authenticating;
+    return RequestInitialFocus(
+      targetNode: showingCredentials ? _usernameFocus : null,
+      child: _buildContent(context),
+    );
+  }
 
   Widget _buildContent(BuildContext context) {
     final l10n = AppLocalizations.of(context);
