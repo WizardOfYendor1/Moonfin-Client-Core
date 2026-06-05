@@ -22,14 +22,14 @@ class AggregatedItem {
   String? get type => rawData['Type'] as String?;
   bool get canDelete => rawData['CanDelete'] as bool? ?? false;
   String? get seriesName => rawData['SeriesName'] as String?;
-  int? get productionYear => rawData['ProductionYear'] as int?;
+  int? get productionYear => _toInt(rawData['ProductionYear']);
   double? get communityRating => (rawData['CommunityRating'] as num?)?.toDouble();
   String? get overview => rawData['Overview'] as String?;
   String? get officialRating => rawData['OfficialRating'] as String?;
-  int? get indexNumber => rawData['IndexNumber'] as int?;
-  int? get parentIndexNumber => rawData['ParentIndexNumber'] as int?;
+  int? get indexNumber => _toInt(rawData['IndexNumber']);
+  int? get parentIndexNumber => _toInt(rawData['ParentIndexNumber']);
 
-  int? _toInt(dynamic value) {
+  static int? _toInt(dynamic value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
@@ -86,10 +86,9 @@ class AggregatedItem {
       ? Duration(microseconds: playbackPositionTicks! ~/ 10)
       : null;
 
-  int? get unplayedItemCount =>
-      _userData?['UnplayedItemCount'] as int?;
+  int? get unplayedItemCount => _toInt(_userData?['UnplayedItemCount']);
 
-  int? get criticRating => rawData['CriticRating'] as int?;
+  int? get criticRating => _toInt(rawData['CriticRating']);
 
   String? get tagline {
     final taglines = rawData['Taglines'] as List?;
@@ -140,7 +139,7 @@ class AggregatedItem {
   String? get parentThumbImageTag =>
       rawData['ParentThumbImageTag'] as String?;
   String? get status => rawData['Status'] as String?;
-  int? get childCount => rawData['ChildCount'] as int?;
+  int? get childCount => _toInt(rawData['ChildCount']);
 
   DateTime? get premiereDate {
     final v = rawData['PremiereDate'] as String?;
@@ -163,7 +162,7 @@ class AggregatedItem {
   List<String> get artists =>
       (rawData['Artists'] as List?)?.cast<String>() ?? const [];
   String? get parentId => rawData['ParentId'] as String?;
-  int? get recursiveItemCount => rawData['RecursiveItemCount'] as int?;
+  int? get recursiveItemCount => _toInt(rawData['RecursiveItemCount']);
   List<Map<String, dynamic>> get albumArtists =>
       (rawData['AlbumArtists'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
 
@@ -196,8 +195,8 @@ class AggregatedItem {
   String? get videoResolution {
     for (final stream in mediaStreams) {
       if (stream['Type'] == 'Video') {
-        final width = stream['Width'] as int?;
-        final height = stream['Height'] as int?;
+        final width = _toInt(stream['Width']);
+        final height = _toInt(stream['Height']);
         if (width == null || height == null) return null;
         final interlaced = stream['IsInterlaced'] == true;
         final suffix = interlaced ? 'i' : 'p';
@@ -216,7 +215,7 @@ class AggregatedItem {
 
   int? get sourceVideoWidth {
     for (final stream in mediaStreams) {
-      if (stream['Type'] == 'Video') return stream['Width'] as int?;
+      if (stream['Type'] == 'Video') return _toInt(stream['Width']);
     }
 
     for (final source in mediaSources) {
@@ -267,7 +266,7 @@ class AggregatedItem {
 
   String? get audioProfile => _defaultAudioStream?['Profile'] as String?;
 
-  int? get audioChannels => _defaultAudioStream?['Channels'] as int?;
+  int? get audioChannels => _toInt(_defaultAudioStream?['Channels']);
 
   String? get channelLayout {
     final channels = audioChannels;
