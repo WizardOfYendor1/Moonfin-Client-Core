@@ -11,6 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -164,8 +165,10 @@ class MainActivity : AudioServiceActivity() {
             when (call.method) {
                 "isTvDevice" -> {
                     val uiModeManager = getSystemService(UI_MODE_SERVICE) as UiModeManager
+                    val pm = packageManager
                     val isTv = uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
-                        packageManager.hasSystemFeature("amazon.hardware.fire_tv")
+                        pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+                        pm.hasSystemFeature("amazon.hardware.fire_tv")
                     result.success(isTv)
                 }
                 "displayHdrTypes" -> result.success(getDisplayHdrTypes())
