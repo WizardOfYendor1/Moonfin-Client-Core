@@ -22,6 +22,7 @@ class HomeViewModel extends ChangeNotifier {
   final MediaServerClient _client;
   final MediaBarViewModel _mediaBarViewModel;
   final MultiServerRepository _multiServerRepo;
+  final String _ownerUserId;
   final HomeRowCacheStore _cacheStore = HomeRowCacheStore();
   final Set<String> _inFlightPagingRowIds = {};
   final Map<String, int> _rowOffsets = {};
@@ -42,11 +43,12 @@ class HomeViewModel extends ChangeNotifier {
       _prefs.get(UserPreferences.enableMultiServerLibraries);
 
   String _homeCacheKey() {
+    final userId = _ownerUserId;
     final sections = _prefs.get(UserPreferences.homeSectionsJson);
     final multiServer = _prefs.get(UserPreferences.enableMultiServerLibraries);
     final merge = _prefs.get(UserPreferences.mergeContinueWatchingNextUp);
     final blocked = _prefs.get(UserPreferences.blockedParentalRatings);
-    return '$_serverId|$sections|$multiServer|$merge|$blocked';
+    return '$_serverId|$userId|$sections|$multiServer|$merge|$blocked';
   }
 
   static bool _isFavoriteSectionType(HomeSectionType type) {
@@ -90,7 +92,8 @@ class HomeViewModel extends ChangeNotifier {
         _prefs = prefs,
         _client = client,
         _mediaBarViewModel = mediaBarViewModel,
-        _multiServerRepo = multiServerRepo;
+        _multiServerRepo = multiServerRepo,
+        _ownerUserId = client.userId ?? '';
 
   Future<void> load({bool preserveExisting = false}) async {
     if (_isLoading) {
