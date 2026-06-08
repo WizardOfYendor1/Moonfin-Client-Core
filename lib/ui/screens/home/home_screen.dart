@@ -3105,6 +3105,8 @@ class _ContentRowsState extends State<_ContentRows>
             playedPercentage: item.playedPercentage,
             watchedBehavior: watchedBehavior,
             itemType: item.type,
+            seerrMediaType: item.seerrMediaType,
+            seerrStatus: item.seerrStatus,
             focusColor: focusColor,
             cardFocusExpansion: isRowsV2 ? false : cardExpansion && !showPreviewVideo,
             externalIsFocused: effectiveV2Focused,
