@@ -1,5 +1,9 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
+import '../../ui/navigation/app_router.dart';
+import '../../ui/navigation/destinations.dart';
+
 import 'package:get_it/get_it.dart';
 import 'package:logger/logger.dart';
 import 'package:playback_core/playback_core.dart';
@@ -217,6 +221,15 @@ class SessionRepository {
       if (serverUser.configuration != null) {
         GetIt.instance<UserPreferences>()
             .initLanguagePrefs(serverUser.configuration!);
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        _logger.w('Access token expired or unauthorized. Logging out.');
+        await destroyCurrentSession();
+        appRouter.go(
+          '${Destinations.login}?serverId=$serverId&username=${Uri.encodeComponent(user.name)}',
+        );
+        return;
       }
     } catch (_) {
     }
