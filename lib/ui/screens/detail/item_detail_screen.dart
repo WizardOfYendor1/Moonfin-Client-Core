@@ -5171,9 +5171,6 @@ class _ActionButtonsState extends State<_ActionButtons> {
     final prefs = GetIt.instance<UserPreferences>();
     final defaultToNone = prefs.get(UserPreferences.subtitlesDefaultToNone);
     if (defaultToNone) {
-      if (subtitleStreams.isNotEmpty) {
-        return subtitleStreams.first['Index'] as int?;
-      }
       return -1;
     }
 
