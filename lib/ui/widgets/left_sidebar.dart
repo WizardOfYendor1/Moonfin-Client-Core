@@ -181,6 +181,7 @@ class _LeftSidebarState extends State<LeftSidebar> {
 
   void _onPrefsChanged() {
     if (!mounted) return;
+    _updateClock();
     _loadLibraries();
     setState(() {});
   }

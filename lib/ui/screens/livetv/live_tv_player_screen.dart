@@ -1313,8 +1313,12 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen> {
   }
 
   String _formatTime(DateTime dt) {
+    final use24 = _prefs.get(UserPreferences.use24HourClock);
     final h = dt.hour;
     final m = dt.minute.toString().padLeft(2, '0');
+    if (use24) {
+      return '${h.toString().padLeft(2, '0')}:$m';
+    }
     final amPm = h >= 12 ? 'PM' : 'AM';
     final h12 = h > 12 ? h - 12 : (h == 0 ? 12 : h);
     return '$h12:$m $amPm';

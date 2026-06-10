@@ -3906,12 +3906,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final remaining = duration - position;
     if (remaining <= Duration.zero) return '';
     final end = DateTime.now().add(remaining);
-    final localizations = MaterialLocalizations.of(context);
-    final use24Hour = MediaQuery.of(context).alwaysUse24HourFormat;
-    final time = localizations.formatTimeOfDay(
-      TimeOfDay.fromDateTime(end),
-      alwaysUse24HourFormat: use24Hour,
-    );
+    final use24Hour = _prefs.get(UserPreferences.use24HourClock);
+    final hour = end.hour;
+    final minute = end.minute.toString().padLeft(2, '0');
+    final String time;
+    if (use24Hour) {
+      time = '${hour.toString().padLeft(2, '0')}:$minute';
+    } else {
+      final amPm = hour >= 12 ? 'PM' : 'AM';
+      final h12 = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      time = '$h12:$minute $amPm';
+    }
     return AppLocalizations.of(context).endsAt(time);
   }
 

@@ -174,6 +174,7 @@ class _TopToolbarState extends State<TopToolbar> {
 
   void _onPrefsChanged() {
     if (!mounted) return;
+    _updateClock();
     _loadLibraries();
     setState(() {});
   }
