@@ -854,10 +854,10 @@ final class NativePlayerWrapper: MpvPlayerWrapper {
             parts.append(lang)
         }
         if stream.isDefault {
-            parts.append(Strings.nativePlayerWrapperDefault)
+            parts.append("Default")
         }
 
-        let name = parts.isEmpty ? Strings.nativePlayerWrapperTrackX(Int(stream.index)) : parts.joined(separator: " - ")
+        let name = parts.isEmpty ? "Track \(Int(stream.index))" : parts.joined(separator: " - ")
 
         let codec: String? = {
             switch stream.type {
