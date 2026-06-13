@@ -56,7 +56,7 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         Self.lastCommand = call.method
         switch call.method {
         case "present":
-            present()
+            present(audioOnly: (args["audioOnly"] as? Bool) ?? false)
         case "dismiss":
             dismiss()
         case "setSource":
@@ -144,13 +144,18 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         vc?.baseSubtitlePos = subPos
     }
 
-    private func present() {
-        if playerVC != nil {
+    private func present(audioOnly: Bool) {
+        if player != nil {
             send(["event": "presented"])
             return
         }
         let created: MpvPlayerWrapper = NativePlayerWrapper()
         player = created
+        if audioOnly {
+            startStateTimer()
+            send(["event": "presented"])
+            return
+        }
         let vc = AppleTvPlayerViewController(player: created)
         vc.modalPresentationStyle = .overFullScreen
         vc.onExit = { [weak self] in self?.send(["event": "userExited"]) }
@@ -216,8 +221,12 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         player = nil
         lastTextTrackCount = -1
         didComplete = false
-        vc?.dismiss(animated: false) { [weak self] in
-            Task { @MainActor in self?.send(["event": "dismissed"]) }
+        if let vc {
+            vc.dismiss(animated: false) { [weak self] in
+                Task { @MainActor in self?.send(["event": "dismissed"]) }
+            }
+        } else {
+            send(["event": "dismissed"])
         }
     }
 

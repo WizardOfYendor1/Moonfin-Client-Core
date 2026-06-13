@@ -73,10 +73,10 @@ class AppleTvMpvBackend implements PlayerBackend {
     }
   }
 
-  Future<void> _ensurePlayerPresented() async {
+  Future<void> _ensurePlayerPresented({bool audioOnly = false}) async {
     if (_disposed || _playerPresented) return;
     _playerPresented = true;
-    await _invoke<void>('present');
+    await _invoke<void>('present', {'audioOnly': audioOnly});
   }
 
   Future<void> _dismissPlayer() async {
@@ -206,7 +206,9 @@ class AppleTvMpvBackend implements PlayerBackend {
     _activeSubtitleTrackIndex = null;
     _tracksReadyCompleter = null;
 
-    await _ensurePlayerPresented();
+    final audioOnly =
+        (payload['mediaType']?.toString() ?? 'video') == 'audio';
+    await _ensurePlayerPresented(audioOnly: audioOnly);
 
     await _invoke<void>('setSource', {
       'url': url,
