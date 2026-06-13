@@ -95,6 +95,7 @@ class _AppearanceThemeScreenState extends State<AppearanceThemeScreen> {
     return switch (spec.id) {
       ThemeRegistry.moonfinId => l10n.themeMoonfin,
       ThemeRegistry.neonPulseId => l10n.themeNeonPulse,
+      ThemeRegistry.glassId => l10n.themeGlass,
       _ => spec.displayName,
     };
   }
@@ -103,6 +104,7 @@ class _AppearanceThemeScreenState extends State<AppearanceThemeScreen> {
     return switch (spec.id) {
       ThemeRegistry.moonfinId => l10n.themeMoonfinSubtitle,
       ThemeRegistry.neonPulseId => l10n.themeNeonPulseSubtitle,
+      ThemeRegistry.glassId => l10n.themeGlassSubtitle,
       _ => null,
     };
   }
@@ -110,7 +112,8 @@ class _AppearanceThemeScreenState extends State<AppearanceThemeScreen> {
   static int _themeSortRank(String id) {
     if (id == ThemeRegistry.moonfinId) return 0;
     if (id == ThemeRegistry.neonPulseId) return 1;
-    return 2;
+    if (id == ThemeRegistry.glassId) return 2;
+    return 3;
   }
 }
 
