@@ -12,19 +12,19 @@ class AppLocalizationsCs extends AppLocalizations {
   String get appTitle => 'Měsíční ploutev';
 
   @override
-  String get accountPreferences => 'ACCOUNT PREFERENCES';
+  String get accountPreferences => '';
 
   @override
-  String get interfaceLanguage => 'Interface Language';
+  String get interfaceLanguage => '';
 
   @override
-  String get systemLanguageDefault => 'System Default';
+  String get systemLanguageDefault => '';
 
   @override
   String get signIn => 'Přihlaste se';
 
   @override
-  String get empty => 'Empty';
+  String get empty => '';
 
   @override
   String connectingToServer(String serverName) {
@@ -835,7 +835,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String endsIn(String time) {
-    return 'Ends in $time';
+    return '';
   }
 
   @override
@@ -2086,23 +2086,22 @@ class AppLocalizationsCs extends AppLocalizations {
   String get playerZoomMode => 'Režim zvětšení přehrávače';
 
   @override
-  String get settingsScrollWheelAction => 'Mouse scroll wheel';
+  String get settingsScrollWheelAction => '';
 
   @override
-  String get settingsScrollWheelActionDescription =>
-      'Choose what scrolling the mouse wheel over the video does during playback.';
+  String get settingsScrollWheelActionDescription => '';
 
   @override
-  String get scrollWheelActionOff => 'Off';
+  String get scrollWheelActionOff => '';
 
   @override
-  String get scrollWheelActionSeek => 'Seek (forward / back)';
+  String get scrollWheelActionSeek => '';
 
   @override
-  String get scrollWheelActionVolume => 'Volume';
+  String get scrollWheelActionVolume => '';
 
   @override
-  String get playerTooltipVolume => 'Volume';
+  String get playerTooltipVolume => '';
 
   @override
   String get fit => 'Fit';
@@ -2754,7 +2753,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get showLibrariesInToolbar => 'Zobrazit knihovny na liště Toolbar';
 
   @override
-  String get showSeerrButton => 'Show Seerr Button';
+  String get showSeerrButton => '';
 
   @override
   String get navbarOpacity => 'Neprůhlednost navigační lišty';
@@ -3010,10 +3009,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get combineBothRows => 'Spojte oba řádky do jedné domovské sekce';
 
   @override
-  String get fullScreenRows => 'Expanded Home Rows';
+  String get fullScreenRows => '';
 
   @override
-  String get fullScreenRowsDescription => 'Limit home rows to 1 row per screen';
+  String get fullScreenRowsDescription => '';
 
   @override
   String get perRowImageType => 'Typ obrázku na řádek';
@@ -3028,7 +3027,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get lastUser => 'Poslední uživatel';
 
   @override
-  String get currentUser => 'Current User';
+  String get currentUser => '';
 
   @override
   String get alwaysAuthenticate => 'Vždy ověřit';
@@ -3279,7 +3278,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get networks => 'sítě';
 
   @override
-  String get seerrDiscoveryRows => 'Seerr Discovery Rows';
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults => 'Resetovat řádky na výchozí hodnoty';
@@ -6963,8 +6962,7 @@ class AppLocalizationsCs extends AppLocalizations {
       'Zobrazit tlačítko knihoven v navigační liště';
 
   @override
-  String get settingsShowSeerrButtonInNavigation =>
-      'Show the Seerr button in the navigation bar';
+  String get settingsShowSeerrButtonInNavigation => '';
 
   @override
   String get settingsLibraryVisibilitySubtitle =>
@@ -7115,16 +7113,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settingsSkipIntrosAndOutros => 'Přeskočit úvody a závěry?';
 
   @override
-  String get settingsMediaSegmentCountdown => 'Media Segment Countdown';
+  String get settingsMediaSegmentCountdown => '';
 
   @override
-  String get settingsProgressBar => 'Progress Bar';
+  String get settingsProgressBar => '';
 
   @override
-  String get settingsTimer => 'Timer';
+  String get settingsTimer => '';
 
   @override
-  String get settingsNone => 'None';
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Vyzvat uživatele';
@@ -7382,11 +7380,10 @@ class AppLocalizationsCs extends AppLocalizations {
       'Vynutit netunelované přehrávání. Užitečné na zařízeních s tunelováním audio/video diskontinuit.';
 
   @override
-  String get enableTunnelingTitle => 'Enable tunneling';
+  String get enableTunnelingTitle => '';
 
   @override
-  String get enableTunnelingSubtitle =>
-      'Advanced. Routes audio and video through a coupled hardware path. Off by default because it causes audio/video dropouts on some devices.';
+  String get enableTunnelingSubtitle => '';
 
   @override
   String get mapDolbyVisionP7Title => 'Namapujte Dolby Vision profil 7 na HEVC';
@@ -7487,21 +7484,19 @@ class AppLocalizationsCs extends AppLocalizations {
   String get homeRowsSection => 'Domácí řádky';
 
   @override
-  String get homeRowDisplay => 'Home Row Display';
+  String get homeRowDisplay => '';
 
   @override
-  String get homeRowSections => 'Home Row Sections';
+  String get homeRowSections => '';
 
   @override
-  String get homeRowToggles => 'Home Row Toggles';
+  String get homeRowToggles => '';
 
   @override
-  String get homeRowTogglesSubtitle =>
-      'Enable or disable different home row categories';
+  String get homeRowTogglesSubtitle => '';
 
   @override
-  String get homeRowTogglesDescription =>
-      'Enable the following toggles to display the rows in Home Sections.';
+  String get homeRowTogglesDescription => '';
 
   @override
   String get rowsType => 'Typ řádků';
@@ -7560,25 +7555,22 @@ class AppLocalizationsCs extends AppLocalizations {
       'Zobrazit filmy, seriály nebo obojí v řádcích Žánry.';
 
   @override
-  String get displayPlaylistsRows => 'Display Playlist Rows';
+  String get displayPlaylistsRows => '';
 
   @override
-  String get displayPlaylistsRowsSubtitle =>
-      'Show Playlist rows in Home Sections.';
+  String get displayPlaylistsRowsSubtitle => '';
 
   @override
-  String get playlistsRowSorting => 'Playlist Row Sorting';
+  String get playlistsRowSorting => '';
 
   @override
-  String get playlistsRowSortingDescription =>
-      'Sort Playlist rows by date added, release date, alphabetically, and more.';
+  String get playlistsRowSortingDescription => '';
 
   @override
-  String get displaySeerrRows => 'Display Seerr Discovery Rows';
+  String get displaySeerrRows => '';
 
   @override
-  String get displaySeerrRowsSubtitle =>
-      'Show Seerr discovery rows in Home Sections.';
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Vzhled';

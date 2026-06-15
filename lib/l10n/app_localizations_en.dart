@@ -8203,7 +8203,19 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get appTitle => 'Moonfin';
 
   @override
+  String get accountPreferences => '';
+
+  @override
+  String get interfaceLanguage => '';
+
+  @override
+  String get systemLanguageDefault => '';
+
+  @override
   String get signIn => 'Sign In';
+
+  @override
+  String get empty => '';
 
   @override
   String connectingToServer(String serverName) {
@@ -8998,6 +9010,11 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   @override
   String endsAt(String time) {
     return 'Ends at $time';
+  }
+
+  @override
+  String endsIn(String time) {
+    return '';
   }
 
   @override
@@ -10147,7 +10164,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get focusExpansionAnimation => 'Focus Expansion Animation';
 
   @override
-  String get desktopUiScale => 'UI Scaling';
+  String get desktopUiScale => 'Desktop UI Scale';
 
   @override
   String get scaleFocusedCards => 'Scale focused or hovered cards and tiles';
@@ -10239,6 +10256,24 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get playerZoomMode => 'Player Zoom Mode';
+
+  @override
+  String get settingsScrollWheelAction => '';
+
+  @override
+  String get settingsScrollWheelActionDescription => '';
+
+  @override
+  String get scrollWheelActionOff => '';
+
+  @override
+  String get scrollWheelActionSeek => '';
+
+  @override
+  String get scrollWheelActionVolume => '';
+
+  @override
+  String get playerTooltipVolume => '';
 
   @override
   String get fit => 'Fit';
@@ -10823,6 +10858,9 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get showLibrariesInToolbar => 'Show Libraries in Toolbar';
 
   @override
+  String get showSeerrButton => '';
+
+  @override
   String get navbarOpacity => 'Navbar Opacity';
 
   @override
@@ -11095,6 +11133,9 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get lastUser => 'Last User';
 
   @override
+  String get currentUser => '';
+
+  @override
   String get alwaysAuthenticate => 'Always Authenticate';
 
   @override
@@ -11335,6 +11376,9 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get networks => 'Networks';
+
+  @override
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults => 'Reset rows to defaults';
@@ -14973,6 +15017,9 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
       'Show the libraries button in the navigation bar';
 
   @override
+  String get settingsShowSeerrButtonInNavigation => '';
+
+  @override
   String get settingsLibraryVisibilitySubtitle =>
       'Toggle home page visibility per library. Restart Moonfin for changes to take effect.';
 
@@ -15117,6 +15164,18 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get settingsSkipIntrosAndOutros => 'Skip Intros and Outros?';
+
+  @override
+  String get settingsMediaSegmentCountdown => '';
+
+  @override
+  String get settingsProgressBar => '';
+
+  @override
+  String get settingsTimer => '';
+
+  @override
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Prompt User';
@@ -15368,6 +15427,12 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
       'Force non-tunneled playback. Useful on devices with tunneling audio/video discontinuities.';
 
   @override
+  String get enableTunnelingTitle => '';
+
+  @override
+  String get enableTunnelingSubtitle => '';
+
+  @override
   String get mapDolbyVisionP7Title => 'Map Dolby Vision profile 7 to HEVC';
 
   @override
@@ -15465,6 +15530,21 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get homeRowsSection => 'Home Rows';
 
   @override
+  String get homeRowDisplay => '';
+
+  @override
+  String get homeRowSections => '';
+
+  @override
+  String get homeRowToggles => '';
+
+  @override
+  String get homeRowTogglesSubtitle => '';
+
+  @override
+  String get homeRowTogglesDescription => '';
+
+  @override
   String get rowsType => 'Row Type';
 
   @override
@@ -15518,6 +15598,24 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   @override
   String get genresRowItemsDescription =>
       'Show Movies, Series, or both in Genres rows.';
+
+  @override
+  String get displayPlaylistsRows => '';
+
+  @override
+  String get displayPlaylistsRowsSubtitle => '';
+
+  @override
+  String get playlistsRowSorting => '';
+
+  @override
+  String get playlistsRowSortingDescription => '';
+
+  @override
+  String get displaySeerrRows => '';
+
+  @override
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Appearance';

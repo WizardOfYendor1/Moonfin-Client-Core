@@ -21,7 +21,7 @@ class AppLocalizationsCa extends AppLocalizations {
   String get systemLanguageDefault => 'System Default';
 
   @override
-  String get signIn => 'Inicieu la sessió';
+  String get signIn => 'Iniciar sessió';
 
   @override
   String get empty => 'Empty';
@@ -750,7 +750,7 @@ class AppLocalizationsCa extends AppLocalizations {
   String get moreLikeThis => 'Més així';
 
   @override
-  String get castAndCrew => 'Repartiment i tripulació';
+  String get castAndCrew => 'Repartiment i equip';
 
   @override
   String get collection => 'Col·lecció';
@@ -861,7 +861,7 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
-  String get play => 'Jugar';
+  String get play => 'Reproduir';
 
   @override
   String get startOver => 'Torna a començar';
@@ -2914,7 +2914,7 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get mediaBarModeDescription =>
-      'Trieu entre diversos estils de barra multimèdia o desactiveu la barra multimèdia';
+      'Trieu entre Moonfin, MakD o desactiva la barra multimèdia';
 
   @override
   String get mediaBarModeMoonfin => 'Moonfin';
@@ -3608,7 +3608,7 @@ class AppLocalizationsCa extends AppLocalizations {
   String get appearances => 'Aparicions';
 
   @override
-  String get crewSection => 'Tripulació';
+  String get crewSection => 'Equip';
 
   @override
   String ageValue(int age) {
@@ -4155,7 +4155,7 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String adminLibraryDeleted(String name) {
-    return 'S\'ha suprimit la biblioteca \"$name\".';
+    return 'S\'ha suprimit la biblioteca \"$name\"';
   }
 
   @override
@@ -4474,7 +4474,7 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String adminUserDeleted(String name) {
-    return 'S\'ha suprimit l\'usuari \"$name\".';
+    return 'S\'ha suprimit l\'usuari \"$name\"';
   }
 
   @override
@@ -7361,7 +7361,7 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
-  String get settingsLiveTvDirect => 'TV en directe directe';
+  String get settingsLiveTvDirect => 'TV en directe';
 
   @override
   String get settingsLiveTvDirectSubtitle =>
@@ -7482,11 +7482,11 @@ class AppLocalizationsCa extends AppLocalizations {
       'Força la reproducció sense túnel. Útil en dispositius amb discontinuïtats d\'àudio/vídeo de túnel.';
 
   @override
-  String get enableTunnelingTitle => 'Enable tunneling';
+  String get enableTunnelingTitle => 'Habilita tunneling';
 
   @override
   String get enableTunnelingSubtitle =>
-      'Advanced. Routes audio and video through a coupled hardware path. Off by default because it causes audio/video dropouts on some devices.';
+      'Avançat. Envia àudio i vídeo a través d\'una ruta de maquinari acoblada. Desactivat per defecte perquè causa caigudes d\'àudio / vídeo en alguns dispositius.';
 
   @override
   String get mapDolbyVisionP7Title => 'Assigna el perfil Dolby Vision 7 a HEVC';
@@ -7719,7 +7719,7 @@ class AppLocalizationsCa extends AppLocalizations {
       'No és compatible amb aquest dispositiu';
 
   @override
-  String get settingsAudioDtsXPassthrough => 'Passthrough DTS:X (DTS UHD).';
+  String get settingsAudioDtsXPassthrough => 'Transferència DTS:X (DTS UHD)';
 
   @override
   String get settingsAudioBitstreamDtsXToExternalDecoder =>

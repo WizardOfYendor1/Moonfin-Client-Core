@@ -12,23 +12,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appTitle => 'Moonfin';
 
   @override
-  String get accountPreferences => 'ACCOUNT PREFERENCES';
+  String get accountPreferences => '';
 
   @override
-  String get interfaceLanguage => 'Interface Language';
+  String get interfaceLanguage => '';
 
   @override
-  String get systemLanguageDefault => 'System Default';
+  String get systemLanguageDefault => '';
 
   @override
   String get signIn => 'Iniciar sesión';
 
   @override
-  String get empty => 'Empty';
+  String get empty => '';
 
   @override
   String connectingToServer(String serverName) {
-    return 'Conectando a $serverName';
+    return 'Conectándose a $serverName';
   }
 
   @override
@@ -70,7 +70,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get whosWatching => '¿Quién es?';
+  String get whosWatching => '¿Quién está viendo?';
 
   @override
   String get addUser => 'Añadir usuario';
@@ -80,14 +80,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String appVersionFooter(String version) {
-    return 'Versión de Moonfin: $version';
+    return 'Versión Moonfin $version';
   }
 
   @override
   String get savedServers => 'Servidores guardados';
 
   @override
-  String get discoveredServers => 'Servidores encontrados';
+  String get discoveredServers => 'Servidores descubiertos';
 
   @override
   String get noneFound => 'Ninguno encontrado';
@@ -99,7 +99,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addServer => 'Añadir servidor';
 
   @override
-  String get embyConnect => 'Conectar Emby';
+  String get embyConnect => 'Emby Conectar';
 
   @override
   String get removeServer => 'Eliminar servidor';
@@ -156,7 +156,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get themeMoonfinSubtitle =>
-      'El aspecto actual de Moonfin que gusta a todos';
+      'Aspecto actual de Moonfin que a todos les encanta';
 
   @override
   String get themeNeonPulse => 'Pulso de neón';
@@ -252,7 +252,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get schedule => 'Programación';
 
   @override
-  String get series => 'Series';
+  String get series => 'Serie';
 
   @override
   String get noItemsFound => 'No se encontraron elementos';
@@ -501,7 +501,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get bookHighlightsDescription =>
-      'Tus libros destacados, favoritos o con progreso de lectura.';
+      'Tus libros con destacados, favoritos o progreso de lectura.';
 
   @override
   String get handPickedFromLibrary => 'Seleccionados de tu biblioteca.';
@@ -512,7 +512,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get booksWithHighlights =>
-      'Libros destacados, favoritos o con progreso de lectura.';
+      'Libros con destacados, favoritos o progreso de lectura.';
 
   @override
   String get jumpBackNarration =>
@@ -839,7 +839,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String endsIn(String time) {
-    return 'Ends in $time';
+    return '';
   }
 
   @override
@@ -2102,23 +2102,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get playerZoomMode => 'Modo de zoom del reproductor';
 
   @override
-  String get settingsScrollWheelAction => 'Mouse scroll wheel';
+  String get settingsScrollWheelAction => '';
 
   @override
-  String get settingsScrollWheelActionDescription =>
-      'Choose what scrolling the mouse wheel over the video does during playback.';
+  String get settingsScrollWheelActionDescription => '';
 
   @override
-  String get scrollWheelActionOff => 'Off';
+  String get scrollWheelActionOff => '';
 
   @override
-  String get scrollWheelActionSeek => 'Seek (forward / back)';
+  String get scrollWheelActionSeek => '';
 
   @override
-  String get scrollWheelActionVolume => 'Volume';
+  String get scrollWheelActionVolume => '';
 
   @override
-  String get playerTooltipVolume => 'Volume';
+  String get playerTooltipVolume => '';
 
   @override
   String get fit => 'Ajustar';
@@ -2772,7 +2771,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mostrar bibliotecas en la barra de herramientas';
 
   @override
-  String get showSeerrButton => 'Show Seerr Button';
+  String get showSeerrButton => '';
 
   @override
   String get navbarOpacity => 'Opacidad de la barra de navegación';
@@ -3032,10 +3031,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Combinar ambas filas en una sola sección del inicio';
 
   @override
-  String get fullScreenRows => 'Expanded Home Rows';
+  String get fullScreenRows => '';
 
   @override
-  String get fullScreenRowsDescription => 'Limit home rows to 1 row per screen';
+  String get fullScreenRowsDescription => '';
 
   @override
   String get perRowImageType => 'Tipo de imagen por fila';
@@ -3050,7 +3049,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get lastUser => 'Último usuario';
 
   @override
-  String get currentUser => 'Current User';
+  String get currentUser => '';
 
   @override
   String get alwaysAuthenticate => 'Siempre autenticar';
@@ -3307,7 +3306,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get networks => 'Redes';
 
   @override
-  String get seerrDiscoveryRows => 'Seerr Discovery Rows';
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults =>
@@ -7023,8 +7022,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mostrar el botón de bibliotecas en la barra de navegación';
 
   @override
-  String get settingsShowSeerrButtonInNavigation =>
-      'Show the Seerr button in the navigation bar';
+  String get settingsShowSeerrButtonInNavigation => '';
 
   @override
   String get settingsLibraryVisibilitySubtitle =>
@@ -7177,16 +7175,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsSkipIntrosAndOutros => '¿Saltar introducciones y finales?';
 
   @override
-  String get settingsMediaSegmentCountdown => 'Media Segment Countdown';
+  String get settingsMediaSegmentCountdown => '';
 
   @override
-  String get settingsProgressBar => 'Progress Bar';
+  String get settingsProgressBar => '';
 
   @override
-  String get settingsTimer => 'Timer';
+  String get settingsTimer => '';
 
   @override
-  String get settingsNone => 'None';
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Preguntar al usuario';
@@ -7446,11 +7444,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Forzar la reproducción sin túnel. Útil en dispositivos con discontinuidades de audio/vídeo de túnel.';
 
   @override
-  String get enableTunnelingTitle => 'Enable tunneling';
+  String get enableTunnelingTitle => '';
 
   @override
-  String get enableTunnelingSubtitle =>
-      'Advanced. Routes audio and video through a coupled hardware path. Off by default because it causes audio/video dropouts on some devices.';
+  String get enableTunnelingSubtitle => '';
 
   @override
   String get mapDolbyVisionP7Title => 'Asigne Dolby Vision perfil 7 a HEVC';
@@ -7552,21 +7549,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get homeRowsSection => 'Filas de inicio';
 
   @override
-  String get homeRowDisplay => 'Home Row Display';
+  String get homeRowDisplay => '';
 
   @override
-  String get homeRowSections => 'Home Row Sections';
+  String get homeRowSections => '';
 
   @override
-  String get homeRowToggles => 'Home Row Toggles';
+  String get homeRowToggles => '';
 
   @override
-  String get homeRowTogglesSubtitle =>
-      'Enable or disable different home row categories';
+  String get homeRowTogglesSubtitle => '';
 
   @override
-  String get homeRowTogglesDescription =>
-      'Enable the following toggles to display the rows in Home Sections.';
+  String get homeRowTogglesDescription => '';
 
   @override
   String get rowsType => 'Tipo de filas';
@@ -7625,25 +7620,22 @@ class AppLocalizationsEs extends AppLocalizations {
       'Muestra películas, series o ambas en las filas de Géneros.';
 
   @override
-  String get displayPlaylistsRows => 'Display Playlist Rows';
+  String get displayPlaylistsRows => '';
 
   @override
-  String get displayPlaylistsRowsSubtitle =>
-      'Show Playlist rows in Home Sections.';
+  String get displayPlaylistsRowsSubtitle => '';
 
   @override
-  String get playlistsRowSorting => 'Playlist Row Sorting';
+  String get playlistsRowSorting => '';
 
   @override
-  String get playlistsRowSortingDescription =>
-      'Sort Playlist rows by date added, release date, alphabetically, and more.';
+  String get playlistsRowSortingDescription => '';
 
   @override
-  String get displaySeerrRows => 'Display Seerr Discovery Rows';
+  String get displaySeerrRows => '';
 
   @override
-  String get displaySeerrRowsSubtitle =>
-      'Show Seerr discovery rows in Home Sections.';
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Apariencia';
@@ -8343,7 +8335,19 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   String get appTitle => 'aleta lunar';
 
   @override
+  String get accountPreferences => '';
+
+  @override
+  String get interfaceLanguage => '';
+
+  @override
+  String get systemLanguageDefault => '';
+
+  @override
   String get signIn => 'Iniciar sesión';
+
+  @override
+  String get empty => '';
 
   @override
   String connectingToServer(String serverName) {
@@ -9150,6 +9154,11 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   @override
   String endsAt(String time) {
     return 'Termina en $time';
+  }
+
+  @override
+  String endsIn(String time) {
+    return '';
   }
 
   @override
@@ -10416,6 +10425,24 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   String get playerZoomMode => 'Modo de zoom del jugador';
 
   @override
+  String get settingsScrollWheelAction => '';
+
+  @override
+  String get settingsScrollWheelActionDescription => '';
+
+  @override
+  String get scrollWheelActionOff => '';
+
+  @override
+  String get scrollWheelActionSeek => '';
+
+  @override
+  String get scrollWheelActionVolume => '';
+
+  @override
+  String get playerTooltipVolume => '';
+
+  @override
   String get fit => 'Adaptar';
 
   @override
@@ -11004,6 +11031,9 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
       'Mostrar bibliotecas en la barra de herramientas';
 
   @override
+  String get showSeerrButton => '';
+
+  @override
   String get navbarOpacity => 'Opacidad de la barra de navegación';
 
   @override
@@ -11262,6 +11292,12 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
       'Combine ambas filas en una sola sección de inicio';
 
   @override
+  String get fullScreenRows => '';
+
+  @override
+  String get fullScreenRowsDescription => '';
+
+  @override
   String get perRowImageType => 'Tipo de imagen por fila';
 
   @override
@@ -11272,6 +11308,9 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
 
   @override
   String get lastUser => 'Último usuario';
+
+  @override
+  String get currentUser => '';
 
   @override
   String get alwaysAuthenticate => 'Autenticar siempre';
@@ -11520,6 +11559,9 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
 
   @override
   String get networks => 'Redes';
+
+  @override
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults =>
@@ -15251,6 +15293,9 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
       'Mostrar el botón de bibliotecas en la barra de navegación';
 
   @override
+  String get settingsShowSeerrButtonInNavigation => '';
+
+  @override
   String get settingsLibraryVisibilitySubtitle =>
       'Alternar la visibilidad de la página de inicio por biblioteca. Reinicie Moonfin para que los cambios surtan efecto.';
 
@@ -15399,6 +15444,18 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
 
   @override
   String get settingsSkipIntrosAndOutros => '¿Saltar introducciones y finales?';
+
+  @override
+  String get settingsMediaSegmentCountdown => '';
+
+  @override
+  String get settingsProgressBar => '';
+
+  @override
+  String get settingsTimer => '';
+
+  @override
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Preguntar al usuario';
@@ -15658,6 +15715,12 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
       'Forzar la reproducción sin túnel. Útil en dispositivos con discontinuidades de audio/vídeo de túnel.';
 
   @override
+  String get enableTunnelingTitle => '';
+
+  @override
+  String get enableTunnelingSubtitle => '';
+
+  @override
   String get mapDolbyVisionP7Title => 'Asigne Dolby Vision perfil 7 a HEVC';
 
   @override
@@ -15757,6 +15820,21 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   String get homeRowsSection => 'Filas de inicio';
 
   @override
+  String get homeRowDisplay => '';
+
+  @override
+  String get homeRowSections => '';
+
+  @override
+  String get homeRowToggles => '';
+
+  @override
+  String get homeRowTogglesSubtitle => '';
+
+  @override
+  String get homeRowTogglesDescription => '';
+
+  @override
   String get rowsType => 'Tipo de filas';
 
   @override
@@ -15811,6 +15889,24 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   @override
   String get genresRowItemsDescription =>
       'Muestra películas, series o ambas en las filas de Géneros.';
+
+  @override
+  String get displayPlaylistsRows => '';
+
+  @override
+  String get displayPlaylistsRowsSubtitle => '';
+
+  @override
+  String get playlistsRowSorting => '';
+
+  @override
+  String get playlistsRowSortingDescription => '';
+
+  @override
+  String get displaySeerrRows => '';
+
+  @override
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Apariencia';
@@ -16365,7 +16461,19 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   String get appTitle => 'aleta lunar';
 
   @override
+  String get accountPreferences => '';
+
+  @override
+  String get interfaceLanguage => '';
+
+  @override
+  String get systemLanguageDefault => '';
+
+  @override
   String get signIn => 'Iniciar sesión';
+
+  @override
+  String get empty => '';
 
   @override
   String connectingToServer(String serverName) {
@@ -17172,6 +17280,11 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   @override
   String endsAt(String time) {
     return 'Termina en $time';
+  }
+
+  @override
+  String endsIn(String time) {
+    return '';
   }
 
   @override
@@ -18438,6 +18551,24 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   String get playerZoomMode => 'Modo de zoom del jugador';
 
   @override
+  String get settingsScrollWheelAction => '';
+
+  @override
+  String get settingsScrollWheelActionDescription => '';
+
+  @override
+  String get scrollWheelActionOff => '';
+
+  @override
+  String get scrollWheelActionSeek => '';
+
+  @override
+  String get scrollWheelActionVolume => '';
+
+  @override
+  String get playerTooltipVolume => '';
+
+  @override
   String get fit => 'Adaptar';
 
   @override
@@ -19026,6 +19157,9 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
       'Mostrar bibliotecas en la barra de herramientas';
 
   @override
+  String get showSeerrButton => '';
+
+  @override
   String get navbarOpacity => 'Opacidad de la barra de navegación';
 
   @override
@@ -19284,6 +19418,12 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
       'Combine ambas filas en una sola sección de inicio';
 
   @override
+  String get fullScreenRows => '';
+
+  @override
+  String get fullScreenRowsDescription => '';
+
+  @override
   String get perRowImageType => 'Tipo de imagen por fila';
 
   @override
@@ -19294,6 +19434,9 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
 
   @override
   String get lastUser => 'Último usuario';
+
+  @override
+  String get currentUser => '';
 
   @override
   String get alwaysAuthenticate => 'Autenticar siempre';
@@ -19542,6 +19685,9 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
 
   @override
   String get networks => 'Redes';
+
+  @override
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults =>
@@ -23273,6 +23419,9 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
       'Mostrar el botón de bibliotecas en la barra de navegación';
 
   @override
+  String get settingsShowSeerrButtonInNavigation => '';
+
+  @override
   String get settingsLibraryVisibilitySubtitle =>
       'Alternar la visibilidad de la página de inicio por biblioteca. Reinicie Moonfin para que los cambios surtan efecto.';
 
@@ -23421,6 +23570,18 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
 
   @override
   String get settingsSkipIntrosAndOutros => '¿Saltar introducciones y finales?';
+
+  @override
+  String get settingsMediaSegmentCountdown => '';
+
+  @override
+  String get settingsProgressBar => '';
+
+  @override
+  String get settingsTimer => '';
+
+  @override
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Preguntar al usuario';
@@ -23680,6 +23841,12 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
       'Forzar la reproducción sin túnel. Útil en dispositivos con discontinuidades de audio/vídeo de túnel.';
 
   @override
+  String get enableTunnelingTitle => '';
+
+  @override
+  String get enableTunnelingSubtitle => '';
+
+  @override
   String get mapDolbyVisionP7Title => 'Asigne Dolby Vision perfil 7 a HEVC';
 
   @override
@@ -23779,6 +23946,21 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   String get homeRowsSection => 'Filas de inicio';
 
   @override
+  String get homeRowDisplay => '';
+
+  @override
+  String get homeRowSections => '';
+
+  @override
+  String get homeRowToggles => '';
+
+  @override
+  String get homeRowTogglesSubtitle => '';
+
+  @override
+  String get homeRowTogglesDescription => '';
+
+  @override
   String get rowsType => 'Tipo de filas';
 
   @override
@@ -23833,6 +24015,24 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   @override
   String get genresRowItemsDescription =>
       'Muestra películas, series o ambas en las filas de Géneros.';
+
+  @override
+  String get displayPlaylistsRows => '';
+
+  @override
+  String get displayPlaylistsRowsSubtitle => '';
+
+  @override
+  String get playlistsRowSorting => '';
+
+  @override
+  String get playlistsRowSortingDescription => '';
+
+  @override
+  String get displaySeerrRows => '';
+
+  @override
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Apariencia';
@@ -24387,7 +24587,19 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   String get appTitle => 'aleta lunar';
 
   @override
+  String get accountPreferences => '';
+
+  @override
+  String get interfaceLanguage => '';
+
+  @override
+  String get systemLanguageDefault => '';
+
+  @override
   String get signIn => 'Iniciar sesión';
+
+  @override
+  String get empty => '';
 
   @override
   String connectingToServer(String serverName) {
@@ -25194,6 +25406,11 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   @override
   String endsAt(String time) {
     return 'Termina en $time';
+  }
+
+  @override
+  String endsIn(String time) {
+    return '';
   }
 
   @override
@@ -26460,6 +26677,24 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   String get playerZoomMode => 'Modo de zoom del jugador';
 
   @override
+  String get settingsScrollWheelAction => '';
+
+  @override
+  String get settingsScrollWheelActionDescription => '';
+
+  @override
+  String get scrollWheelActionOff => '';
+
+  @override
+  String get scrollWheelActionSeek => '';
+
+  @override
+  String get scrollWheelActionVolume => '';
+
+  @override
+  String get playerTooltipVolume => '';
+
+  @override
   String get fit => 'Adaptar';
 
   @override
@@ -27048,6 +27283,9 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
       'Mostrar bibliotecas en la barra de herramientas';
 
   @override
+  String get showSeerrButton => '';
+
+  @override
   String get navbarOpacity => 'Opacidad de la barra de navegación';
 
   @override
@@ -27306,6 +27544,12 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
       'Combine ambas filas en una sola sección de inicio';
 
   @override
+  String get fullScreenRows => '';
+
+  @override
+  String get fullScreenRowsDescription => '';
+
+  @override
   String get perRowImageType => 'Tipo de imagen por fila';
 
   @override
@@ -27316,6 +27560,9 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
 
   @override
   String get lastUser => 'Último usuario';
+
+  @override
+  String get currentUser => '';
 
   @override
   String get alwaysAuthenticate => 'Autenticar siempre';
@@ -27564,6 +27811,9 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
 
   @override
   String get networks => 'Redes';
+
+  @override
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults =>
@@ -31295,6 +31545,9 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
       'Mostrar el botón de bibliotecas en la barra de navegación';
 
   @override
+  String get settingsShowSeerrButtonInNavigation => '';
+
+  @override
   String get settingsLibraryVisibilitySubtitle =>
       'Alternar la visibilidad de la página de inicio por biblioteca. Reinicie Moonfin para que los cambios surtan efecto.';
 
@@ -31443,6 +31696,18 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
 
   @override
   String get settingsSkipIntrosAndOutros => '¿Saltar introducciones y finales?';
+
+  @override
+  String get settingsMediaSegmentCountdown => '';
+
+  @override
+  String get settingsProgressBar => '';
+
+  @override
+  String get settingsTimer => '';
+
+  @override
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Preguntar al usuario';
@@ -31702,6 +31967,12 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
       'Forzar la reproducción sin túnel. Útil en dispositivos con discontinuidades de audio/vídeo de túnel.';
 
   @override
+  String get enableTunnelingTitle => '';
+
+  @override
+  String get enableTunnelingSubtitle => '';
+
+  @override
   String get mapDolbyVisionP7Title => 'Asigne Dolby Vision perfil 7 a HEVC';
 
   @override
@@ -31801,6 +32072,21 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   String get homeRowsSection => 'Filas de inicio';
 
   @override
+  String get homeRowDisplay => '';
+
+  @override
+  String get homeRowSections => '';
+
+  @override
+  String get homeRowToggles => '';
+
+  @override
+  String get homeRowTogglesSubtitle => '';
+
+  @override
+  String get homeRowTogglesDescription => '';
+
+  @override
   String get rowsType => 'Tipo de filas';
 
   @override
@@ -31855,6 +32141,24 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   @override
   String get genresRowItemsDescription =>
       'Muestra películas, series o ambas en las filas de Géneros.';
+
+  @override
+  String get displayPlaylistsRows => '';
+
+  @override
+  String get displayPlaylistsRowsSubtitle => '';
+
+  @override
+  String get playlistsRowSorting => '';
+
+  @override
+  String get playlistsRowSortingDescription => '';
+
+  @override
+  String get displaySeerrRows => '';
+
+  @override
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Apariencia';
@@ -32409,7 +32713,19 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   String get appTitle => 'aleta lunar';
 
   @override
+  String get accountPreferences => '';
+
+  @override
+  String get interfaceLanguage => '';
+
+  @override
+  String get systemLanguageDefault => '';
+
+  @override
   String get signIn => 'Iniciar sesión';
+
+  @override
+  String get empty => '';
 
   @override
   String connectingToServer(String serverName) {
@@ -33216,6 +33532,11 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   @override
   String endsAt(String time) {
     return 'Termina en $time';
+  }
+
+  @override
+  String endsIn(String time) {
+    return '';
   }
 
   @override
@@ -34482,6 +34803,24 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   String get playerZoomMode => 'Modo de zoom del jugador';
 
   @override
+  String get settingsScrollWheelAction => '';
+
+  @override
+  String get settingsScrollWheelActionDescription => '';
+
+  @override
+  String get scrollWheelActionOff => '';
+
+  @override
+  String get scrollWheelActionSeek => '';
+
+  @override
+  String get scrollWheelActionVolume => '';
+
+  @override
+  String get playerTooltipVolume => '';
+
+  @override
   String get fit => 'Adaptar';
 
   @override
@@ -35070,6 +35409,9 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
       'Mostrar bibliotecas en la barra de herramientas';
 
   @override
+  String get showSeerrButton => '';
+
+  @override
   String get navbarOpacity => 'Opacidad de la barra de navegación';
 
   @override
@@ -35328,6 +35670,12 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
       'Combine ambas filas en una sola sección de inicio';
 
   @override
+  String get fullScreenRows => '';
+
+  @override
+  String get fullScreenRowsDescription => '';
+
+  @override
   String get perRowImageType => 'Tipo de imagen por fila';
 
   @override
@@ -35338,6 +35686,9 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
 
   @override
   String get lastUser => 'Último usuario';
+
+  @override
+  String get currentUser => '';
 
   @override
   String get alwaysAuthenticate => 'Autenticar siempre';
@@ -35586,6 +35937,9 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
 
   @override
   String get networks => 'Redes';
+
+  @override
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults =>
@@ -39317,6 +39671,9 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
       'Mostrar el botón de bibliotecas en la barra de navegación';
 
   @override
+  String get settingsShowSeerrButtonInNavigation => '';
+
+  @override
   String get settingsLibraryVisibilitySubtitle =>
       'Alternar la visibilidad de la página de inicio por biblioteca. Reinicie Moonfin para que los cambios surtan efecto.';
 
@@ -39465,6 +39822,18 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
 
   @override
   String get settingsSkipIntrosAndOutros => '¿Saltar introducciones y finales?';
+
+  @override
+  String get settingsMediaSegmentCountdown => '';
+
+  @override
+  String get settingsProgressBar => '';
+
+  @override
+  String get settingsTimer => '';
+
+  @override
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Preguntar al usuario';
@@ -39724,6 +40093,12 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
       'Forzar la reproducción sin túnel. Útil en dispositivos con discontinuidades de audio/vídeo de túnel.';
 
   @override
+  String get enableTunnelingTitle => '';
+
+  @override
+  String get enableTunnelingSubtitle => '';
+
+  @override
   String get mapDolbyVisionP7Title => 'Asigne Dolby Vision perfil 7 a HEVC';
 
   @override
@@ -39823,6 +40198,21 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   String get homeRowsSection => 'Filas de inicio';
 
   @override
+  String get homeRowDisplay => '';
+
+  @override
+  String get homeRowSections => '';
+
+  @override
+  String get homeRowToggles => '';
+
+  @override
+  String get homeRowTogglesSubtitle => '';
+
+  @override
+  String get homeRowTogglesDescription => '';
+
+  @override
   String get rowsType => 'Tipo de filas';
 
   @override
@@ -39877,6 +40267,24 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   @override
   String get genresRowItemsDescription =>
       'Muestra películas, series o ambas en las filas de Géneros.';
+
+  @override
+  String get displayPlaylistsRows => '';
+
+  @override
+  String get displayPlaylistsRowsSubtitle => '';
+
+  @override
+  String get playlistsRowSorting => '';
+
+  @override
+  String get playlistsRowSortingDescription => '';
+
+  @override
+  String get displaySeerrRows => '';
+
+  @override
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Apariencia';

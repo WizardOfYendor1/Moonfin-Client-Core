@@ -2911,7 +2911,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get mediaBarModeDescription =>
-      'Choisissez parmi différents styles de barre multimédia ou désactivez la barre multimédia';
+      'Choisissez Moonfin, MakD ou desactivez la barre media';
 
   @override
   String get mediaBarModeMoonfin => 'Aileron de lune';
@@ -7454,11 +7454,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Forcer la lecture sans tunnel. Utile sur les appareils avec des discontinuités audio/vidéo tunnel.';
 
   @override
-  String get enableTunnelingTitle => 'Enable tunneling';
+  String get enableTunnelingTitle => 'Activer le tunnel vidéo';
 
   @override
   String get enableTunnelingSubtitle =>
-      'Advanced. Routes audio and video through a coupled hardware path. Off by default because it causes audio/video dropouts on some devices.';
+      'Avancé. Achemine l’audio et la vidéo via un passage matériel couplé. Désactivé par défaut, car cela peut provoquer des coupures audio/vidéo sur certains appareils.';
 
   @override
   String get mapDolbyVisionP7Title =>

@@ -9,22 +9,22 @@ class AppLocalizationsDa extends AppLocalizations {
   AppLocalizationsDa([String locale = 'da']) : super(locale);
 
   @override
-  String get appTitle => 'Månefinne';
+  String get appTitle => 'Moonfin';
 
   @override
-  String get accountPreferences => 'ACCOUNT PREFERENCES';
+  String get accountPreferences => 'Kontoindstillinger';
 
   @override
-  String get interfaceLanguage => 'Interface Language';
+  String get interfaceLanguage => 'Sprog i brugerflade';
 
   @override
-  String get systemLanguageDefault => 'System Default';
+  String get systemLanguageDefault => 'Samme som system';
 
   @override
   String get signIn => 'Log ind';
 
   @override
-  String get empty => 'Empty';
+  String get empty => 'Tom';
 
   @override
   String connectingToServer(String serverName) {
@@ -70,13 +70,13 @@ class AppLocalizationsDa extends AppLocalizations {
   }
 
   @override
-  String get whosWatching => 'Hvem ser på?';
+  String get whosWatching => 'Hvem ser med?';
 
   @override
   String get addUser => 'Tilføj bruger';
 
   @override
-  String get selectServer => 'Vælg Server';
+  String get selectServer => 'Vælg server';
 
   @override
   String appVersionFooter(String version) {
@@ -87,7 +87,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get savedServers => 'Gemte servere';
 
   @override
-  String get discoveredServers => 'Opdagede servere';
+  String get discoveredServers => 'Fundne servere';
 
   @override
   String get noneFound => 'Ingen fundet';
@@ -100,7 +100,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get addServer => 'Tilføj server';
 
   @override
-  String get embyConnect => 'Emby Tilslut';
+  String get embyConnect => 'Emby Connect';
 
   @override
   String get removeServer => 'Fjern server';
@@ -111,22 +111,22 @@ class AppLocalizationsDa extends AppLocalizations {
   }
 
   @override
-  String get cancel => 'Ophæve';
+  String get cancel => 'Annullér';
 
   @override
-  String get remove => 'Fjerne';
+  String get remove => 'Fjern';
 
   @override
   String get connectToServer => 'Opret forbindelse til server';
 
   @override
-  String get serverAddress => 'Server adresse';
+  String get serverAddress => 'Server-adresse';
 
   @override
-  String get serverAddressHint => 'https://din-server.example.com';
+  String get serverAddressHint => 'https://din-server.eksempel.dk';
 
   @override
-  String get connect => 'Forbinde';
+  String get connect => 'Forbind';
 
   @override
   String get secureStorageUnavailable =>
@@ -134,7 +134,7 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get secureStorageUnavailableMessage =>
-      'Moonfin kunne ikke få adgang til dit systemnøglering. Login kan fortsætte, men sikker token-opbevaring er muligvis ikke tilgængelig, før nøgleringen er låst op.';
+      'Moonfin kunne ikke få adgang til din systemnøglering. Login kan fortsætte, men sikker token-opbevaring er muligvis ikke tilgængelig, før nøgleringen er låst op.';
 
   @override
   String get ok => 'OK';
@@ -147,21 +147,21 @@ class AppLocalizationsDa extends AppLocalizations {
       'Skift mellem Moonfin og Neon Pulse uden at genstarte appen';
 
   @override
-  String get keyboardPreferSystemIme => 'Foretrækker systemtastatur';
+  String get keyboardPreferSystemIme => 'Foretræk systemtastatur';
 
   @override
   String get keyboardPreferSystemImeDescription =>
       'Brug din enheds inputmetode som standard til tekstindtastning';
 
   @override
-  String get themeMoonfin => 'Månefinne';
+  String get themeMoonfin => 'Moonfin';
 
   @override
   String get themeMoonfinSubtitle =>
-      'Det nuværende Moonfin-look, som du alle er kommet til at elske';
+      'Det nuværende Moonfin-udseende, som alle vil komme til at elske';
 
   @override
-  String get themeNeonPulse => 'Neon puls';
+  String get themeNeonPulse => 'Neon Pulse';
 
   @override
   String get themeNeonPulseSubtitle =>
@@ -831,7 +831,7 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String endsIn(String time) {
-    return 'Ends in $time';
+    return '';
   }
 
   @override
@@ -2084,23 +2084,22 @@ class AppLocalizationsDa extends AppLocalizations {
   String get playerZoomMode => 'Afspillerzoomtilstand';
 
   @override
-  String get settingsScrollWheelAction => 'Mouse scroll wheel';
+  String get settingsScrollWheelAction => '';
 
   @override
-  String get settingsScrollWheelActionDescription =>
-      'Choose what scrolling the mouse wheel over the video does during playback.';
+  String get settingsScrollWheelActionDescription => '';
 
   @override
-  String get scrollWheelActionOff => 'Off';
+  String get scrollWheelActionOff => '';
 
   @override
-  String get scrollWheelActionSeek => 'Seek (forward / back)';
+  String get scrollWheelActionSeek => '';
 
   @override
-  String get scrollWheelActionVolume => 'Volume';
+  String get scrollWheelActionVolume => '';
 
   @override
-  String get playerTooltipVolume => 'Volume';
+  String get playerTooltipVolume => '';
 
   @override
   String get fit => 'Passe';
@@ -2752,7 +2751,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get showLibrariesInToolbar => 'Vis biblioteker i værktøjslinjen';
 
   @override
-  String get showSeerrButton => 'Show Seerr Button';
+  String get showSeerrButton => '';
 
   @override
   String get navbarOpacity => 'Navbar Opacitet';
@@ -3011,10 +3010,10 @@ class AppLocalizationsDa extends AppLocalizations {
       'Kombiner begge rækker til en enkelt hjemmesektion';
 
   @override
-  String get fullScreenRows => 'Expanded Home Rows';
+  String get fullScreenRows => '';
 
   @override
-  String get fullScreenRowsDescription => 'Limit home rows to 1 row per screen';
+  String get fullScreenRowsDescription => '';
 
   @override
   String get perRowImageType => 'Billedtype pr. række';
@@ -3029,7 +3028,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get lastUser => 'Sidste bruger';
 
   @override
-  String get currentUser => 'Current User';
+  String get currentUser => '';
 
   @override
   String get alwaysAuthenticate => 'Autentificer altid';
@@ -3280,7 +3279,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get networks => 'Netværk';
 
   @override
-  String get seerrDiscoveryRows => 'Seerr Discovery Rows';
+  String get seerrDiscoveryRows => '';
 
   @override
   String get resetRowsToDefaults => 'Nulstil rækker til standardindstillinger';
@@ -6953,8 +6952,7 @@ class AppLocalizationsDa extends AppLocalizations {
       'Vis biblioteksknappen i navigationslinjen';
 
   @override
-  String get settingsShowSeerrButtonInNavigation =>
-      'Show the Seerr button in the navigation bar';
+  String get settingsShowSeerrButtonInNavigation => '';
 
   @override
   String get settingsLibraryVisibilitySubtitle =>
@@ -7106,16 +7104,16 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsSkipIntrosAndOutros => 'Springe introer og outros over?';
 
   @override
-  String get settingsMediaSegmentCountdown => 'Media Segment Countdown';
+  String get settingsMediaSegmentCountdown => '';
 
   @override
-  String get settingsProgressBar => 'Progress Bar';
+  String get settingsProgressBar => '';
 
   @override
-  String get settingsTimer => 'Timer';
+  String get settingsTimer => '';
 
   @override
-  String get settingsNone => 'None';
+  String get settingsNone => '';
 
   @override
   String get settingsPromptUser => 'Spørg bruger';
@@ -7372,11 +7370,10 @@ class AppLocalizationsDa extends AppLocalizations {
       'Tving ikke-tunneleret afspilning. Nyttig på enheder med tunnellyd/video-afbrydelser.';
 
   @override
-  String get enableTunnelingTitle => 'Enable tunneling';
+  String get enableTunnelingTitle => '';
 
   @override
-  String get enableTunnelingSubtitle =>
-      'Advanced. Routes audio and video through a coupled hardware path. Off by default because it causes audio/video dropouts on some devices.';
+  String get enableTunnelingSubtitle => '';
 
   @override
   String get mapDolbyVisionP7Title => 'Kort Dolby Vision profil 7 til HEVC';
@@ -7476,21 +7473,19 @@ class AppLocalizationsDa extends AppLocalizations {
   String get homeRowsSection => 'Hjemmerækker';
 
   @override
-  String get homeRowDisplay => 'Home Row Display';
+  String get homeRowDisplay => '';
 
   @override
-  String get homeRowSections => 'Home Row Sections';
+  String get homeRowSections => '';
 
   @override
-  String get homeRowToggles => 'Home Row Toggles';
+  String get homeRowToggles => '';
 
   @override
-  String get homeRowTogglesSubtitle =>
-      'Enable or disable different home row categories';
+  String get homeRowTogglesSubtitle => '';
 
   @override
-  String get homeRowTogglesDescription =>
-      'Enable the following toggles to display the rows in Home Sections.';
+  String get homeRowTogglesDescription => '';
 
   @override
   String get rowsType => 'Rækketype';
@@ -7548,25 +7543,22 @@ class AppLocalizationsDa extends AppLocalizations {
       'Vis film, serier eller begge i genrerækker.';
 
   @override
-  String get displayPlaylistsRows => 'Display Playlist Rows';
+  String get displayPlaylistsRows => '';
 
   @override
-  String get displayPlaylistsRowsSubtitle =>
-      'Show Playlist rows in Home Sections.';
+  String get displayPlaylistsRowsSubtitle => '';
 
   @override
-  String get playlistsRowSorting => 'Playlist Row Sorting';
+  String get playlistsRowSorting => '';
 
   @override
-  String get playlistsRowSortingDescription =>
-      'Sort Playlist rows by date added, release date, alphabetically, and more.';
+  String get playlistsRowSortingDescription => '';
 
   @override
-  String get displaySeerrRows => 'Display Seerr Discovery Rows';
+  String get displaySeerrRows => '';
 
   @override
-  String get displaySeerrRowsSubtitle =>
-      'Show Seerr discovery rows in Home Sections.';
+  String get displaySeerrRowsSubtitle => '';
 
   @override
   String get appearance => 'Udseende';
