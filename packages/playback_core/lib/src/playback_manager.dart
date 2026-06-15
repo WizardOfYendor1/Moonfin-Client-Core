@@ -226,6 +226,7 @@ class PlaybackManager implements AudioOwnable {
     String? mediaType,
     Map<String, String> headers = const {},
     double? normalizationGainDb,
+    String? hybridAudioUrl,
   }) {
     final resolvedMediaType = mediaType?.trim().toLowerCase();
     final audioStream = _defaultAudioStream(mediaStreams);
@@ -241,6 +242,7 @@ class PlaybackManager implements AudioOwnable {
         'audioCodec': (audioStream['Codec'] ?? '').toString(),
         'audioProfile': (audioStream['Profile'] ?? '').toString(),
         if (audioStream['Channels'] is int) 'audioChannels': audioStream['Channels'],
+        if (audioStream['Index'] is int) 'audioStreamIndex': audioStream['Index'],
       },
       if (videoStream != null && videoStream['DvProfile'] is int)
         'videoDvProfile': videoStream['DvProfile'],
@@ -251,6 +253,8 @@ class PlaybackManager implements AudioOwnable {
       if (videoStream != null && videoStream['Height'] is int)
         'videoHeight': videoStream['Height'],
       if (headers.isNotEmpty) 'headers': headers,
+      if (hybridAudioUrl != null && hybridAudioUrl.isNotEmpty)
+        'hybridAudioUrl': hybridAudioUrl,
       'mediaType':
           (resolvedMediaType == 'audio' || resolvedMediaType == 'video')
           ? resolvedMediaType
@@ -1026,6 +1030,7 @@ class PlaybackManager implements AudioOwnable {
         mediaType: resolution.mediaType,
         headers: resolution.requestHeaders,
         normalizationGainDb: resolution.normalizationGainDb,
+        hybridAudioUrl: resolution.hybridAudioUrl,
       );
       await _arbiter?.acquire(AudioProducer.mainPlayback);
       await _backend!.play(

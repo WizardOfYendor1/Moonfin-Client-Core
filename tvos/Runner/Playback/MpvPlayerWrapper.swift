@@ -141,6 +141,27 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     private var playbackQualityProfilePreference: PlaybackQualityProfile = .auto
     private var activeMpvQualityProfile: MPVPlaybackQualityProfile = .compatibility
     private var activeToneMappingMode = "auto"
+    private var audioChannelsMode: String = "auto-safe"
+    private var activeAudioChannelsMode: String = "auto-safe"
+    private var pendingHybridAudioURL: URL?
+    private var pendingHybridAudioHeaders: [String: String] = [:]
+    private var pendingHybridAudioStreamIndex: Int = -1
+    private var audioBridge: AVPlayerAudioBridge?
+    private var clientAudioRemuxer: ClientAudioRemuxer?
+    private var hybridAudioSource = "-"
+    private var hybridAudioActive = false
+    private var activeAudioDisabled = false
+    private var hybridReady = false
+    private var hybridBaseSpeed: Float = 1.0
+    private var hybridReadyTimeout: DispatchWorkItem?
+    private var hybridLastSyncAt: CFAbsoluteTime = 0
+    private var hybridLastHardSeekAt: CFAbsoluteTime = 0
+    private var hybridHardSeekCount = 0
+    private var hybridDriftMsLast: Double = 0
+    private var hybridDriftEma: Double = 0
+    private var hybridDriftEmaSeeded = false
+    private let hybridSyncInterval: CFAbsoluteTime = 0.25
+    private let hybridLipSyncOffset: Double = 0.15
     private var lastRenderTimestamp: CFAbsoluteTime = 0
     private var lastWatchdogWarningAt: CFAbsoluteTime = 0
     private var renderStallCount: Int = 0
@@ -260,6 +281,10 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         if !startMpvPlayback(url.absoluteString, startPosition: startPosition > 0 ? startPosition : nil, audioOnly: audioOnly) {
             logger.error("mpv failed to start playback for \(url.lastPathComponent)")
             state = .error
+            return
+        }
+        if hybridAudioActive && !audioOnly {
+            startHybridBridge(startPosition: startPosition)
         }
     }
 
@@ -280,6 +305,10 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         if !startMpvPlayback(streamUrl, startPosition: startPosition > 0 ? startPosition : nil, audioOnly: audioOnly) {
             logger.error("mpv failed to start playback for stream")
             state = .error
+            return
+        }
+        if hybridAudioActive && !audioOnly {
+            startHybridBridge(startPosition: startPosition)
         }
     }
 
@@ -290,6 +319,21 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     }
 
     func configureDolbyVisionMetadata(profile _: Int?, level _: Int?, blSignalCompatibilityId _: Int?) {}
+
+    func configureAudioChannelsMode(_ mode: String) {
+        audioChannelsMode = mode
+    }
+
+    func configureHybridAudio(url: URL?, headers: [String: String], audioStreamIndex: Int) {
+        if let url {
+            pendingHybridAudioURL = url
+            pendingHybridAudioHeaders = headers
+            pendingHybridAudioStreamIndex = audioStreamIndex
+            hybridAudioActive = true
+        } else {
+            stopHybridAudio()
+        }
+    }
 
     func configurePreferredRenderFramesPerSecond(_ fps: Int?) {
         let normalized = max(0, fps ?? 0)
@@ -337,7 +381,23 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         let estimatedVfFps = engine.getDoubleProperty("estimated-vf-fps").map { String(format: "%.2f", $0) } ?? "unknown"
         let vsyncJitter = engine.getDoubleProperty("vsync-jitter").map { String(format: "%.4f", $0) } ?? "unknown"
 
+        let audioInChannels = engine.getStringProperty("audio-params/channel-count") ?? "unknown"
+        let audioOutChannels = engine.getStringProperty("audio-out-params/channel-count") ?? "unknown"
+        let audioOutHrChannels = engine.getStringProperty("audio-out-params/hr-channels") ?? "unknown"
+        let audioCodec = engine.getStringProperty("audio-codec-name") ?? "unknown"
+        let currentAo = engine.getStringProperty("current-ao") ?? "unknown"
+
         var result: [String: String] = [
+            "mpv_audio_in_channel_count": audioInChannels,
+            "mpv_audio_out_channel_count": audioOutChannels,
+            "mpv_audio_out_hr_channels": audioOutHrChannels,
+            "mpv_audio_codec": audioCodec,
+            "mpv_current_ao": currentAo,
+            "hybrid_active": hybridAudioActive ? "yes" : "no",
+            "hybrid_audio_source": hybridAudioSource,
+            "hybrid_drift_ms": String(format: "%.1f", hybridDriftMsLast),
+            "hybrid_hard_seeks": "\(hybridHardSeekCount)",
+            "hybrid_avplayer_status": audioBridge?.statusLabel ?? "none",
             "mpv_dynamic_range_telemetry": "available",
             "mpv_intent_content_range": requestedContentRange.rawValue,
             "mpv_intent_sink_hdr_capable": sinkIsHdrCapable ? "true" : "false",
@@ -414,6 +474,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
 
     func pause() {
         cancelMpvResumeGate()
+        if hybridAudioActive { audioBridge?.pause() }
         _ = engine?.setPause(true)
         state = .paused
         nowPlaying.updatePlaybackState(
@@ -422,6 +483,14 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
 
     func resume() {
         cancelMpvResumeGate()
+        if hybridAudioActive {
+            hybridDriftEmaSeeded = false
+            if !hybridReady {
+                state = .buffering(0.25)
+                return
+            }
+            audioBridge?.resume()
+        }
         _ = engine?.setPause(false)
         state = .playing
         nowPlaying.updatePlaybackState(
@@ -437,6 +506,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
 
     func stopPlaybackOnly() {
         cancelMpvResumeGate()
+        stopHybridAudio()
         _ = engine?.stopPlayback()
         stopRenderScheduler()
         activePlaybackURL = nil
@@ -461,20 +531,42 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     }
 
     func seek(to seconds: TimeInterval) {
+        if hybridAudioActive, let bridge = audioBridge {
+            hybridDriftEmaSeeded = false
+            bridge.seek(to: seconds) { [weak self] _ in
+                _ = self?.engine?.seekAbsolute(seconds)
+            }
+            publishPlaybackPosition(seconds, force: true)
+            return
+        }
         _ = engine?.seekAbsolute(seconds)
         publishPlaybackPosition(seconds, force: true)
     }
 
     func seekBy(_ delta: TimeInterval) {
+        if hybridAudioActive, let bridge = audioBridge {
+            seek(to: max(0, bridge.currentTime + delta))
+            return
+        }
         _ = engine?.seekRelative(delta)
     }
 
     func seekToPosition(_ pos: Float) {
         let target = TimeInterval(max(0, min(1, pos))) * duration
+        if hybridAudioActive {
+            seek(to: target)
+            return
+        }
         _ = engine?.seekAbsolute(target)
     }
 
     func setRate(_ newRate: Float) {
+        if hybridAudioActive {
+            hybridBaseSpeed = newRate
+            audioBridge?.setRate(newRate)
+            rate = newRate
+            return
+        }
         _ = engine?.setSpeed(newRate)
         rate = newRate
     }
@@ -572,6 +664,189 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             }
             audioSessionActive = true
         } catch {}
+    }
+
+    private func startHybridBridge(startPosition: TimeInterval) {
+        guard hybridAudioActive else { return }
+        hybridReady = false
+        hybridBaseSpeed = 1.0
+        hybridHardSeekCount = 0
+        hybridDriftEmaSeeded = false
+        hybridAudioSource = "-"
+        pendingMpvStartPosition = nil
+        _ = engine?.setPause(true)
+        let source = activePlaybackURL
+        let audioIndex = pendingHybridAudioStreamIndex
+        let serverURL = pendingHybridAudioURL
+        Task { @MainActor in
+            var resolvedURL: URL?
+            if FFmpegAvailability.isAvailable, let source, !source.isEmpty {
+                let remuxer = ClientAudioRemuxer()
+                self.clientAudioRemuxer = remuxer
+                resolvedURL = await remuxer.start(
+                    sourceURL: source, audioStreamIndex: audioIndex)
+                if resolvedURL != nil {
+                    self.hybridAudioSource = "client"
+                } else {
+                    remuxer.stop()
+                    self.clientAudioRemuxer = nil
+                }
+            }
+            if resolvedURL == nil {
+                resolvedURL = serverURL
+                if resolvedURL != nil { self.hybridAudioSource = "server" }
+            }
+            guard self.hybridAudioActive else { return }
+            guard let audioURL = resolvedURL else {
+                self.fallbackFromHybrid("hybrid_no_audio_source")
+                return
+            }
+            self.attachHybridBridge(url: audioURL, startPosition: startPosition)
+        }
+    }
+
+    private func attachHybridBridge(url: URL, startPosition: TimeInterval) {
+        let bridge = AVPlayerAudioBridge()
+        audioBridge = bridge
+        bridge.onReady = { [weak self] in Task { @MainActor in self?.onHybridAudioReady() } }
+        bridge.onStall = { [weak self] in Task { @MainActor in self?.onHybridAudioStall() } }
+        bridge.onKeepUp = { [weak self] in Task { @MainActor in self?.onHybridAudioKeepUp() } }
+        bridge.onEnded = { [weak self] in Task { @MainActor in self?.onHybridAudioEnded() } }
+        bridge.onFailed = { [weak self] reason in
+            Task { @MainActor in self?.fallbackFromHybrid(reason) }
+        }
+        bridge.configure(
+            url: url, headers: pendingHybridAudioHeaders, startPosition: startPosition)
+
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, self.hybridAudioActive, !self.hybridReady else { return }
+            self.fallbackFromHybrid("hybrid_audio_ready_timeout")
+        }
+        hybridReadyTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0, execute: timeout)
+    }
+
+    private func onHybridAudioReady() {
+        guard hybridAudioActive, let bridge = audioBridge else { return }
+        hybridReadyTimeout?.cancel()
+        hybridReady = true
+        _ = engine?.seekAbsolute(bridge.currentTime)
+        _ = engine?.setSpeed(hybridBaseSpeed)
+        if state != .paused {
+            bridge.play()
+            _ = engine?.setPause(false)
+            state = .playing
+        }
+    }
+
+    private func onHybridAudioStall() {
+        guard hybridAudioActive else { return }
+        _ = engine?.setPause(true)
+        if state == .playing { state = .buffering(0.25) }
+    }
+
+    private func onHybridAudioKeepUp() {
+        guard hybridAudioActive, state != .paused else { return }
+        audioBridge?.play()
+        _ = engine?.setPause(false)
+        if case .buffering = state { state = .playing }
+    }
+
+    private func onHybridAudioEnded() {
+        guard hybridAudioActive else { return }
+        state = .ended
+    }
+
+    private func hybridSyncTick() {
+        guard hybridAudioActive, hybridReady, let engine, let bridge = audioBridge else { return }
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - hybridLastSyncAt >= hybridSyncInterval else { return }
+        hybridLastSyncAt = now
+        let audioClock = bridge.currentTime
+        publishPlaybackPosition(audioClock)
+        guard let videoPos = engine.getDoubleProperty("time-pos"), videoPos.isFinite else { return }
+        let target = audioClock - hybridLipSyncOffset
+        let rawDrift = videoPos - target
+        if hybridDriftEmaSeeded {
+            hybridDriftEma = hybridDriftEma * 0.6 + rawDrift * 0.4
+        } else {
+            hybridDriftEma = rawDrift
+            hybridDriftEmaSeeded = true
+        }
+        let drift = hybridDriftEma
+        hybridDriftMsLast = drift * 1000
+        let absDrift = abs(drift)
+        if absDrift > 0.75 {
+            if now - hybridLastHardSeekAt > 1.0 {
+                _ = engine.seekAbsolute(max(0, target))
+                _ = engine.setSpeed(hybridBaseSpeed)
+                hybridLastHardSeekAt = now
+                hybridHardSeekCount += 1
+                hybridDriftEmaSeeded = false
+            }
+        } else if absDrift > 0.03 {
+            let nudged = Double(hybridBaseSpeed) - 0.5 * drift
+            let clamped = min(
+                Double(hybridBaseSpeed) * 1.02, max(Double(hybridBaseSpeed) * 0.98, nudged))
+            _ = engine.setSpeed(Float(clamped))
+        } else {
+            _ = engine.setSpeed(hybridBaseSpeed)
+        }
+    }
+
+    private func fallbackFromHybrid(_ reason: String) {
+        guard hybridAudioActive else { return }
+        hybridReadyTimeout?.cancel()
+        audioBridge?.stop()
+        audioBridge = nil
+
+        if hybridAudioSource == "client", let serverURL = pendingHybridAudioURL {
+            clientAudioRemuxer?.stop()
+            clientAudioRemuxer = nil
+            hybridReady = false
+            hybridDriftEmaSeeded = false
+            hybridAudioSource = "server"
+            attachHybridBridge(url: serverURL, startPosition: snapshotPlaybackPosition())
+            return
+        }
+
+        let resumeAt = snapshotPlaybackPosition()
+        clientAudioRemuxer?.stop()
+        clientAudioRemuxer = nil
+        hybridAudioActive = false
+        hybridReady = false
+        pendingHybridAudioURL = nil
+        hybridDriftEmaSeeded = false
+        updatePlaybackBackend(identifier: "mpv", fallbackReason: reason)
+        guard let url = activePlaybackURL else { return }
+        pendingMpvStartPosition = resumeAt > 0 ? resumeAt : nil
+        resetEngine()
+        let intent = resolveOutputIntent()
+        if ensureEngine(profile: activeProfile, outputIntent: intent) {
+            _ = engine?.setPause(false)
+            if engine?.loadFile(url) == true {
+                engine?.applySubtitleStyle(mpvSubtitleOptions)
+                applyDynamicRangeIntent()
+                state = .opening
+                startRenderScheduler()
+            }
+        }
+    }
+
+    private func stopHybridAudio() {
+        hybridReadyTimeout?.cancel()
+        hybridReadyTimeout = nil
+        audioBridge?.stop()
+        audioBridge = nil
+        clientAudioRemuxer?.stop()
+        clientAudioRemuxer = nil
+        hybridAudioActive = false
+        hybridReady = false
+        pendingHybridAudioURL = nil
+        hybridAudioSource = "-"
+        hybridDriftEmaSeeded = false
+        hybridHardSeekCount = 0
+        hybridDriftMsLast = 0
     }
 
     private func startMpvPlayback(_ url: String, startPosition: TimeInterval?, audioOnly: Bool = false) -> Bool {
@@ -705,7 +980,9 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         if let engine,
            activeProfile == profile,
            activeOutputIntent == outputIntent,
-           activeMpvQualityProfile == qualityProfile {
+           activeMpvQualityProfile == qualityProfile,
+           activeAudioChannelsMode == audioChannelsMode,
+           activeAudioDisabled == hybridAudioActive {
             return engine.isReady
         }
 
@@ -715,6 +992,8 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             renderProfile: profile,
             outputIntent: outputIntent,
             qualityProfile: qualityProfile,
+            audioChannelsMode: audioChannelsMode,
+            audioDisabled: hybridAudioActive,
             drawableHandle: audioOnly ? nil : videoSurface.drawableHandle,
             updateHandler: { [weak self] in
                 DispatchQueue.main.async {
@@ -733,6 +1012,8 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         activeProfile = profile
         activeOutputIntent = outputIntent
         activeMpvQualityProfile = qualityProfile
+        activeAudioChannelsMode = audioChannelsMode
+        activeAudioDisabled = hybridAudioActive
         return true
     }
 
@@ -887,6 +1168,10 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
                 self.applyEvent(event)
             }
             lastRenderTimestamp = CFAbsoluteTimeGetCurrent()
+        }
+
+        if hybridAudioActive {
+            hybridSyncTick()
         }
 
         let now = CFAbsoluteTimeGetCurrent()
@@ -1690,7 +1975,7 @@ private final class MPVEngine {
     var isReady: Bool { handle != nil }
     private(set) var lastInitError: String?
 
-    init(renderProfile: MPVRenderProfile, outputIntent: MPVOutputIntent = .auto, qualityProfile: MPVPlaybackQualityProfile = .compatibility, drawableHandle: UInt64?, updateHandler: @escaping () -> Void) {
+    init(renderProfile: MPVRenderProfile, outputIntent: MPVOutputIntent = .auto, qualityProfile: MPVPlaybackQualityProfile = .compatibility, audioChannelsMode: String = "auto-safe", audioDisabled: Bool = false, drawableHandle: UInt64?, updateHandler: @escaping () -> Void) {
         guard let created = mpv_create() else { return }
 
         if let drawableHandle {
@@ -1765,6 +2050,12 @@ private final class MPVEngine {
 
         _ = setOptionString("network-timeout", value: "120", on: created)
         _ = setOptionString("user-agent", value: "Moonfin-tvOS/\(AppConstants.clientVersion)", on: created)
+        _ = setOptionString("audio-channels", value: audioChannelsMode, on: created)
+        initDiagnostics["audio_channels_mode"] = audioChannelsMode
+        if audioDisabled {
+            _ = setOptionString("aid", value: "no", on: created)
+            initDiagnostics["aid"] = "no"
+        }
 
         switch renderProfile {
         case .metal:

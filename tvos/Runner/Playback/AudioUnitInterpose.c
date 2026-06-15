@@ -17,6 +17,10 @@ static OSStatus (*orig_AudioUnitGetPropertyInfo)(AudioUnit, AudioUnitPropertyID,
 static OSStatus (*orig_AudioUnitGetProperty)(AudioUnit, AudioUnitPropertyID,
     AudioUnitScope, AudioUnitElement, void *, UInt32 *) = NULL;
 
+volatile uint32_t gMoonfinInterposeHitCount = 0;
+volatile uint32_t gMoonfinInterposeLastChannels = 0;
+volatile uint32_t gMoonfinInterposeLastTag = 0;
+
 static OSStatus patched_AudioUnitGetPropertyInfo(
     AudioUnit inUnit,
     AudioUnitPropertyID inID,
@@ -68,6 +72,7 @@ static OSStatus patched_AudioUnitGetProperty(
             asbd.mChannelsPerFrame > 0) {
             channels = asbd.mChannelsPerFrame;
         }
+        if (channels == 0 || channels > 8) channels = 2;
 
         AudioChannelLayout *layout = (AudioChannelLayout *)outData;
         memset(layout, 0, sizeof(AudioChannelLayout));
@@ -78,7 +83,12 @@ static OSStatus patched_AudioUnitGetProperty(
             case 8:  layout->mChannelLayoutTag = kAudioChannelLayoutTag_MPEG_7_1_C; break;
             default: layout->mChannelLayoutTag = kAudioChannelLayoutTag_DiscreteInOrder | channels; break;
         }
+        layout->mNumberChannelDescriptions = 0;
+        layout->mChannelBitmap = 0;
         *ioDataSize = (UInt32)sizeof(AudioChannelLayout);
+        gMoonfinInterposeLastChannels = channels;
+        gMoonfinInterposeLastTag = layout->mChannelLayoutTag;
+        gMoonfinInterposeHitCount++;
         return noErr;
     }
 

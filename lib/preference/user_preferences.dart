@@ -872,6 +872,11 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: false,
   );
 
+  static final appleTvHybridAtmosEnabled = Preference(
+    key: 'pref_appletv_hybrid_atmos',
+    defaultValue: true,
+  );
+
   static final audioPrefsAutoDetected = Preference(
     key: 'pref_audio_caps_auto_detected',
     defaultValue: false,

@@ -229,6 +229,11 @@ class AppleTvMpvBackend implements PlayerBackend {
       'audioCodec': payload['audioCodec']?.toString(),
       'audioProfile': payload['audioProfile']?.toString(),
       'audioChannels': payload['audioChannels'],
+      'audioChannelsMode': _resolveAudioChannelsMode(
+        (payload['audioChannels'] as num?)?.toInt() ?? 0,
+      ),
+      'hybridAudioUrl': ?_resolveHybridAudioUrl(payload),
+      'hybridAudioStreamIndex': (payload['audioStreamIndex'] as num?)?.toInt() ?? -1,
       'nativeDvEnabled': _nativeDvDecodeEnabled,
       'atmosPassthrough':
           _prefs.resolveEac3JocPassthroughEnabled() ||
@@ -315,6 +320,42 @@ class AppleTvMpvBackend implements PlayerBackend {
   bool get _nativeDvDecodeEnabled =>
       _prefs.get(UserPreferences.dolbyVisionProfile7DirectPlayBehavior) !=
       DolbyVisionProfile7DirectPlayBehavior.disabled;
+
+  String _resolveAudioChannelsMode(int contentChannels) {
+    if (_prefs.resolveAudioOutputMode() == AudioOutputMode.forceStereo) {
+      return 'stereo';
+    }
+    final profile = PlatformDetection.hasAudioCapabilities
+        ? AudioCapabilityProfile.fromMap(
+            PlatformDetection.audioCapabilitiesSnapshot,
+          )
+        : const AudioCapabilityProfile.optimistic();
+    if (profile.maxPcmChannels <= 2) {
+      return 'stereo';
+    }
+    if (profile.activeRouteType == AudioRouteType.hdmi &&
+        profile.maxPcmChannels == 8 &&
+        contentChannels > 0 &&
+        contentChannels < 8) {
+      return '7.1';
+    }
+    return 'auto-safe';
+  }
+
+  bool _hybridAtmosEligible(Map<dynamic, dynamic> payload) {
+    if (!_prefs.get(UserPreferences.appleTvHybridAtmosEnabled)) return false;
+    final codec = (payload['audioCodec']?.toString() ?? '').toLowerCase();
+    if (codec != 'eac3') return false;
+    final channels = (payload['audioChannels'] as num?)?.toInt() ?? 0;
+    return channels > 2;
+  }
+
+  String? _resolveHybridAudioUrl(Map<dynamic, dynamic> payload) {
+    if (!_hybridAtmosEligible(payload)) return null;
+    final url = payload['hybridAudioUrl']?.toString();
+    if (url == null || url.isEmpty) return null;
+    return url;
+  }
 
   @override
   Map<String, dynamic> getDeviceProfile({

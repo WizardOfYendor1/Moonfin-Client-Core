@@ -34,6 +34,10 @@
 		9DAC7F059A7480839BA11950 /* SubtitleOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8241334D38FB25BD2E009065 /* SubtitleOverlay.swift */; };
 		9F8983DDEF9A4015C052340A /* PlaybackSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3890B80B269CACDD79E803ED /* PlaybackSurfaceView.swift */; };
 		A0A9A43E975A45351F5BAC7A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4AA2EEAB62F9513C16D8925F /* Foundation.framework */; };
+		AB10AD10AD10AD10AD100001 /* AVPlayerAudioBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10AD10AD10AD10AD100002 /* AVPlayerAudioBridge.swift */; };
+		AB10AD10AD10AD10AD100011 /* ClientAudioRemux.m in Sources */ = {isa = PBXBuildFile; fileRef = AB10AD10AD10AD10AD100012 /* ClientAudioRemux.m */; };
+		AB10AD10AD10AD10AD100013 /* ClientAudioRemuxer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10AD10AD10AD10AD100014 /* ClientAudioRemuxer.swift */; };
+		AB10AD10AD10AD10AD100015 /* LoopbackHTTPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10AD10AD10AD10AD100016 /* LoopbackHTTPServer.swift */; };
 		AD10AD10AD10AD10AD100001 /* AppleTvAudioChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD10AD10AD10AD10AD100002 /* AppleTvAudioChannel.swift */; };
 		C557DEB3826898C325D08A5A /* AppleTvVideoChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C7E472F4F533204C68EA04 /* AppleTvVideoChannel.swift */; };
 		D806D8D63D0DFDE94D61895A /* TVServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69C2A2281BE7FC2256E62A2C /* TVServices.framework */; };
@@ -112,6 +116,11 @@
 		9D8FB1F102374E32454EA3D4 /* SubtitleDecoder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SubtitleDecoder.swift; sourceTree = "<group>"; };
 		A0D05FC70CE4F8BD2EC3962C /* AppleTvSystemChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleTvSystemChannel.swift; sourceTree = "<group>"; };
 		AAA000000000000000000003 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
+		AB10AD10AD10AD10AD100002 /* AVPlayerAudioBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AVPlayerAudioBridge.swift; sourceTree = "<group>"; };
+		AB10AD10AD10AD10AD100010 /* ClientAudioRemux.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = ClientAudioRemux.h; sourceTree = "<group>"; };
+		AB10AD10AD10AD10AD100012 /* ClientAudioRemux.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = ClientAudioRemux.m; sourceTree = "<group>"; };
+		AB10AD10AD10AD10AD100014 /* ClientAudioRemuxer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClientAudioRemuxer.swift; sourceTree = "<group>"; };
+		AB10AD10AD10AD10AD100016 /* LoopbackHTTPServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LoopbackHTTPServer.swift; sourceTree = "<group>"; };
 		ABB61EC1F545441192DA6CA2 /* NativeVideoSurface.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NativeVideoSurface.swift; sourceTree = "<group>"; };
 		ACEF4B8C13F871646DA3AA02 /* ServiceProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServiceProvider.swift; sourceTree = "<group>"; };
 		AD10AD10AD10AD10AD100002 /* AppleTvAudioChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleTvAudioChannel.swift; sourceTree = "<group>"; };
@@ -165,6 +174,10 @@
 				9D8FB1F102374E32454EA3D4 /* SubtitleDecoder.swift */,
 				8241334D38FB25BD2E009065 /* SubtitleOverlay.swift */,
 				99109D0268859C9931C2BB69 /* DisplayCriteriaManager.swift */,
+				AB10AD10AD10AD10AD100010 /* ClientAudioRemux.h */,
+				AB10AD10AD10AD10AD100012 /* ClientAudioRemux.m */,
+				AB10AD10AD10AD10AD100014 /* ClientAudioRemuxer.swift */,
+				AB10AD10AD10AD10AD100016 /* LoopbackHTTPServer.swift */,
 			);
 			path = Native;
 			sourceTree = "<group>";
@@ -187,6 +200,7 @@
 				2B21837790FBF0F01F83A222 /* AudioUnitInterpose.c */,
 				801CE2E73F4BC2A1B34A231A /* MoonfinTvosStubs.swift */,
 				89E585754437193C3D9997B9 /* MpvPlayerWrapper.swift */,
+				AB10AD10AD10AD10AD100002 /* AVPlayerAudioBridge.swift */,
 				3890B80B269CACDD79E803ED /* PlaybackSurfaceView.swift */,
 				2508F7D351997BD3CFD96028 /* Native */,
 			);
@@ -483,12 +497,16 @@
 				4E5A5870850C50C8C2179B09 /* AudioUnitInterpose.c in Sources */,
 				19D9E6BE3FA8EE28B6403EF0 /* MoonfinTvosStubs.swift in Sources */,
 				392FA88E3B70132920CBF0FF /* MpvPlayerWrapper.swift in Sources */,
+				AB10AD10AD10AD10AD100001 /* AVPlayerAudioBridge.swift in Sources */,
 				9F8983DDEF9A4015C052340A /* PlaybackSurfaceView.swift in Sources */,
 				8557BDEED1364C160FDCCA78 /* FFDemuxer.swift in Sources */,
 				2B65D00E1B996987D1068274 /* VTDecoder.swift in Sources */,
 				4AFB7564397FC850A08E65BA /* AudioRenderer.swift in Sources */,
 				0316DD643E79331004E6F08B /* NativeVideoSurface.swift in Sources */,
 				6BDB0CA2F17384360FC7A86A /* NativePlayerWrapper.swift in Sources */,
+				AB10AD10AD10AD10AD100011 /* ClientAudioRemux.m in Sources */,
+				AB10AD10AD10AD10AD100013 /* ClientAudioRemuxer.swift in Sources */,
+				AB10AD10AD10AD10AD100015 /* LoopbackHTTPServer.swift in Sources */,
 				7BC8A8140C07EF63D219CAE4 /* SubtitleDecoder.swift in Sources */,
 				9DAC7F059A7480839BA11950 /* SubtitleOverlay.swift in Sources */,
 				3E667EB6FA1A725FA86597C7 /* DisplayCriteriaManager.swift in Sources */,

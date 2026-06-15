@@ -261,6 +261,7 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         let audioCodec = (args["audioCodec"] as? String ?? "").lowercased()
         let audioProfile = (args["audioProfile"] as? String ?? "").lowercased()
         let audioChannels = (args["audioChannels"] as? NSNumber)?.intValue ?? 0
+        let audioChannelsMode = (args["audioChannelsMode"] as? String) ?? "auto-safe"
         let rangeType = (args["videoRangeType"] as? String ?? "").uppercased()
         let isDolbyVision =
             rangeType.contains("DOVI") || rangeType.contains("DOLBYVISION")
@@ -297,6 +298,23 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
                 contentRange: VideoCapabilityDetector.dynamicRange(
                     fromRangeType: args["videoRangeType"] as? String),
                 sinkIsHdrCapable: VideoCapabilityDetector.displaySupportsHdr())
+        }
+
+        player.configureAudioChannelsMode(audioChannelsMode)
+
+        if !audioOnly,
+            let hybridUrlStr = args["hybridAudioUrl"] as? String,
+            !hybridUrlStr.isEmpty,
+            let hybridUrl = URL(string: hybridUrlStr) {
+            var hybridHeaders: [String: String] = [:]
+            if let raw = args["headers"] as? [String: Any] {
+                for (key, value) in raw { hybridHeaders[key] = "\(value)" }
+            }
+            let hybridIndex = (args["hybridAudioStreamIndex"] as? NSNumber)?.intValue ?? -1
+            player.configureHybridAudio(
+                url: hybridUrl, headers: hybridHeaders, audioStreamIndex: hybridIndex)
+        } else {
+            player.configureHybridAudio(url: nil, headers: [:], audioStreamIndex: -1)
         }
 
         Task {

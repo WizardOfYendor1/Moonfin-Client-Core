@@ -35,6 +35,7 @@ class StreamResolutionResult {
   final List<Map<String, dynamic>> mediaStreams;
   final int? selectedAudioStreamIndex;
   final List<String> transcodingReasons;
+  final String? hybridAudioUrl;
 
   const StreamResolutionResult({
     required this.streamUrl,
@@ -51,5 +52,6 @@ class StreamResolutionResult {
     this.mediaStreams = const [],
     this.selectedAudioStreamIndex,
     this.transcodingReasons = const [],
+    this.hybridAudioUrl,
   });
 }

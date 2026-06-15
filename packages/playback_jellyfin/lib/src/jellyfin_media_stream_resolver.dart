@@ -127,6 +127,18 @@ class JellyfinMediaStreamResolver implements MediaStreamResolver {
         ? _buildRequestHeaders()
         : const <String, String>{};
 
+    final hasEac3Audio = source.mediaStreams.any((stream) =>
+        stream['Type'] == 'Audio' &&
+        (stream['Codec']?.toString().toLowerCase() ?? '') == 'eac3');
+    final hybridAudioUrl = (hasVideoStream && hasEac3Audio)
+        ? _buildHybridAudioRemuxUrl(
+            itemId,
+            source,
+            info.playSessionId,
+            source.defaultAudioStreamIndex,
+          )
+        : null;
+
     return StreamResolutionResult(
       streamUrl: url,
       mediaSourceId: source.id,
@@ -142,7 +154,32 @@ class JellyfinMediaStreamResolver implements MediaStreamResolver {
       mediaStreams: source.mediaStreams,
       selectedAudioStreamIndex: source.defaultAudioStreamIndex,
       transcodingReasons: source.transcodingReasons,
+      hybridAudioUrl: hybridAudioUrl,
     );
+  }
+
+  String? _buildHybridAudioRemuxUrl(
+    String itemId,
+    PlaybackMediaSource source,
+    String? playSessionId,
+    int? audioStreamIndex,
+  ) {
+    if (itemId.isEmpty) return null;
+    final params = <String, String>{
+      'AudioCodec': 'copy',
+      'SegmentContainer': 'mp4',
+      'AllowAudioStreamCopy': 'true',
+      'EnableAutoStreamCopy': 'true',
+      if (source.id.isNotEmpty) 'MediaSourceId': source.id,
+      if (playSessionId != null && playSessionId.isNotEmpty)
+        'PlaySessionId': playSessionId,
+      if (_client.deviceInfo.id.isNotEmpty) 'DeviceId': _client.deviceInfo.id,
+      if (audioStreamIndex != null) 'AudioStreamIndex': '$audioStreamIndex',
+    };
+    final query = params.entries
+        .map((entry) => '${entry.key}=${Uri.encodeQueryComponent(entry.value)}')
+        .join('&');
+    return _appendAuth('${_client.baseUrl}/Audio/$itemId/main.m3u8?$query');
   }
 
   PlaybackMediaSource _selectBestSource(

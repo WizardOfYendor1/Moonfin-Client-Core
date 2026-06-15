@@ -1,3 +1,4 @@
+import AVFoundation
 import QuartzCore
 import UIKit
 
@@ -1743,6 +1744,17 @@ final class AppleTvPlayerViewController: UIViewController {
         if let edrBefore = dc["dc_edr_before"] {
             rows.append(("EDR Before Switch", edrBefore))
         }
+
+        let session = AVAudioSession.sharedInstance()
+        rows.append(("Max Output Channels", "\(session.maximumOutputNumberOfChannels)"))
+        let routeChannels = session.currentRoute.outputs.reduce(0) {
+            $0 + ($1.channels?.count ?? 0)
+        }
+        rows.append(("Route Channels", "\(routeChannels)"))
+        rows.append(("Interpose Hits", "\(gMoonfinInterposeHitCount)"))
+        rows.append(("Interpose Last Ch", "\(gMoonfinInterposeLastChannels)"))
+        rows.append(
+            ("Interpose Last Tag", String(format: "0x%08X", gMoonfinInterposeLastTag)))
         return rows
     }
 
@@ -1790,6 +1802,30 @@ final class AppleTvPlayerViewController: UIViewController {
         }
         if let v = value("mpv_decoder_frame_drop_count") {
             rows.append(("Decoder Drops", v))
+        }
+        if let v = pair("mpv_audio_in_channel_count", "mpv_audio_out_channel_count") {
+            rows.append(("Audio In/Out Ch", v))
+        }
+        if let v = value("mpv_audio_out_hr_channels") {
+            rows.append(("Audio HR Channels", v))
+        }
+        if let v = value("mpv_audio_codec") { rows.append(("Audio Codec", v)) }
+        if let v = value("mpv_current_ao") { rows.append(("Audio Output (AO)", v)) }
+        if let v = value("mpv_init_audio_channels_mode") {
+            rows.append(("Audio Channels Mode", v))
+        }
+        if telemetry["hybrid_active"] == "yes" {
+            rows.append(("Hybrid Audio", "active"))
+            if let v = value("hybrid_audio_source") {
+                rows.append(("Hybrid Source", v))
+            }
+            if let v = value("hybrid_avplayer_status") {
+                rows.append(("AVPlayer Status", v))
+            }
+            if let v = value("hybrid_drift_ms") { rows.append(("Hybrid Drift (ms)", v)) }
+            if let v = value("hybrid_hard_seeks") {
+                rows.append(("Hybrid Hard Seeks", v))
+            }
         }
 
         return rows
