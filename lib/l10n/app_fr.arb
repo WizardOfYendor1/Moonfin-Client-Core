@@ -7357,5 +7357,13 @@
     "autoHdrSwitchingDescription": "Activez automatiquement le HDR pour la lecture vidéo HDR et restaurez le mode d'affichage à la sortie.",
     "whenFullscreen": "En plein écran",
     "transcodingLimits": "Limites de transcodage",
-    "settingsSupportMoonfinSubtitle": "Offrez un café au développeur"
+    "settingsSupportMoonfinSubtitle": "Offrez un café au développeur",
+    "enableTunnelingSubtitle": "Avancé. Achemine l’audio et la vidéo via un passage matériel couplé. Désactivé par défaut, car cela peut provoquer des coupures audio/vidéo sur certains appareils.",
+    "@enableTunnelingSubtitle": {
+        "description": "Setting subtitle for enable tunneling"
+    },
+    "enableTunnelingTitle": "Activer le tunnel vidéo",
+    "@enableTunnelingTitle": {
+        "description": "Setting title: enable tunneled video playback (advanced)"
+    }
 }
