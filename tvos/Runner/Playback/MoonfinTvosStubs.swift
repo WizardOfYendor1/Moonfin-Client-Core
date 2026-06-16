@@ -75,6 +75,10 @@ enum VideoCapabilityDetector {
         return supportsHdr10 && activeScreen().traitCollection.displayGamut == .P3
     }
 
+    static func outputProvidesHdr() -> Bool {
+        return displaySupportsHdr() && activeScreen().potentialEDRHeadroom > 1.0
+    }
+
     static func dynamicRange(fromRangeType rangeType: String?) -> VideoDynamicRange {
         let value = (rangeType ?? "").uppercased()
         if value.contains("DOVI") || value.contains("DOLBYVISION") { return .dolbyVision }

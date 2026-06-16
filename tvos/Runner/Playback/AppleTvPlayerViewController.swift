@@ -1790,6 +1790,9 @@ final class AppleTvPlayerViewController: UIViewController {
         if let v = value("mpv_intent_sink_hdr_capable") {
             rows.append(("Display HDR Capable", v))
         }
+        if let v = value("mpv_intent_output_provides_hdr") {
+            rows.append(("Output HDR Active", v))
+        }
         if let v = value("mpv_intent_content_range") {
             rows.append(("Content Range", v))
         }

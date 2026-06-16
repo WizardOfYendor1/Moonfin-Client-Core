@@ -360,6 +360,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
                 "mpv_dynamic_range_telemetry": "no_engine",
                 "mpv_intent_content_range": requestedContentRange.rawValue,
                 "mpv_intent_sink_hdr_capable": sinkIsHdrCapable ? "true" : "false",
+                "mpv_intent_output_provides_hdr": VideoCapabilityDetector.outputProvidesHdr() ? "true" : "false",
                 "mpv_intent_tone_mapping": activeToneMappingMode,
                 "mpv_color_pipeline_restorations": "\(mpvColorPipelineRestoreCount)"
             ]
@@ -410,6 +411,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
             "mpv_dynamic_range_telemetry": "available",
             "mpv_intent_content_range": requestedContentRange.rawValue,
             "mpv_intent_sink_hdr_capable": sinkIsHdrCapable ? "true" : "false",
+            "mpv_intent_output_provides_hdr": VideoCapabilityDetector.outputProvidesHdr() ? "true" : "false",
             "mpv_sink_generation": detectedSinkGeneration.rawValue,
             "mpv_quality_profile_preference": playbackQualityProfilePreference.rawValue,
             "mpv_quality_profile_resolved": resolvedMpvQualityProfile().rawValue,
@@ -993,7 +995,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     private func resolveOutputIntent() -> MPVOutputIntent {
         switch requestedContentRange {
         case .dolbyVision, .hdr10, .hlg, .hdr10Plus:
-            return sinkIsHdrCapable ? .hdr : .sdr
+            return VideoCapabilityDetector.outputProvidesHdr() ? .hdr : .sdr
         case .sdr, .unknown:
             return .auto
         }
@@ -1422,7 +1424,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         let isHdr = gamma == "pq" || gamma == "hlg"
             || primaries == "bt.2020" || primaries == "display-p3"
         if isHdr {
-            return sinkIsHdrCapable ? .hdr : .sdr
+            return VideoCapabilityDetector.outputProvidesHdr() ? .hdr : .sdr
         }
         return .auto
     }
