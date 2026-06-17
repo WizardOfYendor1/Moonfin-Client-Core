@@ -24,7 +24,6 @@ import 'ui/navigation/app_router.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/theme/app_theme_controller.dart';
 import 'ui/widgets/cast_mini_player.dart';
-import 'ui/widgets/mini_audio_player.dart';
 import 'ui/widgets/offline_banner.dart';
 import 'ui/widgets/exit_confirmation_dialog.dart';
 import 'ui/screensaver/screensaver_controller.dart';
@@ -159,8 +158,6 @@ class _MoonfinAppState extends State<MoonfinApp> {
                                 child: child ?? const SizedBox.shrink(),
                               ),
                             ),
-                            if (!hidePlayer)
-                              const RepaintBoundary(child: MiniAudioPlayer()),
                             if (!hidePlayer)
                               const RepaintBoundary(child: CastMiniPlayer()),
                           ],

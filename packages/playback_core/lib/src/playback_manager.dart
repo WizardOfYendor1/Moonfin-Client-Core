@@ -398,6 +398,22 @@ class PlaybackManager implements AudioOwnable {
   @override
   Future<void> onAudioRevoked(RevokeReason reason) async {
     if (reason == RevokeReason.background) {
+      final item = queueService.currentItem;
+      bool isAudio = false;
+      try {
+        isAudio = item?.isAudioLike == true;
+      } catch (_) {}
+      if (!isAudio && item is String) {
+        try {
+          final meta = currentOfflineMetadata;
+          if (meta != null) {
+            final type = meta['Type']?.toString();
+            final mediaType = meta['MediaType']?.toString();
+            isAudio = type == 'Audio' || type == 'AudioBook' || mediaType == 'Audio';
+          }
+        } catch (_) {}
+      }
+      if (isAudio) return;
       await pause();
     } else {
       await stop(userInitiated: false);

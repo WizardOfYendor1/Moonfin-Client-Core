@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:playback_core/playback_core.dart';
 
+import '../data/models/aggregated_item.dart';
 import '../util/platform_detection.dart';
 
 class PlaybackLifecycleHandler with WidgetsBindingObserver {
@@ -23,6 +24,21 @@ class PlaybackLifecycleHandler with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final currentItem = _manager.queueService.currentItem;
+    bool isAudio = false;
+    if (currentItem is AggregatedItem) {
+      isAudio = currentItem.isAudioLike;
+    } else if (currentItem is String) {
+      final meta = _manager.currentOfflineMetadata;
+      if (meta != null) {
+        final type = meta['Type']?.toString();
+        final mediaType = meta['MediaType']?.toString();
+        isAudio = type == 'Audio' || type == 'AudioBook' || mediaType == 'Audio';
+      }
+    }
+    if (isAudio) {
+      return;
+    }
     switch (state) {
       case AppLifecycleState.inactive:
         if (PlatformDetection.isMobile) _saveState();
