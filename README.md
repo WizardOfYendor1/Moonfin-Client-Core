@@ -373,8 +373,6 @@ Control other Jellyfin devices on your network directly from Moonfin.
 
 ## Phones
 <img width="23%" height="2244" alt="12" src="https://github.com/user-attachments/assets/8bcc0483-a650-43e3-91fb-b9d3b4c57440" />
-<img width="23%" height="2244" alt="13" src="https://github.com/user-attachments/assets/4455fc3e-997d-4e89-b915-09987158466f" />
-<img width="23%" height="2244" alt="15" src="https://github.com/user-attachments/assets/65ed881e-1738-478d-8df9-0a36b35574a4" />
 <img width="23%" height="2244" alt="14" src="https://github.com/user-attachments/assets/1813ac6b-546e-4796-b4a8-15fe006d4c9e" />
 <img width="23%" height="2244" alt="16" src="https://github.com/user-attachments/assets/7601662d-08cb-45da-a4db-4f0d139248dc" />
 <img width="23%" height="2244" alt="19" src="https://github.com/user-attachments/assets/83ff8582-1380-404a-9ee2-9721a6f3209f" />
