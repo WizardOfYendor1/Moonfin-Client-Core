@@ -6511,7 +6511,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Alle anzeigen';

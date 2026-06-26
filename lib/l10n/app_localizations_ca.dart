@@ -6553,7 +6553,6 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Veure-ho tot';

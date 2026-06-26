@@ -17,7 +17,7 @@ class MoonfinStatusResponse {
   final bool enabled;
   final bool authenticated;
   final String? url;
-  final int? jellyseerrUserId;
+  final int? seerrUserId;
   final String? displayName;
   final String? avatar;
   final int permissions;
@@ -28,7 +28,7 @@ class MoonfinStatusResponse {
     this.enabled = false,
     this.authenticated = false,
     this.url,
-    this.jellyseerrUserId,
+    this.seerrUserId,
     this.displayName,
     this.avatar,
     this.permissions = 0,
@@ -64,7 +64,7 @@ class MoonfinLoginRequest {
 class MoonfinLoginResponse {
   final bool success;
   final String? error;
-  final int? jellyseerrUserId;
+  final int? seerrUserId;
   final String? displayName;
   final String? avatar;
   final int permissions;
@@ -72,7 +72,7 @@ class MoonfinLoginResponse {
   const MoonfinLoginResponse({
     this.success = false,
     this.error,
-    this.jellyseerrUserId,
+    this.seerrUserId,
     this.displayName,
     this.avatar,
     this.permissions = 0,

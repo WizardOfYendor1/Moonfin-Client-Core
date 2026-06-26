@@ -6501,7 +6501,6 @@ class AppLocalizationsRo extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Vezi toate';

@@ -6270,7 +6270,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => '查看全部';
@@ -14148,7 +14147,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => '看全部';

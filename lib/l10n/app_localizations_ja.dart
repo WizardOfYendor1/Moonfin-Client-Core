@@ -6314,7 +6314,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'すべて見る';

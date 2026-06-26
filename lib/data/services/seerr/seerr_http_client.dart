@@ -1,31 +1,18 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 
 import '../log_service.dart';
-import 'seerr_cookie_jar.dart';
 import 'seerr_models.dart';
 
 class SeerrHttpClient {
-  final String baseUrl;
-  final String apiKey;
-  final SeerrCookieJar cookieJar;
-
-  MoonfinProxyConfig? proxyConfig;
-
-  bool get isProxyMode => proxyConfig != null;
+  final MoonfinProxyConfig proxyConfig;
 
   late final Dio _dio;
 
-  SeerrHttpClient({
-    required this.baseUrl,
-    required this.apiKey,
-    required this.cookieJar,
-    this.proxyConfig,
-  }) {
+  SeerrHttpClient({required this.proxyConfig}) {
     _dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
@@ -36,19 +23,19 @@ class SeerrHttpClient {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        _log?.network('→ ${options.method} ${options.uri}');
+        _log?.network('-> ${options.method} ${options.uri}');
         handler.next(options);
       },
       onResponse: (response, handler) {
         _log?.network(
-          '← ${response.statusCode} ${response.requestOptions.method} '
+          '<- ${response.statusCode} ${response.requestOptions.method} '
           '${response.requestOptions.uri}',
         );
         handler.next(response);
       },
       onError: (error, handler) {
         _log?.network(
-          '✗ ${error.requestOptions.method} ${error.requestOptions.uri} '
+          'x ${error.requestOptions.method} ${error.requestOptions.uri} '
           '(${error.response?.statusCode ?? error.type.name})',
           level: LogLevel.error,
           error: error.message ?? error.toString(),
@@ -56,7 +43,6 @@ class SeerrHttpClient {
         handler.next(error);
       },
     ));
-    _dio.interceptors.add(CookieManager(cookieJar));
     _dio.interceptors.add(_ProxyUnwrapInterceptor());
   }
 
@@ -69,28 +55,17 @@ class SeerrHttpClient {
       path.startsWith('/') ? path.substring(1) : path;
 
   String _apiUrl(String path) {
-    final proxy = proxyConfig;
-    if (proxy != null) {
-      return '${proxy.jellyfinBaseUrl}/Moonfin/Jellyseerr/Api/${_trimSlash(path)}';
-    }
-    return '$baseUrl/api/v1/${_trimSlash(path)}';
+    return '${proxyConfig.jellyfinBaseUrl}/Moonfin/Seerr/Api/${_trimSlash(path)}';
   }
 
   String _moonfinUrl(String path) {
-    final proxy = proxyConfig;
-    if (proxy == null) throw StateError('Moonfin proxy not configured');
-    return '${proxy.jellyfinBaseUrl}/Moonfin/Jellyseerr/${_trimSlash(path)}';
+    return '${proxyConfig.jellyfinBaseUrl}/Moonfin/Seerr/${_trimSlash(path)}';
   }
 
   Options _authOptions([Options? existing]) {
-    final headers = <String, dynamic>{};
-    final proxy = proxyConfig;
-    if (proxy != null) {
-      headers['Authorization'] = 'MediaBrowser Token="${proxy.jellyfinToken}"';
-    } else if (apiKey.isNotEmpty) {
-      headers['X-Api-Key'] = apiKey;
-    }
-
+    final headers = <String, dynamic>{
+      'Authorization': 'MediaBrowser Token="${proxyConfig.jellyfinToken}"',
+    };
     if (existing != null) {
       return existing.copyWith(headers: {...?existing.headers, ...headers});
     }
@@ -101,40 +76,6 @@ class SeerrHttpClient {
     return _authOptions(existing).copyWith(
       contentType: Headers.jsonContentType,
     );
-  }
-
-  Future<String?> _fetchCsrfToken(String endpoint) async {
-    if (isProxyMode) return null;
-    try {
-      await _dio.get(
-        '$baseUrl$endpoint',
-        options: _authOptions(),
-      );
-      final token = cookieJar.getCsrfToken(Uri.parse(baseUrl).host);
-      _log?.seerr(
-        'CSRF token ${token == null ? 'not present' : 'acquired'} '
-        'for $endpoint',
-      );
-      return token;
-    } catch (e) {
-      debugPrint('[Seerr] CSRF fetch failed (non-critical): $e');
-      _log?.seerr(
-        'CSRF fetch failed for $endpoint (non-critical)',
-        level: LogLevel.warning,
-        error: e,
-      );
-      return null;
-    }
-  }
-
-  Options _withCsrf(String? csrfToken, [Options? base]) {
-    final options = base ?? _authJsonOptions();
-    if (csrfToken == null) return options;
-    return options.copyWith(headers: {
-      ...?options.headers,
-      'X-CSRF-Token': csrfToken,
-      'X-XSRF-TOKEN': csrfToken,
-    });
   }
 
   void _requireSuccess(Response response, String context) {
@@ -154,16 +95,6 @@ class SeerrHttpClient {
     );
     _requireSuccess(response, 'getCurrentUser');
     return response.data as Map<String, dynamic>;
-  }
-
-  Future<String> regenerateApiKey() async {
-    final csrfToken = await _fetchCsrfToken('/api/v1/settings/main/regenerate');
-    final response = await _dio.post(
-      _apiUrl('settings/main/regenerate'),
-      options: _withCsrf(csrfToken, _authOptions()),
-    );
-    _requireSuccess(response, 'regenerateApiKey');
-    return SeerrMainSettings.fromJson(response.data as Map<String, dynamic>).apiKey;
   }
 
   Future<Map<String, dynamic>> getRequests({
@@ -205,8 +136,6 @@ class SeerrHttpClient {
     String? rootFolder,
     int? serverId,
   }) async {
-    final csrfToken = await _fetchCsrfToken('/api/v1/request');
-
     final body = <String, dynamic>{
       'mediaId': mediaId,
       'mediaType': mediaType,
@@ -227,17 +156,16 @@ class SeerrHttpClient {
     final response = await _dio.post(
       _apiUrl('request'),
       data: body,
-      options: _withCsrf(csrfToken),
+      options: _authJsonOptions(),
     );
     _requireSuccess(response, 'createRequest');
     return response.data as Map<String, dynamic>;
   }
 
   Future<void> deleteRequest(int requestId) async {
-    final csrfToken = await _fetchCsrfToken('/api/v1/request/$requestId');
     final response = await _dio.delete(
       _apiUrl('request/$requestId'),
-      options: _withCsrf(csrfToken, _authOptions()),
+      options: _authOptions(),
     );
     _requireSuccess(response, 'deleteRequest');
   }
@@ -264,10 +192,9 @@ class SeerrHttpClient {
     required String opName,
   }) async {
     final endpoint = 'request/$requestId/$action';
-    final csrfToken = await _fetchCsrfToken('/api/v1/$endpoint');
     final response = await _dio.post(
       _apiUrl(endpoint),
-      options: _withCsrf(csrfToken),
+      options: _authJsonOptions(),
     );
     _requireSuccess(response, opName);
   }
@@ -649,7 +576,7 @@ class _ProxyUnwrapInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     final path = response.requestOptions.path;
-    if (!path.contains('/Moonfin/Jellyseerr/Api/')) {
+    if (!path.contains('/Moonfin/Seerr/Api/')) {
       return handler.next(response);
     }
 

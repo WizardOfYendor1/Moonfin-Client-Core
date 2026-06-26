@@ -6587,7 +6587,6 @@
       "count": {"type": "int"}
     }
   },
-  "jellyseerr": "Jellyseerr",
   "seeAll": "See All",
   "noItems": "No items",
   "switchUser": "Switch User",

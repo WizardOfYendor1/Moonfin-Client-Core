@@ -241,12 +241,12 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
       final displayName = seerrPrefs.moonfinDisplayName.trim();
       final label = displayName.isNotEmpty
           ? displayName
-          : (seerrPrefs.isSeerrVariant ? l10n.seerr : l10n.jellyseerr);
+          : (seerrPrefs.isSeerrVariant ? l10n.seerr : l10n.seerr);
       actions.add(
         _BottomNavAction(
           iconBuilder: (size, color) => seerrPrefs.isSeerrVariant
               ? SeerrIcon(size: size, color: color)
-              : JellyseerrIcon(size: size, color: color),
+              : SeerrIcon(size: size, color: color),
           label: label,
           isActive: _isActive(Destinations.seerrDiscover),
           onTap: () {

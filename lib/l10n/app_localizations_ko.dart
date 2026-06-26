@@ -6306,7 +6306,6 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => '모두 보기';

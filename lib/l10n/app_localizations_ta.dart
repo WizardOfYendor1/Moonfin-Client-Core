@@ -6512,7 +6512,6 @@ class AppLocalizationsTa extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'அனைத்தையும் பார்க்கவும்';

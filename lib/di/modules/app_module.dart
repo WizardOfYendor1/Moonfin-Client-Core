@@ -2,7 +2,6 @@ import 'package:get_it/get_it.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:playback_core/playback_core.dart';
 import 'package:server_core/server_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../auth/repositories/session_repository.dart';
 import '../../auth/store/authentication_store.dart';
@@ -31,7 +30,6 @@ import '../../data/services/cast/remote_session_cast_provider.dart';
 import '../../data/services/home_screen_sections_service.dart';
 import '../../data/services/plugin_sync_service.dart';
 import '../../data/services/row_data_source.dart';
-import '../../data/services/seerr/seerr_cookie_jar.dart';
 import '../../data/services/socket_handler.dart';
 import '../../data/services/sync_service.dart';
 import '../../data/services/theme_music_service.dart';
@@ -71,9 +69,6 @@ void resetUserScopedSingletons() {
 }
 
 void registerAppModule() {
-  _getIt.registerLazySingletonAsync(
-    () async => SeerrCookieJar(await SharedPreferences.getInstance()),
-  );
   _getIt.registerLazySingleton(() => SocketHandler());
   _getIt.registerLazySingleton(
     () => BackgroundService(),
@@ -202,7 +197,6 @@ void _registerUserScopedSingletons() {
     () async => SeerrRepository(
       _getIt<PreferenceStore>(),
       _getIt<SessionRepository>(),
-      await _getIt.getAsync<SeerrCookieJar>(),
       _getIt<MediaServerClient>(),
     ),
   );

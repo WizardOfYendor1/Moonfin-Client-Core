@@ -6490,7 +6490,6 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Bekijk alles';

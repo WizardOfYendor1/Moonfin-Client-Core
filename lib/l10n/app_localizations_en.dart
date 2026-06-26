@@ -6415,7 +6415,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Jellyseerr';
 
   @override
   String get seeAll => 'See All';
@@ -14528,7 +14527,6 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'See All';

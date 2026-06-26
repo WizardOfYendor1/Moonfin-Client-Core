@@ -6506,7 +6506,6 @@ class AppLocalizationsKn extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ';

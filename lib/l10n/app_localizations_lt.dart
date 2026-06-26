@@ -6480,7 +6480,6 @@ class AppLocalizationsLt extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Žiūrėti viską';

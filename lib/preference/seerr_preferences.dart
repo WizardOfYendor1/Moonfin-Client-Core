@@ -17,8 +17,8 @@ class SeerrPreferences {
 
     static String normalizeVariant(String? value) {
         final normalized = value?.trim().toLowerCase() ?? '';
-        if (normalized == 'jellyseerr' || normalized == 'jelly') {
-            return 'jellyseerr';
+        if (normalized == 'seerr' || normalized == 'jelly') {
+            return 'seerr';
         }
         return 'seerr';
     }

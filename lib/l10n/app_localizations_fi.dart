@@ -6487,7 +6487,6 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Katso kaikki';

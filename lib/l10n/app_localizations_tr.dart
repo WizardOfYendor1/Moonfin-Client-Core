@@ -6477,7 +6477,6 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Tümünü Gör';

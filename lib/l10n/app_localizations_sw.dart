@@ -6507,7 +6507,6 @@ class AppLocalizationsSw extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Tazama Yote';

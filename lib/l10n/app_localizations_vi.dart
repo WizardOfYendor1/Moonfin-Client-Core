@@ -6472,7 +6472,6 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Xem Tất Cả';

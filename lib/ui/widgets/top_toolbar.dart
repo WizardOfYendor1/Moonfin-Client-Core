@@ -754,7 +754,7 @@ class _TopToolbarState extends State<TopToolbar> {
     final seerrDisplayName = seerrPrefs.moonfinDisplayName.trim();
     final seerrNavLabel = seerrDisplayName.isNotEmpty
       ? seerrDisplayName
-      : (seerrPrefs.isSeerrVariant ? l10n.seerr : l10n.jellyseerr);
+      : (seerrPrefs.isSeerrVariant ? l10n.seerr : l10n.seerr);
     final useAndroidTvInlineLibraries =
         PlatformDetection.isAndroid &&
         PlatformDetection.isTV &&
@@ -911,7 +911,7 @@ class _TopToolbarState extends State<TopToolbar> {
                       baseColor: nextNavColor(),
                       iconBuilder: (size, color) => seerrPrefs.isSeerrVariant
                           ? SeerrIcon(size: size, color: color)
-                          : JellyseerrIcon(size: size, color: color),
+                          : SeerrIcon(size: size, color: color),
                       label: seerrNavLabel,
                       onPressed: () {
                         if (_isActive(Destinations.seerrDiscover)) return;

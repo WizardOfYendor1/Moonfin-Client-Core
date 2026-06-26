@@ -6517,7 +6517,6 @@ class AppLocalizationsBg extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Вижте всички';

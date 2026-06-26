@@ -6447,7 +6447,6 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'सभी देखें';

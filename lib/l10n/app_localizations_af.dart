@@ -6469,7 +6469,6 @@ class AppLocalizationsAf extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Sien Alles';

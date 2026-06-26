@@ -6487,7 +6487,6 @@ class AppLocalizationsSl extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Poglej vse';

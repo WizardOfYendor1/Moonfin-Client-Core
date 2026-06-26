@@ -6517,7 +6517,6 @@ class AppLocalizationsSq extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Shih të gjitha';

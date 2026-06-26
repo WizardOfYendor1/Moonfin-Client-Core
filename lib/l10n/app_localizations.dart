@@ -11530,12 +11530,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, one {# row discovered} other {# rows discovered}}'**
   String integrationRowsDiscoveredCount(int count);
 
-  /// No description provided for @jellyseerr.
-  ///
-  /// In en, this message translates to:
-  /// **'Jellyseerr'**
-  String get jellyseerr;
-
   /// No description provided for @seeAll.
   ///
   /// In en, this message translates to:

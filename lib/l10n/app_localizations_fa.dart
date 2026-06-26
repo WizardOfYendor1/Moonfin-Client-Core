@@ -6430,7 +6430,6 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'مشاهده همه';

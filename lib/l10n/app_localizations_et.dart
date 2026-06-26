@@ -6471,7 +6471,6 @@ class AppLocalizationsEt extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Vaata kõiki';

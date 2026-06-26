@@ -6474,7 +6474,6 @@ class AppLocalizationsUg extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'ھەممىنى كۆرۈڭ';

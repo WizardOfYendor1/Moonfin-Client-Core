@@ -764,7 +764,7 @@ class _LeftSidebarState extends State<LeftSidebar> {
     final seerrDisplayName = seerrPrefs.moonfinDisplayName.trim();
     final seerrNavLabel = seerrDisplayName.isNotEmpty
       ? seerrDisplayName
-      : (seerrPrefs.isSeerrVariant ? l10n.seerr : l10n.jellyseerr);
+      : (seerrPrefs.isSeerrVariant ? l10n.seerr : l10n.seerr);
     final clockBehavior = _prefs.get(UserPreferences.clockBehavior);
     final showClock =
         clockBehavior == ClockBehavior.always ||
@@ -923,7 +923,7 @@ class _LeftSidebarState extends State<LeftSidebar> {
                     baseColor: nextMainSidebarColor(),
                     iconBuilder: (size, color) => seerrPrefs.isSeerrVariant
                         ? SeerrIcon(size: size, color: color)
-                        : JellyseerrIcon(size: size, color: color),
+                        : SeerrIcon(size: size, color: color),
                     label: seerrNavLabel,
                     showLabel: _showLabels,
                     onPressed: () {

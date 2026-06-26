@@ -6468,7 +6468,6 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Zobrazit vše';

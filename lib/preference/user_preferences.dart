@@ -31,7 +31,20 @@ class UserPreferences extends ChangeNotifier {
   UserPreferences(this._store) {
     _migrateOverlayPreferences();
     _migrateDefaultAudioLanguagePreference();
+    _migrateSeerrPreferenceKeys();
     _enforceMediaQueuingAlwaysOn();
+  }
+
+  // Carry over the pre-rename jellyseerr* preference keys to their seerr* names.
+  void _migrateSeerrPreferenceKeys() {
+    const legacyBlockNsfw = 'jellyseerrBlockNsfw';
+    if (_store.containsKey(legacyBlockNsfw) &&
+        !_store.containsKey(seerrBlockNsfw.key)) {
+      _store.set(
+        seerrBlockNsfw,
+        _store.get(Preference(key: legacyBlockNsfw, defaultValue: false)),
+      );
+    }
   }
 
   void _migrateOverlayPreferences() {
@@ -187,7 +200,7 @@ class UserPreferences extends ChangeNotifier {
     'enableEpisodeRatings',
     'tmdbApiKey',
     'seerrEnabled',
-    'jellyseerrBlockNsfw',
+    'seerrBlockNsfw',
     'enabledRatings',
     'home_sections_config',
     'pref_audio_display_latest',
@@ -1532,8 +1545,8 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: false,
   );
 
-  static final jellyseerrBlockNsfw = Preference(
-    key: 'jellyseerrBlockNsfw',
+  static final seerrBlockNsfw = Preference(
+    key: 'seerrBlockNsfw',
     defaultValue: false,
   );
 

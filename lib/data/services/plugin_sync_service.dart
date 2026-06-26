@@ -205,12 +205,12 @@ class PluginSyncService extends ChangeNotifier {
 
       _pluginAvailable = true;
       _pluginVersion = _readString(pingResult, 'version');
-      _seerrUrl = _readString(pingResult, 'jellyseerrUrl');
-      _seerrEnabled = _readBool(pingResult, 'jellyseerrEnabled') ?? false;
+      _seerrUrl = _readString(pingResult, 'seerrUrl');
+      _seerrEnabled = _readBool(pingResult, 'seerrEnabled') ?? false;
       _mdblistAvailable = _readBool(pingResult, 'mdblistAvailable') ?? false;
       _tmdbAvailable = _readBool(pingResult, 'tmdbAvailable') ?? false;
 
-      final seerrConfig = await _fetchJellyseerrConfig(client);
+      final seerrConfig = await _fetchSeerrConfig(client);
       if (seerrConfig != null) {
         _seerrInfoAvailable = true;
         _seerrUrl = _readString(seerrConfig, 'url') ?? _seerrUrl;
@@ -569,7 +569,7 @@ class PluginSyncService extends ChangeNotifier {
     return null;
   }
 
-  Future<Map<String, dynamic>?> _fetchJellyseerrConfig(
+  Future<Map<String, dynamic>?> _fetchSeerrConfig(
     MediaServerClient client,
   ) async {
     final headers = _authHeaders(client);
@@ -577,7 +577,7 @@ class PluginSyncService extends ChangeNotifier {
 
     try {
       final response = await _dio.get(
-        '${client.baseUrl}/Moonfin/Jellyseerr/Config',
+        '${client.baseUrl}/Moonfin/Seerr/Config',
         options: Options(headers: headers),
       );
       if (response.data is Map<String, dynamic>) {
@@ -1094,11 +1094,11 @@ class PluginSyncService extends ChangeNotifier {
       );
       _applyString(resolved, 'tmdbApiKey', UserPreferences.tmdbApiKey);
 
-      _applyBool(resolved, 'jellyseerrEnabled', UserPreferences.seerrEnabled);
+      _applyBool(resolved, 'seerrEnabled', UserPreferences.seerrEnabled);
       _applyBool(
         resolved,
-        'jellyseerrBlockNsfw',
-        UserPreferences.jellyseerrBlockNsfw,
+        'seerrBlockNsfw',
+        UserPreferences.seerrBlockNsfw,
       );
 
       if (resolved['mdblistRatingSources'] is List) {
@@ -1150,8 +1150,8 @@ class PluginSyncService extends ChangeNotifier {
         }
       }
 
-      if (resolved['jellyseerrRows'] is Map<String, dynamic>) {
-        final rowsData = resolved['jellyseerrRows'] as Map<String, dynamic>;
+      if (resolved['seerrRows'] is Map<String, dynamic>) {
+        final rowsData = resolved['seerrRows'] as Map<String, dynamic>;
         if (rowsData['rowOrder'] is List) {
           final serverOrder = (rowsData['rowOrder'] as List).cast<String>();
           if (serverOrder.isNotEmpty) {
@@ -1446,14 +1446,14 @@ class PluginSyncService extends ChangeNotifier {
         UserPreferences.enableEpisodeRatings,
       ),
       'tmdbApiKey': _prefs.get(UserPreferences.tmdbApiKey),
-      'jellyseerrEnabled': _prefs.get(UserPreferences.seerrEnabled),
-      'jellyseerrBlockNsfw': _prefs.get(UserPreferences.jellyseerrBlockNsfw),
+      'seerrEnabled': _prefs.get(UserPreferences.seerrEnabled),
+      'seerrBlockNsfw': _prefs.get(UserPreferences.seerrBlockNsfw),
       'mdblistRatingSources': _csvToList(UserPreferences.enabledRatings),
       'homeRowOrder': _prefs.homeSectionsConfig
           .where((c) => c.enabled)
           .map((c) => c.type.serializedName)
           .toList(),
-      'jellyseerrRows': {
+      'seerrRows': {
         'rowOrder': _seerrPrefs.activeRows
             .map((t) => t.serializedName)
             .toList(),

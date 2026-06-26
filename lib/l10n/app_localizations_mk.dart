@@ -6505,7 +6505,6 @@ class AppLocalizationsMk extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Види ги сите';

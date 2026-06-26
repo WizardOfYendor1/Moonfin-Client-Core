@@ -6275,7 +6275,6 @@ class AppLocalizationsYue extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => '看全部';
@@ -14194,7 +14193,6 @@ class AppLocalizationsYueCn extends AppLocalizationsYue {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => '查看全部';
@@ -21853,7 +21851,6 @@ class AppLocalizationsYueHk extends AppLocalizationsYue {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => '看全部';

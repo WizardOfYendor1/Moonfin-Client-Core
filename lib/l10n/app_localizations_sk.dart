@@ -6489,7 +6489,6 @@ class AppLocalizationsSk extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Zobraziť všetko';

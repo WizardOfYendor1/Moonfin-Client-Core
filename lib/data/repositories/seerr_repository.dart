@@ -3,14 +3,12 @@ import 'package:server_core/server_core.dart';
 
 import '../../auth/repositories/session_repository.dart';
 import '../services/seerr/seerr_api_models.dart';
-import '../services/seerr/seerr_cookie_jar.dart';
 import '../services/seerr/seerr_http_client.dart';
 import '../services/seerr/seerr_models.dart';
 
 class SeerrRepository {
   final PreferenceStore _store;
   final SessionRepository _session;
-  final SeerrCookieJar _cookieJar;
   final MediaServerClient _client;
 
   SeerrHttpClient? _httpClient;
@@ -27,7 +25,7 @@ class SeerrRepository {
   bool get isAvailable => _isAvailable;
   bool get isMoonfinMode => _isMoonfinMode;
 
-  SeerrRepository(this._store, this._session, this._cookieJar, this._client);
+  SeerrRepository(this._store, this._session, this._client);
 
   String _userKey(String key) {
     final uid = _session.activeUserId ?? '';
@@ -35,8 +33,6 @@ class SeerrRepository {
   }
 
   String get _enabledKey => _userKey('enabled');
-  String get _serverUrlKey => _userKey('server_url');
-  String get _apiKeyKey => _userKey('api_key');
   String get _authMethodKey => _userKey('auth_method');
   String get _moonfinModeKey => _userKey('moonfin_mode');
   String get _moonfinDisplayNameKey => _userKey('moonfin_display_name');
@@ -77,7 +73,6 @@ class SeerrRepository {
         return;
       }
 
-      _cookieJar.switchToUser(currentUserId);
       _lastUserId = currentUserId;
 
       await _initMoonfinMode();
@@ -96,13 +91,10 @@ class SeerrRepository {
       return;
     }
 
-    final proxyConfig = MoonfinProxyConfig(
+    _initClient(MoonfinProxyConfig(
       jellyfinBaseUrl: baseUrl,
       jellyfinToken: token,
-    );
-
-    _initClient(baseUrl, '');
-    _httpClient!.proxyConfig = proxyConfig;
+    ));
     _isMoonfinMode = true;
 
     try {
@@ -113,13 +105,9 @@ class SeerrRepository {
     }
   }
 
-  void _initClient(String serverUrl, String apiKey) {
+  void _initClient(MoonfinProxyConfig proxyConfig) {
     _httpClient?.close();
-    _httpClient = SeerrHttpClient(
-      baseUrl: serverUrl,
-      apiKey: apiKey,
-      cookieJar: _cookieJar,
-    );
+    _httpClient = SeerrHttpClient(proxyConfig: proxyConfig);
   }
 
   Future<T> _withClient<T>(
@@ -157,26 +145,18 @@ class SeerrRepository {
   Future<SeerrUser> getCurrentUser() =>
       _withClient((c) async => SeerrUser.fromJson(await c.getCurrentUser()));
 
-  Future<String> regenerateApiKey() async {
-    final key = await _withClient((c) => c.regenerateApiKey());
-    await _store.setString(_apiKeyKey, key);
-    return key;
-  }
-
   Future<MoonfinStatusResponse> configureWithMoonfin({
     required String jellyfinBaseUrl,
     required String jellyfinToken,
   }) async {
     final userId = _session.activeUserId;
     if (userId == null) throw StateError('No active user');
-    _cookieJar.switchToUser(userId);
     _lastUserId = userId;
 
-    _initClient(jellyfinBaseUrl, '');
-    _httpClient!.proxyConfig = MoonfinProxyConfig(
+    _initClient(MoonfinProxyConfig(
       jellyfinBaseUrl: jellyfinBaseUrl,
       jellyfinToken: jellyfinToken,
-    );
+    ));
 
     final status = await _httpClient!.getMoonfinStatus();
     final effectiveEnabled = status.enabled && status.authenticated;
@@ -187,10 +167,10 @@ class SeerrRepository {
     _isMoonfinMode = true;
 
     if (effectiveEnabled) {
-      if (status.jellyseerrUserId != null) {
+      if (status.seerrUserId != null) {
         await _store.setString(
           _moonfinUserIdKey,
-          status.jellyseerrUserId.toString(),
+          status.seerrUserId.toString(),
         );
       }
       _isAvailable = true;
@@ -244,11 +224,11 @@ class SeerrRepository {
     String authType = 'jellyfin',
   }) async {
     await ensureInitialized();
-    if (_httpClient == null || _httpClient!.isProxyMode != true) {
+    if (_httpClient == null) {
       await _initMoonfinMode();
     }
     final client = _httpClient;
-    if (client == null || !client.isProxyMode) {
+    if (client == null) {
       throw StateError(
         'Moonfin plugin proxy unavailable (no active Jellyfin session)',
       );
@@ -266,7 +246,7 @@ class SeerrRepository {
     );
     await _store.setString(
       _moonfinUserIdKey,
-      response.jellyseerrUserId?.toString() ?? '',
+      response.seerrUserId?.toString() ?? '',
     );
     await _store.setString(_authMethodKey, 'moonfin');
     await _store.setBool(_enabledKey, true);
@@ -281,7 +261,7 @@ class SeerrRepository {
 
   Future<void> logoutMoonfin() async {
     final client = _httpClient;
-    if (client != null && client.isProxyMode) {
+    if (client != null) {
       try {
         await client.moonfinLogout();
       } catch (_) {}
@@ -563,23 +543,7 @@ class SeerrRepository {
 
   Future<SeerrStatus> getStatus() => _withClient((c) => c.getStatus());
 
-  Future<void> logout() async {
-    if (_httpClient?.isProxyMode == true) {
-      await logoutMoonfin();
-      return;
-    }
-
-    await _store.setString(_serverUrlKey, '');
-    await _store.setBool(_enabledKey, false);
-    await _store.setString(_apiKeyKey, '');
-    await _store.setString(_authMethodKey, '');
-
-    _httpClient?.close();
-    _httpClient = null;
-    _initialized = false;
-    _lastUserId = null;
-    _isAvailable = false;
-  }
+  Future<void> logout() => logoutMoonfin();
 
   void close() {
     _httpClient?.close();

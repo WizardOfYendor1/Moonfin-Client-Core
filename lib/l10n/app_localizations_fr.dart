@@ -6548,7 +6548,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get jellyseerr => 'Seerr';
 
   @override
   String get seeAll => 'Voir tout';
