@@ -2195,7 +2195,7 @@
     "@watch": {
         "description": "Button label to start watching a channel"
     },
-    "close": "Tæt",
+    "close": "Luk",
     "@close": {
         "description": "Button label to close a dialog"
     },
@@ -7813,5 +7813,54 @@
     "groupMultipleRoles": "",
     "@groupMultipleRoles": {
         "description": "Option to group multiple roles for a person"
+    },
+    "themeGlass": "Glas",
+    "@themeGlass": {
+        "description": "Display name for the Glass theme"
+    },
+    "endsIn": "Slutter om {time}",
+    "@endsIn": {
+        "description": "Label showing remaining time for segment or timeout",
+        "placeholders": {
+            "time": {
+                "type": "String"
+            }
+        }
+    },
+    "directors": "INSTRUKTØRER",
+    "@directors": {
+        "description": "Metadata label for directors"
+    },
+    "writer": "FORFATTER",
+    "@writer": {
+        "description": "Metadata label for writer"
+    },
+    "settingsScrollWheelAction": "Scrollhjul",
+    "@settingsScrollWheelAction": {
+        "description": "Setting title for the mouse scroll wheel action during playback"
+    },
+    "settingsScrollWheelActionDescription": "Vælg hvad der sker når der scrolles på musens hjul.",
+    "@settingsScrollWheelActionDescription": {
+        "description": "Description for the mouse scroll wheel action setting"
+    },
+    "scrollWheelActionOff": "Fra",
+    "@scrollWheelActionOff": {
+        "description": "Scroll wheel action option: do nothing"
+    },
+    "scrollWheelActionSeek": "Søg (frem/tilbage)",
+    "@scrollWheelActionSeek": {
+        "description": "Scroll wheel action option: seek forward and back"
+    },
+    "scrollWheelActionVolume": "Volume",
+    "@scrollWheelActionVolume": {
+        "description": "Scroll wheel action option: adjust volume"
+    },
+    "playerTooltipVolume": "Volume",
+    "@playerTooltipVolume": {
+        "description": "Tooltip for the volume control button in the player OSD"
+    },
+    "settingsAudioOutputModeDescription": "Vælg hvordan lyd afkodes. AVR Passthrough sender rå Dolby/DTS spor til din receiver; Auto og Nedjuster afkoder lokalt.",
+    "@settingsAudioOutputModeDescription": {
+        "description": "Description for audio output mode setting"
     }
 }
