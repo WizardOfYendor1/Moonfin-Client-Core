@@ -38,19 +38,14 @@ class UserPreferences extends ChangeNotifier {
     _migrateSeerrPreferenceKeys();
     _migrateSeerrRowsVisibility();
     _enforceMediaQueuingAlwaysOn();
-    _migrateSubtitleModePreference();
-    _initializeSubtitleLanguagePreferences();
   }
 
   // Carry over the pre-rename jellyseerr* preference keys to their seerr* names.
   void _migrateSeerrPreferenceKeys() {
     const legacyBlockNsfw = 'jellyseerrBlockNsfw';
-    if (_store.containsKey(legacyBlockNsfw) &&
-        !_store.containsKey(seerrBlockNsfw.key)) {
-      _store.set(
-        seerrBlockNsfw,
-        _store.get(Preference(key: legacyBlockNsfw, defaultValue: false)),
-      );
+    if (_store.containsKey(legacyBlockNsfw)) {
+      final value = _store.get(Preference(key: legacyBlockNsfw, defaultValue: false));
+      _setIfMissing(seerrBlockNsfw, value);
     }
   }
 
@@ -78,41 +73,19 @@ class UserPreferences extends ChangeNotifier {
     _store.remove(legacyKey);
   }
 
-  void _migrateSubtitleModePreference() {
-    const legacyDefaultToNone = 'subtitles_default_to_none';
-    if (_store.containsKey(legacyDefaultToNone) &&
-        !_store.containsKey(subtitleMode.key)) {
-      final wasNone = _store.get(
-        Preference(key: legacyDefaultToNone, defaultValue: false),
-      );
-      if (wasNone) {
-        _store.set(subtitleMode, SubtitleMode.none);
-      }
-    }
-  }
-
   void _migrateOverlayPreferences() {
-    if (!_store.containsKey(navbarOpacity.key)) {
-      _store.set(navbarOpacity, _store.get(mediaBarOverlayOpacity));
-    }
-    if (!_store.containsKey(navbarColor.key)) {
-      _store.set(navbarColor, _store.get(mediaBarOverlayColor));
-    }
+    _setIfMissing(navbarOpacity, get(mediaBarOverlayOpacity));
+    _setIfMissing(navbarColor, get(mediaBarOverlayColor));
   }
 
   void _migrateDefaultAudioLanguagePreference() {
-    if (!_store.containsKey(defaultAudioLanguage.key)) {
-      return;
-    }
-    final current = _store.get(defaultAudioLanguage).trim();
-    if (current.isEmpty) {
-      _store.set(defaultAudioLanguage, 'auto');
-    }
+    final current = get(defaultAudioLanguage).trim();
+    _setIfMissing(defaultAudioLanguage, current.isNotEmpty ? current : 'auto');
   }
 
   void _enforceMediaQueuingAlwaysOn() {
-    if (_store.get(mediaQueuingEnabled) != true) {
-      _store.set(mediaQueuingEnabled, true);
+    if (get(mediaQueuingEnabled) != true) {
+      _setIfMissing(mediaQueuingEnabled, true);
     }
   }
 
@@ -124,35 +97,35 @@ class UserPreferences extends ChangeNotifier {
   ///   explicitly stored), replace it with the server's AudioLanguagePreference.
   /// - Subtitles: if the local pref has never been explicitly stored (empty
   ///   default), replace it with the server's SubtitleLanguagePreference.
-  ///
+  /// - SubtitleMode: if the local pref has never been explicitly stored (empty
+  ///   default), convert it to the closest Moonfin subtitle mode.
   void initLanguagePrefs(UserConfiguration config) {
-    // defaultAudioLanguage
-    if (!_store.containsKey(defaultAudioLanguage.key)) {
-      final serverAudio = config.audioLanguagePreference;
-      if (serverAudio != null && serverAudio.isNotEmpty) {
-        _store.set(defaultAudioLanguage, serverAudio.toLowerCase());
-      }
-    }
-    // defaultSubtitleLanguage
-    if (!_store.containsKey(defaultSubtitleLanguage.key)) {
-      final serverSub = config.subtitleLanguagePreference;
-      if (serverSub != null && serverSub.isNotEmpty) {
-        _store.set(defaultSubtitleLanguage, serverSub.toLowerCase());
-      }
-    }
-  }
+    final sysIso3 = toIso3Language(normalizeLanguage(ui.PlatformDispatcher.instance.locale.languageCode));
 
-  void _initializeSubtitleLanguagePreferences() {
-    if (!_store.containsKey(subtitleMode.key)) {
-      _store.set(subtitleMode, SubtitleMode.flagged);
-    }
-    if (!_store.containsKey(defaultSubtitleLanguage.key)) {
-      final sysLang = ui.PlatformDispatcher.instance.locale.languageCode;
-      final iso3 = toIso3Language(normalizeLanguage(sysLang));
-      _store.set(defaultSubtitleLanguage, iso3);
-    }
-    if (!_store.containsKey(fallbackSubtitleLanguage.key)) {
-      _store.set(fallbackSubtitleLanguage, '');
+    // defaultAudioLanguage
+    final serverAudio = config.audioLanguagePreference;
+    final audioToSet = (serverAudio != null && serverAudio.isNotEmpty)
+      ? serverAudio.toLowerCase()
+      : sysIso3; // fallback to system language
+    _setIfMissing(defaultAudioLanguage, audioToSet);
+
+    // defaultSubtitleLanguage
+    final serverSubtitle = config.subtitleLanguagePreference;
+    final subToSet = (serverSubtitle != null && serverSubtitle.isNotEmpty)
+      ? serverSubtitle.toLowerCase()
+      : sysIso3; // fallback to system language
+    _setIfMissing(defaultSubtitleLanguage, subToSet);
+
+    // subtitleMode
+    if (!containsPreference(subtitleMode, scopedOnly: true)) {
+      final mode = switch (config.subtitleMode) {
+        'smart' => SubtitleMode.foreign,
+        'onlyforced' => SubtitleMode.forced,
+        'always' => SubtitleMode.always,
+        'none' => SubtitleMode.none,
+        _ => SubtitleMode.flagged, // jellyfin 'default'/catch all case
+      };
+      _setIfMissing(subtitleMode, mode);
     }
   }
 
@@ -167,6 +140,7 @@ class UserPreferences extends ChangeNotifier {
   }
 
   static final Set<String> _scopedPreferenceKeys = {
+    'pref_enable_tv_queuing',
     'pref_enable_cinema_mode',
     'pref_resume_preroll',
     'media_segment_actions',
@@ -189,7 +163,12 @@ class UserPreferences extends ChangeNotifier {
     'pref_clock_behavior',
     'pref_prefer_system_ime_keyboard',
     'pref_audio_language',
+    'pref_fallback_audio_language',
+    'pref_prefer_default_audio_track',
+    'pref_prefer_audio_description',
     'pref_subtitle_language',
+    'pref_fallback_subtitle_language',
+    'pref_subtitle_mode',
     'subtitles_background_color',
     'subtitles_text_weight',
     'subtitles_text_color',
@@ -344,11 +323,11 @@ class UserPreferences extends ChangeNotifier {
       final prevMode = get(subtitleMode);
       final newMode = value as SubtitleMode;
       if (newMode == SubtitleMode.none) {
-        await _store.set(defaultSubtitleLanguage, '');
-      } else if (prevMode == SubtitleMode.none && get(defaultSubtitleLanguage).isEmpty) {
+        await set(defaultSubtitleLanguage, '');
+      } else if (prevMode == SubtitleMode.none && !containsPreference(defaultSubtitleLanguage, scopedOnly: true)) {
         final sysLang = ui.PlatformDispatcher.instance.locale.languageCode;
         final iso3 = toIso3Language(normalizeLanguage(sysLang));
-        await _store.set(defaultSubtitleLanguage, iso3);
+        await set(defaultSubtitleLanguage, iso3);
       }
     }
 
@@ -365,6 +344,14 @@ class UserPreferences extends ChangeNotifier {
 
     await _store.set(pref, value);
     notifyListeners();
+  }
+
+  /// set pref if it doesn't exist, scoped to the active profile
+  void _setIfMissing<T>(Preference<T> pref, T value) {
+    final scoped = _scopedPreference(pref);
+    if (scoped != null && !_store.containsKey(scoped.key)) {
+      _store.set(scoped, value);
+    }
   }
 
   /// Clears any stored value for [pref] so subsequent reads fall back to the
@@ -385,12 +372,17 @@ class UserPreferences extends ChangeNotifier {
 
   bool containsPreferenceKey(String key) => _store.containsKey(key);
 
-  bool containsPreference<T>(Preference<T> pref) {
+  bool containsPreference<T>(Preference<T> pref, {bool scopedOnly = false}) {
     if (_isScopedPreference(pref)) {
       final scoped = _scopedPreference(pref);
-      return (scoped != null && _store.containsKey(scoped.key)) ||
-          _store.containsKey(pref.key);
+      if (scoped == null) return false;
+      final hasScoped = _store.containsKey(scoped.key);
+      if (scopedOnly) {
+        return hasScoped;
+      }
+      return hasScoped || _store.containsKey(pref.key);
     }
+    if (scopedOnly) return false;
 
     return _store.containsKey(pref.key);
   }
@@ -402,14 +394,14 @@ class UserPreferences extends ChangeNotifier {
   int resolveMaxAudioChannels() => get(maxAudioChannels);
 
   PosterSize resolveLibraryPosterSize() {
-    if (containsPreference(libraryPosterSize)) {
+    if (containsPreference(libraryPosterSize, scopedOnly: true)) {
       return get(libraryPosterSize);
     }
     return get(posterSize);
   }
 
   PosterSize resolvePlaylistPosterSize() {
-    if (containsPreference(playlistPosterSize)) {
+    if (containsPreference(playlistPosterSize, scopedOnly: true)) {
       return get(playlistPosterSize);
     }
     return get(posterSize);
