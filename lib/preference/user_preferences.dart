@@ -1925,6 +1925,13 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: '',
   );
 
+  // macOS only: base64 security-scoped bookmark for the custom download folder,
+  // so the sandboxed app can regain write access to it across launches.
+  static final customDownloadPathBookmark = Preference(
+    key: 'download_custom_path_bookmark',
+    defaultValue: '',
+  );
+
   static final windowWidth = Preference(key: 'window_width', defaultValue: 0.0);
 
   static final windowHeight = Preference(
