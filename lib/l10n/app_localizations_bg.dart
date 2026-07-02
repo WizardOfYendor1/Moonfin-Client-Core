@@ -266,6 +266,34 @@ class AppLocalizationsBg extends AppLocalizations {
   String get exit => 'Изход';
 
   @override
+  String get gameMenu => 'Menu';
+
+  @override
+  String get gamePaused => 'Paused';
+
+  @override
+  String get gameSaveState => 'Save state';
+
+  @override
+  String get gameLoadState => 'Load state';
+
+  @override
+  String get gameFastForward => 'Fast-forward';
+
+  @override
+  String get gameEmulatorSettings => 'Emulator settings';
+
+  @override
+  String get gameNoCoreOptions => 'This core has no adjustable options.';
+
+  @override
+  String get gameHoldToOpenMenu => 'Hold to open menu';
+
+  @override
+  String get gamePlaybackUnsupported =>
+      'Game playback is not supported on this device yet.';
+
+  @override
   String get noHomeRowsLoaded => 'Не можаха да бъдат заредени начални редове';
 
   @override

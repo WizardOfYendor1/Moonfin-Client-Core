@@ -16,6 +16,7 @@ import '../../preference/seerr_preferences.dart';
 import '../../preference/user_preferences.dart';
 import '../../util/idiom/app_ui_idiom.dart';
 import '../../util/overlay_color_palette.dart';
+import '../../util/game_library.dart';
 import '../navigation/destinations.dart';
 import '../navigation/home_refresh_bus.dart';
 import '../screens/settings/settings_side_panel.dart';
@@ -317,7 +318,9 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
     } else if (lib.collectionType == 'livetv') {
       context.navigateTopLevel(Destinations.liveTvGuide);
     } else {
-      context.navigateTopLevel('/library/${lib.id}');
+      context.navigateTopLevel(
+        gameOrLibraryRoute(lib.id, lib.collectionType, lib.name),
+      );
     }
   }
 

@@ -20,6 +20,7 @@ import '../../preference/user_preferences.dart';
 import '../../l10n/app_localizations.dart';
 import '../../util/clock_format.dart';
 import '../../util/focus/dpad_keys.dart';
+import '../../util/game_library.dart';
 import '../../util/overlay_color_palette.dart';
 import '../../util/platform_detection.dart';
 import '../navigation/destinations.dart';
@@ -1005,7 +1006,11 @@ class _LeftSidebarState extends State<LeftSidebar> {
                                         );
                                       } else {
                                         context.navigateTopLevel(
-                                          '/library/${lib.id}',
+                                          gameOrLibraryRoute(
+                                            lib.id,
+                                            lib.collectionType,
+                                            lib.name,
+                                          ),
                                         );
                                       }
                                     },

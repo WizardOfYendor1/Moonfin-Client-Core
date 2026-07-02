@@ -682,6 +682,60 @@ abstract class AppLocalizations {
   /// **'Exit'**
   String get exit;
 
+  /// Tooltip for the in-game menu button
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get gameMenu;
+
+  /// Status shown in the in-game menu while the game is paused
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get gamePaused;
+
+  /// In-game menu action to save the game state
+  ///
+  /// In en, this message translates to:
+  /// **'Save state'**
+  String get gameSaveState;
+
+  /// In-game menu action to load the saved game state
+  ///
+  /// In en, this message translates to:
+  /// **'Load state'**
+  String get gameLoadState;
+
+  /// In-game menu action to toggle fast-forward
+  ///
+  /// In en, this message translates to:
+  /// **'Fast-forward'**
+  String get gameFastForward;
+
+  /// In-game menu action opening the emulator settings
+  ///
+  /// In en, this message translates to:
+  /// **'Emulator settings'**
+  String get gameEmulatorSettings;
+
+  /// Shown when a game core exposes no settings
+  ///
+  /// In en, this message translates to:
+  /// **'This core has no adjustable options.'**
+  String get gameNoCoreOptions;
+
+  /// Hint shown while holding the gamepad combo to open the in-game menu
+  ///
+  /// In en, this message translates to:
+  /// **'Hold to open menu'**
+  String get gameHoldToOpenMenu;
+
+  /// Shown when the device cannot run the retro-game emulator
+  ///
+  /// In en, this message translates to:
+  /// **'Game playback is not supported on this device yet.'**
+  String get gamePlaybackUnsupported;
+
   /// Heading when home screen has no rows to display
   ///
   /// In en, this message translates to:

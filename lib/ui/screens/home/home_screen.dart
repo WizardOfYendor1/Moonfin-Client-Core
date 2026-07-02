@@ -65,6 +65,7 @@ import '../../widgets/bounded_network_image.dart';
 import '../../widgets/fullscreen_backdrop_switcher.dart';
 import '../../navigation/route_lifecycle_observer.dart';
 import '../../util/home_row_title_localizer.dart';
+import '../../../util/game_library.dart';
 import 'home_view_model.dart';
 
 Color get _homeBackground => AppColorScheme.background;
@@ -3542,7 +3543,9 @@ class _ContentRowsState extends State<_ContentRows>
         itemBuilder: (ctx, item, idx, isFocused) {
           final collectionType =
               (item.rawData['CollectionType'] as String? ?? '').toLowerCase();
-          final icon = _iconForCollectionType(collectionType);
+          final icon = isGameLibrary(collectionType, item.name)
+              ? gameLibraryIcon
+              : _iconForCollectionType(collectionType);
           return Align(
             alignment: Alignment.topCenter,
             child: SizedBox.square(
@@ -4331,7 +4334,9 @@ class _ContentRowsState extends State<_ContentRows>
         context.push(Destinations.liveTvGuide);
         return;
       default:
-        context.push(Destinations.library(item.id));
+        // Game libraries route to the EmulatorJS browser; everything else to the
+        // normal library view. Shared with the sidebar and bottom nav.
+        context.push(gameOrLibraryRoute(item.id, collectionType, item.name));
         return;
     }
   }

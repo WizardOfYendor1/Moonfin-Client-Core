@@ -266,6 +266,34 @@ class AppLocalizationsTa extends AppLocalizations {
   String get exit => 'வெளியேறு';
 
   @override
+  String get gameMenu => 'Menu';
+
+  @override
+  String get gamePaused => 'Paused';
+
+  @override
+  String get gameSaveState => 'Save state';
+
+  @override
+  String get gameLoadState => 'Load state';
+
+  @override
+  String get gameFastForward => 'Fast-forward';
+
+  @override
+  String get gameEmulatorSettings => 'Emulator settings';
+
+  @override
+  String get gameNoCoreOptions => 'This core has no adjustable options.';
+
+  @override
+  String get gameHoldToOpenMenu => 'Hold to open menu';
+
+  @override
+  String get gamePlaybackUnsupported =>
+      'Game playback is not supported on this device yet.';
+
+  @override
   String get noHomeRowsLoaded => 'முகப்பு வரிசைகளை ஏற்ற முடியவில்லை';
 
   @override

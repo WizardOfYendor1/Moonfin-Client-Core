@@ -341,6 +341,42 @@
   "@exit": {
     "description": "Exit button label"
   },
+  "gameMenu": "Menu",
+  "@gameMenu": {
+    "description": "Tooltip for the in-game menu button"
+  },
+  "gamePaused": "Paused",
+  "@gamePaused": {
+    "description": "Status shown in the in-game menu while the game is paused"
+  },
+  "gameSaveState": "Save state",
+  "@gameSaveState": {
+    "description": "In-game menu action to save the game state"
+  },
+  "gameLoadState": "Load state",
+  "@gameLoadState": {
+    "description": "In-game menu action to load the saved game state"
+  },
+  "gameFastForward": "Fast-forward",
+  "@gameFastForward": {
+    "description": "In-game menu action to toggle fast-forward"
+  },
+  "gameEmulatorSettings": "Emulator settings",
+  "@gameEmulatorSettings": {
+    "description": "In-game menu action opening the emulator settings"
+  },
+  "gameNoCoreOptions": "This core has no adjustable options.",
+  "@gameNoCoreOptions": {
+    "description": "Shown when a game core exposes no settings"
+  },
+  "gameHoldToOpenMenu": "Hold to open menu",
+  "@gameHoldToOpenMenu": {
+    "description": "Hint shown while holding the gamepad combo to open the in-game menu"
+  },
+  "gamePlaybackUnsupported": "Game playback is not supported on this device yet.",
+  "@gamePlaybackUnsupported": {
+    "description": "Shown when the device cannot run the retro-game emulator"
+  },
   "noHomeRowsLoaded": "No home rows could be loaded",
   "@noHomeRowsLoaded": {
     "description": "Heading when home screen has no rows to display"
