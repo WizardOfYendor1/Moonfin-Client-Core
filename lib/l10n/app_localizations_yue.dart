@@ -5585,6 +5585,37 @@ class AppLocalizationsYue extends AppLocalizations {
   String get adminSeriesRecordingPath => '系列錄音路徑';
 
   @override
+  String get adminMovieRecordingPath => 'Movie recording path';
+
+  @override
+  String get adminGuideDays => 'Guide data days';
+
+  @override
+  String get adminGuideDaysAuto => 'Automatic';
+
+  @override
+  String adminGuideDaysValue(int days) {
+    return '$days days';
+  }
+
+  @override
+  String get adminRecordingPostProcessor => 'Post-processing application path';
+
+  @override
+  String get adminRecordingPostProcessorArgs => 'Post-processor arguments';
+
+  @override
+  String get adminSaveRecordingNfo => 'Save recording NFO metadata';
+
+  @override
+  String get adminSaveRecordingImages => 'Save recording images';
+
+  @override
+  String adminGuideDaysDisplay(String value) {
+    return 'Guide data: $value';
+  }
+
+  @override
   String get adminRecordingSettingsSaved => '已儲存錄音設定';
 
   @override

@@ -5695,6 +5695,37 @@ class AppLocalizationsTh extends AppLocalizations {
   String get adminSeriesRecordingPath => 'เส้นทางการบันทึกซีรีส์';
 
   @override
+  String get adminMovieRecordingPath => 'Movie recording path';
+
+  @override
+  String get adminGuideDays => 'Guide data days';
+
+  @override
+  String get adminGuideDaysAuto => 'Automatic';
+
+  @override
+  String adminGuideDaysValue(int days) {
+    return '$days days';
+  }
+
+  @override
+  String get adminRecordingPostProcessor => 'Post-processing application path';
+
+  @override
+  String get adminRecordingPostProcessorArgs => 'Post-processor arguments';
+
+  @override
+  String get adminSaveRecordingNfo => 'Save recording NFO metadata';
+
+  @override
+  String get adminSaveRecordingImages => 'Save recording images';
+
+  @override
+  String adminGuideDaysDisplay(String value) {
+    return 'Guide data: $value';
+  }
+
+  @override
   String get adminRecordingSettingsSaved => 'บันทึกการตั้งค่าการบันทึกแล้ว';
 
   @override

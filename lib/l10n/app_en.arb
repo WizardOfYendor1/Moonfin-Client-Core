@@ -6323,6 +6323,29 @@
   "adminPostPadding": "Post-padding (minutes)",
   "adminRecordingPath": "Recording path",
   "adminSeriesRecordingPath": "Series recording path",
+  "adminMovieRecordingPath": "Movie recording path",
+  "adminGuideDays": "Guide data days",
+  "adminGuideDaysAuto": "Automatic",
+  "adminGuideDaysValue": "{days} days",
+  "@adminGuideDaysValue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "adminRecordingPostProcessor": "Post-processing application path",
+  "adminRecordingPostProcessorArgs": "Post-processor arguments",
+  "adminSaveRecordingNfo": "Save recording NFO metadata",
+  "adminSaveRecordingImages": "Save recording images",
+  "adminGuideDaysDisplay": "Guide data: {value}",
+  "@adminGuideDaysDisplay": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "adminRecordingSettingsSaved": "Recording settings saved",
   "adminSettingsSaveFailed": "Failed to save settings: {error}",
   "@adminSettingsSaveFailed": {

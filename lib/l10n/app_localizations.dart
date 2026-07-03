@@ -10348,6 +10348,60 @@ abstract class AppLocalizations {
   /// **'Series recording path'**
   String get adminSeriesRecordingPath;
 
+  /// No description provided for @adminMovieRecordingPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Movie recording path'**
+  String get adminMovieRecordingPath;
+
+  /// No description provided for @adminGuideDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide data days'**
+  String get adminGuideDays;
+
+  /// No description provided for @adminGuideDaysAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get adminGuideDaysAuto;
+
+  /// No description provided for @adminGuideDaysValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days'**
+  String adminGuideDaysValue(int days);
+
+  /// No description provided for @adminRecordingPostProcessor.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-processing application path'**
+  String get adminRecordingPostProcessor;
+
+  /// No description provided for @adminRecordingPostProcessorArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-processor arguments'**
+  String get adminRecordingPostProcessorArgs;
+
+  /// No description provided for @adminSaveRecordingNfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Save recording NFO metadata'**
+  String get adminSaveRecordingNfo;
+
+  /// No description provided for @adminSaveRecordingImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Save recording images'**
+  String get adminSaveRecordingImages;
+
+  /// No description provided for @adminGuideDaysDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide data: {value}'**
+  String adminGuideDaysDisplay(String value);
+
   /// No description provided for @adminRecordingSettingsSaved.
   ///
   /// In en, this message translates to:
