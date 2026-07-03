@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../../l10n/app_localizations.dart';
 import '../../../widgets/adaptive/adaptive_dialog.dart';
+import '../widgets/admin_form_styles.dart';
 
 class AdminLiveTvScreen extends StatefulWidget {
   const AdminLiveTvScreen({super.key});
@@ -19,6 +21,7 @@ class _AdminLiveTvScreenState extends State<AdminLiveTvScreen> {
   bool _loading = true;
   bool _discovering = false;
   bool _savingConfig = false;
+  bool _refreshingGuide = false;
   String? _error;
 
   List<Map<String, dynamic>> _tuners = const [];
@@ -39,6 +42,19 @@ class _AdminLiveTvScreenState extends State<AdminLiveTvScreen> {
       final status = error.response?.statusCode;
       if (status == 404 || status == 405 || status == 501) {
         return AppLocalizations.of(context).adminLiveTvNotAvailable;
+      }
+      final data = error.response?.data;
+      if (data is Map) {
+        final message =
+            data['message'] ?? data['Message'] ?? data['error'] ?? data['title'];
+        if (message != null && message.toString().trim().isNotEmpty) {
+          return message.toString();
+        }
+      } else if (data is String && data.trim().isNotEmpty) {
+        return data;
+      }
+      if (status != null) {
+        return AppLocalizations.of(context).adminServerReturnedHttp(status);
       }
     }
     return error.toString();
@@ -102,6 +118,24 @@ class _AdminLiveTvScreenState extends State<AdminLiveTvScreen> {
     return days == null
         ? l10n.adminGuideDaysAuto
         : l10n.adminGuideDaysValue(days);
+  }
+
+  Widget _dialogSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 16, 2, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text.toUpperCase(),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.1,
+            color: AppColorScheme.accent.withValues(alpha: 0.9),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _discoverTuners() async {
@@ -343,8 +377,42 @@ class _AdminLiveTvScreenState extends State<AdminLiveTvScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).adminTunerResetFailed(e.toString()))),
+        SnackBar(content: Text(AppLocalizations.of(context).adminTunerResetFailed(_friendlyError(e)))),
       );
+    }
+  }
+
+  Future<void> _refreshGuideData() async {
+    if (_refreshingGuide) return;
+    setState(() => _refreshingGuide = true);
+    final l10n = AppLocalizations.of(context);
+    try {
+      final tasksApi = GetIt.instance<MediaServerClient>().adminTasksApi;
+      final tasks = await tasksApi.getTasks();
+      final task = tasks.firstWhere(
+        (t) => t['Key'] == 'RefreshGuide',
+        orElse: () => const <String, dynamic>{},
+      );
+      final id = (task['Id'] ?? '').toString();
+      if (id.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.adminGuideRefreshUnavailable)),
+        );
+        return;
+      }
+      await tasksApi.startTask(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.adminGuideRefreshStarted)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_friendlyError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _refreshingGuide = false);
     }
   }
 
@@ -401,99 +469,111 @@ class _AdminLiveTvScreenState extends State<AdminLiveTvScreen> {
       context: context,
       builder: (ctx) => AlertDialog.adaptive(
         title: Text(l10n.adminRecordingSettings),
-        content: StatefulBuilder(
-          builder: (ctx, setLocal) => SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: preController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminPrePadding,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: postController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminPostPadding,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int?>(
-                  initialValue: guideDays,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminGuideDays,
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final d in guideDayOptions)
-                      DropdownMenuItem(
-                        value: d,
-                        child: Text(d == null
-                            ? l10n.adminGuideDaysAuto
-                            : l10n.adminGuideDaysValue(d)),
+        content: SizedBox(
+          width: 400,
+          child: StatefulBuilder(
+            builder: (ctx, setLocal) => SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _dialogSectionLabel(l10n.adminLiveTvSectionTiming),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: preController,
+                          keyboardType: TextInputType.number,
+                          decoration:
+                              adminInputDecoration(label: l10n.adminPrePadding),
+                        ),
                       ),
-                  ],
-                  onChanged: (v) => setLocal(() => guideDays = v),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: recPathController,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminRecordingPath,
-                    border: const OutlineInputBorder(),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: postController,
+                          keyboardType: TextInputType.number,
+                          decoration:
+                              adminInputDecoration(label: l10n.adminPostPadding),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: seriesPathController,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminSeriesRecordingPath,
-                    border: const OutlineInputBorder(),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int?>(
+                    initialValue: guideDays,
+                    decoration: adminInputDecoration(label: l10n.adminGuideDays),
+                    items: [
+                      for (final d in guideDayOptions)
+                        DropdownMenuItem(
+                          value: d,
+                          child: Text(d == null
+                              ? l10n.adminGuideDaysAuto
+                              : l10n.adminGuideDaysValue(d)),
+                        ),
+                    ],
+                    onChanged: (v) => setLocal(() => guideDays = v),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: moviePathController,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminMovieRecordingPath,
-                    border: const OutlineInputBorder(),
+                  _dialogSectionLabel(l10n.adminLiveTvSectionPaths),
+                  TextField(
+                    controller: recPathController,
+                    decoration:
+                        adminInputDecoration(label: l10n.adminRecordingPath),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: postProcessorController,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminRecordingPostProcessor,
-                    border: const OutlineInputBorder(),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: seriesPathController,
+                    decoration: adminInputDecoration(
+                        label: l10n.adminSeriesRecordingPath),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: postProcessorArgsController,
-                  decoration: InputDecoration(
-                    labelText: l10n.adminRecordingPostProcessorArgs,
-                    border: const OutlineInputBorder(),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: moviePathController,
+                    decoration: adminInputDecoration(
+                        label: l10n.adminMovieRecordingPath),
                   ),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.adminSaveRecordingNfo),
-                  value: saveNfo,
-                  onChanged: (v) => setLocal(() => saveNfo = v),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.adminSaveRecordingImages),
-                  value: saveImages,
-                  onChanged: (v) => setLocal(() => saveImages = v),
-                ),
-              ],
+                  _dialogSectionLabel(l10n.adminLiveTvSectionPostProcessing),
+                  TextField(
+                    controller: postProcessorController,
+                    decoration: adminInputDecoration(
+                        label: l10n.adminRecordingPostProcessor),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: postProcessorArgsController,
+                    decoration: adminInputDecoration(
+                        label: l10n.adminRecordingPostProcessorArgs),
+                  ),
+                  const SizedBox(height: 16),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColorScheme.onSurface.withValues(alpha: 0.05),
+                      borderRadius: AppRadius.circular(14),
+                    ),
+                    child: Column(
+                      children: [
+                        adminSwitchRow(
+                          title: l10n.adminSaveRecordingNfo,
+                          value: saveNfo,
+                          onChanged: (v) => setLocal(() => saveNfo = v),
+                        ),
+                        Divider(
+                          height: 0.5,
+                          thickness: 0.5,
+                          indent: 16,
+                          color:
+                              AppColorScheme.onSurface.withValues(alpha: 0.10),
+                        ),
+                        adminSwitchRow(
+                          title: l10n.adminSaveRecordingImages,
+                          value: saveImages,
+                          onChanged: (v) => setLocal(() => saveImages = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -709,25 +789,46 @@ class _AdminLiveTvScreenState extends State<AdminLiveTvScreen> {
             icon: const Icon(Icons.add),
             label: Text(AppLocalizations.of(context).adminAddGuideProvider),
           ),
-          child: _providers.isEmpty
-              ? Text(AppLocalizations.of(context).adminNoListingProviders)
-              : Column(
-                  children: _providers.map((provider) {
-                    final name = _display(provider, const ['Name', 'Type']);
-                    final url = _display(provider, const ['Url', 'Path'], fallback: '');
-                    final id = _idOf(provider);
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(name),
-                      subtitle: url.isEmpty ? null : Text(url),
-                      trailing: IconButton(
-                        tooltip: AppLocalizations.of(context).delete,
-                        onPressed: id.isEmpty ? null : () => _removeProvider(provider),
-                        icon: const Icon(Icons.delete_outline),
-                      ),
-                    );
-                  }).toList(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _refreshingGuide ? null : _refreshGuideData,
+                  icon: _refreshingGuide
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: Text(AppLocalizations.of(context).adminRefreshGuideData),
                 ),
+              ),
+              const SizedBox(height: 8),
+              if (_providers.isEmpty)
+                Text(AppLocalizations.of(context).adminNoListingProviders)
+              else
+                ..._providers.map((provider) {
+                  final name = _display(provider, const ['Name', 'Type']);
+                  final url =
+                      _display(provider, const ['Url', 'Path'], fallback: '');
+                  final id = _idOf(provider);
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(name),
+                    subtitle: url.isEmpty ? null : Text(url),
+                    trailing: IconButton(
+                      tooltip: AppLocalizations.of(context).delete,
+                      onPressed:
+                          id.isEmpty ? null : () => _removeProvider(provider),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  );
+                }),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         _sectionCard(

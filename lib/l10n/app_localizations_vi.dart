@@ -5761,6 +5761,15 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminSaveRecordingImages => 'Save recording images';
 
   @override
+  String get adminLiveTvSectionTiming => 'Timing';
+
+  @override
+  String get adminLiveTvSectionPaths => 'Recording paths';
+
+  @override
+  String get adminLiveTvSectionPostProcessing => 'Post-processing';
+
+  @override
   String adminGuideDaysDisplay(String value) {
     return 'Guide data: $value';
   }
@@ -5803,6 +5812,16 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get adminGuideProviders => 'Nhà cung cấp hướng dẫn';
+
+  @override
+  String get adminRefreshGuideData => 'Refresh Guide Data';
+
+  @override
+  String get adminGuideRefreshStarted => 'Guide data refresh started';
+
+  @override
+  String get adminGuideRefreshUnavailable =>
+      'Guide refresh task is not available on this server.';
 
   @override
   String get adminAddProvider => 'Thêm nhà cung cấp';
@@ -6854,6 +6873,24 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get adminGeneralSlowResponseThreshold => 'Ngưỡng phản hồi chậm (ms)';
+
+  @override
+  String get adminGeneralEnableSlowResponse => 'Enable slow response warnings';
+
+  @override
+  String get adminGeneralQuickConnect => 'Enable Quick Connect';
+
+  @override
+  String get adminGeneralSectionServer => 'Server';
+
+  @override
+  String get adminGeneralSectionMetadata => 'Metadata';
+
+  @override
+  String get adminGeneralSectionPaths => 'Paths';
+
+  @override
+  String get adminGeneralSectionPerformance => 'Performance';
 
   @override
   String get adminGeneralCachePath => 'Đường dẫn bộ đệm';

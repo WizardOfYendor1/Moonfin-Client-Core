@@ -10396,6 +10396,24 @@ abstract class AppLocalizations {
   /// **'Save recording images'**
   String get adminSaveRecordingImages;
 
+  /// No description provided for @adminLiveTvSectionTiming.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing'**
+  String get adminLiveTvSectionTiming;
+
+  /// No description provided for @adminLiveTvSectionPaths.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording paths'**
+  String get adminLiveTvSectionPaths;
+
+  /// No description provided for @adminLiveTvSectionPostProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-processing'**
+  String get adminLiveTvSectionPostProcessing;
+
   /// No description provided for @adminGuideDaysDisplay.
   ///
   /// In en, this message translates to:
@@ -10467,6 +10485,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Guide Providers'**
   String get adminGuideProviders;
+
+  /// No description provided for @adminRefreshGuideData.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh Guide Data'**
+  String get adminRefreshGuideData;
+
+  /// No description provided for @adminGuideRefreshStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide data refresh started'**
+  String get adminGuideRefreshStarted;
+
+  /// No description provided for @adminGuideRefreshUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Guide refresh task is not available on this server.'**
+  String get adminGuideRefreshUnavailable;
 
   /// No description provided for @adminAddProvider.
   ///
@@ -12321,6 +12357,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Slow response threshold (ms)'**
   String get adminGeneralSlowResponseThreshold;
+
+  /// No description provided for @adminGeneralEnableSlowResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable slow response warnings'**
+  String get adminGeneralEnableSlowResponse;
+
+  /// No description provided for @adminGeneralQuickConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Quick Connect'**
+  String get adminGeneralQuickConnect;
+
+  /// No description provided for @adminGeneralSectionServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get adminGeneralSectionServer;
+
+  /// No description provided for @adminGeneralSectionMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata'**
+  String get adminGeneralSectionMetadata;
+
+  /// No description provided for @adminGeneralSectionPaths.
+  ///
+  /// In en, this message translates to:
+  /// **'Paths'**
+  String get adminGeneralSectionPaths;
+
+  /// No description provided for @adminGeneralSectionPerformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Performance'**
+  String get adminGeneralSectionPerformance;
 
   /// No description provided for @adminGeneralCachePath.
   ///

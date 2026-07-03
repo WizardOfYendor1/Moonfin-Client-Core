@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../widgets/admin_form_styles.dart';
 import '../widgets/filesystem_browser.dart';
 
 class AdminGeneralSettingsScreen extends StatefulWidget {
@@ -17,6 +19,8 @@ class _AdminGeneralSettingsScreenState
     extends State<AdminGeneralSettingsScreen> {
   late final AdminSystemApi _api;
   Map<String, dynamic>? _config;
+  List<Map<String, dynamic>> _cultures = const [];
+  List<Map<String, dynamic>> _countries = const [];
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -36,9 +40,18 @@ class _AdminGeneralSettingsScreenState
     });
     try {
       final config = await _api.getServerConfiguration();
+      // Language/country lists are optional; degrade to empty on older servers.
+      final cultures = await _api
+          .getCultures()
+          .catchError((_) => <Map<String, dynamic>>[]);
+      final countries = await _api
+          .getCountries()
+          .catchError((_) => <Map<String, dynamic>>[]);
       if (!mounted) return;
       setState(() {
         _config = config;
+        _cultures = cultures;
+        _countries = countries;
         _loading = false;
       });
     } catch (e) {
@@ -94,56 +107,108 @@ class _AdminGeneralSettingsScreenState
       );
     }
 
+    final bottomSafe = MediaQuery.of(context).padding.bottom;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 20, 16, bottomSafe + 40),
       children: [
-        Text(l10n.adminGeneralSettingsTitle,
-            style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 24),
+        adminScreenHeader(
+          context,
+          title: l10n.adminGeneralSettingsTitle,
+          icon: Icons.settings_outlined,
+        ),
+        adminSectionLabel(context, l10n.adminGeneralSectionServer,
+            icon: Icons.dns_outlined),
         _textField('ServerName', l10n.adminGeneralServerName),
-        const SizedBox(height: 16),
-        _textField('PreferredMetadataLanguage', l10n.adminGeneralMetadataLanguage,
-            hint: l10n.adminGeneralMetadataLanguageHint),
-        const SizedBox(height: 16),
-        _textField('MetadataCountryCode', l10n.adminGeneralMetadataCountry,
-            hint: l10n.adminGeneralMetadataCountryHint),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        adminGlassGroup(context, children: [
+          _switchTile('QuickConnectAvailable', l10n.adminGeneralQuickConnect),
+        ]),
+        adminSectionLabel(context, l10n.adminGeneralSectionMetadata,
+            icon: Icons.language),
+        _buildLanguageDropdown(l10n),
+        const SizedBox(height: 12),
+        _buildCountryDropdown(l10n),
+        adminSectionLabel(context, l10n.adminGeneralSectionPaths,
+            icon: Icons.folder_outlined),
         _pathField('CachePath', l10n.adminGeneralCachePath),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _pathField('MetadataPath', l10n.adminGeneralMetadataPath),
-        const SizedBox(height: 16),
-        _intField('LibraryScanFanoutConcurrency', l10n.adminGeneralLibraryScanConcurrency),
-        const SizedBox(height: 16),
+        adminSectionLabel(context, l10n.adminGeneralSectionPerformance,
+            icon: Icons.speed),
+        _intField('LibraryScanFanoutConcurrency',
+            l10n.adminGeneralLibraryScanConcurrency),
+        const SizedBox(height: 12),
         _intField(
             'ParallelImageEncodingLimit', l10n.adminGeneralImageEncodingLimit),
-        const SizedBox(height: 16),
-        _intField('SlowResponseThresholdMs', l10n.adminGeneralSlowResponseThreshold),
-        const SizedBox(height: 24),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.save),
-          ),
+        const SizedBox(height: 12),
+        _intField(
+            'SlowResponseThresholdMs', l10n.adminGeneralSlowResponseThreshold),
+        const SizedBox(height: 8),
+        adminGlassGroup(context, children: [
+          _switchTile(
+              'EnableSlowResponseWarning', l10n.adminGeneralEnableSlowResponse),
+        ]),
+        const SizedBox(height: AppSpacing.spaceXl),
+        adminSaveButton(
+          label: l10n.save,
+          saving: _saving,
+          onPressed: _save,
         ),
       ],
+    );
+  }
+
+  Widget _switchTile(String key, String title) {
+    return adminSwitchRow(
+      title: title,
+      value: _config![key] as bool? ?? false,
+      onChanged: (v) => setState(() => _config![key] = v),
+    );
+  }
+
+  Widget _buildLanguageDropdown(AppLocalizations l10n) {
+    final current = _config!['PreferredMetadataLanguage']?.toString() ?? '';
+    if (_cultures.isEmpty) {
+      return _textField('PreferredMetadataLanguage',
+          l10n.adminGeneralMetadataLanguage,
+          hint: l10n.adminGeneralMetadataLanguageHint);
+    }
+    return adminCodeDropdown(
+      label: l10n.adminGeneralMetadataLanguage,
+      defaultLabel: l10n.adminLibDefault,
+      current: current,
+      rawItems: _cultures.map((c) => (
+            (c['TwoLetterISOLanguageName'] ?? c['ThreeLetterISOLanguageName'])
+                ?.toString(),
+            (c['DisplayName'] ?? c['Name'])?.toString(),
+          )),
+      onChanged: (v) =>
+          setState(() => _config!['PreferredMetadataLanguage'] = v),
+    );
+  }
+
+  Widget _buildCountryDropdown(AppLocalizations l10n) {
+    final current = _config!['MetadataCountryCode']?.toString() ?? '';
+    if (_countries.isEmpty) {
+      return _textField('MetadataCountryCode', l10n.adminGeneralMetadataCountry,
+          hint: l10n.adminGeneralMetadataCountryHint);
+    }
+    return adminCodeDropdown(
+      label: l10n.adminGeneralMetadataCountry,
+      defaultLabel: l10n.adminLibDefault,
+      current: current,
+      rawItems: _countries.map((c) => (
+            (c['TwoLetterISORegionName'] ?? c['Name'])?.toString(),
+            (c['DisplayName'] ?? c['Name'])?.toString(),
+          )),
+      onChanged: (v) => setState(() => _config!['MetadataCountryCode'] = v),
     );
   }
 
   Widget _textField(String key, String label, {String? hint}) {
     return TextFormField(
       initialValue: _config![key]?.toString() ?? '',
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: adminInputDecoration(label: label, hint: hint),
       onChanged: (v) => _config![key] = v,
     );
   }
@@ -151,10 +216,7 @@ class _AdminGeneralSettingsScreenState
   Widget _intField(String key, String label) {
     return TextFormField(
       initialValue: (_config![key] as num?)?.toString() ?? '0',
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: adminInputDecoration(label: label),
       keyboardType: TextInputType.number,
       onChanged: (v) => _config![key] = int.tryParse(v) ?? 0,
     );
@@ -171,10 +233,7 @@ class _AdminGeneralSettingsScreenState
               child: TextFormField(
                 key: ValueKey(_config![key]),
                 initialValue: _config![key]?.toString() ?? '',
-                decoration: InputDecoration(
-                  labelText: label,
-                  border: const OutlineInputBorder(),
-                ),
+                decoration: adminInputDecoration(label: label),
                 onChanged: (v) => _config![key] = v,
               ),
             ),

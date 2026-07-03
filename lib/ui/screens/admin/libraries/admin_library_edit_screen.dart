@@ -519,36 +519,16 @@ class _AdminLibraryEditScreenState
     );
   }
 
-  /// Dropdown of `(code, displayName)` pairs with a "Default" option. Dedupes by
-  /// code (the localization lists can repeat codes) and preserves a stored value
-  /// that is not in the list so saving never silently drops it.
   Widget _codeDropdown({
     required String label,
     required String key,
     required Iterable<(String?, String?)> rawItems,
   }) {
-    final l10n = AppLocalizations.of(context);
-    final current = _options[key] as String? ?? '';
-    final seen = <String>{};
-    final items = <(String, String)>[];
-    for (final e in rawItems) {
-      final code = e.$1;
-      final name = e.$2;
-      if (code == null || name == null) continue;
-      if (!seen.add(code)) continue;
-      items.add((code, name));
-    }
-    final hasCurrent = current.isEmpty || items.any((e) => e.$1 == current);
-    return DropdownButtonFormField<String>(
-      initialValue: current,
-      isExpanded: true,
-      decoration: adminInputDecoration(label: label),
-      items: [
-        DropdownMenuItem(value: '', child: Text(l10n.adminLibDefault)),
-        ...items.map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2))),
-        if (!hasCurrent)
-          DropdownMenuItem(value: current, child: Text(current)),
-      ],
+    return adminCodeDropdown(
+      label: label,
+      defaultLabel: AppLocalizations.of(context).adminLibDefault,
+      current: _options[key] as String? ?? '',
+      rawItems: rawItems,
       onChanged: (v) => setState(() => _options[key] = v),
     );
   }

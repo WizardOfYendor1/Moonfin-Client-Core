@@ -6338,6 +6338,9 @@
   "adminRecordingPostProcessorArgs": "Post-processor arguments",
   "adminSaveRecordingNfo": "Save recording NFO metadata",
   "adminSaveRecordingImages": "Save recording images",
+  "adminLiveTvSectionTiming": "Timing",
+  "adminLiveTvSectionPaths": "Recording paths",
+  "adminLiveTvSectionPostProcessing": "Post-processing",
   "adminGuideDaysDisplay": "Guide data: {value}",
   "@adminGuideDaysDisplay": {
     "placeholders": {
@@ -6367,6 +6370,9 @@
   "adminTunerDevices": "Tuner Devices",
   "adminNoTunerHosts": "No tuner hosts configured",
   "adminGuideProviders": "Guide Providers",
+  "adminRefreshGuideData": "Refresh Guide Data",
+  "adminGuideRefreshStarted": "Guide data refresh started",
+  "adminGuideRefreshUnavailable": "Guide refresh task is not available on this server.",
   "adminAddProvider": "Add Provider",
   "adminNoListingProviders": "No listing providers configured",
   "adminRecordingPathDisplay": "Recording path: {path}",
@@ -6889,6 +6895,12 @@
   },
 
   "adminGeneralSlowResponseThreshold": "Slow response threshold (ms)",
+  "adminGeneralEnableSlowResponse": "Enable slow response warnings",
+  "adminGeneralQuickConnect": "Enable Quick Connect",
+  "adminGeneralSectionServer": "Server",
+  "adminGeneralSectionMetadata": "Metadata",
+  "adminGeneralSectionPaths": "Paths",
+  "adminGeneralSectionPerformance": "Performance",
   "adminGeneralCachePath": "Cache path",
   "adminGeneralMetadataPath": "Metadata path",
   "adminGeneralServerName": "Server name",

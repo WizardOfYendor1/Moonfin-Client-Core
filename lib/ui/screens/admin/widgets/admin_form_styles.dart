@@ -170,6 +170,39 @@ InputDecoration adminInputDecoration({
   );
 }
 
+/// Dropdown of `(code, displayName)` pairs with a leading "default" option.
+/// Dedupes by code (the localization lists can repeat codes) and preserves an
+/// unknown [current] value so saving never silently drops it.
+Widget adminCodeDropdown({
+  required String label,
+  required String defaultLabel,
+  required String current,
+  required Iterable<(String?, String?)> rawItems,
+  required ValueChanged<String?> onChanged,
+}) {
+  final seen = <String>{};
+  final items = <(String, String)>[];
+  for (final e in rawItems) {
+    final code = e.$1;
+    final name = e.$2;
+    if (code == null || name == null) continue;
+    if (!seen.add(code)) continue;
+    items.add((code, name));
+  }
+  final hasCurrent = current.isEmpty || items.any((e) => e.$1 == current);
+  return DropdownButtonFormField<String>(
+    initialValue: current,
+    isExpanded: true,
+    decoration: adminInputDecoration(label: label),
+    items: [
+      DropdownMenuItem(value: '', child: Text(defaultLabel)),
+      ...items.map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2))),
+      if (!hasCurrent) DropdownMenuItem(value: current, child: Text(current)),
+    ],
+    onChanged: onChanged,
+  );
+}
+
 Widget adminSwitchRow({
   required String title,
   String? subtitle,
