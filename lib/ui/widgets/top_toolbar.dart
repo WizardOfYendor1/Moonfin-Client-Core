@@ -38,6 +38,7 @@ import 'package:playback_core/playback_core.dart';
 import '../../data/models/aggregated_item.dart';
 import '../../data/services/media_server_client_factory.dart';
 import '../../util/focus/dpad_keys.dart';
+import '../../util/focus/input_mode_tracker.dart';
 import '../navigation/app_router.dart';
 import 'adaptive/sf_symbol.dart';
 
@@ -703,6 +704,10 @@ class _TopToolbarState extends State<TopToolbar> {
 
   Widget _buildAvatar() {
     const avatarSize = _kAvatarSize;
+    final avatarFocusVisible = InputModeTracker.showFocusVisuals(
+      context,
+      _avatarFocus.hasFocus,
+    );
 
     return Focus(
       focusNode: _avatarFocus,
@@ -728,19 +733,19 @@ class _TopToolbarState extends State<TopToolbar> {
       child: GestureDetector(
         onTap: _showUserMenu,
         child: AnimatedScale(
-          scale: _avatarFocus.hasFocus ? 1.08 : 1.0,
+          scale: avatarFocusVisible ? 1.08 : 1.0,
           duration: const Duration(milliseconds: 200),
           child: Container(
             width: avatarSize,
             height: avatarSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: (_avatarFocus.hasFocus && !PlatformDetection.isTV)
+              border: (avatarFocusVisible && !PlatformDetection.isTV)
                   ? Border.fromBorderSide(
                       ThemeRegistry.active.borders.focusBorder,
                     )
                   : null,
-              color: (_avatarFocus.hasFocus && PlatformDetection.isTV)
+              color: (avatarFocusVisible && PlatformDetection.isTV)
                   ? Colors.white
                   : null,
             ),
@@ -2106,7 +2111,10 @@ class _TopMusicBarState extends State<TopMusicBar> {
       },
       child: Builder(
         builder: (context) {
-          final focused = Focus.of(context).hasFocus;
+          final focused = InputModeTracker.showFocusVisuals(
+            context,
+            Focus.of(context).hasFocus,
+          );
           return GestureDetector(
             onTap: onPressed,
             child: AnimatedContainer(

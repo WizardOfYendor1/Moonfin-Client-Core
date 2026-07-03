@@ -8,6 +8,7 @@ import 'package:jellyfin_preference/jellyfin_preference.dart';
 import '../../../util/idiom/app_ui_idiom.dart';
 import '../../../util/platform_detection.dart';
 import '../../../util/focus/dpad_keys.dart';
+import '../../../util/focus/input_mode_tracker.dart';
 import '../adaptive/adaptive_icons.dart';
 import '../adaptive/sf_symbol.dart';
 import '../overlay_sheet.dart';
@@ -1023,8 +1024,10 @@ class _TvFocusHighlightState extends State<TvFocusHighlight> {
 
   @override
   Widget build(BuildContext context) {
+    // Gate the tile highlight to keyboard/D-pad
+    final focusVisible = InputModeTracker.showFocusVisuals(context, _focused);
     final highlighted =
-        _focused &&
+        focusVisible &&
         !AppUiIdiomResolver.isApple &&
         !AppUiIdiomResolver.appleTvStyle;
     return Focus(
@@ -1040,7 +1043,7 @@ class _TvFocusHighlightState extends State<TvFocusHighlight> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 90),
             curve: Curves.easeOut,
-            decoration: _settingsTileDecoration(context, focused: _focused),
+            decoration: _settingsTileDecoration(context, focused: focusVisible),
             child: ListTileTheme.merge(
               textColor: highlighted
                   ? AppColors.black.withValues(alpha: 0.87)
@@ -1052,7 +1055,9 @@ class _TvFocusHighlightState extends State<TvFocusHighlight> {
               subtitleTextStyle: _kSettingsSubtitleTextStyle,
               child: Material(
                 type: MaterialType.transparency,
-                child: Builder(builder: (ctx) => widget.builder(ctx, _focused)),
+                child: Builder(
+                  builder: (ctx) => widget.builder(ctx, focusVisible),
+                ),
               ),
             ),
           ),

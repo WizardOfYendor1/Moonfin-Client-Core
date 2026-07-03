@@ -7,6 +7,7 @@ import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../preference/user_preferences.dart';
 import '../../util/focus/dpad_keys.dart';
+import '../../util/focus/input_mode_tracker.dart';
 import '../../util/platform_detection.dart';
 import 'focus/focus_theme.dart';
 
@@ -155,22 +156,24 @@ class _ExpandableIconButtonState extends State<ExpandableIconButton> {
     final iconSize = (isMobile ? 22.0 : (isTV ? 24.0 : 30.0)) * desktopScale;
     final focusColor = Color(_prefs.get(UserPreferences.focusColor).colorValue);
 
+    // Gate focus visuals to keyboard/D-pad input
+    final focusVisible = InputModeTracker.showFocusVisuals(context, _isFocused);
     final hoverActive = _isHovered && !isTV;
-    final leanbackFocused = _isFocused && !isMobile;
-    final isExpanded = widget.forceExpanded || _isFocused || hoverActive;
+    final leanbackFocused = focusVisible && !isMobile;
+    final isExpanded = widget.forceExpanded || focusVisible || hoverActive;
     final effectiveBorderRadius = !isMobile ? 36.0 : (btnSize / 2);
     final baseColor = widget.baseColor ?? AppColorScheme.onSurface.withValues(alpha: 0.6);
     final useBaseForFocus = widget.baseColor != null;
 
     final bgColor = leanbackFocused
         ? AppColorScheme.onSurface
-        : (_isFocused || hoverActive)
+        : (focusVisible || hoverActive)
         ? focusColor.withValues(alpha: 0.18)
         : Colors.transparent;
 
     final fgColor = leanbackFocused
       ? AppColors.black
-      : (_isFocused || hoverActive)
+      : (focusVisible || hoverActive)
       ? (useBaseForFocus ? baseColor : focusColor)
       : baseColor;
 
@@ -205,7 +208,7 @@ class _ExpandableIconButtonState extends State<ExpandableIconButton> {
               maxWidth: isExpanded ? 200 : btnSize,
             ),
             decoration: FocusTheme.focusDecoration(
-              isFocused: _isFocused && isMobile,
+              isFocused: focusVisible && isMobile,
               radius: effectiveBorderRadius,
               color: focusColor,
               backgroundColor: bgColor,
