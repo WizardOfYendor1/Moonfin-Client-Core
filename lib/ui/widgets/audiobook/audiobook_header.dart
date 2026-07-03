@@ -79,7 +79,7 @@ class AudiobookHeader extends StatelessWidget {
       item?.album ?? item?.seriesName ?? '',
       textAlign: apple ? TextAlign.center : TextAlign.start,
       style: TextStyle(
-        color: onSurface.withValues(alpha: 0.7),
+        color: onSurface.withValues(alpha: 0.85),
         fontSize: 12,
         letterSpacing: 1.2,
       ),
@@ -88,20 +88,18 @@ class AudiobookHeader extends StatelessWidget {
     );
 
     Widget? castButton;
-    if (item != null && onCast != null) {
+    if (!isTv && item != null && onCast != null) {
       castButton = ValueListenableBuilder<CastTargetKind?>(
         valueListenable: castService.activeKindNotifier,
         builder: (context, kind, _) {
           final active = kind != null;
-          final btn = iconButton(
+          return iconButton(
             icon: apple
                 ? CupertinoIcons.antenna_radiowaves_left_right
                 : (active ? Icons.cast_connected : Icons.cast),
             color: active ? AppColorScheme.accent : null,
             onPressed: active ? onCastSettings : onCast!,
           );
-          if (!isTv) return btn;
-          return AudiobookFocusRing(focused: tvFocusIndex == 1, child: btn);
         },
       );
     }
@@ -113,6 +111,16 @@ class AudiobookHeader extends StatelessWidget {
       onPressed: onToggleDrawer,
     );
 
+    final Widget rightButton;
+    if (isTv) {
+      rightButton = AudiobookFocusRing(
+        focused: tvFocusIndex == 1,
+        child: drawerButton,
+      );
+    } else {
+      rightButton = drawerButton;
+    }
+
     final row = Padding(
       padding: EdgeInsets.symmetric(
         horizontal: apple ? AppSpacing.spaceXs : AppSpacing.spaceSm,
@@ -123,8 +131,9 @@ class AudiobookHeader extends StatelessWidget {
           backButton,
           const SizedBox(width: AppSpacing.spaceSm),
           Expanded(child: eyebrow),
-          ?castButton,
-          drawerButton,
+          // ignore: use_null_aware_elements
+          if (castButton != null) castButton,
+          rightButton,
         ],
       ),
     );

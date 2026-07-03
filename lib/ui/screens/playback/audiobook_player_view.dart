@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:path_provider/path_provider.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 import 'package:playback_core/playback_core.dart';
@@ -13,8 +16,10 @@ import '../../../data/models/aggregated_item.dart';
 import '../../../data/repositories/item_mutation_repository.dart';
 import '../../../data/services/audiobook_bookmarks_service.dart';
 import '../../../data/services/audiobook_notes_service.dart';
+import '../../../data/services/audiobook_resume_service.dart';
 import '../../../data/services/cast/cast_service.dart';
 import '../../../data/services/media_server_client_factory.dart';
+import '../../../data/services/storage_path_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../playback/sleep_timer_controller.dart';
 import '../../../preference/user_preferences.dart';
@@ -55,10 +60,19 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
   final _prefs = GetIt.instance<UserPreferences>();
   final _bookmarks = GetIt.instance<AudiobookBookmarksService>();
   final _notes = GetIt.instance<AudiobookNotesService>();
+  final _resume = GetIt.instance<AudiobookResumeService>();
   final _sleep = GetIt.instance<SleepTimerController>();
+
+  Timer? _resumeTimer;
+  String? _resumeAppliedForItemId;
+  bool _resumeRestored = false;
 
   final _subs = <StreamSubscription>[];
   final _tvFocus = FocusNode(debugLabel: 'AudiobookTvFocus');
+  // Position ticks arrive several times a second; drive them through a notifier
+  // so only the scrubbers and chapter strip repaint, not the whole view.
+  final ValueNotifier<Duration> _positionNotifier =
+      ValueNotifier(Duration.zero);
 
   AudiobookDrawerTab _drawerTab = AudiobookDrawerTab.chapters;
   bool _drawerOpen = false;
@@ -71,14 +85,27 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
   int _tvTransportIndex = 2;
   int _tvRailIndex = 0;
   int _tvTabIndex = 0;
+  bool _drawerContentActive = false;
+  int _tvListIndex = 0;
+  int _tvSubIndex = 0;
+  List<AudiobookBookmark> _bookmarksList = [];
+  List<AudiobookNote> _notesList = [];
+  String? _lastSubscribedItemId;
+  StreamSubscription? _bookmarkSub;
+  StreamSubscription? _noteSub;
+  bool _dialogOpen = false;
+  AggregatedItem? _fullItem;
 
   PlayerState get _state => _manager.state;
   QueueService get _queue => _manager.queueService;
+
+  bool get _dpadNav => !PlatformDetection.useMobileUi;
 
   @override
   void initState() {
     super.initState();
     _showRemaining = _prefs.get(UserPreferences.audiobookShowRemaining);
+    _drawerOpen = _dpadNav;
     final savedTab = _prefs.get(UserPreferences.audiobookDrawerTab);
     _drawerTab = AudiobookDrawerTab.values.firstWhere(
       (t) => t.name == savedTab,
@@ -87,12 +114,20 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
 
     _subs.addAll([
       _manager.backendChangedStream.listen((_) => _rebuild()),
-      _state.playingStream.listen((_) => _rebuild()),
-      _state.positionStream.listen((_) => _rebuild()),
+      _state.playingStream.listen((_) {
+        _rebuild();
+        if (!_state.isPlaying) _saveResume();
+      }),
+      _state.positionStream.listen((_) => _positionNotifier.value = _state.position),
       _state.durationStream.listen((_) => _rebuild()),
       _queue.queueChangedStream.listen((_) => _rebuild()),
+      _sleep.onExpired.listen((_) => _onSleepTimerExpired()),
     ]);
     _sleep.addListener(_rebuild);
+    _positionNotifier.value = _state.position;
+    _resumeTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_state.isPlaying) _saveResume();
+    });
 
     if (PlatformDetection.useNativeVideoSurface) {
       unawaited(_manager.backend?.setVolume(100.0));
@@ -103,7 +138,7 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
       unawaited(_manager.setPlaybackSpeed(defaultSpeed));
     }
 
-    if (PlatformDetection.isTV) {
+    if (_dpadNav) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _tvFocus.requestFocus();
       });
@@ -112,19 +147,171 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
 
   @override
   void dispose() {
+    _saveResume();
+    _resumeTimer?.cancel();
+    _bookmarkSub?.cancel();
+    _noteSub?.cancel();
     for (final s in _subs) {
       s.cancel();
     }
     _sleep.removeListener(_rebuild);
     _tvFocus.dispose();
+    _positionNotifier.dispose();
     super.dispose();
   }
 
+  void _updateStreamSubscriptions() {
+    final item = _resolveItem();
+    if (item == null) return;
+    if (_lastSubscribedItemId == item.id) return;
+    _lastSubscribedItemId = item.id;
+    _fullItem = null;
+
+    if (!_manager.isOfflinePlayback) {
+      unawaited(() async {
+        try {
+          final client = _clientForItem(item);
+          final fullData = await client.itemsApi.getItem(item.id);
+          if (mounted && _lastSubscribedItemId == item.id) {
+            setState(() {
+              _fullItem = AggregatedItem(
+                id: item.id,
+                serverId: item.serverId,
+                rawData: fullData,
+              );
+            });
+          }
+        } catch (e) {
+          // Ignore background fetch failure
+        }
+      }());
+    }
+
+    _bookmarkSub?.cancel();
+    _bookmarkSub = _bookmarks.watch(item.serverId, item.id).listen((list) {
+      if (mounted) setState(() => _bookmarksList = list);
+    });
+
+    _noteSub?.cancel();
+    _noteSub = _notes.watch(item.serverId, item.id).listen((list) {
+      if (mounted) setState(() => _notesList = list);
+    });
+  }
+
   void _rebuild() {
+    _updateStreamSubscriptions();
+    unawaited(_maybeApplyResume());
     if (mounted) setState(() {});
   }
 
+  // Restore the locally storedd resume position once playback is ready, seeking
+  // only if it is ahead of where the server already resumed us to. Saving is
+  // gated until this runs so the initial position never overwrites the store.
+  Future<void> _maybeApplyResume() async {
+    final item = _resolveItem();
+    if (item == null) return;
+    if (_resumeAppliedForItemId == item.id) return;
+    if (_state.duration <= Duration.zero) return;
+    _resumeAppliedForItemId = item.id;
+    _resumeRestored = false;
+    final ms = await _resume.load(item.serverId, item.id);
+    if (!mounted || _resumeAppliedForItemId != item.id) return;
+    final currentMs = _state.position.inMilliseconds;
+    if (ms != null && ms > currentMs + 1500) {
+      await _manager.seekTo(Duration(milliseconds: ms));
+    }
+    _resumeRestored = true;
+  }
+
+  void _saveResume() {
+    final item = _resolveItem();
+    if (item == null ||
+        !_resumeRestored ||
+        _resumeAppliedForItemId != item.id) {
+      return;
+    }
+    unawaited(
+        _resume.save(item.serverId, item.id, _state.position.inMilliseconds));
+  }
+
+  void _onSleepTimerExpired() {
+    if (!mounted) return;
+
+    final lastMode = _sleep.lastActiveMode;
+    final lastDuration = _sleep.lastActiveDuration;
+    final item = _resolveItem();
+    final chapters = _chapters(item);
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        String label = 'chosen timer';
+        if (lastMode == SleepTimerMode.duration) {
+          label = '${lastDuration.inMinutes} min';
+        } else if (lastMode == SleepTimerMode.endOfChapter) {
+          final l10n = AppLocalizations.of(context);
+          label = l10n.audiobookSleepEndOfChapter;
+        }
+
+        return AlertDialog(
+          backgroundColor: AppColorScheme.surface,
+          title: const Text('Sleep Timer Finished'),
+          content: Text('Your sleep timer ($label) has finished. What would you like to do?'),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    if (lastMode == SleepTimerMode.duration) {
+                      _sleep.startDuration(lastDuration);
+                    } else if (lastMode == SleepTimerMode.endOfChapter) {
+                      _sleep.startEndOfChapter(
+                        chapterStartMsAscending: chapters.map((c) => c.startMs).toList(),
+                        currentPositionMs: _state.position.inMilliseconds,
+                        totalDurationMs: _state.duration.inMilliseconds,
+                      );
+                    }
+                    await _manager.resume();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColorScheme.accent,
+                    foregroundColor: AppColorScheme.onAccent,
+                  ),
+                  child: const Text('Restart Sleep Timer'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Stop Playback'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _showSleepSheet(chapters, resumeOnSelect: true);
+                  },
+                  child: const Text('Add Custom Value to Timer'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   AggregatedItem? _resolveItem() {
+    if (_fullItem != null && _fullItem!.id == _queue.currentItem?.id) {
+      return _fullItem;
+    }
     final current = _queue.currentItem;
     if (current is AggregatedItem) return current;
     final meta = _manager.currentOfflineMetadata;
@@ -134,6 +321,121 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
       serverId: meta['ServerId'] as String? ?? '',
       rawData: meta,
     );
+  }
+
+  List<AudiobookDrawerTab> _getAvailableTabs(List<Chapter> chapters) {
+    final list = <AudiobookDrawerTab>[];
+    list.add(AudiobookDrawerTab.timeline);
+    if (chapters.isNotEmpty) {
+      list.add(AudiobookDrawerTab.chapters);
+    }
+    list.add(AudiobookDrawerTab.bookmarks);
+    list.add(AudiobookDrawerTab.notes);
+    list.add(AudiobookDrawerTab.queue);
+    return list;
+  }
+
+  bool _tabHasExport(AudiobookDrawerTab tab) {
+    if (PlatformDetection.isTV) return false;
+    return tab == AudiobookDrawerTab.timeline ||
+        tab == AudiobookDrawerTab.bookmarks ||
+        tab == AudiobookDrawerTab.notes;
+  }
+
+  List<TimelineEvent> _getTimelineEvents(List<Chapter> chapters) {
+    final events = <TimelineEvent>[];
+    for (var i = 0; i < chapters.length; i++) {
+      final c = chapters[i];
+      events.add(TimelineEvent(
+        id: 'chapter_$i',
+        type: TimelineEventType.chapter,
+        title: c.title,
+        positionMs: c.startMs,
+        date: DateTime.fromMillisecondsSinceEpoch(0),
+        originalObject: c,
+      ));
+    }
+    for (var i = 0; i < _bookmarksList.length; i++) {
+      final b = _bookmarksList[i];
+      events.add(TimelineEvent(
+        id: 'bookmark_${b.positionMs}',
+        type: TimelineEventType.bookmark,
+        title: 'Bookmark ${i + 1}: ${b.label}',
+        positionMs: b.positionMs,
+        date: b.createdAt,
+        originalObject: b,
+      ));
+    }
+    for (var i = 0; i < _notesList.length; i++) {
+      final n = _notesList[i];
+      events.add(TimelineEvent(
+        id: 'note_${n.id}',
+        type: TimelineEventType.note,
+        title: 'Note: ${n.body}',
+        content: n.body,
+        positionMs: n.positionMs,
+        date: n.updatedAt,
+        originalObject: n,
+      ));
+    }
+    events.sort((a, b) {
+      final cmp = a.positionMs.compareTo(b.positionMs);
+      if (cmp != 0) return cmp;
+      return a.type.index.compareTo(b.type.index);
+    });
+    return events;
+  }
+
+  Future<void> _exportToCsv(String label, List<TimelineEvent> events) async {
+    final item = _resolveItem();
+    final csv = StringBuffer();
+    csv.writeln('Timestamp,Type,Content');
+    for (final e in events) {
+      final typeStr = e.type == TimelineEventType.chapter
+          ? 'Chapter'
+          : e.type == TimelineEventType.bookmark
+              ? 'Bookmark'
+              : 'Note';
+      final timestamp = formatAudiobookClock(Duration(milliseconds: e.positionMs));
+      final content = e.content ?? '';
+      
+      String escapeCsv(String val) {
+        if (val.contains(',') || val.contains('"') || val.contains('\n')) {
+          return '"' + val.replaceAll('"', '""') + '"';
+        }
+        return val;
+      }
+      csv.writeln('${escapeCsv(timestamp)},${escapeCsv(typeStr)},${escapeCsv(content)}');
+    }
+    try {
+      final storagePathService = GetIt.instance<StoragePathService>();
+      final baseDir = await storagePathService.getOfflineRoot();
+      final exportDir = Directory('${baseDir.path}/Exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+      final cleanTitle = (item?.name ?? 'audiobook').replaceAll(RegExp(r'[^\w\s\-]'), '').replaceAll(' ', '_');
+      final dateStr = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
+      final file = File('${exportDir.path}/${cleanTitle}_${label.toLowerCase()}_$dateStr.csv');
+      await file.writeAsString(csv.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).audiobookExportSuccess(file.path)),
+            backgroundColor: AppColorScheme.accent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).audiobookExportFailed('$e')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   MediaServerClient _clientForItem(AggregatedItem item) {
@@ -161,6 +463,9 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
 
   List<Chapter> _chapters(AggregatedItem? item) {
     if (item == null) return const [];
+    
+
+
     final out = <Chapter>[];
     for (var i = 0; i < item.chapters.length; i++) {
       final chapter = item.chapters[i];
@@ -222,7 +527,10 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
   }
 
   Future<void> _setDrawerTab(AudiobookDrawerTab tab) async {
-    setState(() => _drawerTab = tab);
+    setState(() {
+      _drawerTab = tab;
+      _tvSubIndex = 0;
+    });
     await _prefs.set(UserPreferences.audiobookDrawerTab, tab.name);
   }
 
@@ -296,29 +604,46 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
   }
 
   Future<void> _openNoteEditor(AggregatedItem item, {AudiobookNote? existing}) async {
+    if (_dialogOpen) {
+      return;
+    }
+    _dialogOpen = true;
+
     final wasPlaying = _state.isPlaying;
     if (wasPlaying) await _manager.pause();
-    if (!mounted) return;
+    if (!mounted) {
+      _dialogOpen = false;
+      return;
+    }
     final pos = existing?.positionMs ?? _state.position.inMilliseconds;
     final result = await showAudiobookNoteEditor(
       context: context,
       initialText: existing?.body ?? '',
       positionLabel: formatAudiobookClock(Duration(milliseconds: pos)),
     );
-    if (result != null && result.trim().isNotEmpty) {
+
+    // Hold the lock long enough to cover the dialog route exit animation
+    // and clear any trailing key events. The Select-KeyDownOnly fix in
+    // _handleTvKey already prevents KeyRepeat from re-triggering; 300ms
+    // is enough buffer without making the player feel frozen.
+    await Future.delayed(const Duration(milliseconds: 300));
+    _dialogOpen = false;
+
+    final noteText = result is String ? result.trim() : null;
+    if (noteText != null && noteText.isNotEmpty) {
       if (existing == null) {
         await _notes.add(
           item.serverId,
           item.id,
           positionMs: pos,
-          body: result.trim(),
+          body: noteText,
         );
       } else {
         await _notes.update(
           item.serverId,
           item.id,
           existing.id,
-          body: result.trim(),
+          body: noteText,
         );
       }
     }
@@ -356,20 +681,24 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
       },
     );
 
-    final body = PlatformDetection.isTV
+    final body = _dpadNav
         ? Focus(
             focusNode: _tvFocus,
             autofocus: true,
             onKeyEvent: _handleTvKey,
-            child: layout,
+            child: ExcludeFocus(child: layout),
           )
         : layout;
 
     return PopScope(
-      canPop: !_drawerOpen,
+      canPop: !_drawerOpen && !_drawerContentActive,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (_drawerOpen) setState(() => _drawerOpen = false);
+        if (_drawerContentActive) {
+          setState(() => _drawerContentActive = false);
+        } else if (_drawerOpen) {
+          setState(() => _drawerOpen = false);
+        }
       },
       child: Scaffold(
         backgroundColor: AppColorScheme.background,
@@ -394,38 +723,39 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
           onClose: () => Navigator.of(context).pop(),
           onCast: item != null ? () => _castToDevice(item) : null,
           onCastSettings: _showCastControls,
-          onToggleDrawer: () => setState(() => _drawerOpen = !_drawerOpen),
-          drawerOpen: _drawerOpen,
+          onToggleDrawer: () => _openDrawerSheet(context, item, chapters),
+          drawerOpen: false,
           tvFocusIndex: _tvArea == _AudiobookFocusArea.header ? _tvHeaderIndex : -1,
         ),
         Expanded(
-          child: _drawerOpen
-              ? _buildDrawer(context, item, chapters)
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.spaceLg),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: AppSpacing.spaceMd),
-                      _CoverArt(
-                        coverUrl: coverUrl,
-                        localPosterPath: localPoster,
-                        size: 260,
-                      ),
-                      const SizedBox(height: AppSpacing.spaceLg),
-                      _TitleBlock(item: item, centered: true),
-                      const SizedBox(height: AppSpacing.spaceMd),
-                      AudiobookChapterContextStrip(
-                        chapters: chapters,
-                        position: _state.position,
-                        onTap: () => setState(() {
-                          _drawerOpen = true;
-                          _drawerTab = AudiobookDrawerTab.chapters;
-                        }),
-                      ),
-                    ],
+          child: SingleChildScrollView(
+            padding:
+                const EdgeInsets.symmetric(horizontal: AppSpacing.spaceLg),
+            child: Column(
+              children: [
+                const SizedBox(height: AppSpacing.spaceMd),
+                _CoverArt(
+                  coverUrl: coverUrl,
+                  localPosterPath: localPoster,
+                  size: 260,
+                ),
+                const SizedBox(height: AppSpacing.spaceLg),
+                _TitleBlock(item: item, centered: true),
+                const SizedBox(height: AppSpacing.spaceMd),
+                ValueListenableBuilder<Duration>(
+                  valueListenable: _positionNotifier,
+                  builder: (context, pos, _) => AudiobookChapterContextStrip(
+                    chapters: chapters,
+                    position: pos,
+                    onTap: () {
+                      _setDrawerTab(AudiobookDrawerTab.chapters);
+                      _openDrawerSheet(context, item, chapters);
+                    },
                   ),
                 ),
+              ],
+            ),
+          ),
         ),
         _buildBottomControls(context, item, chapters),
       ],
@@ -439,7 +769,7 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
     String? localPoster,
     List<Chapter> chapters,
   ) {
-    final coverSize = PlatformDetection.isTV ? 360.0 : 300.0;
+    final coverSize = PlatformDetection.isTV ? 240.0 : 200.0;
     return Column(
       children: [
         AudiobookHeader(
@@ -449,7 +779,16 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
           onClose: () => Navigator.of(context).pop(),
           onCast: item != null ? () => _castToDevice(item) : null,
           onCastSettings: _showCastControls,
-          onToggleDrawer: () => setState(() => _drawerOpen = !_drawerOpen),
+          onToggleDrawer: () {
+            setState(() {
+              _drawerOpen = !_drawerOpen;
+              if (_dpadNav && !_drawerOpen) {
+                _drawerContentActive = false;
+                _tvArea = _AudiobookFocusArea.header;
+                _tvHeaderIndex = 1;
+              }
+            });
+          },
           drawerOpen: _drawerOpen,
           tvFocusIndex: _tvArea == _AudiobookFocusArea.header ? _tvHeaderIndex : -1,
         ),
@@ -457,9 +796,8 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.spaceXl),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-
                 Expanded(
                   flex: 4,
                   child: Padding(
@@ -480,7 +818,6 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.spaceXl),
-
                 Expanded(
                   flex: 5,
                   child: Padding(
@@ -489,23 +826,26 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        AudiobookChapterContextStrip(
-                          chapters: chapters,
-                          position: _state.position,
-                          onTap: () => setState(() {
-                            _drawerOpen = true;
-                            _drawerTab = AudiobookDrawerTab.chapters;
-                          }),
+                        ValueListenableBuilder<Duration>(
+                          valueListenable: _positionNotifier,
+                          builder: (context, pos, _) =>
+                              AudiobookChapterContextStrip(
+                            chapters: chapters,
+                            position: pos,
+                            onTap: () => setState(() {
+                              _drawerOpen = true;
+                              _drawerTab = AudiobookDrawerTab.chapters;
+                            }),
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.spaceMd),
                         Expanded(
                           child: _drawerOpen
                               ? _buildDrawer(context, item, chapters)
-                              : _ActiveTimersPanel(
-                                  sleep: _sleep,
-                                  onCancelSleep: _sleep.cancel,
-                                ),
+                              : const SizedBox.shrink(),
                         ),
+                        const SizedBox(height: AppSpacing.spaceMd),
+                        _buildBottomControls(context, item, chapters, splitLayout: true),
                       ],
                     ),
                   ),
@@ -514,7 +854,6 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
             ),
           ),
         ),
-        _buildBottomControls(context, item, chapters),
       ],
     );
   }
@@ -522,34 +861,64 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
   Widget _buildBottomControls(
     BuildContext context,
     AggregatedItem? item,
-    List<Chapter> chapters,
-  ) {
+    List<Chapter> chapters, {
+    bool splitLayout = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.spaceXl,
-        AppSpacing.spaceSm,
-        AppSpacing.spaceXl,
-        AppSpacing.spaceLg,
-      ),
+      padding: splitLayout
+          ? EdgeInsets.zero
+          : const EdgeInsets.fromLTRB(
+              AppSpacing.spaceXl,
+              AppSpacing.spaceSm,
+              AppSpacing.spaceXl,
+              AppSpacing.spaceLg,
+            ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AudiobookProgressBar(
-            position: _state.position,
-            duration: _state.duration,
-            chapters: chapters,
-            showRemaining: _showRemaining,
-            isTvFocused: PlatformDetection.isTV &&
-                _tvArea == _AudiobookFocusArea.progress,
-            onSeek: (d) => _manager.seekTo(d),
-            onToggleRemaining: () => _setShowRemaining(!_showRemaining),
-            formatPosition: formatAudiobookClock,
-            formatRemaining: _formatRemaining,
+          ValueListenableBuilder<Duration>(
+            valueListenable: _positionNotifier,
+            builder: (context, pos, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AudiobookZoomedProgressBar(
+                  position: pos,
+                  duration: _state.duration,
+                  chapters: chapters,
+                  bookmarks: _bookmarksList,
+                  notes: _notesList,
+                  isTvFocused: _dpadNav &&
+                      _tvArea == _AudiobookFocusArea.progress,
+                  showRemaining: _showRemaining,
+                  onSeek: (d) => _manager.seekTo(d),
+                  onToggleRemaining: () => _setShowRemaining(!_showRemaining),
+                  formatPosition: formatAudiobookClock,
+                  formatRemaining: _formatRemaining,
+                ),
+                const SizedBox(height: AppSpacing.spaceXs),
+                AudiobookBookOverview(
+                  position: pos,
+                  duration: _state.duration,
+                  chapters: chapters,
+                  bookmarks: _bookmarksList,
+                  notes: _notesList,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.spaceSm),
+          if (PlatformDetection.useMobileUi) ...[
+            const SizedBox(height: AppSpacing.spaceMd),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColorScheme.onSurface.withValues(alpha: 0.06),
+            ),
+            const SizedBox(height: AppSpacing.spaceMd),
+          ] else
+            const SizedBox(height: AppSpacing.spaceSm),
           AudiobookTransportRow(
             isPlaying: _state.isPlaying,
-            tvFocusIndex: PlatformDetection.isTV &&
+            tvFocusIndex: _dpadNav &&
                     _tvArea == _AudiobookFocusArea.transport
                 ? _tvTransportIndex
                 : -1,
@@ -564,13 +933,17 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
             onSkipForward: _skipForward,
             onNextChapter: () => _nextChapter(chapters),
           ),
-          const SizedBox(height: AppSpacing.spaceSm),
+          SizedBox(
+            height: PlatformDetection.useMobileUi
+                ? AppSpacing.spaceLg
+                : AppSpacing.spaceSm,
+          ),
           AudiobookActionRail(
             speed: _state.playbackSpeed,
             sleepActive: _sleep.isActive,
             sleepRemaining: _sleep.remaining,
             isFavorite: item != null && _isFavoriteCurrent(item),
-            tvFocusIndex: PlatformDetection.isTV &&
+            tvFocusIndex: _dpadNav &&
                     _tvArea == _AudiobookFocusArea.actionRail
                 ? _tvRailIndex
                 : -1,
@@ -585,58 +958,186 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
     );
   }
 
+  Widget _drawerTabContent(
+    AudiobookDrawerTab tab,
+    AggregatedItem? item,
+    List<Chapter> chapters, {
+    required bool tv,
+  }) {
+    final tvIdx = (tv &&
+            _dpadNav &&
+            _tvArea == _AudiobookFocusArea.drawerContent &&
+            _drawerContentActive)
+        ? _tvListIndex
+        : -1;
+    final subIdx = tv ? _tvSubIndex : 0;
+
+    return switch (tab) {
+      AudiobookDrawerTab.timeline => AudiobookTimelineList(
+          events: _getTimelineEvents(chapters),
+          onJump: (ev) {
+            if (ev.type == TimelineEventType.chapter) {
+              _jumpToChapter(ev.originalObject as Chapter);
+            } else if (ev.type == TimelineEventType.bookmark) {
+              _manager.seekTo(Duration(
+                  milliseconds: (ev.originalObject as AudiobookBookmark).positionMs));
+            } else if (ev.type == TimelineEventType.note) {
+              _manager.seekTo(Duration(
+                  milliseconds: (ev.originalObject as AudiobookNote).positionMs));
+            }
+          },
+          onEditNote: (n) =>
+              item != null ? _openNoteEditor(item, existing: n) : null,
+          onDeleteBookmark: (b) =>
+              unawaited(_bookmarks.removeAt(item!.serverId, item.id, b.positionMs)),
+          onDeleteNote: (n) =>
+              unawaited(_notes.remove(item!.serverId, item.id, n.id)),
+          tvFocusedIndex: tvIdx,
+          tvSubIndex: subIdx,
+          onExport: () => _exportToCsv('All', _getTimelineEvents(chapters)),
+        ),
+      AudiobookDrawerTab.chapters => AudiobookChaptersList(
+          chapters: chapters,
+          position: _state.position,
+          onTap: (c) => _jumpToChapter(c),
+          tvFocusedIndex: tvIdx,
+        ),
+      AudiobookDrawerTab.bookmarks => AudiobookBookmarksList(
+          item: item,
+          service: _bookmarks,
+          onJump: (b) => _manager.seekTo(Duration(milliseconds: b.positionMs)),
+          tvFocusedIndex: tvIdx,
+          tvSubIndex: subIdx,
+          onExport: () {
+            final bEvents = _bookmarksList
+                .map((b) => TimelineEvent(
+                      id: 'bookmark_${b.positionMs}',
+                      type: TimelineEventType.bookmark,
+                      title: b.label,
+                      positionMs: b.positionMs,
+                      date: b.createdAt,
+                      originalObject: b,
+                    ))
+                .toList();
+            _exportToCsv('Bookmarks', bEvents);
+          },
+        ),
+      AudiobookDrawerTab.notes => AudiobookNotesList(
+          item: item,
+          service: _notes,
+          onJump: (n) => _manager.seekTo(Duration(milliseconds: n.positionMs)),
+          onEdit: (n) =>
+              item != null ? _openNoteEditor(item, existing: n) : null,
+          tvFocusedIndex: tvIdx,
+          tvSubIndex: subIdx,
+          onExport: () {
+            final nEvents = _notesList
+                .map((n) => TimelineEvent(
+                      id: 'note_${n.id}',
+                      type: TimelineEventType.note,
+                      title: 'Note: ${n.body}',
+                      content: n.body,
+                      positionMs: n.positionMs,
+                      date: n.updatedAt,
+                      originalObject: n,
+                    ))
+                .toList();
+            _exportToCsv('Notes', nEvents);
+          },
+        ),
+      AudiobookDrawerTab.queue => AudiobookQueueList(
+          queue: _queue,
+          onPlay: (i) => _manager.playFromQueue(i),
+          tvFocusedIndex: tvIdx,
+        ),
+    };
+  }
+
   Widget _buildDrawer(
     BuildContext context,
     AggregatedItem? item,
     List<Chapter> chapters,
   ) {
     final l10n = AppLocalizations.of(context);
+    final availableTabs = _getAvailableTabs(chapters);
+    if (!availableTabs.contains(_drawerTab)) {
+      _drawerTab = AudiobookDrawerTab.timeline;
+    }
+    _tvTabIndex = availableTabs.indexOf(_drawerTab).clamp(0, availableTabs.length - 1);
+
+    final labels = {
+      AudiobookDrawerTab.timeline: l10n.audiobookTimeline,
+      AudiobookDrawerTab.chapters: l10n.audiobookChapters,
+      AudiobookDrawerTab.bookmarks: l10n.audiobookBookmarks,
+      AudiobookDrawerTab.notes: l10n.audiobookNotes,
+      AudiobookDrawerTab.queue: l10n.audiobookQueue,
+    };
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.spaceMd),
       child: Column(
         children: [
           AudiobookDrawerTabBar(
             current: _drawerTab,
-            tvFocused: PlatformDetection.isTV &&
+            tvFocused: _dpadNav &&
                 _tvArea == _AudiobookFocusArea.drawerTabs,
             tvIndex: _tvTabIndex,
             onChanged: _setDrawerTab,
-            labels: {
-              AudiobookDrawerTab.chapters: l10n.audiobookChapters,
-              AudiobookDrawerTab.bookmarks: l10n.audiobookBookmarks,
-              AudiobookDrawerTab.notes: l10n.audiobookNotes,
-              AudiobookDrawerTab.queue: l10n.audiobookQueue,
-            },
+            labels: labels,
+            tabs: availableTabs,
           ),
           const SizedBox(height: AppSpacing.spaceSm),
           Expanded(
-            child: switch (_drawerTab) {
-              AudiobookDrawerTab.chapters => AudiobookChaptersList(
-                  chapters: chapters,
-                  position: _state.position,
-                  onTap: (c) => _jumpToChapter(c),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: (_dpadNav && _tvArea == _AudiobookFocusArea.drawerContent)
+                      ? AppColorScheme.accent
+                      : Colors.transparent,
+                  width: 2.0,
                 ),
-              AudiobookDrawerTab.bookmarks => AudiobookBookmarksList(
-                  item: item,
-                  service: _bookmarks,
-                  onJump: (b) =>
-                      _manager.seekTo(Duration(milliseconds: b.positionMs)),
-                ),
-              AudiobookDrawerTab.notes => AudiobookNotesList(
-                  item: item,
-                  service: _notes,
-                  onJump: (n) =>
-                      _manager.seekTo(Duration(milliseconds: n.positionMs)),
-                  onEdit: (n) =>
-                      item != null ? _openNoteEditor(item, existing: n) : null,
-                ),
-              AudiobookDrawerTab.queue => AudiobookQueueList(
-                  queue: _queue,
-                  onPlay: (i) => _manager.playFromQueue(i),
-                ),
-            },
+                borderRadius: AppRadius.circular(16),
+              ),
+              child: GlassSurface(
+                cornerRadius: 14,
+                fallbackColor: AppColorScheme.surface.withValues(alpha: 0.5),
+                padding: const EdgeInsets.all(6),
+                child: _drawerTabContent(_drawerTab, item, chapters, tv: true),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openDrawerSheet(
+    BuildContext context,
+    AggregatedItem? item,
+    List<Chapter> chapters,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final availableTabs = _getAvailableTabs(chapters);
+    if (availableTabs.isEmpty) return;
+    final labels = {
+      AudiobookDrawerTab.timeline: l10n.audiobookTimeline,
+      AudiobookDrawerTab.chapters: l10n.audiobookChapters,
+      AudiobookDrawerTab.bookmarks: l10n.audiobookBookmarks,
+      AudiobookDrawerTab.notes: l10n.audiobookNotes,
+      AudiobookDrawerTab.queue: l10n.audiobookQueue,
+    };
+    final initial =
+        availableTabs.contains(_drawerTab) ? _drawerTab : availableTabs.first;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _AudiobookDrawerSheet(
+        initialTab: initial,
+        tabs: availableTabs,
+        labels: labels,
+        onTabChanged: _setDrawerTab,
+        contentBuilder: (tab) => _drawerTabContent(tab, item, chapters, tv: false),
       ),
     );
   }
@@ -653,20 +1154,26 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
     );
   }
 
-  Future<void> _showSleepSheet(List<Chapter> chapters) async {
+  Future<void> _showSleepSheet(List<Chapter> chapters, {bool resumeOnSelect = false}) async {
     await showAudiobookSleepSheet(
       context: context,
       controller: _sleep,
       onPickPreset: (minutes) async {
         await _prefs.set(UserPreferences.audiobookSleepPresetMin, minutes);
         _sleep.startDuration(Duration(minutes: minutes));
+        if (resumeOnSelect) {
+          await _manager.resume();
+        }
       },
-      onPickEndOfChapter: () {
+      onPickEndOfChapter: () async {
         _sleep.startEndOfChapter(
           chapterStartMsAscending: chapters.map((c) => c.startMs).toList(),
           currentPositionMs: _state.position.inMilliseconds,
           totalDurationMs: _state.duration.inMilliseconds,
         );
+        if (resumeOnSelect) {
+          await _manager.resume();
+        }
       },
       onCancel: _sleep.cancel,
     );
@@ -682,15 +1189,13 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
 
   KeyEventResult _handleTvKey(FocusNode node, KeyEvent event) {
     if (!event.isActionable) return KeyEventResult.ignored;
+    // Consume ALL events while a dialog is open. This prevents KeyRepeat events
+    // that were not handled inside the dialog's focus scope from bubbling up
+    // through the focus node tree to this handler and triggering _activate().
+    if (_dialogOpen) return KeyEventResult.handled;
     final key = event.logicalKey;
 
-    if (key.isBackKey) {
-      if (_drawerOpen) {
-        setState(() => _drawerOpen = false);
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    }
+
 
     if (key.isDirectional) {
       if (key.isUpKey) {
@@ -711,29 +1216,124 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
       }
     }
 
-    if (key.isSelectKey) {
+    // Select/Enter must only activate ONCE per physical key press (KeyDown only).
+    // KeyRepeat on a select key must NOT re-trigger _activate() — doing so would
+    // open multiple dialogs while the user holds the remote button.
+    // Directional keys remain repeat-enabled for smooth continuous scrolling.
+    if (key.isSelectKey && event is KeyDownEvent) {
       _activate();
       return KeyEventResult.handled;
     }
+    // Consume (but ignore) select KeyRepeat events so they don't bubble further.
+    if (key.isSelectKey) return KeyEventResult.handled;
 
     return KeyEventResult.ignored;
   }
 
   void _moveVertical(int delta) {
-    final all = _AudiobookFocusArea.values;
-    var idx = all.indexOf(_tvArea);
-    final wantsDrawer = _drawerOpen;
-    while (true) {
-      idx += delta;
-      if (idx < 0 || idx >= all.length) return;
-      final candidate = all[idx];
-      if ((candidate == _AudiobookFocusArea.drawerTabs ||
-              candidate == _AudiobookFocusArea.drawerContent) &&
-          !wantsDrawer) {
-        continue;
+    if (_tvArea == _AudiobookFocusArea.drawerContent && _drawerContentActive) {
+      final item = _resolveItem();
+      final chapters = _chapters(item);
+      int count = 0;
+      switch (_drawerTab) {
+        case AudiobookDrawerTab.timeline:
+          count = _getTimelineEvents(chapters).length;
+          break;
+        case AudiobookDrawerTab.chapters:
+          count = chapters.length;
+          break;
+        case AudiobookDrawerTab.bookmarks:
+          count = _bookmarksList.length;
+          break;
+        case AudiobookDrawerTab.notes:
+          count = _notesList.length;
+          break;
+        case AudiobookDrawerTab.queue:
+          count = _queue.items.length;
+          break;
       }
-      setState(() => _tvArea = candidate);
-      return;
+      final hasExport = _tabHasExport(_drawerTab);
+      final minIdx = hasExport ? -1 : 0;
+      if (count > 0 || hasExport) {
+        final nextListIdx = _tvListIndex + delta;
+        if (nextListIdx >= minIdx && nextListIdx < count) {
+          setState(() {
+            _tvListIndex = nextListIdx;
+            _tvSubIndex = 0;
+          });
+          return;
+        }
+      }
+      setState(() => _drawerContentActive = false);
+    }
+
+    final List<_AudiobookFocusArea> list;
+    if (_drawerOpen) {
+      list = [
+        _AudiobookFocusArea.header,
+        _AudiobookFocusArea.drawerTabs,
+        _AudiobookFocusArea.drawerContent,
+        _AudiobookFocusArea.progress,
+        _AudiobookFocusArea.transport,
+        _AudiobookFocusArea.actionRail,
+      ];
+    } else {
+      list = [
+        _AudiobookFocusArea.header,
+        _AudiobookFocusArea.progress,
+        _AudiobookFocusArea.transport,
+        _AudiobookFocusArea.actionRail,
+      ];
+    }
+
+    var idx = list.indexOf(_tvArea);
+    if (idx == -1) idx = 0;
+
+    final nextIdx = idx + delta;
+    if (nextIdx < 0 || nextIdx >= list.length) return;
+
+    final candidate = list[nextIdx];
+
+    if (candidate == _AudiobookFocusArea.transport && _tvArea == _AudiobookFocusArea.actionRail) {
+      _tvTransportIndex = _tvRailIndex;
+    } else if (candidate == _AudiobookFocusArea.transport && _tvArea == _AudiobookFocusArea.progress) {
+      _tvTransportIndex = 2;
+    } else if (candidate == _AudiobookFocusArea.actionRail && _tvArea == _AudiobookFocusArea.transport) {
+      _tvRailIndex = _tvTransportIndex;
+    } else if (candidate == _AudiobookFocusArea.header && _tvArea == _AudiobookFocusArea.progress) {
+      _tvHeaderIndex = 1;
+    } else if (candidate == _AudiobookFocusArea.header && _tvArea == _AudiobookFocusArea.drawerTabs) {
+      _tvHeaderIndex = 1;
+    }
+
+    if (candidate == _AudiobookFocusArea.drawerContent) {
+      _drawerContentActive = true;
+      _tvListIndex = _tabHasExport(_drawerTab) ? -1 : 0;
+      _tvSubIndex = 0;
+    }
+
+    setState(() => _tvArea = candidate);
+  }
+
+  int _maxSubIndex() {
+    final item = _resolveItem();
+    final chapters = _chapters(item);
+    switch (_drawerTab) {
+      case AudiobookDrawerTab.timeline:
+        final events = _getTimelineEvents(chapters);
+        if (_tvListIndex >= 0 && _tvListIndex < events.length) {
+          final ev = events[_tvListIndex];
+          if (ev.type == TimelineEventType.note) return 2;
+          if (ev.type == TimelineEventType.bookmark) return 1;
+        }
+        return 0;
+      case AudiobookDrawerTab.chapters:
+      case AudiobookDrawerTab.queue:
+        return 0;
+      case AudiobookDrawerTab.bookmarks:
+        return 1;
+      case AudiobookDrawerTab.notes:
+        return 2;
     }
   }
 
@@ -741,11 +1341,13 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
     setState(() {
       switch (_tvArea) {
         case _AudiobookFocusArea.header:
-          _tvHeaderIndex = (_tvHeaderIndex + delta).clamp(0, 2);
+          _tvHeaderIndex = (_tvHeaderIndex + delta).clamp(0, 1);
           break;
         case _AudiobookFocusArea.progress:
-
-          final step = Duration(milliseconds: 10000 * delta);
+          final ms = delta < 0
+              ? _prefs.get(UserPreferences.skipBackLength)
+              : _prefs.get(UserPreferences.skipForwardLength);
+          final step = Duration(milliseconds: ms * delta);
           final next = _state.position + step;
           _manager.seekTo(next < Duration.zero ? Duration.zero : next);
           break;
@@ -756,14 +1358,22 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
           _tvRailIndex = (_tvRailIndex + delta).clamp(0, 4);
           break;
         case _AudiobookFocusArea.drawerTabs:
+          final item = _resolveItem();
+          final chapters = _chapters(item);
+          final availableTabs = _getAvailableTabs(chapters);
           _tvTabIndex =
-              (_tvTabIndex + delta).clamp(0, AudiobookDrawerTab.values.length - 1);
-          _drawerTab = AudiobookDrawerTab.values[_tvTabIndex];
+              (_tvTabIndex + delta).clamp(0, availableTabs.length - 1);
+          _drawerTab = availableTabs[_tvTabIndex];
           unawaited(_prefs.set(
               UserPreferences.audiobookDrawerTab, _drawerTab.name));
           break;
         case _AudiobookFocusArea.drawerContent:
-
+          if (_drawerContentActive) {
+            final maxIdx = _maxSubIndex();
+            if (maxIdx > 0) {
+              _tvSubIndex = (_tvSubIndex + delta).clamp(0, maxIdx);
+            }
+          }
           break;
       }
     });
@@ -776,10 +1386,13 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
       case _AudiobookFocusArea.header:
         if (_tvHeaderIndex == 0) {
           Navigator.of(context).pop();
-        } else if (_tvHeaderIndex == 1 && item != null) {
-          _castToDevice(item);
-        } else if (_tvHeaderIndex == 2) {
-          setState(() => _drawerOpen = !_drawerOpen);
+        } else if (_tvHeaderIndex == 1) {
+          setState(() {
+            _drawerOpen = !_drawerOpen;
+            if (!_drawerOpen) {
+              _drawerContentActive = false;
+            }
+          });
         }
         break;
       case _AudiobookFocusArea.progress:
@@ -826,8 +1439,160 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
         setState(() => _drawerOpen = true);
         break;
       case _AudiobookFocusArea.drawerContent:
+        if (!_drawerContentActive) {
+          setState(() {
+            _drawerContentActive = true;
+            _tvSubIndex = 0;
+            _tvListIndex = 0;
+          });
+        } else {
+          switch (_drawerTab) {
+            case AudiobookDrawerTab.timeline:
+              final events = _getTimelineEvents(chapters);
+              if (_tvListIndex >= 0 && _tvListIndex < events.length) {
+                final ev = events[_tvListIndex];
+                if (ev.type == TimelineEventType.chapter) {
+                  _jumpToChapter(ev.originalObject as Chapter);
+                } else if (ev.type == TimelineEventType.bookmark) {
+                  final b = ev.originalObject as AudiobookBookmark;
+                  if (_tvSubIndex == 0) {
+                    _manager.seekTo(Duration(milliseconds: b.positionMs));
+                  } else if (_tvSubIndex == 1) {
+                    unawaited(_bookmarks.removeAt(item!.serverId, item.id, b.positionMs));
+                    setState(() {
+                      _tvSubIndex = 0;
+                    });
+                  }
+                } else if (ev.type == TimelineEventType.note) {
+                  final n = ev.originalObject as AudiobookNote;
+                  if (_tvSubIndex == 0) {
+                    _manager.seekTo(Duration(milliseconds: n.positionMs));
+                  } else if (_tvSubIndex == 1) {
+                    _openNoteEditor(item!, existing: n);
+                  } else if (_tvSubIndex == 2) {
+                    unawaited(_notes.remove(item!.serverId, item.id, n.id));
+                    setState(() {
+                      _tvSubIndex = 0;
+                    });
+                  }
+                }
+              }
+              break;
+            case AudiobookDrawerTab.chapters:
+              if (_tvListIndex >= 0 && _tvListIndex < chapters.length) {
+                _jumpToChapter(chapters[_tvListIndex]);
+              }
+              break;
+            case AudiobookDrawerTab.bookmarks:
+              if (_tvListIndex >= 0 && _tvListIndex < _bookmarksList.length) {
+                final b = _bookmarksList[_tvListIndex];
+                if (_tvSubIndex == 0) {
+                  _manager.seekTo(Duration(milliseconds: b.positionMs));
+                } else if (_tvSubIndex == 1) {
+                  unawaited(_bookmarks.removeAt(item!.serverId, item.id, b.positionMs));
+                  setState(() {
+                    _tvSubIndex = 0;
+                  });
+                }
+              }
+              break;
+            case AudiobookDrawerTab.notes:
+              if (_tvListIndex >= 0 && _tvListIndex < _notesList.length) {
+                final n = _notesList[_tvListIndex];
+                if (_tvSubIndex == 0) {
+                  _manager.seekTo(Duration(milliseconds: n.positionMs));
+                } else if (_tvSubIndex == 1) {
+                  _openNoteEditor(item!, existing: n);
+                } else if (_tvSubIndex == 2) {
+                  unawaited(_notes.remove(item!.serverId, item.id, n.id));
+                  setState(() {
+                    _tvSubIndex = 0;
+                  });
+                }
+              }
+              break;
+            case AudiobookDrawerTab.queue:
+              if (_tvListIndex >= 0 && _tvListIndex < _queue.items.length) {
+                _manager.playFromQueue(_tvListIndex);
+              }
+              break;
+          }
+        }
         break;
     }
+  }
+}
+
+class _AudiobookDrawerSheet extends StatefulWidget {
+  const _AudiobookDrawerSheet({
+    required this.initialTab,
+    required this.tabs,
+    required this.labels,
+    required this.onTabChanged,
+    required this.contentBuilder,
+  });
+
+  final AudiobookDrawerTab initialTab;
+  final List<AudiobookDrawerTab> tabs;
+  final Map<AudiobookDrawerTab, String> labels;
+  final ValueChanged<AudiobookDrawerTab> onTabChanged;
+  final Widget Function(AudiobookDrawerTab) contentBuilder;
+
+  @override
+  State<_AudiobookDrawerSheet> createState() => _AudiobookDrawerSheetState();
+}
+
+class _AudiobookDrawerSheetState extends State<_AudiobookDrawerSheet> {
+  late AudiobookDrawerTab _tab = widget.initialTab;
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height * 0.82;
+    return Container(
+      height: height,
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: GlassSurface(
+        cornerRadius: 24,
+        fallbackColor: AppColorScheme.surface.withValues(alpha: 0.98),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColorScheme.onSurface.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: AudiobookDrawerTabBar(
+                  current: _tab,
+                  tvFocused: false,
+                  tvIndex: 0,
+                  onChanged: (t) {
+                    setState(() => _tab = t);
+                    widget.onTabChanged(t);
+                  },
+                  labels: widget.labels,
+                  tabs: widget.tabs,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: widget.contentBuilder(_tab),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -877,17 +1642,18 @@ class _CoverArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const bookAspectRatio = 0.68;
-    final width = size * bookAspectRatio;
-    final height = size;
-
     Widget child;
     if (localPosterPath != null && File(localPosterPath!).existsSync()) {
-      child = Image.file(File(localPosterPath!), fit: BoxFit.cover);
+      child = Image.file(
+        File(localPosterPath!),
+        height: size,
+        fit: BoxFit.contain,
+      );
     } else if (coverUrl != null) {
       child = CachedNetworkImage(
         imageUrl: coverUrl!,
-        fit: BoxFit.cover,
+        height: size,
+        fit: BoxFit.contain,
         placeholder: (_, _) => _placeholder(),
         errorWidget: (_, _, _) => _placeholder(),
       );
@@ -895,40 +1661,27 @@ class _CoverArt extends StatelessWidget {
       child = _placeholder();
     }
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 8,
-            top: 12,
-            right: -4,
-            bottom: -8,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: AppColorScheme.accent.withValues(alpha: 0.18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    blurRadius: 38,
-                    offset: const Offset(6, 14),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(width: width, height: height, child: child),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 38,
+            offset: const Offset(6, 14),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: child,
       ),
     );
   }
 
   Widget _placeholder() => Container(
+        height: size,
+        width: size * 0.68,
         color: AppColorScheme.surfaceVariant,
         child: Icon(
           Icons.menu_book,
@@ -979,47 +1732,6 @@ class _TitleBlock extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _ActiveTimersPanel extends StatelessWidget {
-  const _ActiveTimersPanel({required this.sleep, required this.onCancelSleep});
-
-  final SleepTimerController sleep;
-  final VoidCallback onCancelSleep;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!sleep.isActive) return const SizedBox.shrink();
-    final l10n = AppLocalizations.of(context);
-    return Card(
-      color: AppColorScheme.surface.withValues(alpha: 0.55),
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.spaceLg),
-        child: Row(
-          children: [
-            Icon(Icons.bedtime, color: AppColorScheme.accent),
-            const SizedBox(width: AppSpacing.spaceSm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.audiobookSleepTimer,
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  Text(l10n.audiobookSleepRemaining(
-                      formatAudiobookCountdown(sleep.remaining))),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: onCancelSleep,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
