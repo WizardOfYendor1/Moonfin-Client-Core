@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
-/// Clean text tab bar with an underline under the active tab. Focusable and
-/// d-pad friendly: tabs select on press, left/right move focus between tabs, and
-/// left from the first tab calls [onExitLeft] (e.g. back to the hero actions).
+import '../../../../../util/platform_detection.dart';
+
+/// Focusable, d-pad friendly tab bar: tabs select on press, left/right move
+/// focus between tabs, and left from the first tab calls [onExitLeft].
+///
+/// Two looks: the default is clean text with an underline under the active tab;
+/// [segmented] wraps the tabs in a single rounded surface with the active tab
+/// filled, matching the audiobook drawer tabs.
 class DetailsTabBar extends StatelessWidget {
   final List<String> labels;
   final int selectedIndex;
@@ -13,6 +18,10 @@ class DetailsTabBar extends StatelessWidget {
   final VoidCallback? onExitLeft;
   final VoidCallback? onExitUp;
   final void Function(int index)? onNavigateDown;
+  final bool segmented;
+  // Wrap the segments onto multiple rows instead of scrolling horizontally.
+  // Intended for touch layouts where every tab should stay visible.
+  final bool wrap;
 
   const DetailsTabBar({
     super.key,
@@ -23,10 +32,64 @@ class DetailsTabBar extends StatelessWidget {
     this.onExitLeft,
     this.onExitUp,
     this.onNavigateDown,
+    this.segmented = false,
+    this.wrap = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    _DetailsTabItem item(int i) => _DetailsTabItem(
+          label: labels[i],
+          isSelected: selectedIndex == i,
+          segmented: segmented,
+          focusNode: focusNodeFor(i),
+          onSelect: () => onSelect(i),
+          onNavigateDown:
+              onNavigateDown != null ? () => onNavigateDown!(i) : null,
+          onNavigateUp: onExitUp,
+          onNavigateLeft: () {
+            if (i > 0) {
+              focusNodeFor(i - 1).requestFocus();
+              return true;
+            }
+            if (onExitLeft != null) {
+              onExitLeft!();
+              return true;
+            }
+            return false;
+          },
+          onNavigateRight: () {
+            if (i < labels.length - 1) {
+              focusNodeFor(i + 1).requestFocus();
+            }
+          },
+        );
+
+    if (segmented) {
+      final container = Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: AppColorScheme.surface.withValues(alpha: 0.55),
+          borderRadius: AppRadius.circular(12),
+        ),
+        child: wrap
+            ? Wrap(
+                spacing: 3,
+                runSpacing: 3,
+                children: [for (var i = 0; i < labels.length; i++) item(i)],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [for (var i = 0; i < labels.length; i++) item(i)],
+              ),
+      );
+      if (wrap) return container;
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: container,
+      );
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -35,30 +98,7 @@ class DetailsTabBar extends StatelessWidget {
           for (var i = 0; i < labels.length; i++)
             Padding(
               padding: const EdgeInsets.only(right: 20),
-              child: _DetailsTabItem(
-                label: labels[i],
-                isSelected: selectedIndex == i,
-                focusNode: focusNodeFor(i),
-                onSelect: () => onSelect(i),
-                onNavigateDown: onNavigateDown != null ? () => onNavigateDown!(i) : null,
-                onNavigateUp: onExitUp,
-                onNavigateLeft: () {
-                  if (i > 0) {
-                    focusNodeFor(i - 1).requestFocus();
-                    return true;
-                  }
-                  if (onExitLeft != null) {
-                    onExitLeft!();
-                    return true;
-                  }
-                  return false;
-                },
-                onNavigateRight: () {
-                  if (i < labels.length - 1) {
-                    focusNodeFor(i + 1).requestFocus();
-                  }
-                },
-              ),
+              child: item(i),
             ),
         ],
       ),
@@ -69,6 +109,7 @@ class DetailsTabBar extends StatelessWidget {
 class _DetailsTabItem extends StatefulWidget {
   final String label;
   final bool isSelected;
+  final bool segmented;
   final FocusNode focusNode;
   final VoidCallback onSelect;
   final VoidCallback? onNavigateDown;
@@ -80,6 +121,7 @@ class _DetailsTabItem extends StatefulWidget {
   const _DetailsTabItem({
     required this.label,
     required this.isSelected,
+    required this.segmented,
     required this.focusNode,
     required this.onSelect,
     this.onNavigateDown,
@@ -124,48 +166,52 @@ class _DetailsTabItemState extends State<_DetailsTabItem> {
     }
   }
 
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    final isDownOrRepeat = event is KeyDownEvent || event is KeyRepeatEvent;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      if (isDownOrRepeat && widget.onNavigateDown != null) {
+        widget.onNavigateDown!();
+      }
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      if (isDownOrRepeat && widget.onNavigateUp != null) {
+        widget.onNavigateUp!();
+      }
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (isDownOrRepeat) {
+        final handled = widget.onNavigateLeft();
+        return handled ? KeyEventResult.handled : KeyEventResult.ignored;
+      }
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      if (isDownOrRepeat) {
+        widget.onNavigateRight();
+      }
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.select) {
+      // Activate on press only so holding select does not reselect on repeat.
+      if (event is KeyDownEvent) {
+        widget.onSelect();
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.segmented) return _buildSegmented(context);
+
     final textTheme = Theme.of(context).textTheme;
     final accent = AppColorScheme.accent;
     final muted = AppColorScheme.onSurface.withValues(alpha: 0.7);
 
     return Focus(
       focusNode: widget.focusNode,
-      onKeyEvent: (node, event) {
-        final isDownOrRepeat = event is KeyDownEvent || event is KeyRepeatEvent;
-        
-        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-          if (isDownOrRepeat && widget.onNavigateDown != null) {
-            widget.onNavigateDown!();
-          }
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-          if (isDownOrRepeat && widget.onNavigateUp != null) {
-            widget.onNavigateUp!();
-          }
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-          if (isDownOrRepeat) {
-            final handled = widget.onNavigateLeft();
-            return handled ? KeyEventResult.handled : KeyEventResult.ignored;
-          }
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-          if (isDownOrRepeat) {
-            widget.onNavigateRight();
-          }
-          return KeyEventResult.handled;
-        } else if (event.logicalKey == LogicalKeyboardKey.enter ||
-            event.logicalKey == LogicalKeyboardKey.select) {
-          // Activate on press only so holding select does not reselect on repeat.
-          if (event is KeyDownEvent) {
-            widget.onSelect();
-          }
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
+      onKeyEvent: _onKeyEvent,
       child: GestureDetector(
         onTap: widget.onSelect,
         behavior: HitTestBehavior.opaque,
@@ -207,6 +253,64 @@ class _DetailsTabItemState extends State<_DetailsTabItem> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSegmented(BuildContext context) {
+    final apple = PlatformDetection.isApple;
+    final accent = AppColorScheme.accent;
+    final selected = widget.isSelected;
+
+    final Color bg;
+    final Color fg;
+    if (selected) {
+      if (apple) {
+        bg = accent.withValues(alpha: 0.18);
+        fg = accent;
+      } else {
+        bg = accent;
+        fg = AppColorScheme.onAccent;
+      }
+    } else {
+      bg = Colors.transparent;
+      fg = AppColorScheme.onSurface.withValues(alpha: 0.6);
+    }
+
+    final radius = AppRadius.circular(9);
+
+    return Focus(
+      focusNode: widget.focusNode,
+      onKeyEvent: _onKeyEvent,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: radius,
+          border: _isFocused
+              ? Border.all(color: apple ? accent : Colors.white, width: 2)
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: radius,
+            splashColor: apple ? Colors.transparent : null,
+            highlightColor: apple ? Colors.transparent : null,
+            onTap: widget.onSelect,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+              child: Text(
+                widget.label,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: fg,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+              ),
             ),
           ),
         ),

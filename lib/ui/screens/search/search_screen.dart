@@ -23,6 +23,7 @@ import '../../../util/focus/dpad_keys.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../util/search_group_title_localizer.dart';
 import '../../../util/focus/grid_focus_node_mixin.dart';
+import '../../widgets/library_row.dart';
 import '../../widgets/media_card.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/focus/context_menu_sheet.dart';
@@ -45,6 +46,8 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
   final _searchInputFocus = FocusNode();
   final _searchTvFieldKey = GlobalKey<CustomTVTextFieldState>();
   final _resultsScrollController = ScrollController();
+  // Per-card focus nodes for the All tab's row layout, keyed 'row:col'.
+  final Map<String, FocusNode> _allRowNodes = <String, FocusNode>{};
   final Map<int, FocusNode> _tabFocusNodes = <int, FocusNode>{};
   final _voiceController = VoiceSearchController();
   late final SearchViewModel _vm;
@@ -177,11 +180,19 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
     );
   }
 
-  int get _tabCount =>
-      _vm.results.length + (_vm.seerrResults.isNotEmpty ? 1 : 0);
+  // Tab 0 is the "All" tab (row layout); groups follow, then the Seerr tab.
+  int get _tabCount {
+    final content = _vm.results.length + (_vm.seerrResults.isNotEmpty ? 1 : 0);
+    return content == 0 ? 0 : content + 1;
+  }
+
+  bool _tabIsAll(int index) => index == 0;
 
   bool _tabIsSeerr(int index) =>
       _vm.seerrResults.isNotEmpty && index == _tabCount - 1;
+
+  // The _vm.results index for a group tab (tabs 1.._vm.results.length).
+  int _groupIndex(int tab) => tab - 1;
 
   void _selectTab(int index) {
     if (index == _selectedTab) return;
@@ -370,6 +381,10 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
       node.dispose();
     }
     _tabFocusNodes.clear();
+    for (final node in _allRowNodes.values) {
+      node.dispose();
+    }
+    _allRowNodes.clear();
     disposeGridFocusNodes();
     _vm.dispose();
     _searchController.dispose();
@@ -797,10 +812,6 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
                   ],
                 ),
               ),
-              Divider(
-                color: ThemeRegistry.active.borders.chipBorder.color,
-                height: 1,
-              ),
               Expanded(child: _buildBody()),
             ],
           ),
@@ -842,9 +853,11 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
   }
 
   int _currentTabItemCount() {
+    if (_tabIsAll(_selectedTab)) return 0;
     if (_tabIsSeerr(_selectedTab)) return _vm.seerrResults.length;
-    if (_selectedTab < _vm.results.length) {
-      return _vm.results[_selectedTab].items.length;
+    final gi = _groupIndex(_selectedTab);
+    if (gi >= 0 && gi < _vm.results.length) {
+      return _vm.results[gi].items.length;
     }
     return 0;
   }
@@ -855,11 +868,14 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
     if (_selectedTab >= tabCount) _selectedTab = tabCount - 1;
 
     final l10n = AppLocalizations.of(context);
+    final totalCount = _vm.results.fold<int>(0, (s, g) => s + g.items.length) +
+        _vm.seerrResults.length;
     final labels = <String>[
+      '${l10n.all}: $totalCount',
       for (final group in _vm.results)
-        '${localizeSearchGroupTitle(group.title, l10n)}  ${group.items.length}',
+        '${localizeSearchGroupTitle(group.title, l10n)}: ${group.items.length}',
       if (_vm.seerrResults.isNotEmpty)
-        '${l10n.seerr}  ${_vm.seerrResults.length}',
+        '${l10n.seerr}: ${_vm.seerrResults.length}',
     ];
 
     final isMobile = PlatformDetection.useMobileUi;
@@ -875,45 +891,287 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
             horizontalPadding,
             4,
           ),
-          child: isMobile
-              ? _buildMobileTabs(labels)
-              : DetailsTabBar(
-                  labels: labels,
-                  selectedIndex: _selectedTab,
-                  onSelect: _selectTab,
-                  focusNodeFor: _tabNode,
-                  onExitLeft: _tryFocusSidebar,
-                  onExitUp: () {
-                    if (PlatformDetection.isTV) {
-                      _searchFocus.requestFocus();
-                    } else {
-                      _searchInputFocus.requestFocus();
-                    }
-                  },
-                  onNavigateDown: (_) {
-                    if (_usesDpad) _focusGridCell(0);
-                  },
-                ),
+          child: DetailsTabBar(
+            segmented: true,
+            wrap: isMobile,
+            labels: labels,
+            selectedIndex: _selectedTab,
+            onSelect: _selectTab,
+            focusNodeFor: _tabNode,
+            onExitLeft: _tryFocusSidebar,
+            onExitUp: () {
+              if (PlatformDetection.isTV) {
+                _searchFocus.requestFocus();
+              } else {
+                _searchInputFocus.requestFocus();
+              }
+            },
+            onNavigateDown: (_) {
+              if (!_usesDpad) return;
+              if (_tabIsAll(_selectedTab)) {
+                _focusAllCard(0, 0);
+              } else {
+                _focusGridCell(0);
+              }
+            },
+          ),
         ),
-        Expanded(child: _buildGrid(horizontalPadding)),
+        Expanded(
+          child: _tabIsAll(_selectedTab)
+              ? _buildAllRows(horizontalPadding)
+              : _buildGrid(horizontalPadding),
+        ),
       ],
     );
   }
 
-  /// Mobile shows every category at once (wrapped chips) so it is obvious which
-  /// tabs exist, rather than hiding them behind a horizontal scroll.
-  Widget _buildMobileTabs(List<String> labels) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (var i = 0; i < labels.length; i++)
-          _MobileTabChip(
-            label: labels[i],
-            active: i == _selectedTab,
-            onTap: () => _selectTab(i),
-          ),
-      ],
+  FocusNode _allCardNode(int row, int col) => _allRowNodes.putIfAbsent(
+        '$row:$col',
+        () => FocusNode(debugLabel: 'search_all_$row:$col'),
+      );
+
+  void _focusAllCard(int row, int col) {
+    final node = _allCardNode(row, col);
+    if (node.context != null) {
+      node.requestFocus();
+      _ensureVisibleNode(node);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = _allCardNode(row, col);
+      if (target.canRequestFocus) {
+        target.requestFocus();
+        _ensureVisibleNode(target);
+      }
+    });
+  }
+
+  KeyEventResult _onAllCardKey(
+    int row,
+    int col,
+    List<int> rowLens,
+    KeyEvent event,
+  ) {
+    if (!event.isActionable) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key.isLeftKey) {
+      if (col == 0) {
+        if (event is KeyDownEvent) {
+          return _tryFocusSidebar()
+              ? KeyEventResult.handled
+              : KeyEventResult.ignored;
+        }
+        return KeyEventResult.ignored;
+      }
+      _focusAllCard(row, col - 1);
+      return KeyEventResult.handled;
+    }
+    if (key.isRightKey) {
+      if (col < rowLens[row] - 1) _focusAllCard(row, col + 1);
+      return KeyEventResult.handled;
+    }
+    if (key.isUpKey) {
+      if (row == 0) {
+        _tabNode(_selectedTab).requestFocus();
+      } else {
+        _focusAllCard(row - 1, col.clamp(0, rowLens[row - 1] - 1));
+      }
+      return KeyEventResult.handled;
+    }
+    if (key.isDownKey) {
+      if (row < rowLens.length - 1) {
+        _focusAllCard(row + 1, col.clamp(0, rowLens[row + 1] - 1));
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Widget _buildAllRows(double horizontalPadding) {
+    final prefs = _userPreferences;
+    final focusColor = Color(prefs.get(UserPreferences.focusColor).colorValue);
+    final cardFocusExpansion = prefs.get(UserPreferences.cardFocusExpansion);
+    final l10n = AppLocalizations.of(context);
+    final isMobile = PlatformDetection.useMobileUi;
+    final cardWidth =
+        isMobile ? 108.0 : (PlatformDetection.isTV ? 168.0 : 150.0);
+
+    final groups = _vm.results;
+    final hasSeerr = _vm.seerrResults.isNotEmpty;
+    final rowLens = <int>[
+      for (final g in groups) g.items.length,
+      if (hasSeerr) _vm.seerrResults.length,
+    ];
+
+    final rows = <Widget>[];
+    for (var r = 0; r < groups.length; r++) {
+      final group = groups[r];
+      final ar = MediaCard.aspectRatioForType(group.items.first.type);
+      rows.add(LibraryRow(
+        title: localizeSearchGroupTitle(group.title, l10n),
+        rowHeight: cardWidth / ar + 56,
+        children: [
+          for (var c = 0; c < group.items.length; c++)
+            _buildAllItemCard(
+                r, c, cardWidth, ar, rowLens, focusColor, cardFocusExpansion),
+        ],
+      ));
+    }
+    if (hasSeerr) {
+      rows.add(LibraryRow(
+        title: l10n.seerr,
+        rowHeight: cardWidth / (2 / 3) + 56,
+        children: [
+          for (var c = 0; c < _vm.seerrResults.length; c++)
+            _buildAllSeerrCard(groups.length, c, cardWidth, rowLens, focusColor,
+                cardFocusExpansion),
+        ],
+      ));
+    }
+
+    return ListView(
+      controller: _resultsScrollController,
+      padding: const EdgeInsets.only(top: 8, bottom: 32),
+      children: rows,
+    );
+  }
+
+  Widget _buildAllItemCard(
+    int row,
+    int col,
+    double cardWidth,
+    double ar,
+    List<int> rowLens,
+    Color focusColor,
+    bool cardFocusExpansion,
+  ) {
+    return _resultItemCard(
+      item: _vm.results[row].items[col],
+      width: cardWidth,
+      ar: ar,
+      focusColor: focusColor,
+      cardFocusExpansion: cardFocusExpansion,
+      focusNode: _usesDpad ? _allCardNode(row, col) : null,
+      onNavKey: _usesDpad
+          ? (node, event) => _onAllCardKey(row, col, rowLens, event)
+          : null,
+    );
+  }
+
+  Widget _buildAllSeerrCard(
+    int row,
+    int col,
+    double cardWidth,
+    List<int> rowLens,
+    Color focusColor,
+    bool cardFocusExpansion,
+  ) {
+    return _seerrResultCard(
+      index: col,
+      width: cardWidth,
+      focusColor: focusColor,
+      cardFocusExpansion: cardFocusExpansion,
+      focusNode: _usesDpad ? _allCardNode(row, col) : null,
+      onNavKey: _usesDpad
+          ? (node, event) => _onAllCardKey(row, col, rowLens, event)
+          : null,
+    );
+  }
+
+  // Shared card body for a library result, used by both the grid and the
+  // All-tab rows; only the width, focus node, and directional handler differ.
+  Widget _resultItemCard({
+    required AggregatedItem item,
+    required double width,
+    required double ar,
+    required Color focusColor,
+    required bool cardFocusExpansion,
+    required FocusNode? focusNode,
+    required KeyEventResult Function(FocusNode, KeyEvent)? onNavKey,
+  }) {
+    return MediaCard(
+      title: item.name,
+      subtitle: _subtitle(item),
+      imageUrl: _imageUrl(
+        item,
+        maxWidth: width.toInt(),
+        maxHeight: (width / ar).toInt(),
+      ),
+      width: width,
+      aspectRatio: ar,
+      isFavorite: item.isFavorite,
+      isPlayed: item.isPlayed,
+      unplayedCount: item.unplayedItemCount,
+      playedPercentage: item.playedPercentage,
+      itemType: item.type,
+      focusColor: focusColor,
+      cardFocusExpansion: cardFocusExpansion,
+      focusNode: focusNode,
+      onKeyEvent: onNavKey == null
+          ? null
+          : (node, event) {
+              if (event.isActionable && _isPlayKey(event.logicalKey)) {
+                if (event is KeyDownEvent) {
+                  context.push(Destinations.item(
+                    item.id,
+                    serverId: item.serverId,
+                    autoPlay: true,
+                  ));
+                }
+                return KeyEventResult.handled;
+              }
+              return onNavKey(node, event);
+            },
+      onTap: () => context.push(
+        Destinations.itemOrPhoto(
+          item.id,
+          serverId: item.serverId,
+          type: item.type,
+        ),
+      ),
+      onLongPress: () => showContextMenu(
+        context,
+        item,
+        onChanged: () {
+          if (mounted) setState(() {});
+        },
+      ),
+    );
+  }
+
+  // Shared Seerr card body, used by both the grid and the All-tab rows.
+  Widget _seerrResultCard({
+    required int index,
+    required double width,
+    required Color focusColor,
+    required bool cardFocusExpansion,
+    required FocusNode? focusNode,
+    required KeyEventResult Function(FocusNode, KeyEvent)? onNavKey,
+  }) {
+    final item = _vm.seerrResults[index];
+    final year = item.releaseDate ?? item.firstAirDate;
+    final yearStr =
+        (year != null && year.length >= 4) ? year.substring(0, 4) : null;
+    return MediaCard(
+      title: item.displayTitle,
+      subtitle: yearStr,
+      imageUrl: item.posterPath != null
+          ? '$_tmdbPosterBase${item.posterPath}'
+          : null,
+      width: width,
+      aspectRatio: 2 / 3,
+      itemType: item.mediaType == 'tv' ? 'Series' : 'Movie',
+      focusColor: focusColor,
+      cardFocusExpansion: cardFocusExpansion,
+      focusNode: focusNode,
+      onKeyEvent: onNavKey,
+      onTap: () => item.mediaType == 'person'
+          ? context.push(Destinations.seerrPerson(item.id.toString()))
+          : context.push(
+              Destinations.seerrMedia(item.id.toString()),
+              extra: {'mediaType': item.mediaType ?? 'movie'},
+            ),
     );
   }
 
@@ -929,7 +1187,7 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
     final imageAspect = isSeerr
         ? 2 / 3
         : MediaCard.aspectRatioForType(
-            _vm.results[_selectedTab].items.first.type,
+            _vm.results[_groupIndex(_selectedTab)].items.first.type,
           );
 
     return LayoutBuilder(
@@ -991,62 +1249,23 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
     Color focusColor,
     bool cardFocusExpansion,
   ) {
-    final item = _vm.results[_selectedTab].items[index];
+    final item = _vm.results[_groupIndex(_selectedTab)].items[index];
     final ar = MediaCard.aspectRatioForType(item.type);
-    return MediaCard(
-      title: item.name,
-      subtitle: _subtitle(item),
-      imageUrl: _imageUrl(
-        item,
-        maxWidth: cellWidth.toInt(),
-        maxHeight: (cellWidth / ar).toInt(),
-      ),
+    return _resultItemCard(
+      item: item,
       width: cellWidth,
-      aspectRatio: ar,
-      isFavorite: item.isFavorite,
-      isPlayed: item.isPlayed,
-      unplayedCount: item.unplayedItemCount,
-      playedPercentage: item.playedPercentage,
-      itemType: item.type,
+      ar: ar,
       focusColor: focusColor,
       cardFocusExpansion: cardFocusExpansion,
       focusNode: _usesDpad ? getGridItemFocusNode(index) : null,
-      onKeyEvent: _usesDpad
-          ? (node, event) {
-              if (event.isActionable && _isPlayKey(event.logicalKey)) {
-                if (event is KeyDownEvent) {
-                  context.push(
-                    Destinations.item(
-                      item.id,
-                      serverId: item.serverId,
-                      autoPlay: true,
-                    ),
-                  );
-                }
-                return KeyEventResult.handled;
-              }
-              return _onGridKey(
+      onNavKey: _usesDpad
+          ? (node, event) => _onGridKey(
                 index: index,
                 columns: columns,
                 count: count,
                 event: event,
-              );
-            }
+              )
           : null,
-      onTap: () => context.push(
-        Destinations.itemOrPhoto(
-          item.id,
-          serverId: item.serverId,
-          type: item.type,
-        ),
-      ),
-      onLongPress: () => showContextMenu(
-        context,
-        item,
-        onChanged: () {
-          if (mounted) setState(() {});
-        },
-      ),
     );
   }
 
@@ -1058,24 +1277,13 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
     Color focusColor,
     bool cardFocusExpansion,
   ) {
-    final item = _vm.seerrResults[index];
-    final year = item.releaseDate ?? item.firstAirDate;
-    final yearStr = (year != null && year.length >= 4)
-        ? year.substring(0, 4)
-        : null;
-    return MediaCard(
-      title: item.displayTitle,
-      subtitle: yearStr,
-      imageUrl: item.posterPath != null
-          ? '$_tmdbPosterBase${item.posterPath}'
-          : null,
+    return _seerrResultCard(
+      index: index,
       width: cellWidth,
-      aspectRatio: 2 / 3,
       focusColor: focusColor,
       cardFocusExpansion: cardFocusExpansion,
-      itemType: item.mediaType == 'tv' ? 'Series' : 'Movie',
       focusNode: _usesDpad ? getGridItemFocusNode(index) : null,
-      onKeyEvent: _usesDpad
+      onNavKey: _usesDpad
           ? (node, event) => _onGridKey(
                 index: index,
                 columns: columns,
@@ -1083,57 +1291,7 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
                 event: event,
               )
           : null,
-      onTap: () => item.mediaType == 'person'
-          ? context.push(Destinations.seerrPerson(item.id.toString()))
-          : context.push(
-              Destinations.seerrMedia(item.id.toString()),
-              extra: {'mediaType': item.mediaType ?? 'movie'},
-            ),
     );
   }
 }
 
-class _MobileTabChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _MobileTabChip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active
-              ? AppColorScheme.accent
-              : AppColorScheme.onSurface.withAlpha(20),
-          borderRadius: AppRadius.circular(20),
-          border: Border.fromBorderSide(
-            active
-                ? BorderSide.none
-                : ThemeRegistry.active.borders.chipBorder,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active
-                ? AppColorScheme.onAccent
-                : AppColorScheme.onSurface.withAlpha(220),
-            fontWeight: FontWeight.w600,
-            fontSize: 13.5,
-          ),
-        ),
-      ),
-    );
-  }
-}
