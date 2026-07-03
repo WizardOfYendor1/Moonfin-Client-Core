@@ -1915,6 +1915,11 @@ class _MediaBarState extends State<MediaBar>
                       child: _BackdropLayer(
                         items: items,
                         currentIndex: _currentIndex,
+                        zoomDuration: Duration(
+                          milliseconds: widget.prefs.get(
+                            UserPreferences.mediaBarIntervalMs,
+                          ),
+                        ),
                       ),
                     ),
                   if (!isMobile) ..._buildVideoOverlays(),
@@ -2620,7 +2625,14 @@ class _BackdropLayer extends StatelessWidget {
   final List<MediaBarSlideItem> items;
   final int currentIndex;
 
-  const _BackdropLayer({required this.items, required this.currentIndex});
+  /// When set, the backdrop slowly zooms (Ken Burns) over this duration
+  final Duration? zoomDuration;
+
+  const _BackdropLayer({
+    required this.items,
+    required this.currentIndex,
+    this.zoomDuration,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2631,14 +2643,58 @@ class _BackdropLayer extends StatelessWidget {
       child: FullscreenBackdropSwitcher(
         imageUrl: url,
         duration: const Duration(milliseconds: 600),
-        imageBuilder: (imageUrl) => BoundedNetworkImage(
-          imageUrl: imageUrl,
-          minWidth: 640,
-          maxWidth: 1280,
-          errorBuilder: (_, _, _) =>
-              ColoredBox(color: AppColorScheme.background),
-        ),
+        imageBuilder: (imageUrl) {
+          final Widget image = BoundedNetworkImage(
+            imageUrl: imageUrl,
+            minWidth: 640,
+            maxWidth: 1280,
+            errorBuilder: (_, _, _) =>
+                ColoredBox(color: AppColorScheme.background),
+          );
+          final zoom = zoomDuration;
+          if (zoom == null) return image;
+          return _KenBurnsImage(duration: zoom, child: image);
+        },
       ),
+    );
+  }
+}
+
+class _KenBurnsImage extends StatefulWidget {
+  final Widget child;
+  final Duration duration;
+
+  const _KenBurnsImage({required this.child, required this.duration});
+
+  @override
+  State<_KenBurnsImage> createState() => _KenBurnsImageState();
+}
+
+class _KenBurnsImageState extends State<_KenBurnsImage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..forward();
+    _scale = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: ScaleTransition(scale: _scale, child: widget.child),
     );
   }
 }
