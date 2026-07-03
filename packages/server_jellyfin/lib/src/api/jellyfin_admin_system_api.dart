@@ -82,4 +82,31 @@ class JellyfinAdminSystemApi implements AdminSystemApi {
     );
     return ActivityLogResult.fromJson(response.data as Map<String, dynamic>);
   }
+
+  Future<List<Map<String, dynamic>>> _getLocalizationList(String path) async {
+    final response = await _dio.get(path);
+    return (response.data as List<dynamic>)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCultures() =>
+      _getLocalizationList('/Localization/Cultures');
+
+  @override
+  Future<List<Map<String, dynamic>>> getCountries() =>
+      _getLocalizationList('/Localization/Countries');
+
+  @override
+  Future<List<Map<String, dynamic>>> getParentalRatings() =>
+      _getLocalizationList('/Localization/ParentalRatings');
+
+  @override
+  Future<List<Map<String, dynamic>>> getAuthProviders() =>
+      _getLocalizationList('/Auth/Providers');
+
+  @override
+  Future<List<Map<String, dynamic>>> getPasswordResetProviders() =>
+      _getLocalizationList('/Auth/PasswordResetProviders');
 }

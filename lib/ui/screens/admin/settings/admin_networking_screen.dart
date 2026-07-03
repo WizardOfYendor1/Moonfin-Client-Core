@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../widgets/admin_form_styles.dart';
 import '../widgets/filesystem_browser.dart';
 
 class AdminNetworkingScreen extends StatefulWidget {
@@ -106,104 +108,106 @@ class _AdminNetworkingScreenState extends State<AdminNetworkingScreen> {
     }
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, bottomSafe + 40),
+      padding: EdgeInsets.fromLTRB(16, 20, 16, bottomSafe + 40),
       children: [
-        Text(l10n.adminNetworkingTitle, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 8),
-        Card(
-          color: Theme.of(context).colorScheme.tertiaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber,
-                    color: Theme.of(context).colorScheme.onTertiaryContainer),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    l10n.adminNetworkingRestartWarning,
-                    style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onTertiaryContainer),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        adminScreenHeader(
+          context,
+          title: l10n.adminNetworkingTitle,
+          subtitle: l10n.adminNetworkingRestartWarning,
+          icon: Icons.lan_outlined,
         ),
-        const SizedBox(height: 16),
-        _switchTile('EnableRemoteAccess', l10n.adminNetworkingRemoteAccess),
-        const Divider(),
-        _sectionHeader(l10n.adminNetworkingPorts),
+        adminSection(
+          context,
+          title: l10n.adminNetworkingRemoteAccess,
+          icon: Icons.public,
+          children: [
+            _switchTile('EnableRemoteAccess', l10n.adminNetworkingRemoteAccess),
+          ],
+        ),
+        adminSectionLabel(context, l10n.adminNetworkingPorts,
+            icon: Icons.settings_ethernet),
         _intField('HttpServerPortNumber', l10n.adminNetworkingHttpPort),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.spaceMd),
         _intField('HttpsPortNumber', l10n.adminNetworkingHttpsPort),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.spaceMd),
+        _intField('PublicHttpPort', l10n.adminNetworkingPublicHttpPort),
+        const SizedBox(height: AppSpacing.spaceMd),
         _intField('PublicHttpsPort', l10n.adminNetworkingPublicHttpsPort),
-        const SizedBox(height: 12),
-        _textField('BaseUrl', l10n.adminNetworkingBaseUrl, hint: l10n.adminNetworkingBaseUrlHint),
-        const Divider(height: 32),
-        _sectionHeader(l10n.adminNetworkingHttps),
-        _switchTile('EnableHttps', l10n.adminNetworkingEnableHttps),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.spaceMd),
+        _textField('BaseUrl', l10n.adminNetworkingBaseUrl,
+            hint: l10n.adminNetworkingBaseUrlHint),
+        adminSection(
+          context,
+          title: l10n.adminNetworkingIpSettings,
+          icon: Icons.settings_input_antenna,
+          children: [
+            _switchTile('EnableIPv4', l10n.adminNetworkingEnableIpv4),
+            _switchTile('EnableIPv6', l10n.adminNetworkingEnableIpv6),
+            _switchTile('AutoDiscovery', l10n.adminNetworkingAutoDiscovery),
+          ],
+        ),
+        adminSection(
+          context,
+          title: l10n.adminNetworkingHttps,
+          icon: Icons.lock_outline,
+          children: [
+            _switchTile('EnableHttps', l10n.adminNetworkingEnableHttps),
+            _switchTile('RequireHttps', l10n.adminNetworkingRequireHttps),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.spaceMd),
         _certPathField(),
-        const Divider(height: 32),
-        _sectionHeader(l10n.adminNetworkingLocalNetwork),
+        const SizedBox(height: AppSpacing.spaceMd),
+        _textField('CertificatePassword', l10n.adminNetworkingCertPassword),
+        adminSectionLabel(context, l10n.adminNetworkingLocalNetwork,
+            icon: Icons.router_outlined),
         _listEditor(
           'LocalNetworkAddresses',
           l10n.adminNetworkingLocalAddresses,
           hint: l10n.adminNetworkingAddressHint,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.spaceLg),
+        _listEditor(
+          'LocalNetworkSubnets',
+          l10n.adminNetworkingLocalSubnets,
+          hint: l10n.adminNetworkingLocalSubnetsHint,
+        ),
+        const SizedBox(height: AppSpacing.spaceLg),
         _listEditor(
           'KnownProxies',
           l10n.adminNetworkingKnownProxies,
           hint: l10n.adminNetworkingProxyHint,
         ),
-        const Divider(height: 32),
-        _sectionHeader(l10n.adminNetworkingRemoteIpFilter),
+        adminSectionLabel(context, l10n.adminNetworkingPublishedUris,
+            icon: Icons.link),
+        _listEditor(
+          'PublishedServerUriBySubnet',
+          l10n.adminNetworkingPublishedUris,
+          hint: l10n.adminNetworkingPublishedUriHint,
+        ),
+        adminSectionLabel(context, l10n.adminNetworkingRemoteIpFilter,
+            icon: Icons.filter_alt_outlined),
         _filterModeSelector(),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.spaceMd),
         _listEditor(
           'RemoteIPFilter',
           l10n.adminNetworkingRemoteIpFilterLabel,
           hint: l10n.adminNetworkingAddressHint,
         ),
-        const SizedBox(height: 24),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.save),
-          ),
+        const SizedBox(height: AppSpacing.spaceXl),
+        adminSaveButton(
+          label: l10n.save,
+          saving: _saving,
+          onPressed: _save,
         ),
       ],
-    );
-  }
-
-  Widget _sectionHeader(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child:
-          Text(text, style: Theme.of(context).textTheme.titleMedium),
     );
   }
 
   Widget _textField(String key, String label, {String? hint}) {
     return TextFormField(
       initialValue: _config![key]?.toString() ?? '',
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: adminInputDecoration(label: label, hint: hint),
       onChanged: (v) => _config![key] = v,
     );
   }
@@ -211,18 +215,15 @@ class _AdminNetworkingScreenState extends State<AdminNetworkingScreen> {
   Widget _intField(String key, String label) {
     return TextFormField(
       initialValue: (_config![key] as num?)?.toString() ?? '0',
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: adminInputDecoration(label: label),
       keyboardType: TextInputType.number,
       onChanged: (v) => _config![key] = int.tryParse(v) ?? 0,
     );
   }
 
   Widget _switchTile(String key, String title) {
-    return SwitchListTile.adaptive(
-      title: Text(title),
+    return adminSwitchRow(
+      title: title,
       value: _config![key] as bool? ?? false,
       onChanged: (v) => setState(() => _config![key] = v),
     );
@@ -239,10 +240,8 @@ class _AdminNetworkingScreenState extends State<AdminNetworkingScreen> {
               child: TextFormField(
                 key: ValueKey(_config!['CertificatePath']),
                 initialValue: _config!['CertificatePath']?.toString() ?? '',
-                decoration: InputDecoration(
-                  labelText: l10n.adminNetworkingCertPath,
-                  border: const OutlineInputBorder(),
-                ),
+                decoration:
+                    adminInputDecoration(label: l10n.adminNetworkingCertPath),
                 onChanged: (v) => _config!['CertificatePath'] = v,
               ),
             ),
@@ -330,45 +329,61 @@ class _AdminNetworkingScreenState extends State<AdminNetworkingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        ...items.asMap().entries.map((entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(entry.value,
-                        style: const TextStyle(
-                            fontFamily: 'monospace', fontSize: 13)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline, size: 20),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      setState(() {
-                        items.removeAt(entry.key);
-                        _config![key] = items;
-                      });
-                    },
-                  ),
-                ],
-              ),
+        Text(label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColorScheme.onSurface.withValues(alpha: 0.85),
             )),
+        if (hint != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 4),
+            child: Text(hint,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColorScheme.onSurface.withValues(alpha: 0.5),
+                )),
+          ),
+        const SizedBox(height: AppSpacing.spaceSm),
+        if (items.isNotEmpty)
+          Wrap(
+            spacing: AppSpacing.spaceSm,
+            runSpacing: AppSpacing.spaceXs,
+            children: items
+                .asMap()
+                .entries
+                .map((entry) => Chip(
+                      label: Text(entry.value,
+                          style: const TextStyle(
+                              fontFamily: 'monospace', fontSize: 12.5)),
+                      onDeleted: () {
+                        setState(() {
+                          items.removeAt(entry.key);
+                          _config![key] = items;
+                        });
+                      },
+                      backgroundColor:
+                          AppColorScheme.onSurface.withValues(alpha: 0.06),
+                      side: BorderSide(
+                          color: AppColorScheme.onSurface
+                              .withValues(alpha: 0.10)),
+                    ))
+                .toList(),
+          ),
+        if (items.isNotEmpty) const SizedBox(height: AppSpacing.spaceSm),
         Row(
           children: [
             Expanded(
               child: TextField(
                 controller: controller,
-                decoration: InputDecoration(
-                  hintText: hint ?? AppLocalizations.of(context).adminNetworkingAddEntry,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
+                decoration: adminInputDecoration(
+                  hint: AppLocalizations.of(context).adminNetworkingAddEntry,
                 ),
                 onSubmitted: (_) => _addListItem(key),
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
+            const SizedBox(width: AppSpacing.spaceSm),
+            IconButton.filledTonal(
               icon: const Icon(Icons.add),
               onPressed: () => _addListItem(key),
             ),

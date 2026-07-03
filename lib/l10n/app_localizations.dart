@@ -8392,6 +8392,270 @@ abstract class AppLocalizations {
   /// **'Enable access to all channels'**
   String get adminEnableAllChannels;
 
+  /// No description provided for @adminParentalControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Parental Control'**
+  String get adminParentalControl;
+
+  /// No description provided for @adminMaxParentalRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum allowed parental rating'**
+  String get adminMaxParentalRating;
+
+  /// No description provided for @adminMaxParentalRatingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Content with a higher rating will be hidden from this user.'**
+  String get adminMaxParentalRatingHint;
+
+  /// No description provided for @adminParentalRatingNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get adminParentalRatingNone;
+
+  /// No description provided for @adminBlockUnratedItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Block items with no or unrecognized rating information'**
+  String get adminBlockUnratedItems;
+
+  /// No description provided for @adminUnratedBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Books'**
+  String get adminUnratedBook;
+
+  /// No description provided for @adminUnratedChannelContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Channels'**
+  String get adminUnratedChannelContent;
+
+  /// No description provided for @adminUnratedLiveTvChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Live TV'**
+  String get adminUnratedLiveTvChannel;
+
+  /// No description provided for @adminUnratedMovie.
+  ///
+  /// In en, this message translates to:
+  /// **'Movies'**
+  String get adminUnratedMovie;
+
+  /// No description provided for @adminUnratedMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get adminUnratedMusic;
+
+  /// No description provided for @adminUnratedTrailer.
+  ///
+  /// In en, this message translates to:
+  /// **'Trailers'**
+  String get adminUnratedTrailer;
+
+  /// No description provided for @adminUnratedSeries.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows'**
+  String get adminUnratedSeries;
+
+  /// No description provided for @adminAccessSchedules.
+  ///
+  /// In en, this message translates to:
+  /// **'Access Schedules'**
+  String get adminAccessSchedules;
+
+  /// No description provided for @adminAccessSchedulesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow access only during the scheduled times below. Access is allowed all day when no schedule is set.'**
+  String get adminAccessSchedulesHint;
+
+  /// No description provided for @adminAddSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Schedule'**
+  String get adminAddSchedule;
+
+  /// No description provided for @adminScheduleDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get adminScheduleDay;
+
+  /// No description provided for @adminScheduleStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get adminScheduleStart;
+
+  /// No description provided for @adminScheduleEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get adminScheduleEnd;
+
+  /// No description provided for @adminDayEveryday.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day'**
+  String get adminDayEveryday;
+
+  /// No description provided for @adminDayWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday'**
+  String get adminDayWeekday;
+
+  /// No description provided for @adminDayWeekend.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend'**
+  String get adminDayWeekend;
+
+  /// No description provided for @adminDaySunday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunday'**
+  String get adminDaySunday;
+
+  /// No description provided for @adminDayMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday'**
+  String get adminDayMonday;
+
+  /// No description provided for @adminDayTuesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuesday'**
+  String get adminDayTuesday;
+
+  /// No description provided for @adminDayWednesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Wednesday'**
+  String get adminDayWednesday;
+
+  /// No description provided for @adminDayThursday.
+  ///
+  /// In en, this message translates to:
+  /// **'Thursday'**
+  String get adminDayThursday;
+
+  /// No description provided for @adminDayFriday.
+  ///
+  /// In en, this message translates to:
+  /// **'Friday'**
+  String get adminDayFriday;
+
+  /// No description provided for @adminDaySaturday.
+  ///
+  /// In en, this message translates to:
+  /// **'Saturday'**
+  String get adminDaySaturday;
+
+  /// No description provided for @adminAllowedTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed tags'**
+  String get adminAllowedTags;
+
+  /// No description provided for @adminAllowedTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only content with these tags is shown. Leave empty to allow all.'**
+  String get adminAllowedTagsHint;
+
+  /// No description provided for @adminBlockedTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked tags'**
+  String get adminBlockedTags;
+
+  /// No description provided for @adminBlockedTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Content with these tags is hidden from this user.'**
+  String get adminBlockedTagsHint;
+
+  /// No description provided for @adminAddTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tag'**
+  String get adminAddTag;
+
+  /// No description provided for @adminEnabledDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled devices'**
+  String get adminEnabledDevices;
+
+  /// No description provided for @adminEnabledChannels.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled channels'**
+  String get adminEnabledChannels;
+
+  /// No description provided for @adminAuthProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication provider'**
+  String get adminAuthProvider;
+
+  /// No description provided for @adminPasswordResetProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Password reset provider'**
+  String get adminPasswordResetProvider;
+
+  /// No description provided for @adminLoginAttemptsBeforeLockout.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum failed login attempts before lockout'**
+  String get adminLoginAttemptsBeforeLockout;
+
+  /// No description provided for @adminLoginAttemptsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Set to 0 for the default, or -1 to disable lockout.'**
+  String get adminLoginAttemptsHint;
+
+  /// No description provided for @adminSyncPlayAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'SyncPlay access'**
+  String get adminSyncPlayAccess;
+
+  /// No description provided for @adminSyncPlayCreateAndJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow creating and joining groups'**
+  String get adminSyncPlayCreateAndJoin;
+
+  /// No description provided for @adminSyncPlayJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow joining groups'**
+  String get adminSyncPlayJoin;
+
+  /// No description provided for @adminSyncPlayNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No access'**
+  String get adminSyncPlayNone;
+
+  /// No description provided for @adminContentDeletionFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow content deletion from'**
+  String get adminContentDeletionFolders;
+
   /// No description provided for @adminResetPasswordWarning.
   ///
   /// In en, this message translates to:
@@ -10870,6 +11134,210 @@ abstract class AppLocalizations {
   /// **'Enable hardware decoding for:'**
   String get adminPlaybackEnableHwDecoding;
 
+  /// No description provided for @adminPlaybackQsvDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'QSV device'**
+  String get adminPlaybackQsvDevice;
+
+  /// No description provided for @adminPlaybackEnhancedNvdec.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable enhanced NVDEC decoder'**
+  String get adminPlaybackEnhancedNvdec;
+
+  /// No description provided for @adminPlaybackPreferNativeDecoder.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer system native hardware decoder'**
+  String get adminPlaybackPreferNativeDecoder;
+
+  /// No description provided for @adminPlaybackColorDepth.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware decoding color depth'**
+  String get adminPlaybackColorDepth;
+
+  /// No description provided for @adminPlaybackColorDepth10Hevc.
+  ///
+  /// In en, this message translates to:
+  /// **'10-bit HEVC decoding'**
+  String get adminPlaybackColorDepth10Hevc;
+
+  /// No description provided for @adminPlaybackColorDepth10Vp9.
+  ///
+  /// In en, this message translates to:
+  /// **'10-bit VP9 decoding'**
+  String get adminPlaybackColorDepth10Vp9;
+
+  /// No description provided for @adminPlaybackColorDepth10HevcRext.
+  ///
+  /// In en, this message translates to:
+  /// **'HEVC RExt 8/10-bit decoding'**
+  String get adminPlaybackColorDepth10HevcRext;
+
+  /// No description provided for @adminPlaybackColorDepth12HevcRext.
+  ///
+  /// In en, this message translates to:
+  /// **'HEVC RExt 12-bit decoding'**
+  String get adminPlaybackColorDepth12HevcRext;
+
+  /// No description provided for @adminPlaybackHwEncodingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware encoding'**
+  String get adminPlaybackHwEncodingSection;
+
+  /// No description provided for @adminPlaybackAllowHevcEncoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow HEVC encoding'**
+  String get adminPlaybackAllowHevcEncoding;
+
+  /// No description provided for @adminPlaybackAllowAv1Encoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow AV1 encoding'**
+  String get adminPlaybackAllowAv1Encoding;
+
+  /// No description provided for @adminPlaybackIntelLowPowerH264.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Intel low-power H.264 encoder'**
+  String get adminPlaybackIntelLowPowerH264;
+
+  /// No description provided for @adminPlaybackIntelLowPowerHevc.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Intel low-power HEVC encoder'**
+  String get adminPlaybackIntelLowPowerHevc;
+
+  /// No description provided for @adminPlaybackToneMapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone Mapping'**
+  String get adminPlaybackToneMapping;
+
+  /// No description provided for @adminPlaybackEnableTonemapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable tone mapping'**
+  String get adminPlaybackEnableTonemapping;
+
+  /// No description provided for @adminPlaybackEnableVppTonemapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable VPP tone mapping'**
+  String get adminPlaybackEnableVppTonemapping;
+
+  /// No description provided for @adminPlaybackEnableVtTonemapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable VideoToolbox tone mapping'**
+  String get adminPlaybackEnableVtTonemapping;
+
+  /// No description provided for @adminPlaybackTonemappingAlgorithm.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone mapping algorithm'**
+  String get adminPlaybackTonemappingAlgorithm;
+
+  /// No description provided for @adminPlaybackTonemappingMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone mapping mode'**
+  String get adminPlaybackTonemappingMode;
+
+  /// No description provided for @adminPlaybackTonemappingRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone mapping range'**
+  String get adminPlaybackTonemappingRange;
+
+  /// No description provided for @adminPlaybackTonemappingDesat.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone mapping desaturation'**
+  String get adminPlaybackTonemappingDesat;
+
+  /// No description provided for @adminPlaybackTonemappingPeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone mapping peak'**
+  String get adminPlaybackTonemappingPeak;
+
+  /// No description provided for @adminPlaybackTonemappingParam.
+  ///
+  /// In en, this message translates to:
+  /// **'Tone mapping parameter'**
+  String get adminPlaybackTonemappingParam;
+
+  /// No description provided for @adminPlaybackPresetsQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets & Quality'**
+  String get adminPlaybackPresetsQuality;
+
+  /// No description provided for @adminPlaybackEncoderPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoder preset'**
+  String get adminPlaybackEncoderPreset;
+
+  /// No description provided for @adminPlaybackH264Crf.
+  ///
+  /// In en, this message translates to:
+  /// **'H.264 encoding CRF'**
+  String get adminPlaybackH264Crf;
+
+  /// No description provided for @adminPlaybackH265Crf.
+  ///
+  /// In en, this message translates to:
+  /// **'H.265 (HEVC) encoding CRF'**
+  String get adminPlaybackH265Crf;
+
+  /// No description provided for @adminPlaybackDeinterlaceMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Deinterlace method'**
+  String get adminPlaybackDeinterlaceMethod;
+
+  /// No description provided for @adminPlaybackAudioSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get adminPlaybackAudioSection;
+
+  /// No description provided for @adminPlaybackEnableAudioVbr.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable audio VBR encoding'**
+  String get adminPlaybackEnableAudioVbr;
+
+  /// No description provided for @adminPlaybackDownmixBoost.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio downmix boost'**
+  String get adminPlaybackDownmixBoost;
+
+  /// No description provided for @adminPlaybackDownmixAlgorithm.
+  ///
+  /// In en, this message translates to:
+  /// **'Stereo downmix algorithm'**
+  String get adminPlaybackDownmixAlgorithm;
+
+  /// No description provided for @adminPlaybackMaxMuxingQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Max muxing queue size'**
+  String get adminPlaybackMaxMuxingQueue;
+
+  /// No description provided for @adminPlaybackAutoOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get adminPlaybackAutoOption;
+
   /// No description provided for @adminPlaybackEncoding.
   ///
   /// In en, this message translates to:
@@ -11331,6 +11799,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'HTTPS'**
   String get adminNetworkingHttps;
+
+  /// No description provided for @adminNetworkingPublicHttpPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Public HTTP port'**
+  String get adminNetworkingPublicHttpPort;
+
+  /// No description provided for @adminNetworkingRequireHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'Require HTTPS'**
+  String get adminNetworkingRequireHttps;
+
+  /// No description provided for @adminNetworkingRequireHttpsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Redirect all remote requests to HTTPS. Has no effect if the server has no valid certificate.'**
+  String get adminNetworkingRequireHttpsHint;
+
+  /// No description provided for @adminNetworkingCertPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate password'**
+  String get adminNetworkingCertPassword;
+
+  /// No description provided for @adminNetworkingIpSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'IP Settings'**
+  String get adminNetworkingIpSettings;
+
+  /// No description provided for @adminNetworkingEnableIpv4.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable IPv4'**
+  String get adminNetworkingEnableIpv4;
+
+  /// No description provided for @adminNetworkingEnableIpv6.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable IPv6'**
+  String get adminNetworkingEnableIpv6;
+
+  /// No description provided for @adminNetworkingAutoDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable automatic port mapping'**
+  String get adminNetworkingAutoDiscovery;
+
+  /// No description provided for @adminNetworkingLocalSubnets.
+  ///
+  /// In en, this message translates to:
+  /// **'LAN networks'**
+  String get adminNetworkingLocalSubnets;
+
+  /// No description provided for @adminNetworkingLocalSubnetsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma or line separated list of IP addresses or CIDR subnets treated as being on the local network.'**
+  String get adminNetworkingLocalSubnetsHint;
+
+  /// No description provided for @adminNetworkingPublishedUris.
+  ///
+  /// In en, this message translates to:
+  /// **'Published server URIs'**
+  String get adminNetworkingPublishedUris;
+
+  /// No description provided for @adminNetworkingPublishedUriHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Map a subnet or address to a published URL, e.g. all=https://example.com'**
+  String get adminNetworkingPublishedUriHint;
 
   /// No description provided for @adminNetworkingCertPath.
   ///

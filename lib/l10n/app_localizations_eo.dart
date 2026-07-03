@@ -4581,6 +4581,145 @@ class AppLocalizationsEo extends AppLocalizations {
   String get adminEnableAllChannels => 'Ebligu aliron al ĉiuj kanaloj';
 
   @override
+  String get adminParentalControl => 'Parental Control';
+
+  @override
+  String get adminMaxParentalRating => 'Maximum allowed parental rating';
+
+  @override
+  String get adminMaxParentalRatingHint =>
+      'Content with a higher rating will be hidden from this user.';
+
+  @override
+  String get adminParentalRatingNone => 'None';
+
+  @override
+  String get adminBlockUnratedItems =>
+      'Block items with no or unrecognized rating information';
+
+  @override
+  String get adminUnratedBook => 'Books';
+
+  @override
+  String get adminUnratedChannelContent => 'Channels';
+
+  @override
+  String get adminUnratedLiveTvChannel => 'Live TV';
+
+  @override
+  String get adminUnratedMovie => 'Movies';
+
+  @override
+  String get adminUnratedMusic => 'Music';
+
+  @override
+  String get adminUnratedTrailer => 'Trailers';
+
+  @override
+  String get adminUnratedSeries => 'Shows';
+
+  @override
+  String get adminAccessSchedules => 'Access Schedules';
+
+  @override
+  String get adminAccessSchedulesHint =>
+      'Allow access only during the scheduled times below. Access is allowed all day when no schedule is set.';
+
+  @override
+  String get adminAddSchedule => 'Add Schedule';
+
+  @override
+  String get adminScheduleDay => 'Day';
+
+  @override
+  String get adminScheduleStart => 'Start';
+
+  @override
+  String get adminScheduleEnd => 'End';
+
+  @override
+  String get adminDayEveryday => 'Every day';
+
+  @override
+  String get adminDayWeekday => 'Weekday';
+
+  @override
+  String get adminDayWeekend => 'Weekend';
+
+  @override
+  String get adminDaySunday => 'Sunday';
+
+  @override
+  String get adminDayMonday => 'Monday';
+
+  @override
+  String get adminDayTuesday => 'Tuesday';
+
+  @override
+  String get adminDayWednesday => 'Wednesday';
+
+  @override
+  String get adminDayThursday => 'Thursday';
+
+  @override
+  String get adminDayFriday => 'Friday';
+
+  @override
+  String get adminDaySaturday => 'Saturday';
+
+  @override
+  String get adminAllowedTags => 'Allowed tags';
+
+  @override
+  String get adminAllowedTagsHint =>
+      'Only content with these tags is shown. Leave empty to allow all.';
+
+  @override
+  String get adminBlockedTags => 'Blocked tags';
+
+  @override
+  String get adminBlockedTagsHint =>
+      'Content with these tags is hidden from this user.';
+
+  @override
+  String get adminAddTag => 'Add tag';
+
+  @override
+  String get adminEnabledDevices => 'Enabled devices';
+
+  @override
+  String get adminEnabledChannels => 'Enabled channels';
+
+  @override
+  String get adminAuthProvider => 'Authentication provider';
+
+  @override
+  String get adminPasswordResetProvider => 'Password reset provider';
+
+  @override
+  String get adminLoginAttemptsBeforeLockout =>
+      'Maximum failed login attempts before lockout';
+
+  @override
+  String get adminLoginAttemptsHint =>
+      'Set to 0 for the default, or -1 to disable lockout.';
+
+  @override
+  String get adminSyncPlayAccess => 'SyncPlay access';
+
+  @override
+  String get adminSyncPlayCreateAndJoin => 'Allow creating and joining groups';
+
+  @override
+  String get adminSyncPlayJoin => 'Allow joining groups';
+
+  @override
+  String get adminSyncPlayNone => 'No access';
+
+  @override
+  String get adminContentDeletionFolders => 'Allow content deletion from';
+
+  @override
   String get adminResetPasswordWarning =>
       'Ĉi tio forigos la pasvorton. La uzanto povos ensaluti sen pasvorto.';
 
@@ -6036,6 +6175,112 @@ class AppLocalizationsEo extends AppLocalizations {
   String get adminPlaybackEnableHwDecoding => 'Ebligu aparatan malkodigon por:';
 
   @override
+  String get adminPlaybackQsvDevice => 'QSV device';
+
+  @override
+  String get adminPlaybackEnhancedNvdec => 'Enable enhanced NVDEC decoder';
+
+  @override
+  String get adminPlaybackPreferNativeDecoder =>
+      'Prefer system native hardware decoder';
+
+  @override
+  String get adminPlaybackColorDepth => 'Hardware decoding color depth';
+
+  @override
+  String get adminPlaybackColorDepth10Hevc => '10-bit HEVC decoding';
+
+  @override
+  String get adminPlaybackColorDepth10Vp9 => '10-bit VP9 decoding';
+
+  @override
+  String get adminPlaybackColorDepth10HevcRext => 'HEVC RExt 8/10-bit decoding';
+
+  @override
+  String get adminPlaybackColorDepth12HevcRext => 'HEVC RExt 12-bit decoding';
+
+  @override
+  String get adminPlaybackHwEncodingSection => 'Hardware encoding';
+
+  @override
+  String get adminPlaybackAllowHevcEncoding => 'Allow HEVC encoding';
+
+  @override
+  String get adminPlaybackAllowAv1Encoding => 'Allow AV1 encoding';
+
+  @override
+  String get adminPlaybackIntelLowPowerH264 =>
+      'Enable Intel low-power H.264 encoder';
+
+  @override
+  String get adminPlaybackIntelLowPowerHevc =>
+      'Enable Intel low-power HEVC encoder';
+
+  @override
+  String get adminPlaybackToneMapping => 'Tone Mapping';
+
+  @override
+  String get adminPlaybackEnableTonemapping => 'Enable tone mapping';
+
+  @override
+  String get adminPlaybackEnableVppTonemapping => 'Enable VPP tone mapping';
+
+  @override
+  String get adminPlaybackEnableVtTonemapping =>
+      'Enable VideoToolbox tone mapping';
+
+  @override
+  String get adminPlaybackTonemappingAlgorithm => 'Tone mapping algorithm';
+
+  @override
+  String get adminPlaybackTonemappingMode => 'Tone mapping mode';
+
+  @override
+  String get adminPlaybackTonemappingRange => 'Tone mapping range';
+
+  @override
+  String get adminPlaybackTonemappingDesat => 'Tone mapping desaturation';
+
+  @override
+  String get adminPlaybackTonemappingPeak => 'Tone mapping peak';
+
+  @override
+  String get adminPlaybackTonemappingParam => 'Tone mapping parameter';
+
+  @override
+  String get adminPlaybackPresetsQuality => 'Presets & Quality';
+
+  @override
+  String get adminPlaybackEncoderPreset => 'Encoder preset';
+
+  @override
+  String get adminPlaybackH264Crf => 'H.264 encoding CRF';
+
+  @override
+  String get adminPlaybackH265Crf => 'H.265 (HEVC) encoding CRF';
+
+  @override
+  String get adminPlaybackDeinterlaceMethod => 'Deinterlace method';
+
+  @override
+  String get adminPlaybackAudioSection => 'Audio';
+
+  @override
+  String get adminPlaybackEnableAudioVbr => 'Enable audio VBR encoding';
+
+  @override
+  String get adminPlaybackDownmixBoost => 'Audio downmix boost';
+
+  @override
+  String get adminPlaybackDownmixAlgorithm => 'Stereo downmix algorithm';
+
+  @override
+  String get adminPlaybackMaxMuxingQueue => 'Max muxing queue size';
+
+  @override
+  String get adminPlaybackAutoOption => 'Auto';
+
+  @override
   String get adminPlaybackEncoding => 'Kodigado';
 
   @override
@@ -6302,6 +6547,45 @@ class AppLocalizationsEo extends AppLocalizations {
 
   @override
   String get adminNetworkingHttps => 'HTTPS';
+
+  @override
+  String get adminNetworkingPublicHttpPort => 'Public HTTP port';
+
+  @override
+  String get adminNetworkingRequireHttps => 'Require HTTPS';
+
+  @override
+  String get adminNetworkingRequireHttpsHint =>
+      'Redirect all remote requests to HTTPS. Has no effect if the server has no valid certificate.';
+
+  @override
+  String get adminNetworkingCertPassword => 'Certificate password';
+
+  @override
+  String get adminNetworkingIpSettings => 'IP Settings';
+
+  @override
+  String get adminNetworkingEnableIpv4 => 'Enable IPv4';
+
+  @override
+  String get adminNetworkingEnableIpv6 => 'Enable IPv6';
+
+  @override
+  String get adminNetworkingAutoDiscovery => 'Enable automatic port mapping';
+
+  @override
+  String get adminNetworkingLocalSubnets => 'LAN networks';
+
+  @override
+  String get adminNetworkingLocalSubnetsHint =>
+      'Comma or line separated list of IP addresses or CIDR subnets treated as being on the local network.';
+
+  @override
+  String get adminNetworkingPublishedUris => 'Published server URIs';
+
+  @override
+  String get adminNetworkingPublishedUriHint =>
+      'Map a subnet or address to a published URL, e.g. all=https://example.com';
 
   @override
   String get adminNetworkingCertPath => 'Vojo de atestilo';

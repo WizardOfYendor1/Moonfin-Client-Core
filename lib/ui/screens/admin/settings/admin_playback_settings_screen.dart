@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
+import '../widgets/admin_form_styles.dart';
 import '../widgets/filesystem_browser.dart';
 import '../../../../l10n/app_localizations.dart';
 
@@ -40,6 +42,54 @@ class _AdminPlaybackSettingsScreenState
     ('vp8', 'VP8'),
     ('vp9', 'VP9'),
     ('av1', 'AV1'),
+  ];
+
+  // Dropdown option lists (value, display label). "Auto"/"None" sentinels use
+  // the server's own empty-string / literal values so the round-trip is exact.
+  static const _tonemapAlgorithms = [
+    ('none', 'None'),
+    ('clip', 'Clip'),
+    ('linear', 'Linear'),
+    ('gamma', 'Gamma'),
+    ('reinhard', 'Reinhard'),
+    ('hable', 'Hable'),
+    ('mobius', 'Mobius'),
+    ('bt2390', 'BT.2390'),
+  ];
+  static const _tonemapModes = [
+    ('auto', 'Auto'),
+    ('max', 'Max'),
+    ('rgb', 'RGB'),
+    ('lum', 'Luminance'),
+    ('itp', 'ITP'),
+  ];
+  static const _tonemapRanges = [
+    ('auto', 'Auto'),
+    ('tv', 'TV'),
+    ('pc', 'PC'),
+  ];
+  static const _encoderPresets = [
+    ('', 'Auto'),
+    ('veryslow', 'veryslow'),
+    ('slower', 'slower'),
+    ('slow', 'slow'),
+    ('medium', 'medium'),
+    ('fast', 'fast'),
+    ('faster', 'faster'),
+    ('veryfast', 'veryfast'),
+    ('superfast', 'superfast'),
+    ('ultrafast', 'ultrafast'),
+  ];
+  static const _deinterlaceMethods = [
+    ('yadif', 'YADIF'),
+    ('bwdif', 'BWDIF'),
+  ];
+  static const _downmixAlgorithms = [
+    ('None', 'None'),
+    ('Dave750', 'Dave750'),
+    ('NightmodeDialogue', 'Nightmode Dialogue'),
+    ('Rfc7845', 'RFC 7845'),
+    ('Ac4', 'AC-4'),
   ];
 
   @override
@@ -127,18 +177,19 @@ class _AdminPlaybackSettingsScreenState
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, bottomSafe + 40),
       children: [
-        Text(l10n.adminPlaybackTranscoding,
-            style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 24),
+        adminScreenHeader(
+          context,
+          title: l10n.adminPlaybackTranscoding,
+          subtitle: l10n.adminPlaybackHwAccel,
+          icon: Icons.swap_horiz,
+        ),
         _sectionHeader(l10n.adminPlaybackHwAccel),
         DropdownButtonFormField<String>(
           initialValue: _hwAccelOptions.any((o) => o.$1 == currentAccel)
               ? currentAccel
               : 'none',
-          decoration: InputDecoration(
-            labelText: l10n.adminPlaybackHwAccelLabel,
-            border: const OutlineInputBorder(),
-          ),
+          decoration:
+              adminInputDecoration(label: l10n.adminPlaybackHwAccelLabel),
           items: _hwAccelOptions
               .map(
                 (o) => DropdownMenuItem(
@@ -161,6 +212,82 @@ class _AdminPlaybackSettingsScreenState
         Text(l10n.adminPlaybackEnableHwDecoding,
             style: Theme.of(context).textTheme.titleSmall),
         ..._buildCodecToggles(),
+        if (currentAccel == 'qsv') ...[
+          const SizedBox(height: 12),
+          _textField('QsvDevice', l10n.adminPlaybackQsvDevice),
+        ],
+        if (currentAccel == 'nvenc')
+          _switchTile(
+              'EnableEnhancedNvdecDecoder', l10n.adminPlaybackEnhancedNvdec),
+        if (currentAccel != 'none')
+          _switchTile('PreferSystemNativeHwDecoder',
+              l10n.adminPlaybackPreferNativeDecoder),
+        const SizedBox(height: 8),
+        Text(l10n.adminPlaybackColorDepth,
+            style: Theme.of(context).textTheme.titleSmall),
+        _switchTile(
+            'EnableDecodingColorDepth10Hevc', l10n.adminPlaybackColorDepth10Hevc),
+        _switchTile(
+            'EnableDecodingColorDepth10Vp9', l10n.adminPlaybackColorDepth10Vp9),
+        _switchTile('EnableDecodingColorDepth10HevcRext',
+            l10n.adminPlaybackColorDepth10HevcRext),
+        _switchTile('EnableDecodingColorDepth12HevcRext',
+            l10n.adminPlaybackColorDepth12HevcRext),
+        const Divider(height: 32),
+        _sectionHeader(l10n.adminPlaybackHwEncodingSection),
+        _switchTile('AllowHevcEncoding', l10n.adminPlaybackAllowHevcEncoding),
+        _switchTile('AllowAv1Encoding', l10n.adminPlaybackAllowAv1Encoding),
+        if (currentAccel == 'qsv' || currentAccel == 'vaapi') ...[
+          _switchTile('EnableIntelLowPowerH264HwEncoder',
+              l10n.adminPlaybackIntelLowPowerH264),
+          _switchTile('EnableIntelLowPowerHevcHwEncoder',
+              l10n.adminPlaybackIntelLowPowerHevc),
+        ],
+        const Divider(height: 32),
+        _sectionHeader(l10n.adminPlaybackToneMapping),
+        _switchTile('EnableTonemapping', l10n.adminPlaybackEnableTonemapping),
+        if (currentAccel == 'qsv' || currentAccel == 'vaapi')
+          _switchTile(
+              'EnableVppTonemapping', l10n.adminPlaybackEnableVppTonemapping),
+        if (currentAccel == 'videotoolbox')
+          _switchTile('EnableVideoToolboxTonemapping',
+              l10n.adminPlaybackEnableVtTonemapping),
+        const SizedBox(height: 12),
+        _dropdownField('TonemappingAlgorithm',
+            l10n.adminPlaybackTonemappingAlgorithm, _tonemapAlgorithms),
+        const SizedBox(height: 12),
+        _dropdownField('TonemappingMode', l10n.adminPlaybackTonemappingMode,
+            _tonemapModes),
+        const SizedBox(height: 12),
+        _dropdownField('TonemappingRange', l10n.adminPlaybackTonemappingRange,
+            _tonemapRanges),
+        const SizedBox(height: 12),
+        _doubleField('TonemappingDesat', l10n.adminPlaybackTonemappingDesat),
+        const SizedBox(height: 12),
+        _doubleField('TonemappingPeak', l10n.adminPlaybackTonemappingPeak),
+        const SizedBox(height: 12),
+        _doubleField('TonemappingParam', l10n.adminPlaybackTonemappingParam),
+        const Divider(height: 32),
+        _sectionHeader(l10n.adminPlaybackPresetsQuality),
+        _dropdownField('EncoderPreset', l10n.adminPlaybackEncoderPreset,
+            _encoderPresets),
+        const SizedBox(height: 12),
+        _intField('H264Crf', l10n.adminPlaybackH264Crf),
+        const SizedBox(height: 12),
+        _intField('H265Crf', l10n.adminPlaybackH265Crf),
+        const SizedBox(height: 12),
+        _dropdownField('DeinterlaceMethod',
+            l10n.adminPlaybackDeinterlaceMethod, _deinterlaceMethods),
+        const Divider(height: 32),
+        _sectionHeader(l10n.adminPlaybackAudioSection),
+        _switchTile('EnableAudioVbr', l10n.adminPlaybackEnableAudioVbr),
+        const SizedBox(height: 12),
+        _doubleField('DownMixAudioBoost', l10n.adminPlaybackDownmixBoost),
+        const SizedBox(height: 12),
+        _dropdownField('DownMixStereoAlgorithm',
+            l10n.adminPlaybackDownmixAlgorithm, _downmixAlgorithms),
+        const SizedBox(height: 12),
+        _intField('MaxMuxingQueueSize', l10n.adminPlaybackMaxMuxingQueue),
         const Divider(height: 32),
         _sectionHeader(l10n.adminPlaybackEncoding),
         _intField('EncodingThreadCount', l10n.adminPlaybackEncodingThreads,
@@ -181,19 +308,11 @@ class _AdminPlaybackSettingsScreenState
         _intField('SegmentKeepSeconds', l10n.adminPlaybackSegmentKeep),
         const SizedBox(height: 12),
         _switchTile('EnableThrottling', l10n.adminPlaybackThrottleBuffering),
-        const SizedBox(height: 24),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(l10n.save),
-          ),
+        const SizedBox(height: AppSpacing.spaceXl),
+        adminSaveButton(
+          label: l10n.save,
+          saving: _saving,
+          onPressed: _save,
         ),
       ],
     );
@@ -235,20 +354,13 @@ class _AdminPlaybackSettingsScreenState
   }
 
   Widget _sectionHeader(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
-    );
+    return adminSectionLabel(context, text);
   }
 
   Widget _textField(String key, String label, {String? hint}) {
     return TextFormField(
       initialValue: _config![key]?.toString() ?? '',
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: adminInputDecoration(label: label, hint: hint),
       onChanged: (v) => _config![key] = v,
     );
   }
@@ -256,20 +368,46 @@ class _AdminPlaybackSettingsScreenState
   Widget _intField(String key, String label, {String? subtitle}) {
     return TextFormField(
       initialValue: (_config![key] as num?)?.toString() ?? '0',
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: subtitle,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: adminInputDecoration(label: label, helper: subtitle),
       keyboardType: TextInputType.number,
       onChanged: (v) => _config![key] = int.tryParse(v) ?? 0,
     );
   }
 
   Widget _switchTile(String key, String title) {
-    return SwitchListTile.adaptive(
-      title: Text(title),
+    return adminSwitchRow(
+      title: title,
       value: _config![key] as bool? ?? false,
+      onChanged: (v) => setState(() => _config![key] = v),
+    );
+  }
+
+  Widget _doubleField(String key, String label) {
+    return TextFormField(
+      initialValue: (_config![key] as num?)?.toString() ?? '',
+      decoration: adminInputDecoration(label: label),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onChanged: (v) {
+        final parsed = double.tryParse(v);
+        if (parsed != null) _config![key] = parsed;
+      },
+    );
+  }
+
+  Widget _dropdownField(
+    String key,
+    String label,
+    List<(String, String)> options,
+  ) {
+    final current = _config![key]?.toString() ?? '';
+    final value =
+        options.any((o) => o.$1 == current) ? current : options.first.$1;
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      decoration: adminInputDecoration(label: label),
+      items: options
+          .map((o) => DropdownMenuItem(value: o.$1, child: Text(o.$2)))
+          .toList(),
       onChanged: (v) => setState(() => _config![key] = v),
     );
   }
