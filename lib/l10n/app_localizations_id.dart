@@ -5097,6 +5097,27 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Membuat cadangan...';
 
   @override
@@ -5705,9 +5726,6 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Cari Orang Jarak Jauh';
-
-  @override
   String get adminNoRemoteMatches => 'Tidak ditemukan kecocokan jarak jauh';
 
   @override
@@ -6100,7 +6118,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Editor Metadata';
 
   @override
-  String get adminMetadataRemote => 'Jarak Jauh';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tipe';

@@ -29,14 +29,19 @@ class JellyfinAdminBackupApi implements AdminBackupApi {
   }
 
   @override
-  Future<Map<String, dynamic>> createBackup() async {
-    final response = await _postWithFallback([
-      '/Backup/Create',
-      '/System/Backups',
-      '/System/Backups/Create',
-      '/Backups',
-      '/Environment/Backups/Create',
-    ]);
+  Future<Map<String, dynamic>> createBackup([
+    Map<String, dynamic>? options,
+  ]) async {
+    final response = await _postWithFallback(
+      [
+        '/Backup/Create',
+        '/System/Backups',
+        '/System/Backups/Create',
+        '/Backups',
+        '/Environment/Backups/Create',
+      ],
+      data: options,
+    );
 
     final data = response.data;
     if (data is Map<String, dynamic>) {

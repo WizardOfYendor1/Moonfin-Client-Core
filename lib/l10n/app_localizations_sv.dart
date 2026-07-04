@@ -5089,6 +5089,27 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Skapar säkerhetskopia...';
 
   @override
@@ -5701,9 +5722,6 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Sök fjärrperson';
-
-  @override
   String get adminNoRemoteMatches => 'Inga fjärrmatchningar hittades';
 
   @override
@@ -6097,7 +6115,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Metadataredigerare';
 
   @override
-  String get adminMetadataRemote => 'Avlägsen';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Typ';

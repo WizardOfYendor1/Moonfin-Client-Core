@@ -5110,6 +5110,27 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Создание резервной копии...';
 
   @override
@@ -5728,9 +5749,6 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Поиск удаленного человека';
-
-  @override
   String get adminNoRemoteMatches => 'Удаленных совпадений не найдено';
 
   @override
@@ -6126,7 +6144,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Редактор метаданных';
 
   @override
-  String get adminMetadataRemote => 'Удаленный';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Тип';

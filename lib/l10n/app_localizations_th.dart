@@ -5058,6 +5058,27 @@ class AppLocalizationsTh extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'กำลังสร้างข้อมูลสำรอง...';
 
   @override
@@ -5665,9 +5686,6 @@ class AppLocalizationsTh extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'ค้นหาบุคคลระยะไกล';
-
-  @override
   String get adminNoRemoteMatches => 'ไม่พบการแข่งขันระยะไกล';
 
   @override
@@ -6058,7 +6076,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get adminMetadataEditorTitle => 'ตัวแก้ไขข้อมูลเมตา';
 
   @override
-  String get adminMetadataRemote => 'ระยะไกล';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'พิมพ์';

@@ -5110,6 +5110,27 @@ class AppLocalizationsTe extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'బ్యాకప్ సృష్టిస్తోంది...';
 
   @override
@@ -5726,9 +5747,6 @@ class AppLocalizationsTe extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'రిమోట్ వ్యక్తిని శోధించండి';
-
-  @override
   String get adminNoRemoteMatches => 'రిమోట్ సరిపోలికలు ఏవీ కనుగొనబడలేదు';
 
   @override
@@ -6124,7 +6142,7 @@ class AppLocalizationsTe extends AppLocalizations {
   String get adminMetadataEditorTitle => 'మెటాడేటా ఎడిటర్';
 
   @override
-  String get adminMetadataRemote => 'రిమోట్';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'టైప్ చేయండి';

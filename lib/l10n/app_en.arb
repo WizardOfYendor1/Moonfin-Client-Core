@@ -5911,6 +5911,13 @@
     }
   },
 
+  "adminBackupOptionsTitle": "Create Backup",
+  "adminBackupInclude": "Choose what to include in the backup.",
+  "adminBackupDatabase": "Database",
+  "adminBackupDatabaseAlways": "Always included",
+  "adminBackupMetadata": "Metadata",
+  "adminBackupSubtitles": "Subtitles",
+  "adminBackupTrickplay": "Trickplay images",
   "adminCreatingBackup": "Creating backup...",
   "adminBackupCreated": "Backup created successfully",
   "adminBackupCreateFailed": "Failed to create backup: {error}",
@@ -6276,7 +6283,6 @@
       "error": {"type": "String"}
     }
   },
-  "adminSearchRemotePerson": "Search Remote Person",
   "adminNoRemoteMatches": "No remote matches found",
   "adminRemoteResults": "Remote Results",
   "adminRemoteMetadataApplied": "Remote metadata applied",
@@ -6541,7 +6547,7 @@
   "adminLogViewerNoMatches": "No matching lines",
 
   "adminMetadataEditorTitle": "Metadata Editor",
-  "adminMetadataRemote": "Remote",
+  "adminMetadataIdentify": "Identify",
   "adminMetadataType": "Type",
   "adminMetadataDetails": "Details",
   "adminMetadataExternalIds": "External IDs",

@@ -5092,6 +5092,27 @@ class AppLocalizationsUg extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'زاپاسلاش ...';
 
   @override
@@ -5703,9 +5724,6 @@ class AppLocalizationsUg extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'يىراقتىن ئىزدەش';
-
-  @override
   String get adminNoRemoteMatches => 'يىراقتىن ماس كېلىدىغان تېپىلمىدى';
 
   @override
@@ -6100,7 +6118,7 @@ class AppLocalizationsUg extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Metadata Editor';
 
   @override
-  String get adminMetadataRemote => 'Remote';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'تىپ';

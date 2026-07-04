@@ -5080,6 +5080,27 @@ class AppLocalizationsEo extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Kreante sekurkopion...';
 
   @override
@@ -5686,9 +5707,6 @@ class AppLocalizationsEo extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Serĉu Foran Personon';
-
-  @override
   String get adminNoRemoteMatches => 'Neniuj foraj kongruoj trovitaj';
 
   @override
@@ -6080,7 +6098,7 @@ class AppLocalizationsEo extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Redaktilo de metadatumoj';
 
   @override
-  String get adminMetadataRemote => 'Malproksima';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tajpu';

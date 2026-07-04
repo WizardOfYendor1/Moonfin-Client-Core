@@ -72,16 +72,23 @@ class JellyfinAdminItemsApi implements AdminItemsApi {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> searchRemotePerson(
+  Future<List<Map<String, dynamic>>> searchRemote(
+    String searchType,
     Map<String, dynamic> query,
   ) async {
     return _requestWithFallback<List<Map<String, dynamic>>>(
       methods: const ['POST'],
-      paths: ['/Items/RemoteSearch/Person'],
+      paths: ['/Items/RemoteSearch/$searchType'],
       data: query,
       convert: _asList,
     );
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> searchRemotePerson(
+    Map<String, dynamic> query,
+  ) =>
+      searchRemote('Person', query);
 
   @override
   Future<void> applyRemoteSearchResult(

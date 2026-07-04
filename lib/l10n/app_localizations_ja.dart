@@ -4996,6 +4996,27 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'バックアップを作成しています...';
 
   @override
@@ -5584,9 +5605,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => '遠隔地にいる人の検索';
-
-  @override
   String get adminNoRemoteMatches => 'リモート一致が見つかりません';
 
   @override
@@ -5973,7 +5991,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get adminMetadataEditorTitle => 'メタデータエディター';
 
   @override
-  String get adminMetadataRemote => 'リモート';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'タイプ';

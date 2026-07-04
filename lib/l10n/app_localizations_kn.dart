@@ -5113,6 +5113,27 @@ class AppLocalizationsKn extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'ಬ್ಯಾಕಪ್ ರಚಿಸಲಾಗುತ್ತಿದೆ...';
 
   @override
@@ -5729,9 +5750,6 @@ class AppLocalizationsKn extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'ದೂರಸ್ಥ ವ್ಯಕ್ತಿಯನ್ನು ಹುಡುಕಿ';
-
-  @override
   String get adminNoRemoteMatches => 'ಯಾವುದೇ ರಿಮೋಟ್ ಹೊಂದಾಣಿಕೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ';
 
   @override
@@ -6128,7 +6146,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get adminMetadataEditorTitle => 'ಮೆಟಾಡೇಟಾ ಸಂಪಾದಕ';
 
   @override
-  String get adminMetadataRemote => 'ರಿಮೋಟ್';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'ಟೈಪ್ ಮಾಡಿ';

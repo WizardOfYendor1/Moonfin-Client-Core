@@ -5125,6 +5125,27 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Creando copia de seguridad...';
 
   @override
@@ -5745,9 +5766,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Buscar persona remota';
-
-  @override
   String get adminNoRemoteMatches => 'No se encontraron coincidencias remotas';
 
   @override
@@ -6142,7 +6160,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Editor de metadatos';
 
   @override
-  String get adminMetadataRemote => 'Remoto';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tipo';
@@ -14777,9 +14795,6 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Buscar persona remota';
-
-  @override
   String get adminNoRemoteMatches => 'No se encontraron coincidencias remotas';
 
   @override
@@ -15120,9 +15135,6 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
 
   @override
   String get adminMetadataEditorTitle => 'Editor de metadatos';
-
-  @override
-  String get adminMetadataRemote => 'Remoto';
 
   @override
   String get adminMetadataType => 'Tipo';
@@ -23259,9 +23271,6 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Buscar persona remota';
-
-  @override
   String get adminNoRemoteMatches => 'No se encontraron coincidencias remotas';
 
   @override
@@ -23602,9 +23611,6 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
 
   @override
   String get adminMetadataEditorTitle => 'Editor de metadatos';
-
-  @override
-  String get adminMetadataRemote => 'Remoto';
 
   @override
   String get adminMetadataType => 'Tipo';
@@ -31741,9 +31747,6 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Buscar persona remota';
-
-  @override
   String get adminNoRemoteMatches => 'No se encontraron coincidencias remotas';
 
   @override
@@ -32084,9 +32087,6 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
 
   @override
   String get adminMetadataEditorTitle => 'Editor de metadatos';
-
-  @override
-  String get adminMetadataRemote => 'Remoto';
 
   @override
   String get adminMetadataType => 'Tipo';
@@ -40223,9 +40223,6 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Buscar persona remota';
-
-  @override
   String get adminNoRemoteMatches => 'No se encontraron coincidencias remotas';
 
   @override
@@ -40566,9 +40563,6 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
 
   @override
   String get adminMetadataEditorTitle => 'Editor de metadatos';
-
-  @override
-  String get adminMetadataRemote => 'Remoto';
 
   @override
   String get adminMetadataType => 'Tipo';

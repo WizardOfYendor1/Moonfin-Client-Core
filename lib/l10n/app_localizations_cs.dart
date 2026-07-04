@@ -5085,6 +5085,27 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Vytváření zálohy...';
 
   @override
@@ -5698,9 +5719,6 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Vyhledejte vzdálenou osobu';
-
-  @override
   String get adminNoRemoteMatches => 'Nebyly nalezeny žádné vzdálené shody';
 
   @override
@@ -6095,7 +6113,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Editor metadat';
 
   @override
-  String get adminMetadataRemote => 'Vzdálený';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Typ';

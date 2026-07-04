@@ -5098,6 +5098,27 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Прављење резервне копије...';
 
   @override
@@ -5713,9 +5734,6 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Претражите удаљену особу';
-
-  @override
   String get adminNoRemoteMatches => 'Нису пронађена удаљена подударања';
 
   @override
@@ -6110,7 +6128,7 @@ class AppLocalizationsSr extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Уређивач метаподатака';
 
   @override
-  String get adminMetadataRemote => 'Ремоте';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Тип';

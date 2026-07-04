@@ -5102,6 +5102,27 @@ class AppLocalizationsLv extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Notiek dublējuma izveide...';
 
   @override
@@ -5718,9 +5739,6 @@ class AppLocalizationsLv extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Meklēt attālo personu';
-
-  @override
   String get adminNoRemoteMatches =>
       'Nav atrasta neviena attālināta atbilstība';
 
@@ -6118,7 +6136,7 @@ class AppLocalizationsLv extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Metadatu redaktors';
 
   @override
-  String get adminMetadataRemote => 'Tālvadības pults';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tips';

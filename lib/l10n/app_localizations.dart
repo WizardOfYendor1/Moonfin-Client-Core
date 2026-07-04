@@ -9280,6 +9280,48 @@ abstract class AppLocalizations {
   /// **'Token: {token}\\nCreated: {created}'**
   String adminApiKeyTokenCreated(String token, String created);
 
+  /// No description provided for @adminBackupOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Backup'**
+  String get adminBackupOptionsTitle;
+
+  /// No description provided for @adminBackupInclude.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what to include in the backup.'**
+  String get adminBackupInclude;
+
+  /// No description provided for @adminBackupDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Database'**
+  String get adminBackupDatabase;
+
+  /// No description provided for @adminBackupDatabaseAlways.
+  ///
+  /// In en, this message translates to:
+  /// **'Always included'**
+  String get adminBackupDatabaseAlways;
+
+  /// No description provided for @adminBackupMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata'**
+  String get adminBackupMetadata;
+
+  /// No description provided for @adminBackupSubtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles'**
+  String get adminBackupSubtitles;
+
+  /// No description provided for @adminBackupTrickplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Trickplay images'**
+  String get adminBackupTrickplay;
+
   /// No description provided for @adminCreatingBackup.
   ///
   /// In en, this message translates to:
@@ -10312,12 +10354,6 @@ abstract class AppLocalizations {
   /// **'Failed to refresh metadata: {error}'**
   String adminMetadataRefreshFailed(String error);
 
-  /// No description provided for @adminSearchRemotePerson.
-  ///
-  /// In en, this message translates to:
-  /// **'Search Remote Person'**
-  String get adminSearchRemotePerson;
-
   /// No description provided for @adminNoRemoteMatches.
   ///
   /// In en, this message translates to:
@@ -10966,11 +11002,11 @@ abstract class AppLocalizations {
   /// **'Metadata Editor'**
   String get adminMetadataEditorTitle;
 
-  /// No description provided for @adminMetadataRemote.
+  /// No description provided for @adminMetadataIdentify.
   ///
   /// In en, this message translates to:
-  /// **'Remote'**
-  String get adminMetadataRemote;
+  /// **'Identify'**
+  String get adminMetadataIdentify;
 
   /// No description provided for @adminMetadataType.
   ///

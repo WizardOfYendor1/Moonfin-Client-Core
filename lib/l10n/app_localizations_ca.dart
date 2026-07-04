@@ -5149,6 +5149,27 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'S\'està creant una còpia de seguretat...';
 
   @override
@@ -5773,9 +5794,6 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Cerca persona remota';
-
-  @override
   String get adminNoRemoteMatches => 'No s\'han trobat coincidències remotes';
 
   @override
@@ -6176,7 +6194,7 @@ class AppLocalizationsCa extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Editor de metadades';
 
   @override
-  String get adminMetadataRemote => 'Remot';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tipus';

@@ -5089,6 +5089,27 @@ class AppLocalizationsEt extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Varukoopia loomine...';
 
   @override
@@ -5698,9 +5719,6 @@ class AppLocalizationsEt extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Otsige kaugisikut';
-
-  @override
   String get adminNoRemoteMatches => 'Kaugvasteid ei leitud';
 
   @override
@@ -6094,7 +6112,7 @@ class AppLocalizationsEt extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Metaandmete redaktor';
 
   @override
-  String get adminMetadataRemote => 'Kaugjuhtimispult';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tüüp';

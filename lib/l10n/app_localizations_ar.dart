@@ -5068,6 +5068,27 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'جارٍ إنشاء نسخة احتياطية...';
 
   @override
@@ -5670,9 +5691,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'البحث عن شخص بعيد';
-
-  @override
   String get adminNoRemoteMatches => 'لم يتم العثور على تطابقات بعيدة';
 
   @override
@@ -6062,7 +6080,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminMetadataEditorTitle => 'محرر البيانات الوصفية';
 
   @override
-  String get adminMetadataRemote => 'بعيد';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'يكتب';

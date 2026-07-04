@@ -4989,6 +4989,27 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => '백업 생성 중...';
 
   @override
@@ -5577,9 +5598,6 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => '원격 사람 검색';
-
-  @override
   String get adminNoRemoteMatches => '원격 일치 항목을 찾을 수 없습니다.';
 
   @override
@@ -5965,7 +5983,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get adminMetadataEditorTitle => '메타데이터 편집기';
 
   @override
-  String get adminMetadataRemote => '원격';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => '유형';

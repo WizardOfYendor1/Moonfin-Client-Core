@@ -5107,6 +5107,27 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Yedek oluşturuluyor...';
 
   @override
@@ -5712,9 +5733,6 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Uzaktaki Kişiyi Ara';
-
-  @override
   String get adminNoRemoteMatches => 'Uzak eşleşme bulunamadı';
 
   @override
@@ -6108,7 +6126,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Meta Veri Düzenleyici';
 
   @override
-  String get adminMetadataRemote => 'Uzak';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tür';

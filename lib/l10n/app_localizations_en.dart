@@ -5077,6 +5077,27 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Creating backup...';
 
   @override
@@ -5675,9 +5696,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Search Remote Person';
-
-  @override
   String get adminNoRemoteMatches => 'No remote matches found';
 
   @override
@@ -6068,7 +6086,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Metadata Editor';
 
   @override
-  String get adminMetadataRemote => 'Remote';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Type';
@@ -14556,9 +14574,6 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Search Remote Person';
-
-  @override
   String get adminNoRemoteMatches => 'No remote matches found';
 
   @override
@@ -14893,9 +14908,6 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get adminMetadataEditorTitle => 'Metadata Editor';
-
-  @override
-  String get adminMetadataRemote => 'Remote';
 
   @override
   String get adminMetadataType => 'Type';

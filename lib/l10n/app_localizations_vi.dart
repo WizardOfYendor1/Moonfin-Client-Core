@@ -5096,6 +5096,27 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Đang tạo bản sao lưu...';
 
   @override
@@ -5703,9 +5724,6 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Tìm kiếm người ở xa';
-
-  @override
   String get adminNoRemoteMatches => 'Không tìm thấy kết quả phù hợp từ xa';
 
   @override
@@ -6102,7 +6120,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Trình chỉnh sửa siêu dữ liệu';
 
   @override
-  String get adminMetadataRemote => 'Xa';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Kiểu';

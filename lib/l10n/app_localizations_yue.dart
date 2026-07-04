@@ -4969,6 +4969,27 @@ class AppLocalizationsYue extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => '正在建立備份...';
 
   @override
@@ -5555,9 +5576,6 @@ class AppLocalizationsYue extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => '搜尋遠端人員';
-
-  @override
   String get adminNoRemoteMatches => '未找到遠端匹配項';
 
   @override
@@ -5942,7 +5960,7 @@ class AppLocalizationsYue extends AppLocalizations {
   String get adminMetadataEditorTitle => '元資料編輯器';
 
   @override
-  String get adminMetadataRemote => '偏僻的';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => '類型';
@@ -14229,9 +14247,6 @@ class AppLocalizationsYueCn extends AppLocalizationsYue {
   }
 
   @override
-  String get adminSearchRemotePerson => '搜索远程人员';
-
-  @override
   String get adminNoRemoteMatches => '未找到远程匹配项';
 
   @override
@@ -14560,9 +14575,6 @@ class AppLocalizationsYueCn extends AppLocalizationsYue {
 
   @override
   String get adminMetadataEditorTitle => '元数据编辑器';
-
-  @override
-  String get adminMetadataRemote => '偏僻的';
 
   @override
   String get adminMetadataType => '类型';
@@ -22360,9 +22372,6 @@ class AppLocalizationsYueHk extends AppLocalizationsYue {
   }
 
   @override
-  String get adminSearchRemotePerson => '搜尋遠端人員';
-
-  @override
   String get adminNoRemoteMatches => '未找到遠端匹配項';
 
   @override
@@ -22691,9 +22700,6 @@ class AppLocalizationsYueHk extends AppLocalizationsYue {
 
   @override
   String get adminMetadataEditorTitle => '元資料編輯器';
-
-  @override
-  String get adminMetadataRemote => '偏僻的';
 
   @override
   String get adminMetadataType => '類型';

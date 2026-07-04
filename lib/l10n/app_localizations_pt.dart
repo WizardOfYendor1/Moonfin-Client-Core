@@ -5114,6 +5114,27 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Criando backup...';
 
   @override
@@ -5732,9 +5753,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Pesquisar Pessoa Remota';
-
-  @override
   String get adminNoRemoteMatches =>
       'Nenhuma correspondência remota encontrada';
 
@@ -6130,7 +6148,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Editor de Metadados';
 
   @override
-  String get adminMetadataRemote => 'Remoto';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Tipo';
@@ -14712,9 +14730,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Pesquisar Pessoa Remota';
-
-  @override
   String get adminNoRemoteMatches =>
       'Nenhuma correspondência remota encontrada';
 
@@ -15054,9 +15069,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get adminMetadataEditorTitle => 'Editor de metadados';
-
-  @override
-  String get adminMetadataRemote => 'Remoto';
 
   @override
   String get adminMetadataType => 'Tipo';
@@ -23143,9 +23155,6 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Pesquisar Pessoa Remota';
-
-  @override
   String get adminNoRemoteMatches =>
       'Nenhuma correspondência remota encontrada';
 
@@ -23485,9 +23494,6 @@ class AppLocalizationsPtPt extends AppLocalizationsPt {
 
   @override
   String get adminMetadataEditorTitle => 'Editor de metadados';
-
-  @override
-  String get adminMetadataRemote => 'Remoto';
 
   @override
   String get adminMetadataType => 'Tipo';

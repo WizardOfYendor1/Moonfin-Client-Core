@@ -5136,6 +5136,27 @@ class AppLocalizationsTl extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Gumagawa ng backup...';
 
   @override
@@ -5755,9 +5776,6 @@ class AppLocalizationsTl extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Maghanap ng Malayong Tao';
-
-  @override
   String get adminNoRemoteMatches => 'Walang nakitang malalayong tugma';
 
   @override
@@ -6153,7 +6171,7 @@ class AppLocalizationsTl extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Metadata Editor';
 
   @override
-  String get adminMetadataRemote => 'Remote';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Uri';

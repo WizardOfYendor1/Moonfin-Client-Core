@@ -11,6 +11,13 @@ abstract class AdminItemsApi {
     bool? replaceAllImages,
   });
   Future<List<Map<String, dynamic>>> getExternalIdInfos(String itemId);
+
+  /// Searches metadata providers for [searchType] (a BaseItemKind such as
+  /// `Movie`, `Series`, `Person`, `MusicAlbum`) using a RemoteSearchQuery body.
+  Future<List<Map<String, dynamic>>> searchRemote(
+    String searchType,
+    Map<String, dynamic> query,
+  );
   Future<List<Map<String, dynamic>>> searchRemotePerson(
     Map<String, dynamic> query,
   );

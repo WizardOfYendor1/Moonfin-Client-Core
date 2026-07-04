@@ -5079,6 +5079,27 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'ব্যাকআপ তৈরি করা হচ্ছে...';
 
   @override
@@ -5691,9 +5712,6 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'দূরবর্তী ব্যক্তি অনুসন্ধান করুন';
-
-  @override
   String get adminNoRemoteMatches => 'কোনো দূরবর্তী মিল খুঁজে পাওয়া যায়নি';
 
   @override
@@ -6088,7 +6106,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get adminMetadataEditorTitle => 'মেটাডেটা সম্পাদক';
 
   @override
-  String get adminMetadataRemote => 'দূরবর্তী';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'টাইপ';

@@ -5110,6 +5110,27 @@ class AppLocalizationsKk extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Сақтық көшірме жасалуда...';
 
   @override
@@ -5723,9 +5744,6 @@ class AppLocalizationsKk extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Қашықтағы адамды іздеу';
-
-  @override
   String get adminNoRemoteMatches => 'Қашықтағы сәйкестіктер табылмады';
 
   @override
@@ -6120,7 +6138,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Метадеректер редакторы';
 
   @override
-  String get adminMetadataRemote => 'Қашықтан';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Түр';

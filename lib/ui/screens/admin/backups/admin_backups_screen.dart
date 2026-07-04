@@ -102,8 +102,72 @@ class _AdminBackupsScreenState extends State<AdminBackupsScreen> {
         '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 
+  Future<Map<String, dynamic>?> _promptBackupOptions() {
+    final l10n = AppLocalizations.of(context);
+    var metadata = true;
+    var subtitles = true;
+    var trickplay = true;
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog.adaptive(
+          title: Text(l10n.adminBackupOptionsTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.adminBackupInclude),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.adminBackupDatabase),
+                subtitle: Text(l10n.adminBackupDatabaseAlways),
+                value: true,
+                onChanged: null,
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.adminBackupMetadata),
+                value: metadata,
+                onChanged: (v) => setLocal(() => metadata = v ?? false),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.adminBackupSubtitles),
+                value: subtitles,
+                onChanged: (v) => setLocal(() => subtitles = v ?? false),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.adminBackupTrickplay),
+                value: trickplay,
+                onChanged: (v) => setLocal(() => trickplay = v ?? false),
+              ),
+            ],
+          ),
+          actions: [
+            adaptiveDialogAction(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, {
+                'Metadata': metadata,
+                'Subtitles': subtitles,
+                'Trickplay': trickplay,
+              }),
+              child: Text(l10n.create),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _createBackup() async {
     if (_creating) return;
+    final options = await _promptBackupOptions();
+    if (options == null || !mounted) return;
     setState(() => _creating = true);
 
     showDialog<void>(
@@ -122,7 +186,7 @@ class _AdminBackupsScreenState extends State<AdminBackupsScreen> {
     );
 
     try {
-      await _api.createBackup();
+      await _api.createBackup(options);
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
       }

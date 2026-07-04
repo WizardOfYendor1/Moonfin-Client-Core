@@ -5120,6 +5120,27 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
+  String get adminBackupOptionsTitle => 'Create Backup';
+
+  @override
+  String get adminBackupInclude => 'Choose what to include in the backup.';
+
+  @override
+  String get adminBackupDatabase => 'Database';
+
+  @override
+  String get adminBackupDatabaseAlways => 'Always included';
+
+  @override
+  String get adminBackupMetadata => 'Metadata';
+
+  @override
+  String get adminBackupSubtitles => 'Subtitles';
+
+  @override
+  String get adminBackupTrickplay => 'Trickplay images';
+
+  @override
   String get adminCreatingBackup => 'Biztonsági másolat létrehozása...';
 
   @override
@@ -5738,9 +5759,6 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
-  String get adminSearchRemotePerson => 'Távoli személy keresése';
-
-  @override
   String get adminNoRemoteMatches => 'Nem található távoli egyezés';
 
   @override
@@ -6135,7 +6153,7 @@ class AppLocalizationsHu extends AppLocalizations {
   String get adminMetadataEditorTitle => 'Metaadat-szerkesztő';
 
   @override
-  String get adminMetadataRemote => 'Távoli';
+  String get adminMetadataIdentify => 'Identify';
 
   @override
   String get adminMetadataType => 'Írja be';
