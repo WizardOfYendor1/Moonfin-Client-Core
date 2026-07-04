@@ -11698,6 +11698,36 @@ abstract class AppLocalizations {
   /// **'Enable splash screen'**
   String get adminBrandingEnableSplash;
 
+  /// No description provided for @adminBrandingSplashUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload image'**
+  String get adminBrandingSplashUpload;
+
+  /// No description provided for @adminBrandingSplashUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Splashscreen updated'**
+  String get adminBrandingSplashUploaded;
+
+  /// No description provided for @adminBrandingSplashUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to upload splashscreen'**
+  String get adminBrandingSplashUploadFailed;
+
+  /// No description provided for @adminBrandingSplashDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Splashscreen removed'**
+  String get adminBrandingSplashDeleted;
+
+  /// No description provided for @adminBrandingNoSplash.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom splashscreen'**
+  String get adminBrandingNoSplash;
+
   /// No description provided for @adminPlaybackHwAccel.
   ///
   /// In en, this message translates to:

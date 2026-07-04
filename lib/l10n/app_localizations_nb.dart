@@ -6505,6 +6505,21 @@ class AppLocalizationsNb extends AppLocalizations {
   String get adminBrandingEnableSplash => 'Aktiver velkomstskjerm';
 
   @override
+  String get adminBrandingSplashUpload => 'Upload image';
+
+  @override
+  String get adminBrandingSplashUploaded => 'Splashscreen updated';
+
+  @override
+  String get adminBrandingSplashUploadFailed => 'Failed to upload splashscreen';
+
+  @override
+  String get adminBrandingSplashDeleted => 'Splashscreen removed';
+
+  @override
+  String get adminBrandingNoSplash => 'No custom splashscreen';
+
+  @override
   String get adminPlaybackHwAccel => 'Maskinvareakselerasjon';
 
   @override

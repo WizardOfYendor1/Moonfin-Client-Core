@@ -6542,6 +6542,21 @@ class AppLocalizationsKn extends AppLocalizations {
   String get adminBrandingEnableSplash => 'ಸ್ಪ್ಲಾಶ್ ಪರದೆಯನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಿ';
 
   @override
+  String get adminBrandingSplashUpload => 'Upload image';
+
+  @override
+  String get adminBrandingSplashUploaded => 'Splashscreen updated';
+
+  @override
+  String get adminBrandingSplashUploadFailed => 'Failed to upload splashscreen';
+
+  @override
+  String get adminBrandingSplashDeleted => 'Splashscreen removed';
+
+  @override
+  String get adminBrandingNoSplash => 'No custom splashscreen';
+
+  @override
   String get adminPlaybackHwAccel => 'ಯಂತ್ರಾಂಶ ವೇಗವರ್ಧನೆ';
 
   @override

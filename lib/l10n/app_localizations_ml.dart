@@ -6569,6 +6569,21 @@ class AppLocalizationsMl extends AppLocalizations {
       'സ്പ്ലാഷ് സ്ക്രീൻ പ്രവർത്തനക്ഷമമാക്കുക';
 
   @override
+  String get adminBrandingSplashUpload => 'Upload image';
+
+  @override
+  String get adminBrandingSplashUploaded => 'Splashscreen updated';
+
+  @override
+  String get adminBrandingSplashUploadFailed => 'Failed to upload splashscreen';
+
+  @override
+  String get adminBrandingSplashDeleted => 'Splashscreen removed';
+
+  @override
+  String get adminBrandingNoSplash => 'No custom splashscreen';
+
+  @override
   String get adminPlaybackHwAccel => 'ഹാർഡ്‌വെയർ ആക്സിലറേഷൻ';
 
   @override

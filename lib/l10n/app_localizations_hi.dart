@@ -6491,6 +6491,21 @@ class AppLocalizationsHi extends AppLocalizations {
   String get adminBrandingEnableSplash => 'स्प्लैश स्क्रीन सक्षम करें';
 
   @override
+  String get adminBrandingSplashUpload => 'Upload image';
+
+  @override
+  String get adminBrandingSplashUploaded => 'Splashscreen updated';
+
+  @override
+  String get adminBrandingSplashUploadFailed => 'Failed to upload splashscreen';
+
+  @override
+  String get adminBrandingSplashDeleted => 'Splashscreen removed';
+
+  @override
+  String get adminBrandingNoSplash => 'No custom splashscreen';
+
+  @override
   String get adminPlaybackHwAccel => 'हार्डवेयर एक्सिलरेशन';
 
   @override

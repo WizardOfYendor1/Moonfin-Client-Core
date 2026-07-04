@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:server_core/server_core.dart';
 
@@ -109,4 +111,18 @@ class JellyfinAdminSystemApi implements AdminSystemApi {
   @override
   Future<List<Map<String, dynamic>>> getPasswordResetProviders() =>
       _getLocalizationList('/Auth/PasswordResetProviders');
+
+  @override
+  Future<void> uploadSplashscreen(List<int> bytes, String contentType) async {
+    await _dio.post(
+      '/Branding/Splashscreen',
+      data: base64Encode(bytes),
+      options: Options(contentType: contentType),
+    );
+  }
+
+  @override
+  Future<void> deleteSplashscreen() async {
+    await _dio.delete('/Branding/Splashscreen');
+  }
 }

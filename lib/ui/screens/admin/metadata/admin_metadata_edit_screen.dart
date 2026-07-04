@@ -7,6 +7,7 @@ import 'package:get_it/get_it.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../../util/image_mime.dart';
 import '../../../widgets/adaptive/adaptive_dialog.dart';
 import '../widgets/admin_form_styles.dart';
 
@@ -338,18 +339,6 @@ class _AdminMetadataEditScreenState extends State<AdminMetadataEditScreen>
     return null;
   }
 
-  String? _contentTypeForFileName(String fileName) {
-    final dot = fileName.lastIndexOf('.');
-    final ext = dot == -1 ? '' : fileName.substring(dot + 1).toLowerCase();
-    return switch (ext) {
-      'jpg' || 'jpeg' => 'image/jpeg',
-      'png' => 'image/png',
-      'webp' => 'image/webp',
-      'gif' => 'image/gif',
-      'bmp' => 'image/bmp',
-      _ => null,
-    };
-  }
 
   Future<void> _runImageAction(
     ImageType type,
@@ -1261,7 +1250,7 @@ class _AdminMetadataEditScreenState extends State<AdminMetadataEditScreen>
     final messenger = ScaffoldMessenger.of(context);
 
     final file = result.files.single;
-    final contentType = _contentTypeForFileName(file.name);
+    final contentType = imageContentTypeForFileName(file.name);
     if (contentType == null) {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.adminUnsupportedImageFormat)),

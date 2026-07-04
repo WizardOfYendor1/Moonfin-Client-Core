@@ -6745,6 +6745,11 @@
   "adminBrandingCustomCss": "Custom CSS",
   "adminBrandingCustomCssHint": "Custom CSS applied to the web interface",
   "adminBrandingEnableSplash": "Enable splash screen",
+  "adminBrandingSplashUpload": "Upload image",
+  "adminBrandingSplashUploaded": "Splashscreen updated",
+  "adminBrandingSplashUploadFailed": "Failed to upload splashscreen",
+  "adminBrandingSplashDeleted": "Splashscreen removed",
+  "adminBrandingNoSplash": "No custom splashscreen",
 
   "adminPlaybackHwAccel": "Hardware Acceleration",
   "adminPlaybackHwAccelLabel": "Hardware acceleration",

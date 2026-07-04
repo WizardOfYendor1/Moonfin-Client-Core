@@ -6549,6 +6549,21 @@ class AppLocalizationsSw extends AppLocalizations {
   String get adminBrandingEnableSplash => 'Washa skrini ya Splash';
 
   @override
+  String get adminBrandingSplashUpload => 'Upload image';
+
+  @override
+  String get adminBrandingSplashUploaded => 'Splashscreen updated';
+
+  @override
+  String get adminBrandingSplashUploadFailed => 'Failed to upload splashscreen';
+
+  @override
+  String get adminBrandingSplashDeleted => 'Splashscreen removed';
+
+  @override
+  String get adminBrandingNoSplash => 'No custom splashscreen';
+
+  @override
   String get adminPlaybackHwAccel => 'Kuongeza kasi ya vifaa';
 
   @override

@@ -30,4 +30,8 @@ abstract class AdminSystemApi {
   /// used by the user-edit Profile tab selectors.
   Future<List<Map<String, dynamic>>> getAuthProviders();
   Future<List<Map<String, dynamic>>> getPasswordResetProviders();
+
+  /// Uploads or removes the custom login splashscreen image.
+  Future<void> uploadSplashscreen(List<int> bytes, String contentType);
+  Future<void> deleteSplashscreen();
 }
