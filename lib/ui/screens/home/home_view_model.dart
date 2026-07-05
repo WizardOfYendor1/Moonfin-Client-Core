@@ -14,6 +14,7 @@ import '../../../data/repositories/multi_server_repository.dart';
 import '../../../data/services/home_row_cache_store.dart';
 import '../../../data/services/row_data_source.dart';
 import '../../../data/services/topshelf_service.dart';
+import '../../../data/services/watch_next_service.dart';
 import '../../../data/viewmodels/media_bar_view_model.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/current_app_localizations.dart';
@@ -42,6 +43,7 @@ class HomeViewModel extends ChangeNotifier {
   final Map<String, int> _rowOffsets = {};
 
   final TopShelfService _topShelf = TopShelfService();
+  final WatchNextService _watchNext = WatchNextService();
 
   List<HomeRow> _rows = [];
   List<HomeRow> get rows => _rows;
@@ -462,6 +464,7 @@ class HomeViewModel extends ChangeNotifier {
 
       unawaited(_cacheStore.write(_homeCacheKey(), _rows));
       _topShelf.update(_rows);
+      _watchNext.update(_rows);
 
       if (showMergedResume) {
         _loadResumeAndNextUpInBackground();
@@ -1690,6 +1693,7 @@ class HomeViewModel extends ChangeNotifier {
       );
     }
     notifyListeners();
+    _watchNext.update(_rows);
   }
 
   static const _seerrEnrichConcurrency = 5;

@@ -36,10 +36,22 @@ class HeadlessSessionBootstrap {
   Future<MediaServerClient?> _restore() async {
     try {
       final factory = GetIt.instance<MediaServerClientFactory>();
+      final hadClient = factory.clients.isNotEmpty;
+      final client = await restoreClient();
+      if (client == null) return null;
+      if (!hadClient) setActiveServerClient(client);
+      setActiveStreamResolver(client);
+      return client;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<MediaServerClient?> restoreClient() async {
+    try {
+      final factory = GetIt.instance<MediaServerClientFactory>();
       if (factory.clients.isNotEmpty) {
-        final client = factory.getActiveClient();
-        setActiveStreamResolver(client);
-        return client;
+        return factory.getActiveClient();
       }
 
       final authPrefs = GetIt.instance<AuthenticationPreferences>();
@@ -79,9 +91,6 @@ class HeadlessSessionBootstrap {
       );
       client.accessToken = accessToken;
       client.userId = userId;
-
-      setActiveServerClient(client);
-      setActiveStreamResolver(client);
       return client;
     } catch (_) {
       return null;

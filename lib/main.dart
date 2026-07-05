@@ -9,6 +9,7 @@ import 'package:playback_core/playback_core.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
+import 'background/watch_next_background.dart' as watch_next_bg;
 import 'data/services/carplay_service.dart';
 import 'data/services/cast/airplay_command_bridge.dart';
 import 'data/services/download_notification_service.dart';
@@ -302,6 +303,9 @@ class _PreferenceWriteFlushObserver with WidgetsBindingObserver {
     }
   }
 }
+
+@pragma('vm:entry-point')
+Future<void> watchNextBackgroundMain() => watch_next_bg.watchNextBackgroundMain();
 
 void main() async {
   configureHttpOverrides();

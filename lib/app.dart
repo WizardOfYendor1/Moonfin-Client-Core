@@ -20,6 +20,7 @@ import 'data/services/cast/cast_service.dart';
 import 'data/services/download_service.dart';
 import 'data/services/plugin_sync_service.dart';
 import 'data/services/topshelf_service.dart';
+import 'data/services/watch_next_service.dart';
 import 'di/providers.dart';
 import 'l10n/app_localizations.dart';
 import 'preference/user_preferences.dart';
@@ -78,6 +79,9 @@ class _MoonfinAppState extends State<MoonfinApp> {
         keyRepeatInitialDelay: Duration(milliseconds: 450),
         keyRepeatInterval: Duration(milliseconds: 140),
       );
+    }
+    if (PlatformDetection.isAndroid && PlatformDetection.isTV) {
+      WatchNextService().startDeepLinkListener(appRouter.go);
     }
   }
 

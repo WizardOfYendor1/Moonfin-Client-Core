@@ -355,6 +355,28 @@ Future<void> migrateAudioPreferenceSplit(PreferenceStore store) async {
   await store.setBool(migrationKey, true);
 }
 
+Future<void> configureBackgroundDependencies() async {
+  if (getIt.isRegistered<DeviceInfo>()) return;
+
+  final preferenceStore = PreferenceStore();
+  await preferenceStore.init();
+
+  final deviceId = preferenceStore.getString('device_id') ?? const Uuid().v4();
+  getIt.registerSingleton<DeviceInfo>(
+    DeviceInfo(
+      id: deviceId,
+      name: await _resolveDeviceName(),
+      appName: _clientName(),
+      appVersion: await _resolveAppVersion(),
+    ),
+  );
+
+  registerPreferenceModule(preferenceStore);
+  registerServerModule();
+  registerAuthModule();
+  await getIt<AuthenticationStore>().init();
+}
+
 Future<void> configureDependencies() async {
   final preferenceStore = PreferenceStore();
   await preferenceStore.init();
