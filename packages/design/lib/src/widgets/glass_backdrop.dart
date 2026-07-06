@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/glass_settings.dart';
+
 class GlassBackdrop extends StatefulWidget {
   const GlassBackdrop({super.key, this.animated = true});
 
@@ -71,6 +73,29 @@ class _GlassBackdropState extends State<GlassBackdrop>
 
   @override
   Widget build(BuildContext context) {
+    // The sheen tier collapses the bloom stack (base fill, three radial
+    // gradients, veil, and darkening gradient) into a single gradient pass.
+    // Six full-screen draws per frame are too expensive for the TV boxes and
+    // web renderers that resolve to sheen, and Impeller re-renders them every
+    // frame because it has no raster cache.
+    if (GlassSettings.tier == GlassTier.sheen) {
+      return const RepaintBoundary(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              stops: [0.0, 0.55, 1.0],
+              colors: [
+                Color(0xFF16395E),
+                Color(0xFF0B0F17),
+                Color(0xFF241E42),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return RepaintBoundary(
       child: LayoutBuilder(
         builder: (context, constraints) {

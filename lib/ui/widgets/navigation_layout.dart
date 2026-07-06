@@ -148,7 +148,11 @@ class _NavigationLayoutState extends State<NavigationLayout> with WidgetsBinding
       NavbarPosition.bottom =>
         NavigationLayout.allowBottomNavbar ? _buildBottomBar() : _buildToolbar(),
     };
-    return AppColorScheme.isGlass ? BackdropGroup(child: layout) : layout;
+    // Grouping only pays off when the tier draws real backdrop blurs, the
+    // sheen tier never does.
+    return AppColorScheme.isGlass && GlassSettings.blursBackdrop
+        ? BackdropGroup(child: layout)
+        : layout;
   }
 
   Widget _buildBottomBar() {
