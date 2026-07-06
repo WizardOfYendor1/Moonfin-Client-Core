@@ -106,6 +106,15 @@ const _authRoutes = {
   Destinations.login,
 };
 
+/// Remembers that the router forced the user onto the Saved Media screen
+/// because the device was offline, so the app can return them to home when
+/// connectivity comes back. Deliberate visits never set this.
+class OfflineRedirect {
+  OfflineRedirect._();
+
+  static bool wasAutomatic = false;
+}
+
 bool _isOfflineAllowed(String path) {
   if (path.startsWith('/settings')) return true;
   if (path == Destinations.videoPlayer ||
@@ -186,10 +195,18 @@ final appRouter = GoRouter(
       }
     }
 
+    // TV is exempt: home renders from the persisted row cache with the
+    // offline banner, which beats stranding the user on the mobile-styled
+    // Saved Media screen after a cold boot where Wi-Fi is still connecting.
     final connectivity = GetIt.instance<ConnectivityService>();
-    if (!connectivity.isOnline && !_isOfflineAllowed(path)) {
+    if (!connectivity.isOnline &&
+        !PlatformDetection.isTV &&
+        !_isOfflineAllowed(path)) {
+      OfflineRedirect.wasAutomatic = true;
       return Destinations.downloads;
     }
+
+    OfflineRedirect.wasAutomatic = false;
 
     if (_shouldRedirectVideoToExternalPlayer(path)) {
       return Destinations.externalPlayer;

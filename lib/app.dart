@@ -27,6 +27,8 @@ import 'l10n/app_localizations.dart';
 import 'preference/user_preferences.dart';
 import 'syncplay/syncplay_manager.dart';
 import 'ui/navigation/app_router.dart';
+import 'ui/navigation/destinations.dart';
+import 'ui/navigation/home_refresh_bus.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/theme/app_theme_controller.dart';
 import 'ui/widgets/cast_mini_player.dart';
@@ -786,6 +788,7 @@ class _ConnectivityListener extends ConsumerStatefulWidget {
 class _ConnectivityListenerState extends ConsumerState<_ConnectivityListener>
     with WidgetsBindingObserver {
   bool? _wasOnline;
+  bool? _wasServerReachable;
   bool _didScheduleUpdateCheck = false;
   StreamSubscription<SyncPlayUiEvent>? _syncPlayEventsSub;
   StreamSubscription<String>? _downloadErrorSub;
@@ -941,9 +944,33 @@ class _ConnectivityListenerState extends ConsumerState<_ConnectivityListener>
     } catch (_) {}
   }
 
+  /// Fires once the server is actually reachable again to revalidate cached home rows
+  /// and if the router auto-redirected the user to Saved Media, return them to home.
+  /// Gated on server reachability so a refresh isn't wasted against a server that the
+  /// ping hasn't confirmed yet.
+  void _handleServerReachable() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      homeRefreshBus.requestNowOrAfterNavigation();
+      if (!OfflineRedirect.wasAutomatic) return;
+      OfflineRedirect.wasAutomatic = false;
+      final location = appRouter.routerDelegate.currentConfiguration.uri.path;
+      if (location == Destinations.downloads) {
+        appRouter.go(Destinations.home);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isOnline = ref.watch(isOnlineProvider);
+    final serverReachable = ref.watch(activeServerReachableProvider);
+
+    if (_wasServerReachable != null &&
+        _wasServerReachable != serverReachable &&
+        serverReachable) {
+      _handleServerReachable();
+    }
+    _wasServerReachable = serverReachable;
 
     if (_wasOnline != null && _wasOnline != isOnline) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
