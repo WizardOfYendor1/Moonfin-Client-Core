@@ -528,19 +528,32 @@ class _BookReaderScreenState extends State<BookReaderScreen>
         }
 
         await _prepareEpubReader(uris, headers);
-      } else {
-        final unsupportedDoc = ext == 'mobi' || ext == 'azw' || ext == 'azw3';
-        if (unsupportedDoc) {
+      } else if (ext == 'mobi' || ext == 'azw' || ext == 'azw3') {
+        if (!_supportsInAppEpub) {
+          if (!mounted) return;
+          final l10n = AppLocalizations.of(context);
+          setState(() {
+            _mode = _ReaderMode.fallback;
+            _fallbackMessage = l10n.epubUnavailableOnPlatform;
+            _fallbackExternalUri = fallbackUriCandidate;
+          });
+          return;
+        }
+
+        try {
+          await _prepareEpubReader(uris, headers, kindleFormat: true);
+        } catch (_) {
+          // Most likely a DRM protected or unsupported Kindle variant, which
+          // we can't unpack. Offer the external viewer instead.
           if (!mounted) return;
           final l10n = AppLocalizations.of(context);
           setState(() {
             _mode = _ReaderMode.fallback;
             _fallbackMessage = l10n.formatCannotRenderInApp(ext);
-            _fallbackExternalUri = uris.isNotEmpty ? uris.first : null;
+            _fallbackExternalUri = fallbackUriCandidate;
           });
-          return;
         }
-
+      } else {
         if (!_supportsEmbeddedWebView) {
           if (!mounted) return;
           final l10n = AppLocalizations.of(context);
@@ -603,9 +616,13 @@ class _BookReaderScreenState extends State<BookReaderScreen>
 
   Future<void> _prepareEpubReader(
     List<Uri> uris,
-    Map<String, String> headers,
-  ) async {
-    final bytes = await BookDocumentService.downloadBytes(uris, headers);
+    Map<String, String> headers, {
+    bool kindleFormat = false,
+  }) async {
+    var bytes = await BookDocumentService.downloadBytes(uris, headers);
+    if (kindleFormat) {
+      bytes = await compute(BookDocumentService.convertKindleToEpub, bytes);
+    }
     final chapterHtml = _resolveEpubChapterHtml(bytes, _currentEpubTheme);
     final tocEntries = BookDocumentService.extractEpubTocEntries(bytes);
     if (mounted && tocEntries.isNotEmpty) {

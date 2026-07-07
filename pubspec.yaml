@@ -112,6 +112,10 @@ dependencies:
   youtube_player_iframe: ^6.0.0
   pdfrx: ^2.2.24
   flutter_widget_from_html_core: ^0.16.1
+  # Vendored fork of kindle_unpack 0.1.1 (MOBI/AZW/AZW3 -> EPUB), patched to
+  # build against archive 4.x. See packages/kindle_unpack and the patch note.
+  kindle_unpack:
+    path: packages/kindle_unpack
   archive: ^4.0.9
   rar:
     path: packages/rar_fork

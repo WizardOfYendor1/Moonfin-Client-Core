@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
+import 'package:kindle_unpack/kindle_unpack.dart';
 
 import 'book_reader_service.dart';
 
@@ -78,6 +79,14 @@ class BookDocumentService {
     } finally {
       client.close(force: true);
     }
+  }
+
+  /// Convert a Kindle document (MOBI/AZW/AZW3/KF8) into EPUB bytes so it can be
+  /// rendered through the normal EPUB pipeline. Parsing is CPU heavy, so run
+  /// this off the UI isolate with compute(). Throws if the file is DRM
+  /// protected or an unsupported Kindle variant.
+  static Uint8List convertKindleToEpub(Uint8List bytes) {
+    return KindleBook.fromBytes(bytes).toEpub();
   }
 
   static Future<String?> probeExtensionFromResponse(
