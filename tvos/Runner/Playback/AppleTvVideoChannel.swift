@@ -89,9 +89,10 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
             player?.setAudioTrack((args["index"] as? NSNumber)?.int32Value ?? -1)
         case "setSubtitleTrack":
             let isExternal = (args["isExternalSubtitle"] as? Bool) == true
-            if !(isExternal && addExternalSubtitle(args["externalSubtitleUrl"])) {
-                player?.setSubtitleTrack((args["index"] as? NSNumber)?.int32Value ?? -1)
-            }
+            player?.selectSubtitleTrack(
+                (args["index"] as? NSNumber)?.int32Value ?? -1,
+                externalUrl: isExternal ? args["externalSubtitleUrl"] as? String : nil
+            )
         case "addExternalSubtitle":
             addExternalSubtitle(args["url"])
         case "disableSubtitleTrack":

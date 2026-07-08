@@ -10,6 +10,25 @@ enum AssRenderResult {
     case image(CGImage)
 }
 
+/// Locates the Flutter-bundled Noto Sans so libass always has a resolvable
+/// fallback font. tvOS has no fontconfig configuration.
+enum SubtitleFontLocator {
+    static let fontFamily = "Noto Sans"
+
+    static func bundledFontsDirectory() -> String? {
+        var candidates: [String] = []
+        if let frameworksPath = Bundle.main.privateFrameworksPath {
+            candidates.append("\(frameworksPath)/App.framework/flutter_assets/assets/fonts")
+        }
+        if let resourcePath = Bundle.main.resourcePath {
+            candidates.append("\(resourcePath)/flutter_assets/assets/fonts")
+        }
+        return candidates.first {
+            FileManager.default.fileExists(atPath: "\($0)/NotoSans-Regular.ttf")
+        }
+    }
+}
+
 final class AssRenderer {
 
 #if canImport(Libass)
@@ -28,7 +47,19 @@ final class AssRenderer {
             return false
         }
         self.renderer = renderer
-        ass_set_fonts(renderer, nil, "Sans", 1, nil, 1)
+        if let fontsDir = SubtitleFontLocator.bundledFontsDirectory() {
+            ass_set_fonts_dir(library, fontsDir)
+            ass_set_fonts(
+                renderer,
+                "\(fontsDir)/NotoSans-Regular.ttf",
+                SubtitleFontLocator.fontFamily,
+                1,
+                nil,
+                1
+            )
+        } else {
+            ass_set_fonts(renderer, nil, "Sans", 1, nil, 1)
+        }
         guard let track = ass_new_track(library) else {
             close()
             return false

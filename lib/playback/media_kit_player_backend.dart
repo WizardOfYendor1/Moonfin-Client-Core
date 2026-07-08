@@ -548,9 +548,9 @@ class MediaKitPlayerBackend extends PlayerBackend {
       await _nativeSetProperty(native, 'sid', 'auto');
       await _nativeSetProperty(native, 'secondary-sid', 'no');
       await _nativeSetProperty(native, 'sub-visibility', 'yes');
-      if (_useLibass) {
-        await _nativeSetProperty(native, 'sub-ass', 'yes');
-      }
+      // PlayerConfiguration(libass: false) initializes mpv with sub-ass=no,
+      // which strips ASS styling on desktop, so always turn it back on.
+      await _nativeSetProperty(native, 'sub-ass', 'yes');
     }
 
     final media = Media(url);
@@ -1276,6 +1276,12 @@ class MediaKitPlayerBackend extends PlayerBackend {
   Future<int?> getActiveSubtitleTrackIndexAsync() async => activeSubtitleTrackIndex;
 
 
+  static void _subtitleDebug(String message) {
+    if (kDebugMode) {
+      debugPrint('[subtitle_mpv] $message');
+    }
+  }
+
   @override
   Future<void> setSubtitleTrack(
     int mpvTrackId, {
@@ -1326,7 +1332,10 @@ class MediaKitPlayerBackend extends PlayerBackend {
 
       await _nativeSetProperty(native, 'secondary-sid', 'no');
 
+      // Native-surface platforms (Android TV SurfaceView) have no Flutter
+      // SubtitleView overlay, so mpv must draw every subtitle type itself.
       final useNativeRendering = !_useLibass ||
+          _useNativeSurface ||
           isBitmapSubtitle ||
           shouldRenderSubtitleNatively(subtitleCodec);
 
@@ -1337,7 +1346,15 @@ class MediaKitPlayerBackend extends PlayerBackend {
       } else {
         await _nativeSetProperty(native, 'sub-visibility', 'no');
       }
-    } catch (_) {}
+      _subtitleDebug(
+        'set track=$mpvTrackId sid_requested=$sidToApply sid_after=$sidAfter '
+        'codec=$subtitleCodec external=$isExternalSubtitle '
+        'bitmap=$isBitmapSubtitle native_render=$useNativeRendering '
+        'mpv_sub_tracks=${subtitleIds.length}',
+      );
+    } catch (e) {
+      _subtitleDebug('set track=$mpvTrackId threw: $e');
+    }
   }
 
   @override
@@ -1368,21 +1385,27 @@ class MediaKitPlayerBackend extends PlayerBackend {
     } catch (_) {}
   }
 
+  // media_kit's track list includes the 'auto' and 'no' pseudo-tracks.
+  // Counting them lets waits finish early, so external sub-adds can race
+  // the embedded track demux and scramble the sid order.
+  static int _realSubtitleTrackCount(List<SubtitleTrack> tracks) =>
+      tracks.where((t) => t.id != 'auto' && t.id != 'no').length;
+
   @override
   Future<void> waitForEmbeddedSubtitleCount(int count) async {
     if (count <= 0) return;
     _updateStaleState();
-    if (!_isStale && _player.state.tracks.subtitle.length >= count) {
+    if (!_isStale &&
+        _realSubtitleTrackCount(_player.state.tracks.subtitle) >= count) {
       return;
     }
     try {
-      final tracks = await _player.stream.tracks
+      await _player.stream.tracks
           .firstWhere((t) {
             _updateStaleState();
-            return !_isStale && t.subtitle.length >= count;
+            return !_isStale && _realSubtitleTrackCount(t.subtitle) >= count;
           })
           .timeout(const Duration(seconds: 5));
-      if (tracks.subtitle.length < count) return;
     } catch (_) {}
   }
 
@@ -1418,6 +1441,10 @@ class MediaKitPlayerBackend extends PlayerBackend {
       title ?? 'external',
       language ?? '',
     ]);
+    _subtitleDebug(
+      'sub-add title=$title lang=$language codec=$codec '
+      'mpv_sub_tracks=${_realSubtitleTrackCount(_player.state.tracks.subtitle)}',
+    );
   }
 
   @override

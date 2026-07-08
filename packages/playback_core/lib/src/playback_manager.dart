@@ -2147,10 +2147,16 @@ class PlaybackManager implements AudioOwnable {
       final target = typeStreams[targetIdx];
       final isExternal = target['IsExternal'] == true;
 
+      // Transcoded/remuxed streams don't carry the source's embedded
+      // subtitle tracks, so the player only sees the sub-added externals.
+      final embeddedStripped =
+          _currentResolution?.playMethod == StreamPlayMethod.transcode ||
+          _currentResolution?.playMethod == StreamPlayMethod.directStream;
+
       if (isExternal) {
-        final embeddedCount = typeStreams
-            .where((s) => s['IsExternal'] != true)
-            .length;
+        final embeddedCount = embeddedStripped
+            ? 0
+            : typeStreams.where((s) => s['IsExternal'] != true).length;
         final externalStreams = typeStreams
             .where((s) => s['IsExternal'] == true)
             .toList();
@@ -2160,6 +2166,7 @@ class PlaybackManager implements AudioOwnable {
         if (externalPos < 0) return null;
         return embeddedCount + externalPos + 1;
       } else {
+        if (embeddedStripped) return null;
         final embeddedStreams = typeStreams
             .where((s) => s['IsExternal'] != true)
             .toList();
@@ -2183,9 +2190,14 @@ class PlaybackManager implements AudioOwnable {
     if (typeStreams.isEmpty) return null;
 
     if (type == 'Subtitle') {
-      final embeddedCount = typeStreams
-          .where((s) => s['IsExternal'] != true)
-          .length;
+      // Mirror _mpvTrackIdForStream: transcoded/remuxed streams don't carry
+      // the source's embedded subtitle tracks.
+      final embeddedStripped =
+          _currentResolution?.playMethod == StreamPlayMethod.transcode ||
+          _currentResolution?.playMethod == StreamPlayMethod.directStream;
+      final embeddedCount = embeddedStripped
+          ? 0
+          : typeStreams.where((s) => s['IsExternal'] != true).length;
 
       if (mpvTrackId > embeddedCount) {
         final externalPos = mpvTrackId - embeddedCount - 1;

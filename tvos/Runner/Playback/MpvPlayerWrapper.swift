@@ -618,6 +618,29 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         subtitleDebug("subtitle_mpv_set_done track_id=\(trackIndex) current_track_after=\(self.currentSubtitleTrackIndex)")
     }
 
+    /// Selects a subtitle track by mpv sid. External tracks are already
+    /// sub-added unselected at playback start, so selecting one is just a sid
+    /// change. If the track is missing from mpv's list, fall back to adding
+    /// it with the select flag.
+    func selectSubtitleTrack(_ trackIndex: Int32, externalUrl: String?) {
+        if trackIndex < 0 {
+            disableSubtitles()
+            return
+        }
+        guard let externalUrl,
+              !subtitleTracks.contains(where: { $0.id == trackIndex }),
+              let url = URL(string: externalUrl) else {
+            setSubtitleTrack(trackIndex)
+            return
+        }
+        subtitleDebug(
+            "subtitle_mpv_select_external_via_add track_id=\(trackIndex) url=\(self.redactedURLString(url)) tracks=\(self.subtitleTrackDebugSummary(self.subtitleTracks))"
+        )
+        _ = engine?.command(["sub-add", url.absoluteString, "select", "External"])
+        _ = engine?.command(["set", "sub-visibility", "yes"])
+        currentSubtitleTrackIndex = trackIndex
+    }
+
     func disableSubtitles() {
         subtitleDebug("subtitle_mpv_disable current_track_before=\(self.currentSubtitleTrackIndex)")
         _ = engine?.disableSubtitles()
@@ -2049,6 +2072,11 @@ private final class MPVEngine {
 
         _ = setOptionString("subs-match-os-language", value: "yes", on: created)
         _ = setOptionString("subs-fallback", value: "yes", on: created)
+
+        if let bundledFontsDir = SubtitleFontLocator.bundledFontsDirectory() {
+            _ = setOptionString("sub-fonts-dir", value: bundledFontsDir, on: created)
+            _ = setOptionString("sub-font", value: SubtitleFontLocator.fontFamily, on: created)
+        }
 
         initDiagnostics["output_intent"] = "\(outputIntent)"
         initDiagnostics["quality_profile"] = qualityProfile.rawValue
