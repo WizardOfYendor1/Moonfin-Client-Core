@@ -49,6 +49,7 @@ mixin GridFocusNodeMixin<T extends StatefulWidget> on State<T> {
   }
 
   void restoreGridFocusIfNeeded() {
+    if (ModalRoute.of(context)?.isCurrent != true) return;
     if (lastFocusedGridContentVersion == gridContentVersion) return;
     final idx = lastFocusedGridIndex;
     if (idx == null) return;
