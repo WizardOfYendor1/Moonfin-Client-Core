@@ -71,6 +71,14 @@ class SeerrPreferences {
   bool get blockNsfw => _store.getBool(_userKey('block_nsfw')) ?? true;
   Future<void> setBlockNsfw(bool value) => _store.setBool(_userKey('block_nsfw'), value);
 
+  bool get notifyOnNewRequests => _store.getBool(_userKey('notify_new_requests')) ?? false;
+  Future<void> setNotifyOnNewRequests(bool value) =>
+      _store.setBool(_userKey('notify_new_requests'), value);
+
+  bool get notifyOnLibraryAdded => _store.getBool(_userKey('notify_library_added')) ?? false;
+  Future<void> setNotifyOnLibraryAdded(bool value) =>
+      _store.setBool(_userKey('notify_library_added'), value);
+
   SeerrFetchLimit get fetchLimit {
     final stored = _store.getString(_userKey('fetch_limit'));
     if (stored == null || stored.isEmpty) return SeerrFetchLimit.medium;
@@ -150,7 +158,8 @@ class SeerrPreferences {
       'moonfin_mode', 'moonfin_display_name', 'moonfin_variant', 'moonfin_user_id',
       'last_connection_success',
       'show_in_navigation', 'show_in_toolbar', 'show_request_status',
-      'block_nsfw', 'fetch_limit', 'rows_config',
+      'block_nsfw', 'notify_new_requests', 'notify_library_added',
+      'fetch_limit', 'rows_config',
       'hd_movie_profile_id', '4k_movie_profile_id',
       'hd_tv_profile_id', '4k_tv_profile_id',
       'hd_movie_root_folder_id', '4k_movie_root_folder_id',

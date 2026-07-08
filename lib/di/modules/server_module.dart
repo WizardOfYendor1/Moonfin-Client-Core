@@ -4,6 +4,8 @@ import 'package:server_core/server_core.dart';
 import '../../data/services/download_notification_service.dart';
 import '../../data/services/download_service.dart';
 import '../../data/services/media_server_client_factory.dart';
+import '../../data/services/push_messaging_service.dart';
+import '../../data/services/seerr_notification_service.dart';
 
 final _getIt = GetIt.instance;
 
@@ -17,6 +19,18 @@ void registerServerModule() {
   if (!_getIt.isRegistered<DownloadNotificationService>()) {
     _getIt.registerLazySingleton<DownloadNotificationService>(
       () => DownloadNotificationService(),
+    );
+  }
+
+  if (!_getIt.isRegistered<SeerrNotificationService>()) {
+    _getIt.registerLazySingleton<SeerrNotificationService>(
+      () => SeerrNotificationService(),
+    );
+  }
+
+  if (!_getIt.isRegistered<PushMessagingService>()) {
+    _getIt.registerLazySingleton<PushMessagingService>(
+      () => PushMessagingService(),
     );
   }
 }

@@ -29,8 +29,13 @@ const _tmdbProfileBase = 'https://image.tmdb.org/t/p/w185';
 
 class SeerrMediaDetailScreen extends StatefulWidget {
   final String itemId;
+  final String? mediaType;
 
-  const SeerrMediaDetailScreen({super.key, required this.itemId});
+  const SeerrMediaDetailScreen({
+    super.key,
+    required this.itemId,
+    this.mediaType,
+  });
 
   @override
   State<SeerrMediaDetailScreen> createState() => _SeerrMediaDetailScreenState();
@@ -100,7 +105,8 @@ class _SeerrMediaDetailScreenState extends State<SeerrMediaDetailScreen> {
 
     final extra = GoRouterState.of(context).extra;
     final extraMap = extra is Map ? extra.cast<String, dynamic>() : null;
-    final mediaType = (extraMap?['mediaType'] as String?) ?? 'movie';
+    final mediaType =
+        (extraMap?['mediaType'] as String?) ?? widget.mediaType ?? 'movie';
     final title = extraMap?['title'] as String?;
 
     vm.load(widget.itemId, mediaType, title: title);

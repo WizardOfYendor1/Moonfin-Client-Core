@@ -2,11 +2,14 @@ import 'package:custom_tv_text_field/custom_tv_text_field.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../data/repositories/seerr_repository.dart';
+import '../../../data/services/local_notification_bootstrap.dart';
 import '../../../data/services/plugin_sync_service.dart';
+import '../../../data/services/seerr/seerr_api_models.dart';
 import '../../../data/services/seerr/seerr_models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../preference/preference_constants.dart';
@@ -39,6 +42,7 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
 
   MoonfinStatusResponse? _seerrStatus;
   bool _statusLoading = false;
+  bool _canManageRequests = false;
   late List<SeerrRowConfig> _rows;
   final _focusNodes = <FocusNode>[];
 
@@ -125,14 +129,23 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
     }
 
     MoonfinStatusResponse? status = _seerrStatus;
+    var canManageRequests = _canManageRequests;
     try {
       final repo = await GetIt.instance.getAsync<SeerrRepository>();
       status = await repo.checkMoonfinStatus();
+      try {
+        final user = await repo.getCurrentUser();
+        canManageRequests =
+            user.hasPermission(SeerrPermission.manageRequests);
+      } catch (_) {
+        canManageRequests = false;
+      }
     } catch (_) {}
 
     if (!mounted) return;
     setState(() {
       _seerrStatus = status;
+      _canManageRequests = canManageRequests;
       _statusLoading = false;
     });
   }
@@ -222,6 +235,45 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
     await _seerrPrefs.setBlockNsfw(value);
     if (!mounted) return;
     setState(() {});
+  }
+
+  Future<void> _setNotifyOnNewRequests(bool value) async {
+    await _seerrPrefs.setNotifyOnNewRequests(value);
+    if (mounted) setState(() {});
+    if (value) await _requestNotificationPermission();
+    await _pushNotificationPrefs();
+  }
+
+  Future<void> _setNotifyOnLibraryAdded(bool value) async {
+    await _seerrPrefs.setNotifyOnLibraryAdded(value);
+    if (mounted) setState(() {});
+    if (value) await _requestNotificationPermission();
+    await _pushNotificationPrefs();
+  }
+
+  Future<void> _pushNotificationPrefs() async {
+    if (!_syncService.pluginAvailable) return;
+    if (!GetIt.instance.isRegistered<MediaServerClient>()) return;
+    final client = GetIt.instance<MediaServerClient>();
+    await _syncService.pushNotificationPrefs(client);
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    if (!PlatformDetection.isMobile) return;
+    try {
+      final plugin = LocalNotificationBootstrap.instance.plugin;
+      if (PlatformDetection.isAndroid) {
+        await plugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
+      } else if (PlatformDetection.isIOS) {
+        await plugin
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      }
+    } catch (_) {}
   }
 
   Future<void> _setSeerrEnabled(bool value) async {
@@ -403,6 +455,37 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
               onChanged: _setBlockNsfw,
             ),
           ),
+        if (showSeerrSettings) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                l10n.seerrNotificationsSection.toUpperCase(),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+          ),
+          if (_canManageRequests)
+            _buildNotificationToggle(
+              icon: Icons.playlist_add_check,
+              title: l10n.seerrNotifyNewRequestsTitle,
+              subtitle: l10n.seerrNotifyNewRequestsSubtitle,
+              value: _seerrPrefs.notifyOnNewRequests,
+              onChanged: _setNotifyOnNewRequests,
+            ),
+          _buildNotificationToggle(
+            icon: Icons.library_add_check_outlined,
+            title: l10n.seerrNotifyLibraryAddedTitle,
+            subtitle: l10n.seerrNotifyLibraryAddedSubtitle,
+            value: _seerrPrefs.notifyOnLibraryAdded,
+            onChanged: _setNotifyOnLibraryAdded,
+          ),
+        ],
         if (showSeerrSettings)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
@@ -432,6 +515,44 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildNotificationToggle({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return TvFocusHighlight(
+      builder: (context, focused) => SwitchListTile.adaptive(
+        secondary: Icon(
+          icon,
+          color: focused ? AppColors.black.withValues(alpha: 0.54) : null,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: focused
+                ? AppColors.black.withValues(alpha: 0.87)
+                : AppColorScheme.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: focused
+                ? AppColors.black.withValues(alpha: 0.54)
+                : AppColorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        value: value,
+        onChanged: onChanged,
+      ),
     );
   }
 

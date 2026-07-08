@@ -152,6 +152,8 @@ dependencies:
   shared_preferences_tvos: any
   flutter_secure_storage_tvos: any
   sqflite_tvos: any
+  firebase_core: ^4.11.0
+  firebase_messaging: ^16.4.1
 
 dev_dependencies:
   flutter_test:

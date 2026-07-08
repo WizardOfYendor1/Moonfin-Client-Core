@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../util/platform_detection.dart';
+import 'local_notification_bootstrap.dart';
 
 class DownloadNotificationService {
   static const _channelId = 'moonfin_downloads';
@@ -12,8 +13,8 @@ class DownloadNotificationService {
   static const _completionNotificationId = 1001;
   static const _remoteMessageNotificationId = 1002;
 
-  final FlutterLocalNotificationsPlugin _plugin =
-      FlutterLocalNotificationsPlugin();
+  FlutterLocalNotificationsPlugin get _plugin =>
+      LocalNotificationBootstrap.instance.plugin;
 
   bool _initialized = false;
   DateTime _lastUpdate = DateTime.fromMillisecondsSinceEpoch(0);
@@ -25,24 +26,7 @@ class DownloadNotificationService {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const darwinSettings = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
-    const linuxSettings =
-        LinuxInitializationSettings(defaultActionName: 'Open');
-
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: darwinSettings,
-      macOS: darwinSettings,
-      linux: linuxSettings,
-    );
-
-    await _plugin.initialize(settings: initSettings);
+    await LocalNotificationBootstrap.instance.initialize();
     _initialized = true;
 
     if (PlatformDetection.isAndroid) {
@@ -67,7 +51,7 @@ class DownloadNotificationService {
     final batchInfo =
         batchTotal > 1 ? ' (${batchCompleted + 1}/$batchTotal)' : '';
     final title = 'Downloading$batchInfo';
-    final body = percent >= 0 ? '$itemName — $percent%' : '$itemName…';
+    final body = percent >= 0 ? '$itemName - $percent%' : '$itemName...';
     final signature = '$title\n$body\n$percent';
 
     if (signature == _lastProgressSignature) {

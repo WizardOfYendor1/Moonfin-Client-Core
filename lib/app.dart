@@ -19,6 +19,7 @@ import 'data/models/aggregated_item.dart';
 import 'data/services/app_update_service.dart';
 import 'data/services/cast/cast_service.dart';
 import 'data/services/download_service.dart';
+import 'data/services/seerr_notification_service.dart';
 import 'data/services/plugin_sync_service.dart';
 import 'data/services/topshelf_service.dart';
 import 'data/services/watch_next_service.dart';
@@ -803,6 +804,13 @@ class _ConnectivityListenerState extends ConsumerState<_ConnectivityListener>
     _syncPlayEventsSub = manager.uiEvents.listen(_handleSyncPlayEvent);
     if (GetIt.instance.isRegistered<PluginSyncService>()) {
       GetIt.instance<PluginSyncService>().onAdminMessage = _handleAdminMessage;
+      if (GetIt.instance.isRegistered<SeerrNotificationService>()) {
+        final notificationService =
+            GetIt.instance<SeerrNotificationService>();
+        GetIt.instance<PluginSyncService>().onSeerrNotification =
+            (title, body, route) =>
+                notificationService.show(title, body, route);
+      }
     }
     if (GetIt.instance.isRegistered<DownloadService>()) {
       _downloadErrorSub = GetIt.instance<DownloadService>().errors.listen(
@@ -818,6 +826,7 @@ class _ConnectivityListenerState extends ConsumerState<_ConnectivityListener>
     _downloadErrorSub?.cancel();
     if (GetIt.instance.isRegistered<PluginSyncService>()) {
       GetIt.instance<PluginSyncService>().onAdminMessage = null;
+      GetIt.instance<PluginSyncService>().onSeerrNotification = null;
     }
     super.dispose();
   }

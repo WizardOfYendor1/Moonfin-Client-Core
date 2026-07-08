@@ -14,7 +14,11 @@ import 'app.dart';
 import 'background/watch_next_background.dart' as watch_next_bg;
 import 'data/services/carplay_service.dart';
 import 'data/services/cast/airplay_command_bridge.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'data/services/download_notification_service.dart';
+import 'data/services/push_messaging_service.dart';
+import 'data/services/seerr_notification_service.dart';
 import 'data/services/media_server_client_factory.dart';
 import 'data/services/storage_path_service.dart';
 import 'util/webview_environment.dart';
@@ -385,6 +389,12 @@ void main() async {
       statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,
     ));
+
+    // Registered before runApp so a background/terminated push can be handled.
+    // The handler itself is a no-op; the OS draws these notifications.
+    try {
+      FirebaseMessaging.onBackgroundMessage(pushBackgroundHandler);
+    } catch (_) {}
   }
 
   await configureDependencies();
@@ -467,6 +477,17 @@ Future<void> _initDeferredStartupServices(UserPreferences prefs) async {
   try {
     await GetIt.instance<DownloadNotificationService>().initialize();
   } catch (_) {}
+
+  try {
+    await GetIt.instance<SeerrNotificationService>().initialize();
+    await GetIt.instance<SeerrNotificationService>().handleColdStart();
+  } catch (_) {}
+
+  if (PlatformDetection.isMobile) {
+    try {
+      await GetIt.instance<PushMessagingService>().initialize();
+    } catch (_) {}
+  }
 
   // Audio session ownership differs per platform:
   // - Android: MoonfinAudioHandler acquires audio focus per playback, and skips

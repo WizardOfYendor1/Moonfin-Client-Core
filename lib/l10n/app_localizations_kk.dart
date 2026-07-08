@@ -3554,6 +3554,23 @@ class AppLocalizationsKk extends AppLocalizations {
       'Нәтижелерде ересектерге арналған мазмұнды жасыру';
 
   @override
+  String get seerrNotificationsSection => 'Notifications';
+
+  @override
+  String get seerrNotifyNewRequestsTitle => 'New request notifications';
+
+  @override
+  String get seerrNotifyNewRequestsSubtitle =>
+      'Alert me when someone submits a request';
+
+  @override
+  String get seerrNotifyLibraryAddedTitle => 'Library-added notifications';
+
+  @override
+  String get seerrNotifyLibraryAddedSubtitle =>
+      'Alert me when my requests arrive in the library';
+
+  @override
   String loggedInAs(String username) {
     return 'Logged in as: $username';
   }

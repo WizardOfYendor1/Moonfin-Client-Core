@@ -32,6 +32,21 @@ target 'Runner' do
   end
 end
 
+# Firebase and its transitive pods are iOS/macOS only. The tvOS target shares
+# the root pubspec, so guard against any Firebase-family pod leaking into the
+# Apple TV build (it would fail to compile for tvOS).
+pre_install do |installer|
+  blocked_prefixes = %w[Firebase Google gRPC BoringSSL abseil nanopb leveldb-library GTMSessionFetcher PromisesObjC FBLPromises]
+  installer.pod_targets.reject! do |pod|
+    blocked_prefixes.any? { |prefix| pod.name.start_with?(prefix) }
+  end
+  installer.aggregate_targets.each do |aggregate|
+    aggregate.pod_targets.reject! do |pod|
+      blocked_prefixes.any? { |prefix| pod.name.start_with?(prefix) }
+    end
+  end
+end
+
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|

@@ -3530,6 +3530,23 @@ class AppLocalizationsBn extends AppLocalizations {
   String get hideAdultContent => 'ফলাফলে প্রাপ্তবয়স্কদের সামগ্রী লুকান';
 
   @override
+  String get seerrNotificationsSection => 'Notifications';
+
+  @override
+  String get seerrNotifyNewRequestsTitle => 'New request notifications';
+
+  @override
+  String get seerrNotifyNewRequestsSubtitle =>
+      'Alert me when someone submits a request';
+
+  @override
+  String get seerrNotifyLibraryAddedTitle => 'Library-added notifications';
+
+  @override
+  String get seerrNotifyLibraryAddedSubtitle =>
+      'Alert me when my requests arrive in the library';
+
+  @override
   String loggedInAs(String username) {
     return 'লগ ইন করেছেন: $username';
   }

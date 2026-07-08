@@ -4874,6 +4874,26 @@
   "@hideAdultContent": {
     "description": "Description for NSFW filter"
   },
+  "seerrNotificationsSection": "Notifications",
+  "@seerrNotificationsSection": {
+    "description": "Header for the Seerr notifications settings section"
+  },
+  "seerrNotifyNewRequestsTitle": "New request notifications",
+  "@seerrNotifyNewRequestsTitle": {
+    "description": "Title for the toggle that notifies approvers of new Seerr requests"
+  },
+  "seerrNotifyNewRequestsSubtitle": "Alert me when someone submits a request",
+  "@seerrNotifyNewRequestsSubtitle": {
+    "description": "Subtitle for the new request notifications toggle"
+  },
+  "seerrNotifyLibraryAddedTitle": "Library-added notifications",
+  "@seerrNotifyLibraryAddedTitle": {
+    "description": "Title for the toggle that notifies a user when their request is added to the library"
+  },
+  "seerrNotifyLibraryAddedSubtitle": "Alert me when my requests arrive in the library",
+  "@seerrNotifyLibraryAddedSubtitle": {
+    "description": "Subtitle for the library-added notifications toggle"
+  },
   "loggedInAs": "Logged in as: {username}",
   "@loggedInAs": {
     "description": "Label showing logged in username",

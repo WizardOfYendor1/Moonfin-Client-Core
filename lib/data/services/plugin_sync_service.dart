@@ -59,6 +59,7 @@ class PluginSyncService extends ChangeNotifier {
   bool get tmdbAvailable => _tmdbAvailable;
   String? _activeThemeCacheServerId;
   void Function(String message)? onAdminMessage;
+  void Function(String title, String body, String route)? onSeerrNotification;
   CancelToken? _settingsStreamCancelToken;
   StreamSubscription<String>? _settingsStreamSubscription;
   bool _settingsStreamReconnectPending = false;
@@ -403,6 +404,20 @@ class PluginSyncService extends ChangeNotifier {
         return;
       }
 
+      if (parsed['type'] == 'seerrNotification') {
+        final title = parsed['title'];
+        final body = parsed['body'];
+        final route = parsed['route'];
+        if (route is String && route.trim().isNotEmpty) {
+          onSeerrNotification?.call(
+            title is String ? title : '',
+            body is String ? body : '',
+            route.trim(),
+          );
+        }
+        return;
+      }
+
       if (parsed['type'] == 'themesChanged') {
         await _refreshCustomThemes(client);
         notifyListeners();
@@ -537,6 +552,72 @@ class PluginSyncService extends ChangeNotifier {
       await _dio.post(
         '${client.baseUrl}/Moonfin/Settings/Profile/$profile',
         data: {'profile': payloadProfile, 'clientId': 'moonfin-flutter'},
+        options: Options(
+          headers: {...headers, 'Content-Type': 'application/json'},
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> pushNotificationPrefs(MediaServerClient client) async {
+    if (!_pluginAvailable) return;
+
+    try {
+      final headers = _authHeaders(client);
+      if (headers == null) return;
+
+      await _dio.post(
+        '${client.baseUrl}/Moonfin/Notifications/Prefs',
+        data: {
+          'notifyOnNewRequests': _seerrPrefs.notifyOnNewRequests,
+          'notifyOnLibraryAdded': _seerrPrefs.notifyOnLibraryAdded,
+        },
+        options: Options(
+          headers: {...headers, 'Content-Type': 'application/json'},
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> registerPushDevice(
+    MediaServerClient client, {
+    required String token,
+    required String platform,
+    required String deviceId,
+  }) async {
+    if (!_pluginAvailable) return;
+
+    try {
+      final headers = _authHeaders(client);
+      if (headers == null) return;
+
+      await _dio.post(
+        '${client.baseUrl}/Moonfin/Notifications/Register',
+        data: {
+          'token': token,
+          'platform': platform,
+          'deviceId': deviceId,
+        },
+        options: Options(
+          headers: {...headers, 'Content-Type': 'application/json'},
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> unregisterPushDevice(
+    MediaServerClient client, {
+    required String deviceId,
+  }) async {
+    if (!_pluginAvailable) return;
+
+    try {
+      final headers = _authHeaders(client);
+      if (headers == null) return;
+
+      await _dio.delete(
+        '${client.baseUrl}/Moonfin/Notifications/Register',
+        data: {'deviceId': deviceId},
         options: Options(
           headers: {...headers, 'Content-Type': 'application/json'},
         ),

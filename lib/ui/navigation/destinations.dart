@@ -272,7 +272,11 @@ class Destinations {
     return Uri(path: search, queryParameters: params).toString();
   }
 
-  static String seerrMedia(String itemId) => '/seerr/media/$itemId';
+  static String seerrMedia(String itemId, {String? mediaType}) {
+    final base = '/seerr/media/$itemId';
+    if (mediaType == null || mediaType.trim().isEmpty) return base;
+    return Uri(path: base, queryParameters: {'mediaType': mediaType}).toString();
+  }
   static String seerrPerson(String personId) => '/seerr/person/$personId';
 
   static String downloadedSeries(String seriesId) =>

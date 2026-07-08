@@ -6496,6 +6496,36 @@ abstract class AppLocalizations {
   /// **'Hide adult content in results'**
   String get hideAdultContent;
 
+  /// Header for the Seerr notifications settings section
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get seerrNotificationsSection;
+
+  /// Title for the toggle that notifies approvers of new Seerr requests
+  ///
+  /// In en, this message translates to:
+  /// **'New request notifications'**
+  String get seerrNotifyNewRequestsTitle;
+
+  /// Subtitle for the new request notifications toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Alert me when someone submits a request'**
+  String get seerrNotifyNewRequestsSubtitle;
+
+  /// Title for the toggle that notifies a user when their request is added to the library
+  ///
+  /// In en, this message translates to:
+  /// **'Library-added notifications'**
+  String get seerrNotifyLibraryAddedTitle;
+
+  /// Subtitle for the library-added notifications toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Alert me when my requests arrive in the library'**
+  String get seerrNotifyLibraryAddedSubtitle;
+
   /// Label showing logged in username
   ///
   /// In en, this message translates to:

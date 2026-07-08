@@ -3512,6 +3512,23 @@ class AppLocalizationsTh extends AppLocalizations {
   String get hideAdultContent => 'ซ่อนเนื้อหาสำหรับผู้ใหญ่ในผลลัพธ์';
 
   @override
+  String get seerrNotificationsSection => 'Notifications';
+
+  @override
+  String get seerrNotifyNewRequestsTitle => 'New request notifications';
+
+  @override
+  String get seerrNotifyNewRequestsSubtitle =>
+      'Alert me when someone submits a request';
+
+  @override
+  String get seerrNotifyLibraryAddedTitle => 'Library-added notifications';
+
+  @override
+  String get seerrNotifyLibraryAddedSubtitle =>
+      'Alert me when my requests arrive in the library';
+
+  @override
   String loggedInAs(String username) {
     return 'เข้าสู่ระบบด้วย: $username';
   }

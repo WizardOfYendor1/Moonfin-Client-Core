@@ -744,7 +744,10 @@ final appRouter = GoRouter(
       path: Destinations.seerrMediaDetail,
       builder: (context, state) {
         final itemId = state.pathParameters['itemId']!;
-        return SeerrMediaDetailScreen(itemId: itemId);
+        return SeerrMediaDetailScreen(
+          itemId: itemId,
+          mediaType: state.uri.queryParameters['mediaType'],
+        );
       },
     ),
     GoRoute(
