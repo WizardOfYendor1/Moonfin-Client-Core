@@ -51,6 +51,23 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 add_subdirectory("runner")
 
 
+# Firebase's Windows C++ SDK ships x64 binaries only, so building the real
+# firebase_core plugin fails to link on Windows ARM64. The app only uses Firebase
+# on mobile, so on ARM64 we swap that one plugin for a no-op stub that still
+# satisfies the generated plugin registrant. Every other plugin builds normally.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64")
+  macro(add_subdirectory dir)
+    if("${dir}" MATCHES "firebase_core")
+      add_library(firebase_core_plugin STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/firebase_core_stub.cpp")
+      target_compile_features(firebase_core_plugin PUBLIC cxx_std_17)
+      target_include_directories(firebase_core_plugin PUBLIC "${dir}/include")
+    else()
+      _add_subdirectory("${dir}" ${ARGN})
+    endif()
+  endmacro()
+endif()
+
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)

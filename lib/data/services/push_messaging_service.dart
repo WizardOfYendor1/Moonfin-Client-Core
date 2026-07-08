@@ -8,34 +8,11 @@ import '../../firebase_options.dart';
 import '../../ui/navigation/app_router.dart';
 import '../../util/platform_detection.dart';
 import 'plugin_sync_service.dart';
-import 'seerr_notification_service.dart';
 
-/// Background/terminated messages that carry a notification block are drawn by
-/// the OS. The one exception is the Android data-only request push, which has
-/// no notification block, so this handler renders the actioned local
-/// notification itself. Everything else stays a no-op.
+/// Every push carries a notification block, so the OS draws background and
+/// terminated notifications. Nothing to do here.
 @pragma('vm:entry-point')
-Future<void> pushBackgroundHandler(RemoteMessage message) async {
-  if (message.data['kind'] != 'request') return;
-
-  final data = message.data;
-  final route = data['route'];
-  if (route is! String || route.trim().isEmpty) return;
-  final requestId = data['requestId'];
-
-  try {
-    WidgetsFlutterBinding.ensureInitialized();
-    final service = SeerrNotificationService();
-    await service.initialize();
-    service.show(
-      data['title'] is String ? data['title'] as String : '',
-      data['body'] is String ? data['body'] as String : '',
-      route.trim(),
-      requestId: requestId is String ? requestId : null,
-      isRequest: true,
-    );
-  } catch (_) {}
-}
+Future<void> pushBackgroundHandler(RemoteMessage message) async {}
 
 /// Client side of the push notification path. The plugin sends FCM messages
 /// carrying both a notification block (title/body) and a data route, so the OS

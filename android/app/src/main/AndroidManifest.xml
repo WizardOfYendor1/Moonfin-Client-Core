@@ -65,6 +65,11 @@
             android:foregroundServiceType="dataSync"
             android:stopWithTask="true" />
 
+        <!-- Delivers notification action-button taps (approve/deny) to the plugin. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false" />
+
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:exported="true"
