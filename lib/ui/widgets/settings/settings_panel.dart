@@ -14,11 +14,9 @@ import 'preference_tiles.dart';
 class SettingsPanel extends StatelessWidget {
   final Widget child;
 
-  /// Keeps the nested settings navigator alive across theme-change rebuilds.
-  /// Switching to a theme with a different panel wrapper (Glass swaps in a
-  /// GlassSurface, the pixel theme swaps in pixel chrome) changes the widget
-  /// tree above the navigator, which without a stable key would rebuild it
-  /// from scratch and drop the user back to the settings root.
+  /// Stable key so the nested navigator survives theme changes: some themes
+  /// (Glass, the pixel theme) wrap the panel in a different widget, which would
+  /// otherwise rebuild the navigator and drop the user back to the root.
   final GlobalKey navigatorKey;
 
   static final isOpenNotifier = ValueNotifier<bool>(false);

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// The small tinted label shown above a group of settings. Lives here as a
-/// public widget so both the settings side-panel part files and the
-/// standalone settings screens can render the same header.
+/// Section header above a group of settings. Public so both the side-panel
+/// part files and the standalone settings screens share one header.
 class SettingsSectionHeader extends StatelessWidget {
   final String text;
 
