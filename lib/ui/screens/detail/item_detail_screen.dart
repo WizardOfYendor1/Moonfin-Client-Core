@@ -244,6 +244,15 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
   }
 
   @override
+  void didPushNext() {
+    super.didPushNext();
+    // This screen stays mounted under the pushed route, so dispose does not run.
+    // Stop the theme so it does not keep playing over the screen on top; the
+    // paired didPopNext resumes it on return.
+    _themeMusicService.fadeOutAndStop();
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
