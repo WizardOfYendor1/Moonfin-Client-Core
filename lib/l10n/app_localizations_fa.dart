@@ -8530,6 +8530,21 @@ class AppLocalizationsFa extends AppLocalizations {
   String get layout => 'Layout';
 
   @override
+  String get theme => 'Theme';
+
+  @override
+  String get keyboard => 'Keyboard';
+
+  @override
+  String get navButtons => 'Buttons';
+
+  @override
+  String get rendering => 'Rendering';
+
+  @override
+  String get mpvConfiguration => 'MPV configuration';
+
+  @override
   String get cardSize => 'اندازه کارت';
 
   @override

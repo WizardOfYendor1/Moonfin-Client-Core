@@ -9,6 +9,7 @@ import '../../../data/services/plugin_sync_service.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../widgets/adaptive/adaptive_dialog.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
 import '../../widgets/overlay_sheet.dart';
@@ -344,6 +345,7 @@ class _MediaBarSettingsScreenState extends State<MediaBarSettingsScreen> {
         appBar: buildSettingsAppBar(context, Text(l10n.mediaBar)),
         body: ListView(
           children: [
+            SettingsSectionHeader(l10n.general),
             adaptiveListSection(
               children: [
                 StringPickerPreferenceTile(
@@ -390,15 +392,7 @@ class _MediaBarSettingsScreenState extends State<MediaBarSettingsScreen> {
               ],
             ),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-              child: Text(
-                l10n.mediaSources,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFamily: kCleanSettingsFontFamily,
-                ),
-              ),
-            ),
+            SettingsSectionHeader(l10n.mediaSources),
             adaptiveListSection(
               children: [
                 _MediaBarActionTile(
@@ -446,15 +440,7 @@ class _MediaBarSettingsScreenState extends State<MediaBarSettingsScreen> {
               ],
             ),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-              child: Text(
-                l10n.behavior,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontFamily: kCleanSettingsFontFamily,
-                ),
-              ),
-            ),
+            SettingsSectionHeader(l10n.behavior),
             adaptiveListSection(
               children: [
                 SwitchPreferenceTile(

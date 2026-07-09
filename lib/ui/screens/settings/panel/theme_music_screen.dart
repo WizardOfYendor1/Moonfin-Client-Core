@@ -12,6 +12,7 @@ class _ThemeMusicScreen extends StatelessWidget {
         appBar: buildSettingsAppBar(context, Text(l10n.themeMusic)),
         body: ListView(
           children: [
+            _SectionHeader(l10n.themeMusic),
             adaptiveListSection(
               children: [
                 SwitchPreferenceTile(

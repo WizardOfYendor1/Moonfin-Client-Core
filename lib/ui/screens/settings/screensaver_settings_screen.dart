@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../../preference/preference_constants.dart';
 import '../../../preference/user_preferences.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
@@ -52,6 +53,7 @@ class _ScreensaverSettingsScreenState extends State<ScreensaverSettingsScreen> {
           valueListenable: _modeBinding,
           builder: (context, mode, _) => ListView(
             children: [
+              SettingsSectionHeader(l10n.screensaver),
               adaptiveListSection(
                 children: [
                   SwitchPreferenceTile(

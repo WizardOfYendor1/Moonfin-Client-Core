@@ -11,6 +11,7 @@ import '../../widgets/navigation_layout.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import '../../widgets/settings/preference_tiles.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import 'settings_app_bar.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 
@@ -69,6 +70,7 @@ class _NavigationSettingsScreenState extends State<NavigationSettingsScreen> {
         appBar: buildSettingsAppBar(context, Text(l10n.navigation)),
         body: ListView(
           children: [
+            SettingsSectionHeader(l10n.layout),
             adaptiveListSection(
               children: [
                 ListTile(
@@ -87,6 +89,7 @@ class _NavigationSettingsScreenState extends State<NavigationSettingsScreen> {
                 ),
               ],
             ),
+            SettingsSectionHeader(l10n.navButtons),
             adaptiveListSection(
               children: [
                 SwitchPreferenceTile(
@@ -121,6 +124,7 @@ class _NavigationSettingsScreenState extends State<NavigationSettingsScreen> {
                 ),
               ],
             ),
+            SettingsSectionHeader(l10n.appearance),
             adaptiveListSection(
               children: [
                 SliderPreferenceTile(

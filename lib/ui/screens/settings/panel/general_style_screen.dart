@@ -34,6 +34,7 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
           builder: (context, _) => ListView(
             padding: EdgeInsets.only(bottom: bottomPad),
             children: [
+              _SectionHeader(l10n.theme),
               adaptiveListSection(
                 children: [
                   EnumPreferenceTile<InterfaceStyle>(
@@ -90,7 +91,8 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                   ),
                 ],
               ),
-              if (PlatformDetection.isTV)
+              if (PlatformDetection.isTV) ...[
+                _SectionHeader(l10n.keyboard),
                 adaptiveListSection(
                   children: [
                     SwitchPreferenceTile(
@@ -101,6 +103,8 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                     ),
                   ],
                 ),
+              ],
+              _SectionHeader(l10n.clock),
               adaptiveListSection(
                 children: [
                   EnumPreferenceTile<ClockBehavior>(
@@ -121,6 +125,7 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                   ),
                 ],
               ),
+              _SectionHeader(l10n.display),
               if (!PlatformDetection.useMobileUi)
                 adaptiveListSection(
                   children: [

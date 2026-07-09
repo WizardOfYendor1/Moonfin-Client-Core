@@ -14,21 +14,34 @@ import 'preference_tiles.dart';
 class SettingsPanel extends StatelessWidget {
   final Widget child;
 
+  /// Keeps the nested settings navigator alive across theme-change rebuilds.
+  /// Switching to a theme with a different panel wrapper (Glass swaps in a
+  /// GlassSurface, the pixel theme swaps in pixel chrome) changes the widget
+  /// tree above the navigator, which without a stable key would rebuild it
+  /// from scratch and drop the user back to the settings root.
+  final GlobalKey navigatorKey;
+
   static final isOpenNotifier = ValueNotifier<bool>(false);
 
-  const SettingsPanel({super.key, required this.child});
+  const SettingsPanel({
+    super.key,
+    required this.child,
+    required this.navigatorKey,
+  });
 
   static Future<void> open(BuildContext context, Widget content) {
     FocusManager.instance.primaryFocus?.unfocus();
     final l10n = AppLocalizations.of(context);
     isOpenNotifier.value = true;
+    final navigatorKey = GlobalKey();
     final future = showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierLabel: l10n.settings,
       barrierColor: AppColorScheme.scrim.withValues(alpha: 0.54),
       transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (_, anim, _) => SettingsPanel(child: content),
+      pageBuilder: (_, anim, _) =>
+          SettingsPanel(navigatorKey: navigatorKey, child: content),
       transitionBuilder: (context, anim, secondAnim, child) {
         final slide = Tween<Offset>(
           begin: const Offset(1.0, 0.0),
@@ -62,7 +75,7 @@ class SettingsPanel extends StatelessWidget {
       height: double.infinity,
       child: SettingsListTypography(
         child: ScaffoldMessenger(
-          child: _SettingsNavigator(initial: child),
+          child: _SettingsNavigator(key: navigatorKey, initial: child),
         ),
       ),
     );
@@ -110,7 +123,7 @@ class SettingsPanel extends StatelessWidget {
 class _SettingsNavigator extends StatefulWidget {
   final Widget initial;
 
-  const _SettingsNavigator({required this.initial});
+  const _SettingsNavigator({super.key, required this.initial});
 
   @override
   State<_SettingsNavigator> createState() => _SettingsNavigatorState();

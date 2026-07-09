@@ -6,6 +6,7 @@ import 'package:server_core/server_core.dart' hide ImageType;
 import '../../../data/services/plugin_sync_service.dart';
 import '../../../preference/preference_constants.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
@@ -162,6 +163,7 @@ class _HomeRowsImageTypeScreenState extends State<HomeRowsImageTypeScreen> {
         appBar: buildSettingsAppBar(context, Text(l10n.perRowImageType)),
         body: ListView(
           children: [
+            SettingsSectionHeader(l10n.images),
             adaptiveListSection(
               children: [
                 TvFocusHighlight(

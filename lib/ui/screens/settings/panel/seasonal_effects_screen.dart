@@ -10,6 +10,7 @@ class _SeasonalEffectsScreen extends StatelessWidget {
       appBar: buildSettingsAppBar(context, Text(l10n.seasonalEffects)),
       body: ListView(
         children: [
+          _SectionHeader(l10n.seasonalEffects),
           adaptiveListSection(
             children: [
               StringPickerPreferenceTile(

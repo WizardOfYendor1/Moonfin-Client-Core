@@ -52,6 +52,7 @@ import '../../widgets/settings/preference_binding.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import '../../widgets/settings/preference_tiles.dart';
 import '../../widgets/settings/settings_panel.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/support_dialog.dart';
 import '../../widgets/focus/request_initial_focus.dart';
@@ -258,7 +259,13 @@ class _SettingsSidePanelState extends ConsumerState<SettingsSidePanel> {
         title: Text(l10n.settings),
       ),
       body: ListView(
-        children: [for (final entry in entries) _PanelEntryTile(entry: entry)],
+        children: [
+          adaptiveListSection(
+            children: [
+              for (final entry in entries) _PanelEntryTile(entry: entry),
+            ],
+          ),
+        ],
       ),
     );
   }

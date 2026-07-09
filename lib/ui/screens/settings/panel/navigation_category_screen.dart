@@ -60,6 +60,7 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
         appBar: buildSettingsAppBar(context, Text(l10n.navigation)),
         body: ListView(
           children: [
+            _SectionHeader(l10n.appearance),
             adaptiveListSection(
               children: [
                 EnumPreferenceTile<NavbarPosition>(
@@ -90,6 +91,11 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
                   divisions: 20,
                   labelOf: (v) => '$v%',
                 ),
+              ],
+            ),
+            _SectionHeader(l10n.navButtons),
+            adaptiveListSection(
+              children: [
                 SwitchPreferenceTile(
                   preference: UserPreferences.showShuffleButton,
                   title: l10n.showShuffleButton,

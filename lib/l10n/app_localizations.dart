@@ -15334,6 +15334,36 @@ abstract class AppLocalizations {
   /// **'Layout'**
   String get layout;
 
+  /// No description provided for @theme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get theme;
+
+  /// No description provided for @keyboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard'**
+  String get keyboard;
+
+  /// No description provided for @navButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'Buttons'**
+  String get navButtons;
+
+  /// No description provided for @rendering.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering'**
+  String get rendering;
+
+  /// No description provided for @mpvConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'MPV configuration'**
+  String get mpvConfiguration;
+
   /// No description provided for @cardSize.
   ///
   /// In en, this message translates to:

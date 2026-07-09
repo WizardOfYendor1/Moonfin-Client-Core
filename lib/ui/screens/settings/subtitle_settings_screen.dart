@@ -9,6 +9,7 @@ import '../../../preference/user_preferences.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../util/platform_detection.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../widgets/settings/preference_tiles.dart';
 import '../../widgets/settings/settings_panel.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
@@ -28,7 +29,7 @@ class SubtitleSettingsScreen extends StatelessWidget {
     final prefs = GetIt.instance<UserPreferences>();
 
     final iso3ToIso1 = {
-      for (final entry in kIso6391To6392.entries) entry.value: entry.key
+      for (final entry in kIso6391To6392.entries) entry.value: entry.key,
     };
 
     final supportedIso3Codes = AppLocalizations.supportedLocales.map((locale) {
@@ -36,9 +37,7 @@ class SubtitleSettingsScreen extends StatelessWidget {
       return kIso6391To6392[lang1] ?? lang1;
     }).toSet();
 
-    final langOptions = {
-      '': l10n.none,
-    };
+    final langOptions = {'': l10n.none};
 
     for (final entry in kIso6392Languages.entries) {
       final code = entry.key;
@@ -47,7 +46,8 @@ class SubtitleSettingsScreen extends StatelessWidget {
       }
       final englishName = entry.value;
       final iso1 = iso3ToIso1[code];
-      final displayName = (iso1 != null ? kLocaleDisplayNames[iso1] : null) ?? englishName;
+      final displayName =
+          (iso1 != null ? kLocaleDisplayNames[iso1] : null) ?? englishName;
       langOptions[code] = displayName;
     }
 
@@ -64,58 +64,59 @@ class SubtitleSettingsScreen extends StatelessWidget {
             return ListView(
               padding: const EdgeInsets.only(bottom: 64.0),
               children: [
-                EnumPreferenceTile<SubtitleMode>(
-                  preference: UserPreferences.subtitleMode,
-                  title: l10n.subtitleMode,
-                  icon: Icons.subtitles,
-                  labelOf: (v) => switch (v) {
-                    SubtitleMode.flagged => l10n.subtitleModeFlagged,
-                    SubtitleMode.always => l10n.subtitleModeAlways,
-                    SubtitleMode.foreign => l10n.subtitleModeForeign,
-                    SubtitleMode.forced => l10n.subtitleModeForced,
-                    SubtitleMode.none => l10n.none,
-                  },
-                  dialogSubtitleOf: (v) => switch (v) {
-                    SubtitleMode.flagged => l10n.subtitleModeFlaggedDescription,
-                    SubtitleMode.always => l10n.subtitleModeAlwaysDescription,
-                    SubtitleMode.foreign => l10n.subtitleModeForeignDescription,
-                    SubtitleMode.forced => l10n.subtitleModeForcedDescription,
-                    SubtitleMode.none => l10n.subtitleModeNoneDescription,
-                  },
+                SettingsSectionHeader(l10n.general),
+                adaptiveListSection(
+                  children: [
+                    EnumPreferenceTile<SubtitleMode>(
+                      preference: UserPreferences.subtitleMode,
+                      title: l10n.subtitleMode,
+                      icon: Icons.subtitles,
+                      labelOf: (v) => switch (v) {
+                        SubtitleMode.flagged => l10n.subtitleModeFlagged,
+                        SubtitleMode.always => l10n.subtitleModeAlways,
+                        SubtitleMode.foreign => l10n.subtitleModeForeign,
+                        SubtitleMode.forced => l10n.subtitleModeForced,
+                        SubtitleMode.none => l10n.none,
+                      },
+                      dialogSubtitleOf: (v) => switch (v) {
+                        SubtitleMode.flagged =>
+                          l10n.subtitleModeFlaggedDescription,
+                        SubtitleMode.always =>
+                          l10n.subtitleModeAlwaysDescription,
+                        SubtitleMode.foreign =>
+                          l10n.subtitleModeForeignDescription,
+                        SubtitleMode.forced =>
+                          l10n.subtitleModeForcedDescription,
+                        SubtitleMode.none => l10n.subtitleModeNoneDescription,
+                      },
+                    ),
+                  ],
                 ),
                 if (showStreamSettings) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      l10n.subtitleStream,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                  SettingsSectionHeader(l10n.subtitleStream),
+                  adaptiveListSection(
+                    children: [
+                      StringPickerPreferenceTile(
+                        preference: UserPreferences.defaultSubtitleLanguage,
+                        title: l10n.defaultSubtitleLanguage,
+                        icon: Icons.language,
+                        options: langOptions,
+                      ),
+                      StringPickerPreferenceTile(
+                        preference: UserPreferences.fallbackSubtitleLanguage,
+                        title: l10n.fallbackSubtitleLanguage,
+                        icon: Icons.language,
+                        options: langOptions,
+                      ),
+                      SwitchPreferenceTile(
+                        preference: UserPreferences.preferSdhSubtitles,
+                        title: l10n.preferSdhSubtitles,
+                        subtitle: l10n.preferSdhSubtitlesSubtitle,
+                        icon: Icons.hearing,
+                      ),
+                    ],
                   ),
-                  StringPickerPreferenceTile(
-                    preference: UserPreferences.defaultSubtitleLanguage,
-                    title: l10n.defaultSubtitleLanguage,
-                    icon: Icons.language,
-                    options: langOptions,
-                  ),
-                  StringPickerPreferenceTile(
-                    preference: UserPreferences.fallbackSubtitleLanguage,
-                    title: l10n.fallbackSubtitleLanguage,
-                    icon: Icons.language,
-                    options: langOptions,
-                  ),
-                  SwitchPreferenceTile(
-                    preference: UserPreferences.preferSdhSubtitles,
-                    title: l10n.preferSdhSubtitles,
-                    subtitle: l10n.preferSdhSubtitlesSubtitle,
-                    icon: Icons.hearing,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                    child: Text(
-                      l10n.subtitleCustomization,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
+                  SettingsSectionHeader(l10n.subtitleCustomization),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     child: Text(
@@ -126,66 +127,73 @@ class SubtitleSettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  TvFocusHighlight(
-                    builder: (context, focused) {
-                      var pushed = false;
-                      final iconColor = focused
-                          ? AppColors.black.withValues(alpha: 0.54)
-                          : (Theme.of(context).iconTheme.color ?? AppColorScheme.onSurface);
-                      return ListTile(
-                        focusColor: Colors.transparent,
-                        hoverColor: Colors.transparent,
-                        leading: buildSettingsLeadingIconShell(
-                          context,
-                          icon: const Icon(Icons.style),
-                          focused: focused,
-                          iconColor: iconColor,
-                        ),
-                        title: Text(l10n.subtitleCustomization),
-                        subtitle: Text(l10n.subtitleCustomizationDescription),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          if (pushed) return;
-                          pushed = true;
-                          context.pushSettingsScreen(
-                            const SubtitleCustomizationScreen(),
+                  adaptiveListSection(
+                    children: [
+                      TvFocusHighlight(
+                        builder: (context, focused) {
+                          var pushed = false;
+                          final iconColor = focused
+                              ? AppColors.black.withValues(alpha: 0.54)
+                              : (Theme.of(context).iconTheme.color ??
+                                    AppColorScheme.onSurface);
+                          return ListTile(
+                            focusColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                            leading: buildSettingsLeadingIconShell(
+                              context,
+                              icon: const Icon(Icons.style),
+                              focused: focused,
+                              iconColor: iconColor,
+                            ),
+                            title: Text(l10n.subtitleCustomization),
+                            subtitle: Text(
+                              l10n.subtitleCustomizationDescription,
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              if (pushed) return;
+                              pushed = true;
+                              context.pushSettingsScreen(
+                                const SubtitleCustomizationScreen(),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
+                      ),
+                      if (PlatformDetection.isAndroid) ...[
+                        SwitchPreferenceTile(
+                          preference:
+                              UserPreferences.subtitlesUseEmbeddedStyles,
+                          title: l10n.subtitlesUseEmbeddedStyles,
+                          subtitle: l10n.subtitlesUseEmbeddedStylesSubtitle,
+                          icon: Icons.format_paint,
+                        ),
+                        SwitchPreferenceTile(
+                          preference:
+                              UserPreferences.subtitlesUseEmbeddedFontSizes,
+                          title: l10n.subtitlesUseEmbeddedFontSizes,
+                          subtitle: l10n.subtitlesUseEmbeddedFontSizesSubtitle,
+                          icon: Icons.format_size,
+                        ),
+                      ],
+                    ],
                   ),
-                  if (PlatformDetection.isAndroid) ...[
-                    SwitchPreferenceTile(
-                      preference: UserPreferences.subtitlesUseEmbeddedStyles,
-                      title: l10n.subtitlesUseEmbeddedStyles,
-                      subtitle: l10n.subtitlesUseEmbeddedStylesSubtitle,
-                      icon: Icons.format_paint,
-                    ),
-                    SwitchPreferenceTile(
-                      preference: UserPreferences.subtitlesUseEmbeddedFontSizes,
-                      title: l10n.subtitlesUseEmbeddedFontSizes,
-                      subtitle: l10n.subtitlesUseEmbeddedFontSizesSubtitle,
-                      icon: Icons.format_size,
-                    ),
-                  ],
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      l10n.subtitleRendering,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  SwitchPreferenceTile(
-                    preference: UserPreferences.pgsDirectPlay,
-                    title: l10n.pgsDirectPlay,
-                    subtitle: l10n.directPlayPgsSubtitles,
-                    icon: Icons.image,
-                  ),
-                  SwitchPreferenceTile(
-                    preference: UserPreferences.assDirectPlay,
-                    title: l10n.assSsaDirectPlay,
-                    subtitle: l10n.directPlayAssSsaSubtitles,
-                    icon: Icons.text_snippet,
+                  SettingsSectionHeader(l10n.subtitleRendering),
+                  adaptiveListSection(
+                    children: [
+                      SwitchPreferenceTile(
+                        preference: UserPreferences.pgsDirectPlay,
+                        title: l10n.pgsDirectPlay,
+                        subtitle: l10n.directPlayPgsSubtitles,
+                        icon: Icons.image,
+                      ),
+                      SwitchPreferenceTile(
+                        preference: UserPreferences.assDirectPlay,
+                        title: l10n.assSsaDirectPlay,
+                        subtitle: l10n.directPlayAssSsaSubtitles,
+                        icon: Icons.text_snippet,
+                      ),
+                    ],
                   ),
                 ],
               ],
