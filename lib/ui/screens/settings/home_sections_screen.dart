@@ -1182,28 +1182,26 @@ class _HomeSectionsScreenState extends State<HomeSectionsScreen> {
     _persistSections(pushSync: true);
   }
 
-  void _focusSectionAndEnsureVisible(int index, {int attempt = 0}) {
+  void _focusSectionAndEnsureVisible(int index) {
     if (!mounted || index < 0 || index >= _focusNodes.length) return;
     final node = _focusNodes[index];
     if (!node.hasFocus) {
       node.requestFocus();
     }
 
-    final targetContext = _focusNodes[index].context;
-    if (targetContext != null) {
+    // Defer the scroll until the reorder rebuild commits, so the target row's
+    // context exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || index < 0 || index >= _focusNodes.length) return;
+      final targetContext = _focusNodes[index].context;
+      if (targetContext == null) return;
       Scrollable.ensureVisible(
         targetContext,
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        alignment: 0.5,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0.2,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
       );
-      return;
-    }
-
-    if (attempt >= 3) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusSectionAndEnsureVisible(index, attempt: attempt + 1);
     });
   }
 
@@ -1214,6 +1212,7 @@ class _HomeSectionsScreenState extends State<HomeSectionsScreen> {
   void _toggleSection(int index, bool enabled) {
     final visibleIndicesBefore = _visibleSectionIndices();
     final visibleIndex = visibleIndicesBefore.indexOf(index);
+    final toggledStableId = _sections[index].stableId;
 
     final nodeMap = <String, FocusNode>{};
     for (var i = 0; i < _sections.length; i++) {
@@ -1240,28 +1239,37 @@ class _HomeSectionsScreenState extends State<HomeSectionsScreen> {
 
     _save();
 
+    // Keep focus on the neighbor that slid into the toggled row's visible slot
+    // so the viewport stays put. If the toggled row didn't vacate its slot (it
+    // was the last visible row), step to the previous neighbor instead.
     final visibleIndicesAfter = _visibleSectionIndices();
     if (visibleIndex >= 0 && visibleIndicesAfter.isNotEmpty) {
-      final targetVisibleIndex = visibleIndex.clamp(0, visibleIndicesAfter.length - 1);
+      var targetVisibleIndex = visibleIndex.clamp(0, visibleIndicesAfter.length - 1);
+      final toggledActualAfter = _sections.indexWhere((s) => s.stableId == toggledStableId);
+      final toggledVisibleAfter = visibleIndicesAfter.indexOf(toggledActualAfter);
+      if (toggledVisibleAfter == targetVisibleIndex && targetVisibleIndex > 0) {
+        targetVisibleIndex -= 1;
+      }
       final targetActualIndex = visibleIndicesAfter[targetVisibleIndex];
       _focusSectionAndEnsureVisible(targetActualIndex);
     }
   }
 
+  /// Mutates [_sections] and [_focusNodes] in place. Callers own the surrounding
+  /// setState and persistence so this can run inside another setState without
+  /// re-entrancy or double saving.
   void _enforceMergeAdjacency() {
     final merge = _prefs.get(UserPreferences.mergeContinueWatchingNextUp);
     if (merge) {
       final resumeIdx = _sections.indexWhere((s) => s.type == HomeSectionType.resume);
       final nextUpIdx = _sections.indexWhere((s) => s.type == HomeSectionType.nextUp);
       if (resumeIdx >= 0 && nextUpIdx >= 0 && (resumeIdx - nextUpIdx).abs() != 1) {
-        setState(() {
-          final nextUpItem = _sections.removeAt(nextUpIdx);
-          final nextUpNode = _focusNodes.removeAt(nextUpIdx);
+        final nextUpItem = _sections.removeAt(nextUpIdx);
+        final nextUpNode = _focusNodes.removeAt(nextUpIdx);
 
-          final newResumeIdx = _sections.indexWhere((s) => s.type == HomeSectionType.resume);
-          _sections.insert(newResumeIdx + 1, nextUpItem);
-          _focusNodes.insert(newResumeIdx + 1, nextUpNode);
-        });
+        final newResumeIdx = _sections.indexWhere((s) => s.type == HomeSectionType.resume);
+        _sections.insert(newResumeIdx + 1, nextUpItem);
+        _focusNodes.insert(newResumeIdx + 1, nextUpNode);
       }
     }
 
@@ -1270,17 +1278,14 @@ class _HomeSectionsScreenState extends State<HomeSectionsScreen> {
       final radarrIdx = _sections.indexWhere((s) => s.type == HomeSectionType.radarrCalendar);
       final sonarrIdx = _sections.indexWhere((s) => s.type == HomeSectionType.sonarrCalendar);
       if (radarrIdx >= 0 && sonarrIdx >= 0 && (radarrIdx - sonarrIdx).abs() != 1) {
-        setState(() {
-          final sonarrItem = _sections.removeAt(sonarrIdx);
-          final sonarrNode = _focusNodes.removeAt(sonarrIdx);
+        final sonarrItem = _sections.removeAt(sonarrIdx);
+        final sonarrNode = _focusNodes.removeAt(sonarrIdx);
 
-          final newRadarrIdx = _sections.indexWhere((s) => s.type == HomeSectionType.radarrCalendar);
-          _sections.insert(newRadarrIdx + 1, sonarrItem);
-          _focusNodes.insert(newRadarrIdx + 1, sonarrNode);
-        });
+        final newRadarrIdx = _sections.indexWhere((s) => s.type == HomeSectionType.radarrCalendar);
+        _sections.insert(newRadarrIdx + 1, sonarrItem);
+        _focusNodes.insert(newRadarrIdx + 1, sonarrNode);
       }
     }
-    _save();
   }
 
   void _moveSection(int fromIndex, int toIndex) {
@@ -1584,9 +1589,11 @@ class _HomeSectionsScreenState extends State<HomeSectionsScreen> {
           onChanged: (value) {
             _setMergeContinueWatchingNextUp(value);
             if (value) {
-              _enforceMergeAdjacency();
+              setState(_enforceMergeAdjacency);
+              _save();
+            } else {
+              setState(() {});
             }
-            setState(() {});
           },
         ),
 
@@ -2212,8 +2219,8 @@ class _HomeSectionsScreenState extends State<HomeSectionsScreen> {
               context,
               duration: const Duration(milliseconds: 120),
               curve: Curves.easeOut,
-              alignment: 0.5,
-              alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+              alignment: 0.2,
+              alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
             );
           });
         }
@@ -2465,8 +2472,8 @@ class _HomeSectionTileState extends State<_HomeSectionTile> {
               context,
               duration: const Duration(milliseconds: 120),
               curve: Curves.easeOut,
-              alignment: 0.5,
-              alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+              alignment: 0.2,
+              alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
             );
           });
         }

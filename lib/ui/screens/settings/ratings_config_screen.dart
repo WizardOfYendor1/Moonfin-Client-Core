@@ -98,6 +98,8 @@ class _RatingsConfigScreenState extends State<RatingsConfigScreen> {
     for (final key in _allSources) {
       items.add(_RatingItem(key: key, enabled: enabled.contains(key)));
     }
+    // Sorting by position in the enabled CSV already yields enabled-first
+    // (disabled keys resolve to -1 and sink to the bottom) in saved order.
     items.sort((a, b) {
       final indexA = enabled.indexOf(a.key);
       final indexB = enabled.indexOf(b.key);
@@ -106,7 +108,7 @@ class _RatingsConfigScreenState extends State<RatingsConfigScreen> {
       if (indexB == -1) return -1;
       return indexA.compareTo(indexB);
     });
-    _items = items.sortedEnabledAboveDisabled((i) => i.enabled);
+    _items = items;
     _rebuildFocusNodes();
   }
 
@@ -260,6 +262,7 @@ class _RatingsConfigScreenState extends State<RatingsConfigScreen> {
   }
 
   void _toggleRatingItem(int index, bool enabled) {
+    final toggledKey = _items[index].key;
     final nodeMap = <String, FocusNode>{};
     for (var i = 0; i < _items.length; i++) {
       nodeMap[_items[i].key] = _focusNodes[i];
@@ -284,32 +287,34 @@ class _RatingsConfigScreenState extends State<RatingsConfigScreen> {
 
     _save();
 
-    final targetIndex = index.clamp(0, _items.length - 1);
+    // Keep focus on the neighbor that slid into the toggled row's old slot so
+    // the viewport stays put. If the item didn't move (it was the last row),
+    // step to the previous neighbor instead.
+    final newIndex = _items.indexWhere((i) => i.key == toggledKey);
+    final targetIndex = (newIndex == index && index > 0) ? index - 1 : index;
     _focusItemAndEnsureVisible(targetIndex);
   }
 
-  void _focusItemAndEnsureVisible(int index, {int attempt = 0}) {
+  void _focusItemAndEnsureVisible(int index) {
     if (!mounted || index < 0 || index >= _focusNodes.length) return;
     final node = _focusNodes[index];
     if (!node.hasFocus) {
       node.requestFocus();
     }
 
-    final targetContext = _focusNodes[index].context;
-    if (targetContext != null) {
+    // Defer the scroll until the reorder rebuild commits, so the target row's
+    // context exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || index < 0 || index >= _focusNodes.length) return;
+      final targetContext = _focusNodes[index].context;
+      if (targetContext == null) return;
       Scrollable.ensureVisible(
         targetContext,
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        alignment: 0.5,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0.2,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
       );
-      return;
-    }
-
-    if (attempt >= 3) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusItemAndEnsureVisible(index, attempt: attempt + 1);
     });
   }
 
@@ -383,8 +388,8 @@ class _ReorderableTileState extends State<_ReorderableTile> {
         context,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        alignment: 0.5,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0.2,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
       );
     });
   }

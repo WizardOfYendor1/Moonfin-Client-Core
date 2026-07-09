@@ -253,6 +253,7 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
   }
 
   void _toggleSeerrRow(int index, bool enabled) {
+    final toggledType = _rows[index].type;
     final nodeMap = <SeerrRowType, FocusNode>{};
     for (var i = 0; i < _rows.length; i++) {
       nodeMap[_rows[i].type] = _focusNodes[i];
@@ -277,32 +278,34 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
 
     _saveRows();
 
-    final targetIndex = index.clamp(0, _rows.length - 1);
+    // Keep focus on the neighbor that slid into the toggled row's old slot so
+    // the viewport stays put. If the row didn't move (it was the last row),
+    // step to the previous neighbor instead.
+    final newIndex = _rows.indexWhere((r) => r.type == toggledType);
+    final targetIndex = (newIndex == index && index > 0) ? index - 1 : index;
     _focusRowAndEnsureVisible(targetIndex);
   }
 
-  void _focusRowAndEnsureVisible(int index, {int attempt = 0}) {
+  void _focusRowAndEnsureVisible(int index) {
     if (!mounted || index < 0 || index >= _focusNodes.length) return;
     final node = _focusNodes[index];
     if (!node.hasFocus) {
       node.requestFocus();
     }
 
-    final targetContext = _focusNodes[index].context;
-    if (targetContext != null) {
+    // Defer the scroll until the reorder rebuild commits, so the target row's
+    // context exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || index < 0 || index >= _focusNodes.length) return;
+      final targetContext = _focusNodes[index].context;
+      if (targetContext == null) return;
       Scrollable.ensureVisible(
         targetContext,
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        alignment: 0.5,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0.2,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
       );
-      return;
-    }
-
-    if (attempt >= 3) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusRowAndEnsureVisible(index, attempt: attempt + 1);
     });
   }
 
@@ -1598,8 +1601,8 @@ class _SeerrReorderableTileState extends State<_SeerrReorderableTile> {
         context,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        alignment: 0.5,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        alignment: 0.2,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
       );
     });
   }
