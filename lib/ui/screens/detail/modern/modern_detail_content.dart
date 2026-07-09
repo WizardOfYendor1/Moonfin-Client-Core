@@ -29,6 +29,7 @@ import '../../../widgets/focus/focusable_toolbar_button.dart';
 import '../../../widgets/navigation_layout.dart';
 import '../../../widgets/top_toolbar.dart';
 import '../../../../data/repositories/seerr_repository.dart';
+import '../../../../data/repositories/tmdb_repository.dart';
 import '../../../../data/services/seerr/seerr_api_models.dart';
 import '../../../../data/services/plugin_sync_service.dart';
 import '../item_detail_screen.dart'
@@ -109,6 +110,13 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   /// tabs start collapsed and are opened or closed by pressing them.
   bool get _expandedTabs =>
       widget.prefs.get(UserPreferences.detailExpandedTabs);
+
+  // Studios for the Studios tab. Logos always come from TMDB via the Moonfin
+  // plugin's server-side cache; the Jellyfin studio list is only a name-only
+  // fallback when the plugin is unavailable or has no logo.
+  List<StudioCompany> _tmdbStudios = const [];
+  String? _tmdbStudiosItemId;
+
   final Map<String, FocusNode> _trackFocusNodes = {};
   final List<FocusNode> _tabFocusNodes = [];
   final FocusNode _upNextFocusNode = FocusNode(debugLabel: 'modernUpNext');
@@ -510,6 +518,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       NavigationLayout.focusDetailsPlayButtonNotifier.value = widget.initialFocusNode;
     }
     _loadSeriesLogo();
+    _loadStudioLogos();
     _loadSeerrAppearances().then((_) {
       if (mounted) _selectRandomBackdrop();
     });
@@ -546,6 +555,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     if (mounted) {
       setState(() {});
       _loadSeriesLogo();
+      _loadStudioLogos();
       _loadSeerrAppearances().then((_) {
         if (mounted) _selectRandomBackdrop();
       });
@@ -624,6 +634,31 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
         });
       }
     } catch (_) {}
+  }
+
+  // Fetch the item's production companies from TMDB so the Studios tab can show
+  // real studio logos. Needs the user's TMDB API key; without it or on failure
+  // the tab falls back to Jellyfin studio names.
+  Future<void> _loadStudioLogos() async {
+    final item = _vm.item;
+    if (item == null || _tmdbStudiosItemId == item.id) return;
+    _tmdbStudiosItemId = item.id;
+
+    final tmdbId = item.tmdbId;
+    final pluginAvailable = GetIt.instance<PluginSyncService>().pluginAvailable;
+    if (tmdbId == null || !pluginAvailable) {
+      if (_tmdbStudios.isNotEmpty && mounted) {
+        setState(() => _tmdbStudios = const []);
+      }
+      return;
+    }
+
+    final companies = await GetIt.instance<TmdbRepository>().getProductionCompanies(
+      tmdbId: tmdbId,
+      type: item.type == 'Series' ? 'tv' : 'movie',
+    );
+    if (!mounted || companies == null) return;
+    setState(() => _tmdbStudios = companies);
   }
 
   /// Right of the action buttons goes to the Up Next card when it's present,
@@ -1881,7 +1916,16 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   }
 
   Widget _studiosTab(BuildContext context, AggregatedItem item) {
-    final studios = item.studios;
+    // Prefer TMDB production companies (with real logos) and fall back to the
+    // Jellyfin studio names when TMDB has nothing or no key is configured.
+    final studios = _tmdbStudios.isNotEmpty
+        ? [
+            for (final s in _tmdbStudios) (name: s.name, logoUrl: s.imageUrl),
+          ]
+        : [
+            for (final s in item.studios)
+              (name: s['Name']?.toString() ?? '', logoUrl: null),
+          ];
     if (studios.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -1918,15 +1962,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
             separatorBuilder: (_, _) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final studio = studios[index];
-              final name = studio['Name']?.toString() ?? '';
-              final studioId = studio['Id']?.toString();
-
-              final imageUrl = studioId != null
-                  ? _vm.imageApi.getPrimaryImageUrl(
-                      studioId,
-                      maxHeight: isMobile ? 100 : (160 * desktopScale).round(),
-                    )
-                  : null;
+              final name = studio.name;
+              final imageUrl = studio.logoUrl;
 
               return FocusableWrapper(
                 focusNode: index == 0 ? _studiosFirstFocusNode : null,
