@@ -1,12 +1,13 @@
 import Foundation
 import GameController
 
-// Maps connected GCControllers to per-port RetroPad bitmasks read lock-free by the
-// core's input_state callback (emulation thread). Button events are mirrored to
-// Dart so the existing overlay navigation (RetroPad-indexed) works.
+// Maps connected GCControllers to per-port RetroPad bitmasks, read lock-free by the
+// core's input_state callback on the emulation thread. Button changes are also mirrored
+// to Dart so the in-game overlay can be navigated with the same controller.
 //
-// Menu button: games need RetroPad Start, but the overlay needs a dedicated way in,
-// so short-press Menu = Start tap, long-press (0.7 s) = overlay. Options = Select.
+// The Menu button opens that overlay: tvOS reserves it as the pause/back button and the
+// system grabs combos like Start+Select before the app sees them, so Menu is the one
+// dependable way in. Options maps to RetroPad Start so games are still startable.
 final class GameInputController {
     // RetroPad ids (RETRO_DEVICE_ID_JOYPAD_*)
     private enum Pad {
@@ -28,20 +29,20 @@ final class GameInputController {
         static let r3: UInt16 = 1 << 15
     }
 
-    private static let menuHoldSeconds: TimeInterval = 0.7
-    private static let startTapSeconds: TimeInterval = 0.15
-
     // Written on the main queue (GC handlers), read on the emulation thread.
     // UInt16 stores cannot tear on arm64.
     nonisolated(unsafe) private var portMasks = [UInt16](repeating: 0, count: 4)
+
+    // Buttons the overlay pulses (Start/Select), ORed into port 0 at read time so a
+    // live controller refresh cannot clear them mid-pulse.
+    nonisolated(unsafe) private var pulseMask: UInt16 = 0
+    private var pulseWork: [Int: DispatchWorkItem] = [:]
 
     var onMenuPressed: (() -> Void)?
     var onButton: ((Int, Bool) -> Void)?
     var onControllersChanged: ((Int) -> Void)?
 
     private var observers: [NSObjectProtocol] = []
-    private var menuHoldTimers: [Int: Timer] = [:]
-    private var menuHoldFired: Set<Int> = []
 
     var controllerCount: Int {
         GCController.controllers().filter { $0.extendedGamepad != nil }.count
@@ -71,8 +72,9 @@ final class GameInputController {
         GCController.stopWirelessControllerDiscovery()
         observers.forEach { NotificationCenter.default.removeObserver($0) }
         observers.removeAll()
-        menuHoldTimers.values.forEach { $0.invalidate() }
-        menuHoldTimers.removeAll()
+        pulseWork.values.forEach { $0.cancel() }
+        pulseWork.removeAll()
+        pulseMask = 0
         for c in GCController.controllers() {
             c.extendedGamepad?.valueChangedHandler = nil
             c.extendedGamepad?.buttonMenu.pressedChangedHandler = nil
@@ -82,7 +84,19 @@ final class GameInputController {
 
     nonisolated func mask(forPort port: Int) -> UInt16 {
         guard port >= 0, port < portMasks.count else { return 0 }
-        return portMasks[port]
+        return port == 0 ? portMasks[0] | pulseMask : portMasks[port]
+    }
+
+    // Briefly holds a RetroPad button on port 0, for the overlay's Start/Select actions.
+    func pulse(index: Int, durationMs: Int) {
+        guard index >= 0, index < 16 else { return }
+        let bit = UInt16(1) << UInt16(index)
+        pulseMask |= bit
+        pulseWork[index]?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.pulseMask &= ~bit }
+        pulseWork[index] = work
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Double(durationMs) / 1000.0, execute: work)
     }
 
     private func notifyChanged() {
@@ -98,7 +112,7 @@ final class GameInputController {
                 self?.refresh(pad: pad, port: port)
             }
             gamepad.buttonMenu.pressedChangedHandler = { [weak self] _, _, pressed in
-                self?.handleMenu(port: port, pressed: pressed)
+                if pressed { self?.onMenuPressed?() }
             }
         }
         for port in pads.count..<portMasks.count {
@@ -106,45 +120,8 @@ final class GameInputController {
         }
     }
 
-    private func handleMenu(port: Int, pressed: Bool) {
-        if pressed {
-            menuHoldFired.remove(port)
-            menuHoldTimers[port]?.invalidate()
-            menuHoldTimers[port] = Timer.scheduledTimer(
-                withTimeInterval: Self.menuHoldSeconds, repeats: false
-            ) { [weak self] _ in
-                guard let self else { return }
-                self.menuHoldFired.insert(port)
-                self.onMenuPressed?()
-            }
-        } else {
-            menuHoldTimers[port]?.invalidate()
-            menuHoldTimers[port] = nil
-            if !menuHoldFired.contains(port) {
-                tapStart(port: port)
-            }
-            menuHoldFired.remove(port)
-        }
-    }
-
-    // Short Menu press: synthesize a brief RetroPad Start press.
-    private func tapStart(port: Int) {
-        setBits(Pad.start, on: true, port: port)
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.startTapSeconds) { [weak self] in
-            self?.setBits(Pad.start, on: false, port: port)
-        }
-    }
-
-    private func setBits(_ bits: UInt16, on: Bool, port: Int) {
-        guard port >= 0, port < portMasks.count else { return }
-        let old = portMasks[port]
-        let mask = on ? old | bits : old & ~bits
-        portMasks[port] = mask
-        emitDiffs(old: old, new: mask, port: port)
-    }
-
     private func refresh(pad: GCExtendedGamepad, port: Int) {
-        var mask: UInt16 = portMasks[port] & Pad.start  // Start is synthetic; preserve it
+        var mask: UInt16 = 0
         if pad.buttonA.isPressed { mask |= Pad.b }      // GC A (bottom) = RetroPad B
         if pad.buttonB.isPressed { mask |= Pad.a }      // GC B (right)  = RetroPad A
         if pad.buttonX.isPressed { mask |= Pad.y }      // GC X (left)   = RetroPad Y
@@ -159,7 +136,7 @@ final class GameInputController {
         if pad.rightTrigger.isPressed { mask |= Pad.r2 }
         if pad.leftThumbstickButton?.isPressed == true { mask |= Pad.l3 }
         if pad.rightThumbstickButton?.isPressed == true { mask |= Pad.r3 }
-        if pad.buttonOptions?.isPressed == true { mask |= Pad.select }
+        if pad.buttonOptions?.isPressed == true { mask |= Pad.start }
 
         let old = portMasks[port]
         portMasks[port] = mask

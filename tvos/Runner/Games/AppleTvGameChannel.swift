@@ -101,6 +101,11 @@ final class AppleTvGameChannel: NSObject, FlutterStreamHandler {
             let factor = (args["factor"] as? NSNumber)?.intValue ?? 1
             session?.setFastForward(factor)
             result(nil)
+        case "pulseButton":
+            let index = (args["index"] as? NSNumber)?.intValue ?? -1
+            let durationMs = (args["durationMs"] as? NSNumber)?.intValue ?? 150
+            session?.input.pulse(index: index, durationMs: durationMs)
+            result(nil)
         case "getOptions":
             result(session?.getOptions() ?? [])
         case "setOption":

@@ -458,6 +458,7 @@ final appRouter = GoRouter(
                   libraryId: libraryId,
                   gameId: gameId,
                   core: core,
+                  gameName: state.uri.queryParameters['name'],
                   startFresh: startFresh,
                 )
               : GameEmulatorScreen(

@@ -23,12 +23,14 @@ class NativeGamePlayerScreen extends StatefulWidget {
     required this.libraryId,
     required this.gameId,
     required this.core,
+    this.gameName,
     this.startFresh = false,
   });
 
   final String libraryId;
   final String gameId;
   final String core;
+  final String? gameName;
   final bool startFresh;
 
   @override
@@ -47,6 +49,15 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
   int _controllers = 1;
   bool _exiting = false;
   StreamSubscription<Map<String, dynamic>>? _events;
+
+  // In-game overlay, opened with the Menu button and driven by the same
+  // controller (mirrored button events) or the Siri remote (remote presses).
+  bool _overlayOpen = false;
+  bool _settingsOpen = false;
+  int _selected = 0;
+  int _settingsSelected = 0;
+  int _fastForward = 1;
+  List<GameCoreOption> _options = const [];
 
   @override
   void initState() {
@@ -80,13 +91,46 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
           _player.resume();
         }
       case 'menuPressed':
-        _exit();
+        _toggleOverlay();
       case 'remotePress':
-        if (event['key'] == 'menu') _exit();
+        _onRemotePress(event['key']?.toString());
+      case 'button':
+        if (_overlayOpen && (event['pressed'] as bool? ?? false)) {
+          _nav(_navForButton((event['index'] as num?)?.toInt() ?? -1));
+        }
       case 'error':
         if (mounted) {
           setState(() => _error = event['message']?.toString() ?? 'Error');
         }
+    }
+  }
+
+  // Mirrored RetroPad indices: 0=confirm (bottom face), 4=up, 5=down, 6=left, 7=right.
+  String? _navForButton(int index) => const {
+        4: 'up',
+        5: 'down',
+        6: 'left',
+        7: 'right',
+        0: 'confirm',
+      }[index];
+
+  void _onRemotePress(String? key) => _nav(key == 'select' ? 'confirm' : key);
+
+  // Menu opens or closes the overlay; the rest only act while it is open.
+  void _nav(String? action) {
+    switch (action) {
+      case 'menu':
+        _toggleOverlay();
+      case 'up':
+        if (_overlayOpen) _moveSelection(-1);
+      case 'down':
+        if (_overlayOpen) _moveSelection(1);
+      case 'left':
+        if (_overlayOpen) _changeValue(-1);
+      case 'right':
+        if (_overlayOpen) _changeValue(1);
+      case 'confirm':
+        if (_overlayOpen) _confirm();
     }
   }
 
@@ -237,6 +281,129 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
     return map.isEmpty ? null : map;
   }
 
+  List<_OverlayAction> _actions() => [
+        _OverlayAction('Resume', _closeOverlay),
+        _OverlayAction('Press Start', () => _pressButton(3)),
+        _OverlayAction('Press Select', () => _pressButton(2)),
+        _OverlayAction('Save state', _saveState),
+        _OverlayAction('Load state', _loadState),
+        _OverlayAction('Restart', _restart),
+        _OverlayAction(
+          _fastForward > 1 ? 'Fast-forward: On' : 'Fast-forward: Off',
+          _toggleFastForward,
+        ),
+        _OverlayAction('Emulator settings', _openSettings),
+        _OverlayAction('Exit', _exit),
+      ];
+
+  void _toggleOverlay() {
+    if (_textureId == null) return;
+    if (_settingsOpen) {
+      setState(() => _settingsOpen = false);
+      return;
+    }
+    if (_overlayOpen) {
+      _closeOverlay();
+    } else {
+      _player.pause();
+      setState(() {
+        _overlayOpen = true;
+        _selected = 0;
+      });
+    }
+  }
+
+  void _closeOverlay() {
+    setState(() {
+      _overlayOpen = false;
+      _settingsOpen = false;
+    });
+    _player.resume();
+  }
+
+  void _moveSelection(int delta) {
+    final count = _settingsOpen ? _options.length : _actions().length;
+    if (count == 0) return;
+    final next = ((_settingsOpen ? _settingsSelected : _selected) + delta) % count;
+    setState(() {
+      final wrapped = next < 0 ? next + count : next;
+      if (_settingsOpen) {
+        _settingsSelected = wrapped;
+      } else {
+        _selected = wrapped;
+      }
+    });
+  }
+
+  void _confirm() {
+    if (_settingsOpen) return;
+    _actions()[_selected].onSelect();
+  }
+
+  void _changeValue(int delta) {
+    if (!_settingsOpen || _options.isEmpty) return;
+    final opt = _options[_settingsSelected];
+    if (opt.choices.length < 2) return;
+    var idx = opt.choices.indexOf(opt.current) + delta;
+    idx %= opt.choices.length;
+    if (idx < 0) idx += opt.choices.length;
+    final value = opt.choices[idx];
+    _player.setOption(opt.id, value);
+    setState(() {
+      _options[_settingsSelected] = GameCoreOption(
+        id: opt.id,
+        label: opt.label,
+        current: value,
+        choices: opt.choices,
+      );
+    });
+  }
+
+  Future<void> _saveState() async {
+    final games = _client.gamesApi;
+    final bytes = await _player.saveState();
+    if (bytes != null && bytes.isNotEmpty && games != null) {
+      await games.putSave(widget.gameId, bytes);
+    }
+    _closeOverlay();
+  }
+
+  Future<void> _loadState() async {
+    final games = _client.gamesApi;
+    final save = await games?.getSave(widget.gameId);
+    if (save != null && save.isNotEmpty) {
+      await _player.loadState(Uint8List.fromList(save));
+    }
+    _closeOverlay();
+  }
+
+  Future<void> _restart() async {
+    await _player.restart();
+    _closeOverlay();
+  }
+
+  // Resume first so the running core samples the pulse, then send the button.
+  void _pressButton(int index) {
+    _closeOverlay();
+    _player.pulseButton(index);
+  }
+
+  void _toggleFastForward() {
+    _fastForward = _fastForward > 1 ? 1 : 2;
+    _player.setFastForward(_fastForward);
+    setState(() {});
+  }
+
+  Future<void> _openSettings() async {
+    final options = await _player.getOptions();
+    if (!mounted) return;
+    setState(() {
+      _options = List.of(options);
+      _settingsOpen = true;
+      _settingsSelected = 0;
+    });
+  }
+
   Future<void> _exit() async {
     if (_exiting) return;
     _exiting = true;
@@ -311,7 +478,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
                 ),
               ),
             ),
-          if (_textureId != null && _controllers == 0)
+          if (_textureId != null && _controllers == 0 && !_overlayOpen)
             Container(
               color: Colors.black87,
               alignment: Alignment.center,
@@ -320,8 +487,91 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 26),
               ),
             ),
+          if (_overlayOpen) _buildOverlay(),
         ],
       ),
     );
   }
+
+  Widget _buildOverlay() {
+    final title = _settingsOpen ? 'Emulator settings' : (widget.gameName ?? 'Paused');
+    final rows = _settingsOpen
+        ? _options
+            .asMap()
+            .entries
+            .map((e) => _overlayRow(
+                  '${e.value.label}:  ${e.value.current}',
+                  e.key == _settingsSelected,
+                ))
+            .toList()
+        : _actions()
+            .asMap()
+            .entries
+            .map((e) => _overlayRow(e.value.label, e.key == _selected))
+            .toList();
+
+    return Container(
+      color: Colors.black.withValues(alpha: 0.72),
+      alignment: Alignment.center,
+      child: Container(
+        width: 520,
+        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16, left: 12),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (_settingsOpen && _options.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'This core has no adjustable options.',
+                  style: TextStyle(color: Colors.white54, fontSize: 20),
+                ),
+              )
+            else
+              ...rows,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _overlayRow(String label, bool selected) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: selected ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.black : Colors.white,
+          fontSize: 22,
+        ),
+      ),
+    );
+  }
+}
+
+class _OverlayAction {
+  const _OverlayAction(this.label, this.onSelect);
+  final String label;
+  final VoidCallback onSelect;
 }

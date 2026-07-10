@@ -111,6 +111,14 @@ class AppleTvGamePlayer {
     } catch (_) {}
   }
 
+  // Briefly holds a RetroPad button (index) so the overlay can send Start/Select.
+  Future<void> pulseButton(int index, {int durationMs = 150}) async {
+    try {
+      await _control.invokeMethod<void>(
+          'pulseButton', {'index': index, 'durationMs': durationMs});
+    } catch (_) {}
+  }
+
   Future<List<GameCoreOption>> getOptions() async {
     final raw = await _control.invokeMethod<List<dynamic>>('getOptions');
     return (raw ?? const [])
