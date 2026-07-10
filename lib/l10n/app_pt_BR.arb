@@ -293,7 +293,7 @@
     "@noItemsFound": {
         "description": "Empty state when no items match the current view"
     },
-    "home": "Lar",
+    "home": "Início",
     "@home": {
         "description": "Home navigation tooltip"
     },
