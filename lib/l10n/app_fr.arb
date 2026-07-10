@@ -4034,11 +4034,11 @@
     "@discoverRows": {
         "description": "Section title for discover rows"
     },
-    "discoverRowsDescriptionPlugin": "Faites glisser pour réorganiser. Activez ou désactivez les rangées. L'ordre des rangées activées se synchronise avec le plugin Moonfin.",
+    "discoverRowsDescriptionPlugin": "Activez les rangées à afficher sur la page d'accueil de Seerr. Faites glisser pour réorganiser. L'ordre personnalisé se synchronise avec Moonbase.",
     "@discoverRowsDescriptionPlugin": {
         "description": "Description for discover rows with plugin"
     },
-    "discoverRowsDescription": "Faites glisser pour réorganiser. Activez ou désactivez les rangées.",
+    "discoverRowsDescription": "Activez les rangées à afficher sur la page d'accueil de Seerr. Faites glisser pour réorganiser. L'ordre personnalisé se synchronise avec Moonbase.",
     "@discoverRowsDescription": {
         "description": "Description for discover rows without plugin"
     },
@@ -4144,7 +4144,7 @@
     "@navbarStyleToolbarAppearance": {
         "description": "Navigation settings subtitle"
     },
-    "reorderToggleHomeRows": "Réorganiser et afficher/masquer les rangées d'accueil",
+    "reorderToggleHomeRows": "Réorganiser et afficher/masquer les rangées d'accueil (locales et externes)",
     "@reorderToggleHomeRows": {
         "description": "Home sections settings subtitle"
     },
@@ -7523,7 +7523,7 @@
     "homeRowDisplay": "Affichage des rangées d'accueil",
     "homeRowSections": "Sections des rangées d'accueil",
     "homeRowToggles": "Activation des rangées d'accueil",
-    "homeRowTogglesSubtitle": "Activer ou désactiver les différentes catégories de rangées d'accueil",
+    "homeRowTogglesSubtitle": "Activer ou désactiver les catégories de rangées d'accueil basées sur la bibliothèque",
     "settingsTimer": "Minuteur",
     "@settingsTimer": {
         "description": "Option label to show only countdown timer on media segment countdown overlay"
@@ -8433,5 +8433,6 @@
                 "type": "String"
             }
         }
-    }
+    },
+    "externalLists": "Listes de rangées d'accueil externes"
 }
