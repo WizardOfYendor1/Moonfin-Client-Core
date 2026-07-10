@@ -30,6 +30,7 @@ class _OfflineDownloadsScreenState extends State<_OfflineDownloadsScreen> {
         autofocus: true,
         child: ListView(
           children: [
+            _SectionHeader(l10n.general),
             adaptiveListSection(
               children: [
                 StringPickerPreferenceTile(

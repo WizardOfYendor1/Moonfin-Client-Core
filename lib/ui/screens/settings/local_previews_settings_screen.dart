@@ -4,6 +4,7 @@ import 'package:server_core/server_core.dart';
 
 import '../../../data/services/plugin_sync_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../../preference/user_preferences.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
@@ -29,6 +30,7 @@ class LocalPreviewsSettingsScreen extends StatelessWidget {
         appBar: buildSettingsAppBar(context, Text(l10n.localPreviews)),
         body: ListView(
           children: [
+            SettingsSectionHeader(l10n.localPreviews),
             adaptiveListSection(
               children: [
                 SwitchPreferenceTile(

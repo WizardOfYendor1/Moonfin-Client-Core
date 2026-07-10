@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import AVKit
 import GoogleCast
+import UserNotifications
 
 private final class NativeCastEventStreamHandler: NSObject, FlutterStreamHandler {
   weak var appDelegate: AppDelegate?
@@ -141,7 +142,18 @@ private final class NativeAirPlayEventStreamHandler: NSObject, FlutterStreamHand
     configureGoogleCast()
     startEngineIfNeeded()
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    // firebase_messaging swizzles the notification-center delegate, which stops
+    // flutter_local_notifications from presenting while the app is foreground and
+    // from receiving action taps. Hand the delegate back to FlutterAppDelegate,
+    // which forwards to both plugins. Firebase's separate APNs handling is
+    // untouched, so push registration still works.
+    if #available(iOS 10.0, *), let delegate = self as? UNUserNotificationCenterDelegate {
+      UNUserNotificationCenter.current().delegate = delegate
+    }
+
+    return launched
   }
 
   private func setUpPlatformChannels(messenger: FlutterBinaryMessenger) {

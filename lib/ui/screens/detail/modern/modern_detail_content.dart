@@ -29,6 +29,7 @@ import '../../../widgets/focus/focusable_toolbar_button.dart';
 import '../../../widgets/navigation_layout.dart';
 import '../../../widgets/top_toolbar.dart';
 import '../../../../data/repositories/seerr_repository.dart';
+import '../../../../data/repositories/tmdb_repository.dart';
 import '../../../../data/services/seerr/seerr_api_models.dart';
 import '../../../../data/services/plugin_sync_service.dart';
 import '../item_detail_screen.dart'
@@ -101,8 +102,21 @@ class ModernDetailContent extends StatefulWidget {
 }
 
 class _ModernDetailContentState extends State<ModernDetailContent> {
-  int _selectedTab = PlatformDetection.isTV ? -1 : 0;
+  int _selectedTab = 0;
   bool _landscape = true;
+
+  /// Expanded Tabs preference: when on, tabs behave like the search pill, with
+  /// the first tab expanded and focusing a tab showing its content. When off,
+  /// tabs start collapsed and are opened or closed by pressing them.
+  bool get _expandedTabs =>
+      widget.prefs.get(UserPreferences.detailExpandedTabs);
+
+  // Studios for the Studios tab. Logos always come from TMDB via the Moonfin
+  // plugin's server-side cache; the Jellyfin studio list is only a name-only
+  // fallback when the plugin is unavailable or has no logo.
+  List<StudioCompany> _tmdbStudios = const [];
+  String? _tmdbStudiosItemId;
+
   final Map<String, FocusNode> _trackFocusNodes = {};
   final List<FocusNode> _tabFocusNodes = [];
   final FocusNode _upNextFocusNode = FocusNode(debugLabel: 'modernUpNext');
@@ -494,18 +508,17 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
 
     _vm.addListener(_onViewModelChanged);
     _scrollController.addListener(_onScroll);
+    // With Expanded Tabs off the tabs start collapsed on every platform and are
+    // opened by clicking; Seasons always start expanded.
+    _selectedTab = (_expandedTabs || _vm.item?.type == 'Season') ? 0 : -1;
     if (PlatformDetection.isTV) {
-      if (_vm.item?.type == 'Season') {
-        _selectedTab = 0;
-      } else {
-        _selectedTab = -1;
-      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) widget.initialFocusNode?.requestFocus();
       });
       NavigationLayout.focusDetailsPlayButtonNotifier.value = widget.initialFocusNode;
     }
     _loadSeriesLogo();
+    _loadStudioLogos();
     _loadSeerrAppearances().then((_) {
       if (mounted) _selectRandomBackdrop();
     });
@@ -542,6 +555,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     if (mounted) {
       setState(() {});
       _loadSeriesLogo();
+      _loadStudioLogos();
       _loadSeerrAppearances().then((_) {
         if (mounted) _selectRandomBackdrop();
       });
@@ -622,6 +636,31 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     } catch (_) {}
   }
 
+  // Fetch the item's production companies from TMDB so the Studios tab can show
+  // real studio logos. Needs the user's TMDB API key; without it or on failure
+  // the tab falls back to Jellyfin studio names.
+  Future<void> _loadStudioLogos() async {
+    final item = _vm.item;
+    if (item == null || _tmdbStudiosItemId == item.id) return;
+    _tmdbStudiosItemId = item.id;
+
+    final tmdbId = item.tmdbId;
+    final pluginAvailable = GetIt.instance<PluginSyncService>().pluginAvailable;
+    if (tmdbId == null || !pluginAvailable) {
+      if (_tmdbStudios.isNotEmpty && mounted) {
+        setState(() => _tmdbStudios = const []);
+      }
+      return;
+    }
+
+    final companies = await GetIt.instance<TmdbRepository>().getProductionCompanies(
+      tmdbId: tmdbId,
+      type: item.type == 'Series' ? 'tv' : 'movie',
+    );
+    if (!mounted || companies == null) return;
+    setState(() => _tmdbStudios = companies);
+  }
+
   /// Right of the action buttons goes to the Up Next card when it's present,
   /// otherwise into the tab rail.
   void _focusRightOfActions() {
@@ -636,13 +675,12 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     while (_tabFocusNodes.length <= index) {
       final i = _tabFocusNodes.length;
       final node = FocusNode(debugLabel: 'tab_$i');
-      // On TV the tab content is collapsed by default
-      // Auto-expand the tab you first land on
-      if (PlatformDetection.isTV) {
+      if (PlatformDetection.isTV || PlatformDetection.useDesktopUi) {
         node.addListener(() {
-          if (node.hasFocus && mounted && _selectedTab < 0) {
-            _selectTab(i);
-          }
+          if (!node.hasFocus || !mounted) return;
+          // Expanded Tabs makes focus follow selection like the search pill.
+          // Otherwise the tab opens only when the user presses select or clicks.
+          if (_expandedTabs && _selectedTab != i) _selectTab(i);
         });
       }
       _tabFocusNodes.add(node);
@@ -1878,7 +1916,16 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   }
 
   Widget _studiosTab(BuildContext context, AggregatedItem item) {
-    final studios = item.studios;
+    // Prefer TMDB production companies (with real logos) and fall back to the
+    // Jellyfin studio names when TMDB has nothing or no key is configured.
+    final studios = _tmdbStudios.isNotEmpty
+        ? [
+            for (final s in _tmdbStudios) (name: s.name, logoUrl: s.imageUrl),
+          ]
+        : [
+            for (final s in item.studios)
+              (name: s['Name']?.toString() ?? '', logoUrl: null),
+          ];
     if (studios.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -1915,15 +1962,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
             separatorBuilder: (_, _) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final studio = studios[index];
-              final name = studio['Name']?.toString() ?? '';
-              final studioId = studio['Id']?.toString();
-
-              final imageUrl = studioId != null
-                  ? _vm.imageApi.getPrimaryImageUrl(
-                      studioId,
-                      maxHeight: isMobile ? 100 : (160 * desktopScale).round(),
-                    )
-                  : null;
+              final name = studio.name;
+              final imageUrl = studio.logoUrl;
 
               return FocusableWrapper(
                 focusNode: index == 0 ? _studiosFirstFocusNode : null,
@@ -4007,7 +4047,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
 
   void _selectTab(int index) {
     if (index == _selectedTab) {
-      if (PlatformDetection.isTV) {
+      // With Expanded Tabs on, reselecting the current tab never collapses.
+      if (!_expandedTabs) {
         setState(() => _selectedTab = -1);
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -4059,7 +4100,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     if (isMusicAlbumOrPlaylist) {
       _selectedTab = 0;
     } else if (_selectedTab >= tabs.length) {
-      _selectedTab = PlatformDetection.isTV ? -1 : 0;
+      _selectedTab = _expandedTabs ? 0 : -1;
     }
 
     if (tabs.isNotEmpty && _selectedTab >= 0 && _selectedTab < tabs.length && tabs[_selectedTab].label == l10n.details) {
@@ -4075,6 +4116,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
         : tabs[_selectedTab].builder(context, item);
 
     final tabBar = DetailsTabBar(
+      pill: true,
       labels: [for (final t in tabs) t.label],
       selectedIndex: _selectedTab,
       onSelect: _selectTab,

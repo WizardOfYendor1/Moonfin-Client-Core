@@ -7,6 +7,7 @@ import '../../../util/pin_code_util.dart';
 import '../../widgets/pin_entry_dialog.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import 'settings_app_bar.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
@@ -143,6 +144,7 @@ class _PinCodeSettingsScreenState extends State<PinCodeSettingsScreen> {
         appBar: buildSettingsAppBar(context, Text(l10n.pinCode)),
         body: ListView(
           children: [
+            SettingsSectionHeader(l10n.general),
             adaptiveListSection(
               children: [
                 SwitchListTile.adaptive(
@@ -154,7 +156,8 @@ class _PinCodeSettingsScreenState extends State<PinCodeSettingsScreen> {
                 ),
               ],
             ),
-            if (_pinEnabled)
+            if (_pinEnabled) ...[
+              SettingsSectionHeader(l10n.manage),
               adaptiveListSection(
                 children: [
                   ListTile(
@@ -171,6 +174,7 @@ class _PinCodeSettingsScreenState extends State<PinCodeSettingsScreen> {
                   ),
                 ],
               ),
+            ],
           ],
         ),
       ),

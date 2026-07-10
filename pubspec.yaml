@@ -70,6 +70,8 @@ dependencies:
   audio_service: ^0.18.18
   audio_session: ^0.2.3
   rxdart: ^0.28.0
+  # Linux desktop MPRIS media controls
+  dbus: ^0.7.14
 
   # Utilities
   device_info_plus: ^11.5.0

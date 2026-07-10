@@ -14,21 +14,32 @@ import 'preference_tiles.dart';
 class SettingsPanel extends StatelessWidget {
   final Widget child;
 
+  /// Stable key so the nested navigator survives theme changes: some themes
+  /// (Glass, the pixel theme) wrap the panel in a different widget, which would
+  /// otherwise rebuild the navigator and drop the user back to the root.
+  final GlobalKey navigatorKey;
+
   static final isOpenNotifier = ValueNotifier<bool>(false);
 
-  const SettingsPanel({super.key, required this.child});
+  const SettingsPanel({
+    super.key,
+    required this.child,
+    required this.navigatorKey,
+  });
 
   static Future<void> open(BuildContext context, Widget content) {
     FocusManager.instance.primaryFocus?.unfocus();
     final l10n = AppLocalizations.of(context);
     isOpenNotifier.value = true;
+    final navigatorKey = GlobalKey();
     final future = showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierLabel: l10n.settings,
       barrierColor: AppColorScheme.scrim.withValues(alpha: 0.54),
       transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (_, anim, _) => SettingsPanel(child: content),
+      pageBuilder: (_, anim, _) =>
+          SettingsPanel(navigatorKey: navigatorKey, child: content),
       transitionBuilder: (context, anim, secondAnim, child) {
         final slide = Tween<Offset>(
           begin: const Offset(1.0, 0.0),
@@ -62,7 +73,7 @@ class SettingsPanel extends StatelessWidget {
       height: double.infinity,
       child: SettingsListTypography(
         child: ScaffoldMessenger(
-          child: _SettingsNavigator(initial: child),
+          child: _SettingsNavigator(key: navigatorKey, initial: child),
         ),
       ),
     );
@@ -110,7 +121,7 @@ class SettingsPanel extends StatelessWidget {
 class _SettingsNavigator extends StatefulWidget {
   final Widget initial;
 
-  const _SettingsNavigator({required this.initial});
+  const _SettingsNavigator({super.key, required this.initial});
 
   @override
   State<_SettingsNavigator> createState() => _SettingsNavigatorState();

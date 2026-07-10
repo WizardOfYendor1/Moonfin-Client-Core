@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../di/injection.dart';
 import '../../playback/headless_session_bootstrap.dart';
 import '../../ui/navigation/app_router.dart';
+import '../repositories/seerr_repository.dart';
 import 'seerr/seerr_http_client.dart';
 import 'seerr/seerr_models.dart';
 
@@ -86,25 +87,35 @@ Future<void> _runRequestAction({
   SeerrHttpClient? seerr;
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    await configureBackgroundDependencies();
 
-    final client = await HeadlessSessionBootstrap().restoreClient();
-    final token = client?.accessToken;
-    if (client == null || token == null || token.isEmpty) {
-      throw StateError('no session');
-    }
-
-    seerr = SeerrHttpClient(
-      proxyConfig: MoonfinProxyConfig(
-        jellyfinBaseUrl: client.baseUrl,
-        jellyfinToken: token,
-      ),
-    );
-
-    if (approve) {
-      await seerr.approveRequest(parsedId);
+    if (getIt.isRegistered<SeerrRepository>()) {
+      // The app is running, so use the live authenticated repository, the same
+      // path the in-app approve button uses.
+      final repo = await getIt.getAsync<SeerrRepository>();
+      if (approve) {
+        await repo.approveRequest(parsedId);
+      } else {
+        await repo.declineRequest(parsedId);
+      }
     } else {
-      await seerr.declineRequest(parsedId);
+      // A background isolate has no session, so rebuild one from storage.
+      await configureBackgroundDependencies();
+      final client = await HeadlessSessionBootstrap().restoreClient();
+      final token = client?.accessToken;
+      if (client == null || token == null || token.isEmpty) {
+        throw StateError('no session');
+      }
+      seerr = SeerrHttpClient(
+        proxyConfig: MoonfinProxyConfig(
+          jellyfinBaseUrl: client.baseUrl,
+          jellyfinToken: token,
+        ),
+      );
+      if (approve) {
+        await seerr.approveRequest(parsedId);
+      } else {
+        await seerr.declineRequest(parsedId);
+      }
     }
 
     if (notificationId != null) {
@@ -112,7 +123,8 @@ Future<void> _runRequestAction({
         id: notificationId,
       );
     }
-  } catch (_) {
+  } catch (e) {
+    debugPrint('Seerr notification action failed: $e');
     // Surface the failure so the tap isn't silently lost.
     try {
       await LocalNotificationBootstrap.instance.initialize();

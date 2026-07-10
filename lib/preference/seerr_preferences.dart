@@ -1,6 +1,7 @@
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 
 import '../auth/repositories/session_repository.dart';
+import 'home_section_config.dart';
 import 'preference_constants.dart';
 import 'seerr_row_config.dart';
 
@@ -97,6 +98,41 @@ class SeerrPreferences {
   Future<void> setRowsConfig(List<SeerrRowConfig> value) =>
       _store.setString(_userKey('rows_config'), SeerrRowConfig.toJsonString(value));
 
+  List<SeerrRowConfig> get homeRowsConfig {
+    final raw = _store.getString(_userKey('home_rows_config'));
+    if (raw != null && raw.isNotEmpty) {
+      return SeerrRowConfig.fromJsonString(raw);
+    }
+    // Fall back to the old home_sections_config state when this has never been
+    // saved, so upgrades keep the rows the user already chose.
+    return _homeRowsConfigFromSections();
+  }
+
+  Future<void> setHomeRowsConfig(List<SeerrRowConfig> value) =>
+      _store.setString(_userKey('home_rows_config'), SeerrRowConfig.toJsonString(value));
+
+  List<SeerrRowConfig> _homeRowsConfigFromSections() {
+    final sectionsJson = _store.getString('home_sections_config');
+    if (sectionsJson == null || sectionsJson.isEmpty) {
+      return SeerrRowConfig.defaults();
+    }
+    final sections = HomeSectionConfig.fromJsonString(sectionsJson);
+    return SeerrRowConfig.defaults().map((row) {
+      final idx = sections.indexWhere((s) => s.type == row.type.homeSectionType);
+      return idx >= 0 ? row.copyWith(enabled: sections[idx].enabled) : row;
+    }).toList();
+  }
+
+  bool isSeerrHomeRowEnabled(HomeSectionType type) {
+    final seerrType = type.seerrRowType;
+    if (seerrType == null || !enabled) return false;
+    final config = homeRowsConfig.firstWhere(
+      (c) => c.type == seerrType,
+      orElse: () => SeerrRowConfig(type: seerrType, enabled: true, order: 0),
+    );
+    return config.enabled;
+  }
+
   List<SeerrRowType> get activeRows {
     final configs = rowsConfig.where((c) => c.enabled).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
@@ -159,7 +195,7 @@ class SeerrPreferences {
       'last_connection_success',
       'show_in_navigation', 'show_in_toolbar', 'show_request_status',
       'block_nsfw', 'notify_new_requests', 'notify_library_added',
-      'fetch_limit', 'rows_config',
+      'fetch_limit', 'rows_config', 'home_rows_config',
       'hd_movie_profile_id', '4k_movie_profile_id',
       'hd_tv_profile_id', '4k_tv_profile_id',
       'hd_movie_root_folder_id', '4k_movie_root_folder_id',

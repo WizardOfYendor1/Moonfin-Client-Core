@@ -484,6 +484,18 @@ abstract class AppLocalizations {
   /// **'Modern'**
   String get detailScreenStyleModern;
 
+  /// Label for the detail screen expanded tabs setting
+  ///
+  /// In en, this message translates to:
+  /// **'Expanded Tabs'**
+  String get expandedTabs;
+
+  /// Explanation under the expanded tabs setting
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically show tab content while browsing tabs. Turn off to open and close each tab manually.'**
+  String get expandedTabsSubtitle;
+
   /// Label for the Recommendation System setting
   ///
   /// In en, this message translates to:
@@ -2500,6 +2512,24 @@ abstract class AppLocalizations {
   /// **'Shuffle'**
   String get shuffle;
 
+  /// Car browse action that shuffles the whole music library
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle all music'**
+  String get shuffleAllMusic;
+
+  /// Shown in the car when no account is signed in
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Moonfin on your phone'**
+  String get carSignInPrompt;
+
+  /// Shown in the car when the media server can't be reached
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach your server'**
+  String get carServerUnreachable;
+
   /// Subtitle showing number of downloads for a remote subtitle
   ///
   /// In en, this message translates to:
@@ -4077,6 +4107,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Theme Music Volume'**
   String get themeMusicVolume;
+
+  /// Subtitle for the Theme Music settings sub-category tile
+  ///
+  /// In en, this message translates to:
+  /// **'Detail pages, home rows, and volume'**
+  String get themeMusicSettingsSubtitle;
 
   /// Percentage display
   ///
@@ -14071,8 +14107,20 @@ abstract class AppLocalizations {
   /// No description provided for @settingsGeneralStyleSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Theme accents, backdrops, watched indicators, and theme music'**
+  /// **'Theme accents, backdrops, and watched indicators'**
   String get settingsGeneralStyleSubtitle;
+
+  /// No description provided for @settingsDetailsScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Details Screen'**
+  String get settingsDetailsScreen;
+
+  /// No description provided for @settingsDetailsScreenSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Style, background blur, and tab behavior'**
+  String get settingsDetailsScreenSubtitle;
 
   /// No description provided for @settingsHomePage.
   ///
@@ -15279,6 +15327,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Appearance'**
   String get appearance;
+
+  /// No description provided for @layout.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get layout;
+
+  /// No description provided for @theme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get theme;
+
+  /// No description provided for @keyboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard'**
+  String get keyboard;
+
+  /// No description provided for @navButtons.
+  ///
+  /// In en, this message translates to:
+  /// **'Buttons'**
+  String get navButtons;
+
+  /// No description provided for @rendering.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering'**
+  String get rendering;
+
+  /// No description provided for @mpvConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'MPV configuration'**
+  String get mpvConfiguration;
 
   /// No description provided for @cardSize.
   ///

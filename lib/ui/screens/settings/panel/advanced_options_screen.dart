@@ -57,6 +57,7 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
         autofocus: true,
         child: ListView(
           children: [
+            _SectionHeader(l10n.playback),
             adaptiveListSection(
               children: [
                 SliderPreferenceTile(
@@ -70,7 +71,8 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                 ),
               ],
             ),
-            if (PlatformDetection.isAndroid)
+            if (PlatformDetection.isAndroid) ...[
+              _SectionHeader(l10n.rendering),
               adaptiveListSection(
                 children: [
                   EnumPreferenceTile<ImpellerMode>(
@@ -87,6 +89,7 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                   ),
                 ],
               ),
+            ],
             if (PlatformDetection.isAndroid && PlatformDetection.isTV) ...[
               _SectionHeader(l10n.playerRouting),
               adaptiveListSection(
@@ -136,6 +139,7 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
             if (!PlatformDetection.isTV &&
                 !PlatformDetection.isIOS &&
                 !PlatformDetection.isWeb) ...[
+              _SectionHeader(l10n.mpvConfiguration),
               adaptiveListSection(
                 children: [
                   SwitchPreferenceTile(

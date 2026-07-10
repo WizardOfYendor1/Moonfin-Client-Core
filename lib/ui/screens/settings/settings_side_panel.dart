@@ -52,6 +52,7 @@ import '../../widgets/settings/preference_binding.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import '../../widgets/settings/preference_tiles.dart';
 import '../../widgets/settings/settings_panel.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/support_dialog.dart';
 import '../../widgets/focus/request_initial_focus.dart';
@@ -79,11 +80,12 @@ part 'panel/settings_panel_infra.dart';
 part 'panel/authentication_category_screen.dart';
 part 'panel/customization_category_screen.dart';
 part 'panel/general_style_screen.dart';
+part 'panel/details_screen_settings_screen.dart';
 part 'panel/navigation_category_screen.dart';
 part 'panel/home_screen_category_screen.dart';
 part 'panel/libraries_category_screen.dart';
-part 'panel/plugin_category_screen.dart';
 part 'panel/seasonal_effects_screen.dart';
+part 'panel/theme_music_screen.dart';
 part 'panel/integrations_screen.dart';
 part 'panel/external_lists_screen.dart';
 part 'panel/plugin_screen.dart';
@@ -218,12 +220,6 @@ class _SettingsSidePanelState extends ConsumerState<SettingsSidePanel> {
             context.pushSettingsScreen(const _CustomizationCategoryScreen()),
       ),
       _PanelEntry(
-        icon: Icons.featured_play_list,
-        title: l10n.settingsDynamicContent,
-        subtitle: l10n.settingsDynamicContentSubtitle,
-        onTap: () => context.pushSettingsScreen(const _PluginCategoryScreen()),
-      ),
-      _PanelEntry(
         icon: Icons.play_circle,
         title: l10n.settingsPlaybackSyncplay,
         subtitle: l10n.settingsPlaybackSyncplaySubtitle,
@@ -263,7 +259,13 @@ class _SettingsSidePanelState extends ConsumerState<SettingsSidePanel> {
         title: Text(l10n.settings),
       ),
       body: ListView(
-        children: [for (final entry in entries) _PanelEntryTile(entry: entry)],
+        children: [
+          adaptiveListSection(
+            children: [
+              for (final entry in entries) _PanelEntryTile(entry: entry),
+            ],
+          ),
+        ],
       ),
     );
   }

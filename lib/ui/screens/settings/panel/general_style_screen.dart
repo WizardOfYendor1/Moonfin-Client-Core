@@ -34,6 +34,7 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
           builder: (context, _) => ListView(
             padding: EdgeInsets.only(bottom: bottomPad),
             children: [
+              _SectionHeader(l10n.theme),
               adaptiveListSection(
                 children: [
                   EnumPreferenceTile<InterfaceStyle>(
@@ -82,17 +83,6 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                     onTap: () =>
                         context.pushSettingsScreen(const SavedThemesScreen()),
                   ),
-                  EnumPreferenceTile<DetailScreenStyle>(
-                    preference: UserPreferences.detailScreenStyle,
-                    title: l10n.detailScreenStyle,
-                    description: l10n.detailScreenStyleSubtitle,
-                    icon: Icons.movie_outlined,
-                    labelOf: (v) => switch (v) {
-                      DetailScreenStyle.classic =>
-                        l10n.detailScreenStyleMoonfin,
-                      DetailScreenStyle.modern => l10n.detailScreenStyleModern,
-                    },
-                  ),
                   EnumPreferenceTile<AppTheme>(
                     preference: UserPreferences.focusColor,
                     title: l10n.focusBorderColor,
@@ -101,7 +91,8 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                   ),
                 ],
               ),
-              if (PlatformDetection.isTV)
+              if (PlatformDetection.isTV) ...[
+                _SectionHeader(l10n.keyboard),
                 adaptiveListSection(
                   children: [
                     SwitchPreferenceTile(
@@ -112,6 +103,8 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                     ),
                   ],
                 ),
+              ],
+              _SectionHeader(l10n.clock),
               adaptiveListSection(
                 children: [
                   EnumPreferenceTile<ClockBehavior>(
@@ -132,6 +125,7 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                   ),
                 ],
               ),
+              _SectionHeader(l10n.display),
               if (!PlatformDetection.useMobileUi)
                 adaptiveListSection(
                   children: [
@@ -174,16 +168,6 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                     labelOf: (v) => '$v',
                     onChangeEnd: _pushPersonalizationSync,
                   ),
-                  SliderPreferenceTile(
-                    preference: UserPreferences.detailsBackgroundBlurAmount,
-                    title: l10n.detailsBackgroundBlur,
-                    icon: Icons.blur_on,
-                    min: 0,
-                    max: 25,
-                    divisions: 25,
-                    labelOf: (v) => '$v',
-                    onChangeEnd: _pushPersonalizationSync,
-                  ),
                   EnumPreferenceTile<WatchedIndicatorBehavior>(
                     preference: UserPreferences.watchedIndicatorBehavior,
                     title: l10n.watchedIndicators,
@@ -196,23 +180,6 @@ class _GeneralStyleScreenState extends State<_GeneralStyleScreen> {
                         l10n.episodesOnly,
                       WatchedIndicatorBehavior.never => l10n.never,
                     },
-                  ),
-                  SwitchPreferenceTile(
-                    preference: UserPreferences.themeMusicEnabled,
-                    title: l10n.themeMusic,
-                    subtitle: l10n.playThemeMusicOnDetailPages,
-                    icon: Icons.music_note,
-                    onChanged: _pushPersonalizationSync,
-                  ),
-                  SliderPreferenceTile(
-                    preference: UserPreferences.themeMusicVolume,
-                    title: l10n.themeMusicVolume,
-                    icon: Icons.volume_down,
-                    min: 0,
-                    max: 100,
-                    divisions: 20,
-                    labelOf: (v) => '$v%',
-                    onChangeEnd: _pushPersonalizationSync,
                   ),
                 ],
               ),

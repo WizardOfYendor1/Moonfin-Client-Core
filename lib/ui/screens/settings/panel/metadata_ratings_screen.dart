@@ -44,6 +44,7 @@ class _MetadataRatingsScreenState extends State<_MetadataRatingsScreen> {
                 autofocus: true,
                 child: ListView(
                   children: [
+                    _SectionHeader(l10n.ratings),
                     adaptiveListSection(
                       children: [
                         SwitchPreferenceTile(

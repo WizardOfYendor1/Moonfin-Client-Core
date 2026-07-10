@@ -30,6 +30,7 @@ import 'playback/audio_capability_profile.dart';
 import 'playback/audio_capability_probe.dart';
 import 'playback/audio_handler.dart';
 import 'playback/media_browse_service.dart';
+import 'playback/mpris_service.dart';
 import 'playback/playback_lifecycle_handler.dart';
 import 'platform/web_runtime_config.dart';
 import 'preference/user_preferences.dart';
@@ -469,6 +470,17 @@ Future<void> _initDeferredStartupServices(UserPreferences prefs) async {
       );
     } catch (e, st) {
       debugPrint('initAudioService failed (lock-screen controls disabled): $e\n$st');
+    }
+  }
+
+  if (PlatformDetection.isLinux) {
+    try {
+      await initMprisService(
+        manager: GetIt.instance<PlaybackManager>(),
+        clientFactory: GetIt.instance<MediaServerClientFactory>(),
+      );
+    } catch (e, st) {
+      debugPrint('initMprisService failed (MPRIS controls disabled): $e\n$st');
     }
   }
 

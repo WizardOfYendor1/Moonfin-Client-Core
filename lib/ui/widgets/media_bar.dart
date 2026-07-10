@@ -124,6 +124,7 @@ class _MediaBarState extends State<MediaBar>
   StreamSubscription<Duration>? _trailerPositionSub;
   Timer? _trailerRevealTimer;
   Timer? _trailerPrepareTimer;
+  Timer? _mainPlaybackInactiveTimer;
   Timer? _youTubeRevealTimer;
   double _trailerVideoOpacity = 0.0;
   String? _activeTrailerItemId;
@@ -211,6 +212,8 @@ class _MediaBarState extends State<MediaBar>
       appRouter.routerDelegate.currentConfiguration.uri.path,
     );
     appRouter.routerDelegate.addListener(_onRouteChanged);
+    PlayerRouteObserver.instance.isPlayerActive
+        .addListener(_onPlayerRouteChanged);
     widget.viewModel.addListener(_onStateChanged);
     widget.prefs.addListener(_onPrefsChanged);
     WidgetsBinding.instance.addObserver(this);
@@ -249,6 +252,7 @@ class _MediaBarState extends State<MediaBar>
     _autoAdvanceTimer?.cancel();
     _trailerRevealTimer?.cancel();
     _trailerPrepareTimer?.cancel();
+    _mainPlaybackInactiveTimer?.cancel();
     _youTubeRevealTimer?.cancel();
     _mainPlaybackSub?.cancel();
     _media3EventSub?.cancel();
@@ -257,7 +261,15 @@ class _MediaBarState extends State<MediaBar>
     widget.prefs.removeListener(_onPrefsChanged);
     WidgetsBinding.instance.removeObserver(this);
     appRouter.routerDelegate.removeListener(_onRouteChanged);
+    PlayerRouteObserver.instance.isPlayerActive
+        .removeListener(_onPlayerRouteChanged);
     super.dispose();
+  }
+
+  // Re-evaluate the persistent Media3 view's mount condition when a player
+  // route is pushed or popped.
+  void _onPlayerRouteChanged() {
+    if (mounted) setState(() {});
   }
 
   bool _isHomePath(String path) {
@@ -286,11 +298,17 @@ class _MediaBarState extends State<MediaBar>
   /// Whether the Media3 platform view stays mounted between trailers so each
   /// trailer reuses the same native view via setSource. It is not gated on the home
   /// route because an unpainted view under an opaque route costs nothing and skips
-  /// the expensive teardown/create cycle on every detail push.
+  /// the expensive teardown/create cycle on every detail push. It MUST stay
+  /// unmounted while a player route is up, though: a freshly mounted view's
+  /// native init takes over Media3Bridge.activeView and force-releases the
+  /// fullscreen player's surface. Auto-advance between queue items emits a
+  /// brief isPlaying=false, so gating on playback state alone lets the preview
+  /// view mount mid-session and black-screen the next item.
   bool get _shouldMountPersistentMedia3View =>
       _useMedia3TrailerEngine() &&
       widget.prefs.get(UserPreferences.mediaBarTrailerPreview) &&
-      !_mainPlaybackActive;
+      !_mainPlaybackActive &&
+      !PlayerRouteObserver.instance.isPlayerActive.value;
 
   void _onMainPlaybackChanged(bool isPlaying) {
     if (isPlaying &&
@@ -299,11 +317,27 @@ class _MediaBarState extends State<MediaBar>
         _isHomeRouteCurrent()) {
       return;
     }
-    if (_mainPlaybackActive == isPlaying) {
+    if (isPlaying) {
+      _mainPlaybackInactiveTimer?.cancel();
+      _mainPlaybackInactiveTimer = null;
+      _setMainPlaybackActive(true);
       return;
     }
-    _mainPlaybackActive = isPlaying;
-    if (isPlaying) {
+    // Debounce the drop to false: buffering, a scrub, and queue auto-advance all
+    // report a brief isPlaying=false, and remounting the preview during that
+    // window would steal the shared Media3 slot from the live player. A real
+    // stop stays false past the timer.
+    if (!_mainPlaybackActive || _mainPlaybackInactiveTimer != null) return;
+    _mainPlaybackInactiveTimer = Timer(const Duration(seconds: 1), () {
+      _mainPlaybackInactiveTimer = null;
+      _setMainPlaybackActive(false);
+    });
+  }
+
+  void _setMainPlaybackActive(bool active) {
+    if (_mainPlaybackActive == active) return;
+    _mainPlaybackActive = active;
+    if (active) {
       _cancelTrailerPreview();
     }
     // Re-evaluate the persistent Media3 view's mount condition.
@@ -2542,6 +2576,7 @@ class _MediaBarState extends State<MediaBar>
               child: _trailerUsingMedia3 || mountPersistentMedia3
                   ? Media3VideoView(
                       fill: Colors.transparent,
+                      role: 'preview',
                       onPlatformViewCreated: (id) =>
                           _media3PlatformViewId = id,
                     )

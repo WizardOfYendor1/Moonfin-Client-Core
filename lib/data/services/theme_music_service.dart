@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/widgets.dart';
 import 'package:playback_core/playback_core.dart';
 import 'package:server_core/server_core.dart';
 
@@ -23,6 +24,7 @@ class ThemeMusicService {
   bool _playSuppressed = false;
   int _playGeneration = 0;
   StreamSubscription<bool>? _mainPlaybackSub;
+  AppLifecycleListener? _lifecycleListener;
 
   static const _fadeDurationMs = 2000;
   static const _fadeStepMs = 50;
@@ -34,6 +36,19 @@ class ThemeMusicService {
         fadeOutAndStop();
       }
     });
+    // Stop immediately when backgrounded. fadeOutAndStop defers the real stop to
+    // a fade timer that is frozen while the app is suspended, so the player
+    // would otherwise keep sounding. 'inactive' is excluded so a desktop window
+    // losing focus does not kill the theme.
+    _lifecycleListener = AppLifecycleListener(
+      onStateChange: (state) {
+        if (state == AppLifecycleState.paused ||
+            state == AppLifecycleState.hidden ||
+            state == AppLifecycleState.detached) {
+          stop();
+        }
+      },
+    );
   }
 
   void registerDetailScreen(Object token) {
@@ -233,6 +248,7 @@ class ThemeMusicService {
 
   void dispose() {
     _mainPlaybackSub?.cancel();
+    _lifecycleListener?.dispose();
     stop();
   }
 }

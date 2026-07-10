@@ -154,6 +154,13 @@ class AppLocalizationsMl extends AppLocalizations {
   String get detailScreenStyleModern => 'Modern';
 
   @override
+  String get expandedTabs => 'Expanded Tabs';
+
+  @override
+  String get expandedTabsSubtitle =>
+      'Automatically show tab content while browsing tabs. Turn off to open and close each tab manually.';
+
+  @override
   String get recommendationSystem => 'Recommendation System';
 
   @override
@@ -1338,6 +1345,15 @@ class AppLocalizationsMl extends AppLocalizations {
   String get shuffle => 'ഷഫിൾ ചെയ്യുക';
 
   @override
+  String get shuffleAllMusic => 'Shuffle all music';
+
+  @override
+  String get carSignInPrompt => 'Sign in to Moonfin on your phone';
+
+  @override
+  String get carServerUnreachable => 'Can\'t reach your server';
+
+  @override
   String downloadsCount(int count) {
     return '$count downloads';
   }
@@ -2266,6 +2282,10 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get themeMusicVolume => 'തീം മ്യൂസിക് വോളിയം';
+
+  @override
+  String get themeMusicSettingsSubtitle =>
+      'Detail pages, home rows, and volume';
 
   @override
   String percentValue(int value) {
@@ -7926,6 +7946,13 @@ class AppLocalizationsMl extends AppLocalizations {
       'തീം ആക്‌സൻ്റുകൾ, ബാക്ക്‌ഡ്രോപ്പുകൾ, കണ്ട സൂചകങ്ങൾ, തീം സംഗീതം';
 
   @override
+  String get settingsDetailsScreen => 'Details Screen';
+
+  @override
+  String get settingsDetailsScreenSubtitle =>
+      'Style, background blur, and tab behavior';
+
+  @override
   String get settingsHomePage => 'ഹോം പേജ്';
 
   @override
@@ -8631,6 +8658,24 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get appearance => 'രൂപഭാവം';
+
+  @override
+  String get layout => 'Layout';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get keyboard => 'Keyboard';
+
+  @override
+  String get navButtons => 'Buttons';
+
+  @override
+  String get rendering => 'Rendering';
+
+  @override
+  String get mpvConfiguration => 'MPV configuration';
 
   @override
   String get cardSize => 'കാർഡ് വലിപ്പം';

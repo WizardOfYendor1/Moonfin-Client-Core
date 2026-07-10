@@ -32,6 +32,7 @@ class _LibrariesCategoryScreenState extends State<_LibrariesCategoryScreen> {
       appBar: buildSettingsAppBar(context, Text(l10n.libraries)),
       body: ListView(
         children: [
+          _SectionHeader(l10n.general),
           adaptiveListSection(
             children: [
               _TvSettingsListTile(

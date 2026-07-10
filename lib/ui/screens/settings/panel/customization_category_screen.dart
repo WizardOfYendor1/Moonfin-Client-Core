@@ -15,6 +15,7 @@ class _CustomizationCategoryScreen extends StatelessWidget {
         ),
         body: ListView(
           children: [
+            _SectionHeader(l10n.appearance),
             adaptiveListSection(
               children: [
                 _TvSettingsListTile(
@@ -26,6 +27,14 @@ class _CustomizationCategoryScreen extends StatelessWidget {
                       context.pushSettingsScreen(const _GeneralStyleScreen()),
                 ),
                 _TvSettingsListTile(
+                  leading: const Icon(Icons.article_outlined),
+                  title: Text(l10n.settingsDetailsScreen),
+                  subtitle: Text(l10n.settingsDetailsScreenSubtitle),
+                  onTap: () => context.pushSettingsScreen(
+                    const _DetailsScreenSettingsScreen(),
+                  ),
+                ),
+                _TvSettingsListTile(
                   leading: const Icon(Icons.view_sidebar),
                   title: Text(l10n.navigation),
                   subtitle: Text(l10n.navbarStyleToolbarAppearance),
@@ -33,6 +42,20 @@ class _CustomizationCategoryScreen extends StatelessWidget {
                     const _NavigationCategoryScreen(),
                   ),
                 ),
+                if (PlatformDetection.isTV)
+                  _TvSettingsListTile(
+                    leading: const Icon(Icons.wallpaper),
+                    title: Text(l10n.screensaver),
+                    subtitle: Text(l10n.enableBuiltInScreensaver),
+                    onTap: () => context.pushSettingsScreen(
+                      const ScreensaverSettingsScreen(),
+                    ),
+                  ),
+              ],
+            ),
+            _SectionHeader(l10n.layout),
+            adaptiveListSection(
+              children: [
                 _TvSettingsListTile(
                   leading: const Icon(Icons.home),
                   title: Text(l10n.homeScreen),
@@ -49,15 +72,40 @@ class _CustomizationCategoryScreen extends StatelessWidget {
                     const _LibrariesCategoryScreen(),
                   ),
                 ),
-                if (PlatformDetection.isTV)
-                  _TvSettingsListTile(
-                    leading: const Icon(Icons.wallpaper),
-                    title: Text(l10n.screensaver),
-                    subtitle: Text(l10n.enableBuiltInScreensaver),
-                    onTap: () => context.pushSettingsScreen(
-                      const ScreensaverSettingsScreen(),
-                    ),
+              ],
+            ),
+            _SectionHeader(l10n.extras),
+            adaptiveListSection(
+              children: [
+                _TvSettingsListTile(
+                  leading: const Icon(Icons.featured_play_list),
+                  title: Text(l10n.mediaBar),
+                  subtitle: Text(l10n.featuredContentAppearance),
+                  onTap: () =>
+                      context.pushSettingsScreen(const MediaBarSettingsScreen()),
+                ),
+                _TvSettingsListTile(
+                  leading: const Icon(Icons.preview),
+                  title: Text(l10n.localPreviews),
+                  subtitle: Text(l10n.localPreviewsDescription),
+                  onTap: () => context.pushSettingsScreen(
+                    const LocalPreviewsSettingsScreen(),
                   ),
+                ),
+                _TvSettingsListTile(
+                  leading: const Icon(Icons.auto_awesome),
+                  title: Text(l10n.seasonalEffects),
+                  subtitle: Text(l10n.seasonalEffectsDescription),
+                  onTap: () =>
+                      context.pushSettingsScreen(const _SeasonalEffectsScreen()),
+                ),
+                _TvSettingsListTile(
+                  leading: const Icon(Icons.music_note),
+                  title: Text(l10n.themeMusic),
+                  subtitle: Text(l10n.themeMusicSettingsSubtitle),
+                  onTap: () =>
+                      context.pushSettingsScreen(const _ThemeMusicScreen()),
+                ),
               ],
             ),
           ],

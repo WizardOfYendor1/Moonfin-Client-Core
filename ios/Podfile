@@ -1,5 +1,7 @@
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+platform :ios, '15.0'
+
 source 'https://cdn.cocoapods.org/'
 
 project 'Runner', {

@@ -153,6 +153,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detailScreenStyleModern => 'Modern';
 
   @override
+  String get expandedTabs => 'Expanded Tabs';
+
+  @override
+  String get expandedTabsSubtitle =>
+      'Automatically show tab content while browsing tabs. Turn off to open and close each tab manually.';
+
+  @override
   String get recommendationSystem => 'Recommendation System';
 
   @override
@@ -1298,6 +1305,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shuffle => '随机播放';
 
   @override
+  String get shuffleAllMusic => 'Shuffle all music';
+
+  @override
+  String get carSignInPrompt => 'Sign in to Moonfin on your phone';
+
+  @override
+  String get carServerUnreachable => 'Can\'t reach your server';
+
+  @override
   String downloadsCount(int count) {
     return '$count 次下载';
   }
@@ -2204,6 +2220,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get themeMusicVolume => '主题音乐音量';
+
+  @override
+  String get themeMusicSettingsSubtitle =>
+      'Detail pages, home rows, and volume';
 
   @override
   String percentValue(int value) {
@@ -7636,6 +7656,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsGeneralStyleSubtitle => '主题强调色、背景图、已观看标记和主题音乐';
 
   @override
+  String get settingsDetailsScreen => 'Details Screen';
+
+  @override
+  String get settingsDetailsScreenSubtitle =>
+      'Style, background blur, and tab behavior';
+
+  @override
   String get settingsHomePage => '主页';
 
   @override
@@ -8278,6 +8305,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appearance => '外观';
+
+  @override
+  String get layout => 'Layout';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get keyboard => 'Keyboard';
+
+  @override
+  String get navButtons => 'Buttons';
+
+  @override
+  String get rendering => 'Rendering';
+
+  @override
+  String get mpvConfiguration => 'MPV configuration';
 
   @override
   String get cardSize => '首页行卡片尺寸';

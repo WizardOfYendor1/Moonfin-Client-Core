@@ -154,6 +154,13 @@ class AppLocalizationsEo extends AppLocalizations {
   String get detailScreenStyleModern => 'Modern';
 
   @override
+  String get expandedTabs => 'Expanded Tabs';
+
+  @override
+  String get expandedTabsSubtitle =>
+      'Automatically show tab content while browsing tabs. Turn off to open and close each tab manually.';
+
+  @override
   String get recommendationSystem => 'Recommendation System';
 
   @override
@@ -1329,6 +1336,15 @@ class AppLocalizationsEo extends AppLocalizations {
   String get shuffle => 'Miksi';
 
   @override
+  String get shuffleAllMusic => 'Shuffle all music';
+
+  @override
+  String get carSignInPrompt => 'Sign in to Moonfin on your phone';
+
+  @override
+  String get carServerUnreachable => 'Can\'t reach your server';
+
+  @override
   String downloadsCount(int count) {
     return '$count elŝutas';
   }
@@ -2252,6 +2268,10 @@ class AppLocalizationsEo extends AppLocalizations {
 
   @override
   String get themeMusicVolume => 'Temo Muzika Volumo';
+
+  @override
+  String get themeMusicSettingsSubtitle =>
+      'Detail pages, home rows, and volume';
 
   @override
   String percentValue(int value) {
@@ -7830,6 +7850,13 @@ class AppLocalizationsEo extends AppLocalizations {
       'Temaj akĉentoj, fonoj, spektitaj indikiloj kaj temomuziko';
 
   @override
+  String get settingsDetailsScreen => 'Details Screen';
+
+  @override
+  String get settingsDetailsScreenSubtitle =>
+      'Style, background blur, and tab behavior';
+
+  @override
   String get settingsHomePage => 'Hejmpaĝo';
 
   @override
@@ -8526,6 +8553,24 @@ class AppLocalizationsEo extends AppLocalizations {
 
   @override
   String get appearance => 'Aspekto';
+
+  @override
+  String get layout => 'Layout';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get keyboard => 'Keyboard';
+
+  @override
+  String get navButtons => 'Buttons';
+
+  @override
+  String get rendering => 'Rendering';
+
+  @override
+  String get mpvConfiguration => 'MPV configuration';
 
   @override
   String get cardSize => 'Karto Grandeco';

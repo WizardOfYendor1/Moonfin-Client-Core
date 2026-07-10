@@ -4,9 +4,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:server_core/server_core.dart';
 
+/// A studio for the details screen: its name and, when the plugin has a cached
+/// logo, an authenticated URL to that logo image.
+typedef StudioCompany = ({String name, String? imageUrl});
+
 class TmdbRepository {
   static const _maxEpisodeCacheEntries = 256;
   static const _maxSeasonCacheEntries = 64;
+  static const _maxCompaniesCacheEntries = 128;
 
   final MediaServerClient _client;
 
@@ -14,10 +19,70 @@ class TmdbRepository {
 
   final _episodeCache = <String, double>{};
   final _seasonCache = <String, Map<int, double>>{};
+  final _companiesCache = <String, List<StudioCompany>>{};
   final _pendingEpisodes = <String, Completer<double?>>{};
   final _pendingSeasons = <String, Completer<Map<int, double>?>>{};
+  final _pendingCompanies = <String, Completer<List<StudioCompany>?>>{};
 
   TmdbRepository(this._client);
+
+  /// Fetches the item's studios (TMDB production companies) from the Moonfin
+  /// plugin, which caches the logos server-side. Returns null when the plugin
+  /// call fails; the details screen then shows name-only placeholders.
+  Future<List<StudioCompany>?> getProductionCompanies({
+    required String tmdbId,
+    required String type,
+  }) async {
+    final cacheKey = '$type:$tmdbId';
+
+    final cached = _takeCompaniesCache(cacheKey);
+    if (cached != null) return cached;
+
+    final existing = _pendingCompanies[cacheKey];
+    if (existing != null) return existing.future;
+
+    final completer = Completer<List<StudioCompany>?>();
+    _pendingCompanies[cacheKey] = completer;
+
+    try {
+      final response = await _get('/Moonfin/Tmdb/ProductionCompanies', {
+        'tmdbId': tmdbId,
+        'type': type,
+      });
+      if (response == null) {
+        completer.complete(null);
+        _pendingCompanies.remove(cacheKey);
+        return null;
+      }
+
+      final list = response['companies'] as List? ?? const [];
+      final companies = <StudioCompany>[];
+      for (final entry in list) {
+        if (entry is! Map) continue;
+        final id = (entry['id'] as num?)?.toInt();
+        final name = entry['name']?.toString() ?? '';
+        if (id == null || name.isEmpty) continue;
+        final imageUrl = entry['hasLogo'] == true ? _studioImageUrl(id) : null;
+        companies.add((name: name, imageUrl: imageUrl));
+      }
+
+      _storeCompaniesCache(cacheKey, companies);
+      completer.complete(companies);
+      _pendingCompanies.remove(cacheKey);
+      return companies;
+    } catch (e) {
+      debugPrint('[Moonfin] TMDB production companies fetch failed: $e');
+      completer.complete(null);
+      _pendingCompanies.remove(cacheKey);
+      return null;
+    }
+  }
+
+  String? _studioImageUrl(int companyId) {
+    final token = _client.accessToken;
+    if (token == null) return null;
+    return '${_client.baseUrl}/Moonfin/Tmdb/StudioImage/$companyId?api_key=$token';
+  }
 
   Future<double?> getEpisodeRating({
     required String tmdbId,
@@ -148,8 +213,10 @@ class TmdbRepository {
   void clearCache() {
     _episodeCache.clear();
     _seasonCache.clear();
+    _companiesCache.clear();
     _pendingEpisodes.clear();
     _pendingSeasons.clear();
+    _pendingCompanies.clear();
   }
 
   void dispose() {
@@ -171,6 +238,22 @@ class TmdbRepository {
       _seasonCache[cacheKey] = cached;
     }
     return cached;
+  }
+
+  List<StudioCompany>? _takeCompaniesCache(String cacheKey) {
+    final cached = _companiesCache.remove(cacheKey);
+    if (cached != null) {
+      _companiesCache[cacheKey] = cached;
+    }
+    return cached;
+  }
+
+  void _storeCompaniesCache(String cacheKey, List<StudioCompany> companies) {
+    _companiesCache.remove(cacheKey);
+    _companiesCache[cacheKey] = companies;
+    while (_companiesCache.length > _maxCompaniesCacheEntries) {
+      _companiesCache.remove(_companiesCache.keys.first);
+    }
   }
 
   void _storeEpisodeCache(String cacheKey, double rating) {

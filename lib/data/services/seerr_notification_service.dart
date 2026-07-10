@@ -87,10 +87,17 @@ class SeerrNotificationService {
             actions: androidActions,
           ),
           iOS: DarwinNotificationDetails(
+            // Without these, iOS shows nothing while the app is foreground.
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
             categoryIdentifier:
                 isRequest ? seerrRequestCategoryId : null,
           ),
           macOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
             categoryIdentifier:
                 isRequest ? seerrRequestCategoryId : null,
           ),

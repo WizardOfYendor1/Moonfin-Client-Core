@@ -153,6 +153,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get detailScreenStyleModern => 'Modern';
 
   @override
+  String get expandedTabs => 'Expanded Tabs';
+
+  @override
+  String get expandedTabsSubtitle =>
+      'Automatically show tab content while browsing tabs. Turn off to open and close each tab manually.';
+
+  @override
   String get recommendationSystem => 'Recommendation System';
 
   @override
@@ -1303,6 +1310,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shuffle => 'シャッフル';
 
   @override
+  String get shuffleAllMusic => 'Shuffle all music';
+
+  @override
+  String get carSignInPrompt => 'Sign in to Moonfin on your phone';
+
+  @override
+  String get carServerUnreachable => 'Can\'t reach your server';
+
+  @override
   String downloadsCount(int count) {
     return '$count downloads';
   }
@@ -2215,6 +2231,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get themeMusicVolume => 'テーマ曲の音量';
+
+  @override
+  String get themeMusicSettingsSubtitle =>
+      'Detail pages, home rows, and volume';
 
   @override
   String percentValue(int value) {
@@ -7679,6 +7699,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsGeneralStyleSubtitle => 'テーマのアクセント、背景、注目のインジケーター、テーマ音楽';
 
   @override
+  String get settingsDetailsScreen => 'Details Screen';
+
+  @override
+  String get settingsDetailsScreenSubtitle =>
+      'Style, background blur, and tab behavior';
+
+  @override
   String get settingsHomePage => 'ホームページ';
 
   @override
@@ -8343,6 +8370,24 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get appearance => 'Appearance';
+
+  @override
+  String get layout => 'Layout';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get keyboard => 'Keyboard';
+
+  @override
+  String get navButtons => 'Buttons';
+
+  @override
+  String get rendering => 'Rendering';
+
+  @override
+  String get mpvConfiguration => 'MPV configuration';
 
   @override
   String get cardSize => 'Card Size';

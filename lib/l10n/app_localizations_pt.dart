@@ -154,6 +154,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get detailScreenStyleModern => 'Modern';
 
   @override
+  String get expandedTabs => 'Expanded Tabs';
+
+  @override
+  String get expandedTabsSubtitle =>
+      'Automatically show tab content while browsing tabs. Turn off to open and close each tab manually.';
+
+  @override
   String get recommendationSystem => 'Recommendation System';
 
   @override
@@ -1334,6 +1341,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shuffle => 'Aleatório';
 
   @override
+  String get shuffleAllMusic => 'Shuffle all music';
+
+  @override
+  String get carSignInPrompt => 'Sign in to Moonfin on your phone';
+
+  @override
+  String get carServerUnreachable => 'Can\'t reach your server';
+
+  @override
   String downloadsCount(int count) {
     return '$count downloads';
   }
@@ -2263,6 +2279,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get themeMusicVolume => 'Volume da Música Tema';
+
+  @override
+  String get themeMusicSettingsSubtitle =>
+      'Detail pages, home rows, and volume';
 
   @override
   String percentValue(int value) {
@@ -7891,6 +7911,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Acentos temáticos, cenários, indicadores assistidos e música temática';
 
   @override
+  String get settingsDetailsScreen => 'Details Screen';
+
+  @override
+  String get settingsDetailsScreenSubtitle =>
+      'Style, background blur, and tab behavior';
+
+  @override
   String get settingsHomePage => 'Página inicial';
 
   @override
@@ -8593,6 +8620,24 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get appearance => 'Aparência';
+
+  @override
+  String get layout => 'Layout';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get keyboard => 'Keyboard';
+
+  @override
+  String get navButtons => 'Buttons';
+
+  @override
+  String get rendering => 'Rendering';
+
+  @override
+  String get mpvConfiguration => 'MPV configuration';
 
   @override
   String get cardSize => 'Tamanho do cartão';

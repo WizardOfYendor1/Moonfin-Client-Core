@@ -830,30 +830,14 @@ class _SeerrListsScreen extends StatefulWidget {
 class _SeerrListsScreenState extends State<_SeerrListsScreen> {
   late List<SeerrRowConfig> _rows;
   final _syncService = GetIt.instance<PluginSyncService>();
+  final _seerrPrefs = GetIt.instance<SeerrPreferences>();
   final _scope = FocusScopeNode(debugLabel: 'SeerrListsScope');
   final _firstFocusNode = FocusNode(debugLabel: 'seerr_display_rows');
 
   @override
   void initState() {
     super.initState();
-    final prefs = GetIt.instance<UserPreferences>();
-    final configs = prefs.homeSectionsConfig;
-
-    _rows = SeerrRowConfig.defaults().map((defaultRow) {
-      final homeSectionType = _mapSeerrRowTypeToHomeSection(defaultRow.type);
-      if (homeSectionType != null) {
-        final config = configs.firstWhere(
-          (c) => c.type == homeSectionType,
-          orElse: () => HomeSectionConfig(
-            type: homeSectionType,
-            enabled: false,
-            order: configs.length,
-          ),
-        );
-        return defaultRow.copyWith(enabled: config.enabled);
-      }
-      return defaultRow.copyWith(enabled: false);
-    }).toList();
+    _rows = List.of(_seerrPrefs.homeRowsConfig);
   }
 
   @override
@@ -873,49 +857,34 @@ class _SeerrListsScreenState extends State<_SeerrListsScreen> {
   }
 
   void _saveRows() {
+    _seerrPrefs.setHomeRowsConfig(_rows);
+
     final prefs = GetIt.instance<UserPreferences>();
     final configs = List<HomeSectionConfig>.from(prefs.homeSectionsConfig);
     var changed = false;
     for (final row in _rows) {
-      final type = _mapSeerrRowTypeToHomeSection(row.type);
-      if (type != null) {
-        final idx = configs.indexWhere((c) => c.type == type);
-        if (idx >= 0) {
-          if (configs[idx].enabled != row.enabled) {
-            configs[idx] = configs[idx].copyWith(enabled: row.enabled);
-            changed = true;
-          }
-        } else {
-          configs.add(HomeSectionConfig(
-            type: type,
-            enabled: row.enabled,
-            order: configs.length,
-          ));
+      final type = row.type.homeSectionType;
+      final idx = configs.indexWhere((c) => c.type == type);
+      if (idx >= 0) {
+        if (configs[idx].enabled != row.enabled) {
+          configs[idx] = configs[idx].copyWith(enabled: row.enabled);
           changed = true;
         }
+      } else {
+        configs.add(HomeSectionConfig(
+          type: type,
+          enabled: row.enabled,
+          order: configs.length,
+        ));
+        changed = true;
       }
     }
     if (changed) {
       prefs.setHomeSectionsConfig(configs);
     }
+
     _pushPersonalizationSync();
     if (mounted) setState(() {});
-  }
-
-  HomeSectionType? _mapSeerrRowTypeToHomeSection(SeerrRowType type) {
-    return switch (type) {
-      SeerrRowType.recentRequests => HomeSectionType.seerrRecentRequests,
-      SeerrRowType.recentlyAdded => HomeSectionType.seerrRecentlyAdded,
-      SeerrRowType.trending => HomeSectionType.seerrTrending,
-      SeerrRowType.popularMovies => HomeSectionType.seerrPopularMovies,
-      SeerrRowType.movieGenres => HomeSectionType.seerrMovieGenres,
-      SeerrRowType.upcomingMovies => HomeSectionType.seerrUpcomingMovies,
-      SeerrRowType.studios => HomeSectionType.seerrStudios,
-      SeerrRowType.popularSeries => HomeSectionType.seerrPopularSeries,
-      SeerrRowType.seriesGenres => HomeSectionType.seerrSeriesGenres,
-      SeerrRowType.upcomingSeries => HomeSectionType.seerrUpcomingSeries,
-      SeerrRowType.networks => HomeSectionType.seerrNetworks,
-    };
   }
 
   String _rowLabel(SeerrRowType type, AppLocalizations l10n) => switch (type) {
@@ -951,8 +920,9 @@ class _SeerrListsScreenState extends State<_SeerrListsScreen> {
               children: [
                 const _SectionHeader('Seerr Home Page Rows'),
                 adaptiveListSection(
-                  children: _rows.map((row) {
-                    final rowIndex = _rows.indexOf(row);
+                  children: _rows.asMap().entries.map((entry) {
+                    final rowIndex = entry.key;
+                    final row = entry.value;
                     return _SeerrRowSwitchTile(
                       focusNode: rowIndex == 0 ? _firstFocusNode : null,
                       title: _rowLabel(row.type, l10n),

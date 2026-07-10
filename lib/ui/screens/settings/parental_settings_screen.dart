@@ -5,6 +5,7 @@ import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/settings/settings_section_header.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/platform_detection.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
@@ -205,6 +206,7 @@ class _ParentalSettingsScreenState extends State<ParentalSettingsScreen> {
                         ),
                       ),
                     ),
+                  SettingsSectionHeader(l10n.ratings),
                   adaptiveListSection(
                     children: [
                       ...ratings.asMap().entries.map((entry) {

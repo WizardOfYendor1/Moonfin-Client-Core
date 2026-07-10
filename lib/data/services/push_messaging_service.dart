@@ -55,14 +55,25 @@ class PushMessagingService {
     // On iOS the APNs token must be present before FCM will hand out a token.
     if (PlatformDetection.isIOS) {
       try {
-        await messaging.getAPNSToken();
-      } catch (_) {}
+        final apns = await messaging.getAPNSToken();
+        if (apns == null) {
+          debugPrint('PushMessagingService: no APNs token; check the Push '
+              'Notifications capability and the APNs key in Firebase');
+        }
+      } catch (e) {
+        debugPrint('PushMessagingService: getAPNSToken failed: $e');
+      }
     }
 
     try {
       final token = await messaging.getToken();
+      if (token == null) {
+        debugPrint('PushMessagingService: getToken returned null');
+      }
       await _registerToken(token);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('PushMessagingService: getToken failed: $e');
+    }
 
     messaging.onTokenRefresh.listen((token) {
       _registerToken(token);
