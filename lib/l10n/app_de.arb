@@ -119,7 +119,7 @@
     "@removeServer": {
         "description": "Dialog title for removing a saved server"
     },
-    "removeServerConfirmation": "„{serverName}“ von den gespeicherten Servern entfernen?",
+    "removeServerConfirmation": "\"{serverName}\" von den gespeicherten Servern entfernen?",
     "@removeServerConfirmation": {
         "description": "Confirmation message when removing a saved server",
         "placeholders": {
@@ -362,7 +362,7 @@
     "@thisFolderIsEmpty": {
         "description": "Empty state for folder browse screen"
     },
-    "itemCountLabel": "{count} Inhalte",
+    "itemCountLabel": "{count, plural, =1{1 Inhalt} other{{count} Inhalte}}",
     "@itemCountLabel": {
         "description": "Subtitle showing number of items in a folder or collection",
         "placeholders": {
@@ -387,7 +387,7 @@
     "@favorites": {
         "description": "Favorites section heading and filter label"
     },
-    "totalCountItems": "{count} Inhalte",
+    "totalCountItems": "{count, plural, =1{1 Inhalt} other{{count} Inhalte}}",
     "@totalCountItems": {
         "description": "Header showing total item count",
         "placeholders": {
@@ -497,7 +497,7 @@
     "@justNow": {
         "description": "Relative time for less than a minute ago"
     },
-    "minutesAgo": "Vor {count} Minute(n)",
+    "minutesAgo": "Vor {count, plural, =1{1 Minute} other{{count} Minuten}}",
     "@minutesAgo": {
         "description": "Relative time in minutes",
         "placeholders": {
@@ -506,7 +506,7 @@
             }
         }
     },
-    "hoursAgo": "Vor {count} Stunde(n)",
+    "hoursAgo": "Vor {count, plural, =1{1 Stunde} other{{count} Stunden}}",
     "@hoursAgo": {
         "description": "Relative time in hours",
         "placeholders": {
@@ -515,7 +515,7 @@
             }
         }
     },
-    "daysAgo": "Vor {count} Tag(en)",
+    "daysAgo": "Vor {count, plural, =1{1 Tag} other{{count} Tagen}}",
     "@daysAgo": {
         "description": "Relative time in days",
         "placeholders": {
@@ -661,7 +661,7 @@
     "@savedPlacesChapters": {
         "description": "Hero card subtitle for bookmarks section"
     },
-    "authorsCount": "{count} Autoren",
+    "authorsCount": "{count, plural, =1{1 Autor} other{{count} Autoren}}",
     "@authorsCount": {
         "description": "Metric pill showing author count",
         "placeholders": {
@@ -670,7 +670,7 @@
             }
         }
     },
-    "genresCount": "{count} Genres",
+    "genresCount": "{count, plural, =1{1 Genre} other{{count} Genres}}",
     "@genresCount": {
         "description": "Metric pill showing genre count",
         "placeholders": {
@@ -850,7 +850,7 @@
     "@downloadZip": {
         "description": "Button label for zip download external link"
     },
-    "sectionCountLabel": "{count} Abschnitte",
+    "sectionCountLabel": "{count, plural, =1{1 Abschnitt} other{{count} Abschnitte}}",
     "@sectionCountLabel": {
         "description": "Detail chip showing number of sections in audiobook",
         "placeholders": {
@@ -880,7 +880,7 @@
     "@all": {
         "description": "Filter option for showing all items"
     },
-    "booksCount": "{count} Bücher",
+    "booksCount": "{count, plural, =1{1 Buch} other{{count} Bücher}}",
     "@booksCount": {
         "description": "Label showing number of books in a discover row",
         "placeholders": {
@@ -897,7 +897,7 @@
     "@audiobookDetails": {
         "description": "AppBar title for LibriVox audiobook detail screen"
     },
-    "authorsCountTitle": "{count} Autoren",
+    "authorsCountTitle": "{count, plural, =1{1 Autor} other{{count} Autoren}}",
     "@authorsCountTitle": {
         "description": "AppBar title for LibriVox authors list screen",
         "placeholders": {
@@ -1234,7 +1234,7 @@
             }
         }
     },
-    "downloadingTitle": "{title} ({count} Inhalte) wird heruntergeladen...",
+    "downloadingTitle": "{title} ({count, plural, =1{1 Inhalt} other{{count} Inhalte}}) wird heruntergeladen...",
     "@downloadingTitle": {
         "description": "Snackbar message when downloading album tracks",
         "placeholders": {
@@ -1255,7 +1255,7 @@
             }
         }
     },
-    "itemDeleted": "Element gelöscht",
+    "itemDeleted": "Inhalt gelöscht",
     "@itemDeleted": {
         "description": "Success message after deleting an item"
     },
@@ -1263,7 +1263,7 @@
     "@noPlayableTrailerFound": {
         "description": "Error message when no trailer can be played"
     },
-    "unsupportedBookFormat": "Nicht unterstütztes Buchformat: .{extension}",
+    "unsupportedBookFormat": "Buchformat nicht unterstützt: .{extension}",
     "@unsupportedBookFormat": {
         "description": "Error message for unsupported book file format",
         "placeholders": {
@@ -1296,7 +1296,7 @@
     "@downloadSubtitles": {
         "description": "Dialog title for downloading remote subtitles"
     },
-    "selectedSubtitleInvalid": "Der ausgewählte Untertitel ist ungültig.",
+    "selectedSubtitleInvalid": "Die ausgewählten Untertitel sind ungültig.",
     "@selectedSubtitleInvalid": {
         "description": "Error message when a selected subtitle is invalid"
     },
@@ -1309,7 +1309,7 @@
             }
         }
     },
-    "subtitleDownloadedPending": "Untertitel heruntergeladen. Es kann einen Moment dauern, bis er angezeigt wird, während Jellyfin das Element aktualisiert.",
+    "subtitleDownloadedPending": "Untertitel wurden heruntergeladen. Bevor sie verfügbar sind, muss der Jellyfin-Server den Inhalt aktualisieren, was einen Moment dauern kann.",
     "@subtitleDownloadedPending": {
         "description": "Message when subtitle was downloaded but not yet visible"
     },
@@ -1343,11 +1343,11 @@
     "@downloadQuality": {
         "description": "Title for download quality picker for a single item"
     },
-    "originalFileNoReencoding": "Originaldatei, ohne Neukodierung",
+    "originalFileNoReencoding": "Originaldatei, ohne Neu-/Transkodierung",
     "@originalFileNoReencoding": {
         "description": "Subtitle for original quality download option"
     },
-    "originalFilesNoReencoding": "Originaldateien, ohne Neukodierung",
+    "originalFilesNoReencoding": "Originaldateien, ohne Neu-/Transkodierung",
     "@originalFilesNoReencoding": {
         "description": "Subtitle for original quality batch download option"
     },
@@ -1355,7 +1355,7 @@
     "@noEpisodesLoaded": {
         "description": "Message when no episodes are available for download"
     },
-    "downloadingItem": "{name} ({quality}) wird heruntergeladen...",
+    "downloadingItem": "{name} (Qualität: {quality}) wird heruntergeladen...",
     "@downloadingItem": {
         "description": "Snackbar message when downloading an item",
         "placeholders": {
@@ -1371,7 +1371,7 @@
     "@deleteDownloadedFiles": {
         "description": "Dialog title for deleting downloaded files"
     },
-    "deleteLocalFilesMessage": "Lokale Dateien für {typeLabel} löschen?\n\nDadurch wird Speicherplatz frei. Sie können es später erneut herunterladen.",
+    "deleteLocalFilesMessage": "Lokale Dateien für {typeLabel} löschen?\n\nDadurch wird Speicherplatz frei. Die Inhalte können bei Bedarf erneut heruntergeladen werden.",
     "@deleteLocalFilesMessage": {
         "description": "Confirmation message for deleting local downloaded files",
         "placeholders": {
@@ -1404,7 +1404,7 @@
     "@studio": {
         "description": "Metadata label for studio"
     },
-    "studioMoreCount": "+{count} mehr",
+    "studioMoreCount": "+{count} weitere",
     "@studioMoreCount": {
         "description": "Label showing additional studio count",
         "placeholders": {
@@ -1413,7 +1413,7 @@
             }
         }
     },
-    "totalEpisodes": "{count} Episoden",
+    "totalEpisodes": "{count, plural, =1{1 Episode} other{{count} Episoden}}",
     "@totalEpisodes": {
         "description": "Season progress label showing total episodes",
         "placeholders": {
@@ -1434,7 +1434,7 @@
             }
         }
     },
-    "episodeLabel": "Folge {number}",
+    "episodeLabel": "Episode {number}",
     "@episodeLabel": {
         "description": "Label for an episode number",
         "placeholders": {
@@ -1452,7 +1452,7 @@
             }
         }
     },
-    "trackCount": "{count, plural, =1{1 track} other{{count} tracks}}",
+    "trackCount": "{count} Titel",
     "@trackCount": {
         "description": "Label showing number of tracks in an album",
         "placeholders": {
@@ -1461,7 +1461,7 @@
             }
         }
     },
-    "chapterCount": "{count, plural, =1{1 chapter} other{{count} chapters}}",
+    "chapterCount": "{count} Kapitel",
     "@chapterCount": {
         "description": "Label showing number of chapters in an audiobook",
         "placeholders": {
@@ -1470,7 +1470,7 @@
             }
         }
     },
-    "born": "Geboren {date}",
+    "born": "Geboren: {date}",
     "@born": {
         "description": "Person birth date label",
         "placeholders": {
@@ -1479,7 +1479,7 @@
             }
         }
     },
-    "died": "Gestorben {date}",
+    "died": "Verstorben: {date}",
     "@died": {
         "description": "Person death date label",
         "placeholders": {
@@ -1488,7 +1488,7 @@
             }
         }
     },
-    "age": "Alter {age}",
+    "age": "Alter: {age}",
     "@age": {
         "description": "Person age label",
         "placeholders": {
@@ -1501,15 +1501,15 @@
     "@showLess": {
         "description": "Toggle label to collapse expanded biography"
     },
-    "readMore": "Mehr lesen",
+    "readMore": "Mehr anzeigen",
     "@readMore": {
         "description": "Toggle label to expand biography"
     },
-    "shuffle": "Zufallswiedergabe",
+    "shuffle": "Durchmischte Wiedergabe",
     "@shuffle": {
         "description": "Action button label for shuffle playback"
     },
-    "downloadsCount": "{count} Downloads",
+    "downloadsCount": "{count}-mal heruntergeladen",
     "@downloadsCount": {
         "description": "Subtitle showing number of downloads for a remote subtitle",
         "placeholders": {
@@ -1518,11 +1518,11 @@
             }
         }
     },
-    "perfectMatch": "Perfekte Übereinstimmung",
+    "perfectMatch": "Exakte Übereinstimmung",
     "@perfectMatch": {
         "description": "Label for a subtitle that is a hash match"
     },
-    "channelsCount": "{count}ch",
+    "channelsCount": "{count, plural, =1{1 Kanal} other{{count} Kanäle}}",
     "@channelsCount": {
         "description": "Audio channel count label",
         "placeholders": {
@@ -1539,7 +1539,7 @@
     "@stereo": {
         "description": "Audio channel layout label for stereo"
     },
-    "remoteSubtitlePermissionError": "Remote-Untertitel {action} erfordert die Jellyfin Untertitelverwaltungsberechtigung für diesen Benutzer.",
+    "remoteSubtitlePermissionError": "Remote-Untertitel {action} erfordert, dass für diesen Benutzer aufseiten des Jellyfin-Servers die Berechtigung zur Verwaltung von Untertiteln erteilt ist.",
     "@remoteSubtitlePermissionError": {
         "description": "Error message when user lacks subtitle management permission",
         "placeholders": {
@@ -1548,7 +1548,7 @@
             }
         }
     },
-    "remoteSubtitleNotFoundError": "Dieses Element konnte auf dem Server für den Remote-Untertitel {action} nicht gefunden werden.",
+    "remoteSubtitleNotFoundError": "Dieser Inhalt konnte auf dem Server nicht für Remote-Untertitel {action} gefunden werden.",
     "@remoteSubtitleNotFoundError": {
         "description": "Error message when item not found for subtitle operation",
         "placeholders": {
@@ -1581,7 +1581,7 @@
             }
         }
     },
-    "remoteSubtitleGenericError": "{action} Remote-Untertitel fehlgeschlagen.",
+    "remoteSubtitleGenericError": "Remote-Untertitel {action} fehlgeschlagen.",
     "@remoteSubtitleGenericError": {
         "description": "Generic error message for subtitle operation",
         "placeholders": {
@@ -1590,7 +1590,7 @@
             }
         }
     },
-    "deleteSeriesFiles": "alle heruntergeladenen Episoden für „{name}“",
+    "deleteSeriesFiles": "alle heruntergeladenen Episoden für \"{name}\"",
     "@deleteSeriesFiles": {
         "description": "Type label for series file deletion",
         "placeholders": {
@@ -1631,7 +1631,7 @@
             }
         }
     },
-    "castingUnavailableOffline": "Streaming ist während der Offline-Wiedergabe nicht verfügbar.",
+    "castingUnavailableOffline": "Abspielen auf anderen Geräten ist während der Offline-Wiedergabe nicht verfügbar.",
     "@castingUnavailableOffline": {
         "description": "Snackbar message when casting is unavailable offline"
     },
@@ -1647,7 +1647,7 @@
             }
         }
     },
-    "failedToSetCastVolume": "Übertragungsvolumen konnte nicht festgelegt werden: {error}",
+    "failedToSetCastVolume": "Lautstärke des Abspielens auf anderem Gerät konnte nicht angewandt werden: {error}",
     "@failedToSetCastVolume": {
         "description": "Error when setting cast volume fails",
         "placeholders": {
@@ -1656,7 +1656,7 @@
             }
         }
     },
-    "castControlsTitle": "{label} Steuerelemente",
+    "castControlsTitle": "{label} Steuerung",
     "@castControlsTitle": {
         "description": "Title for cast controls dialog",
         "placeholders": {
@@ -1681,7 +1681,7 @@
     "@syncPosition": {
         "description": "Cast control action to sync playback position"
     },
-    "stopCast": "Stoppen Sie {label}",
+    "stopCast": "{label} stoppen",
     "@stopCast": {
         "description": "Cast control action to stop casting",
         "placeholders": {
@@ -1694,7 +1694,7 @@
     "@queueIsEmpty": {
         "description": "Empty state text for playback queue"
     },
-    "trackNumber": "Verfolgen Sie {number}",
+    "trackNumber": "Titel {number}",
     "@trackNumber": {
         "description": "Fallback track name in queue",
         "placeholders": {
@@ -1707,19 +1707,19 @@
     "@remotePlayback": {
         "description": "Label for Jellyfin session remote playback"
     },
-    "castingToGoogleCast": "Wird zu Google Cast übertragen",
+    "castingToGoogleCast": "Abspielen über Google Cast",
     "@castingToGoogleCast": {
         "description": "Cast mini bar label for Google Cast"
     },
-    "castingViaAirPlay": "Wird über AirPlay übertragen",
+    "castingViaAirPlay": "Abspielen über AirPlay",
     "@castingViaAirPlay": {
         "description": "Cast mini bar label for AirPlay"
     },
-    "castingViaDlna": "Wird über DLNA übertragen",
+    "castingViaDlna": "Abspielen über DLNA",
     "@castingViaDlna": {
         "description": "Cast mini bar label for DLNA"
     },
-    "secondsCount": "{seconds} Sekunden",
+    "secondsCount": "{seconds} Sekunde(n)",
     "@secondsCount": {
         "description": "Double-tap skip overlay duration label",
         "placeholders": {
@@ -1761,7 +1761,7 @@
             }
         }
     },
-    "bitrateOverride": "Bitraten-Override",
+    "bitrateOverride": "manuell überschriebene Bitrate",
     "@bitrateOverride": {
         "description": "Label shown in stream info when a manual bitrate override is active"
     },
@@ -1781,7 +1781,7 @@
     "@unknown": {
         "description": "Fallback label for unknown items"
     },
-    "playbackInformation": "Wiedergabe-Informationen",
+    "playbackInformation": "Wiedergabeinformationen",
     "@playbackInformation": {
         "description": "Title for stream info sheet"
     },
@@ -1793,11 +1793,11 @@
     "@playMethod": {
         "description": "Stream info label for play method"
     },
-    "directPlay": "Direktwiedergabe",
+    "directPlay": "Direct Play",
     "@directPlay": {
         "description": "Play method label"
     },
-    "directStream": "Direkter Stream",
+    "directStream": "Direct Stream",
     "@directStream": {
         "description": "Audio option: direct stream"
     },
@@ -1805,11 +1805,11 @@
     "@transcoding": {
         "description": "Play method label"
     },
-    "transcodeReasons": "Transkodierungsgründe",
+    "transcodeReasons": "Gründe für Transkodierung",
     "@transcodeReasons": {
         "description": "Stream info label for transcode reasons"
     },
-    "player": "Spieler",
+    "player": "Player",
     "@player": {
         "description": "Stream info label for player engine"
     },
@@ -1841,7 +1841,7 @@
     "@videoBitrate": {
         "description": "Stream info label for video bitrate"
     },
-    "track": "Titel",
+    "track": "Spur",
     "@track": {
         "description": "Stream info label for track name"
     },
@@ -1869,7 +1869,7 @@
     "@embedded": {
         "description": "Subtitle type label for embedded subtitles"
     },
-    "castSessionError": "{protocol} Sitzungsfehler",
+    "castSessionError": "Sitzungsfehler ({protocol})",
     "@castSessionError": {
         "description": "Fallback error message for cast session errors",
         "placeholders": {
@@ -1887,11 +1887,11 @@
             }
         }
     },
-    "epubUnavailableOnPlatform": "EPUB-Darstellung in der App ist auf dieser Plattform noch nicht verfügbar.",
+    "epubUnavailableOnPlatform": "In-App EPUB-Darstellung ist auf dieser Plattform noch nicht verfügbar.",
     "@epubUnavailableOnPlatform": {
         "description": "Fallback message when EPUB cannot render on current platform"
     },
-    "formatCannotRenderInApp": "Dieses Format (.{extension}) kann noch nicht in der App gerendert werden.",
+    "formatCannotRenderInApp": "Dieses Format (.{extension}) kann noch nicht in-App dargestellt werden.",
     "@formatCannotRenderInApp": {
         "description": "Fallback message for unsupported document format",
         "placeholders": {
@@ -1900,11 +1900,11 @@
             }
         }
     },
-    "embeddedRenderingUnavailable": "Eingebettete Dokumentendarstellung ist auf dieser Plattform nicht verfügbar.",
+    "embeddedRenderingUnavailable": "Eingebettete Darstellung von Dokumenten ist auf dieser Plattform nicht verfügbar.",
     "@embeddedRenderingUnavailable": {
         "description": "Fallback message when embedded renderer unavailable"
     },
-    "couldNotOpenExternalViewer": "Externer Viewer konnte nicht geöffnet werden.",
+    "couldNotOpenExternalViewer": "Externes Anzeigeprogramm konnte nicht geöffnet werden.",
     "@couldNotOpenExternalViewer": {
         "description": "Error when external viewer fails to open"
     },
@@ -1956,7 +1956,7 @@
     "@position": {
         "description": "Generic position label"
     },
-    "bookReader": "Buchleser",
+    "bookReader": "Buch-Reader",
     "@bookReader": {
         "description": "Default title for book reader screen"
     },
@@ -1969,7 +1969,7 @@
             }
         }
     },
-    "percentRead": "{percent}% gelesen",
+    "percentRead": "Zu {percent}% gelesen",
     "@percentRead": {
         "description": "Chip label showing reading progress",
         "placeholders": {
@@ -2044,19 +2044,19 @@
             }
         }
     },
-    "themeSystem": "Thema: System",
+    "themeSystem": "Theme: System",
     "@themeSystem": {
         "description": "Reader theme option for system default"
     },
-    "themeLight": "Thema: Hell",
+    "themeLight": "Theme: Hell",
     "@themeLight": {
         "description": "Reader theme option for light mode"
     },
-    "themeDark": "Thema: Dunkel",
+    "themeDark": "Theme: Dunkel",
     "@themeDark": {
         "description": "Reader theme option for dark mode"
     },
-    "themeSepia": "Thema: Sepia",
+    "themeSepia": "Theme: Sepia",
     "@themeSepia": {
         "description": "Reader theme option for sepia mode"
     },
@@ -2080,7 +2080,7 @@
     "@readerFallbackModeActive": {
         "description": "Title for fallback reader mode"
     },
-    "platformCannotHostDocumentEngine": "Diese Plattform kann die eingebettete Dokument-Engine für {extension}-Dateien nicht hosten.",
+    "platformCannotHostDocumentEngine": "Auf dieser Plattform kann das Programm zur eingebetteten Dokumentenanzeige für {extension}-Dateien nicht ausgeführt werden.",
     "@platformCannotHostDocumentEngine": {
         "description": "Fallback description when platform lacks document engine",
         "placeholders": {
@@ -2089,7 +2089,7 @@
             }
         }
     },
-    "reloadReaderPlatformHint": "Verwende „Reader neu laden“ nach dem Wechsel zu einem unterstützten Plattformziel (Android, iOS, macOS).",
+    "reloadReaderPlatformHint": "Verwende \"Reader neu laden\" nach dem Wechsel zu einem unterstützten Plattformziel (Android, iOS, macOS).",
     "@reloadReaderPlatformHint": {
         "description": "Hint text in fallback reader mode"
     },
@@ -2105,7 +2105,7 @@
     "@readerNotReady": {
         "description": "Error when reader has not finished initializing"
     },
-    "seriesRecordings": "Serienaufnahmen",
+    "seriesRecordings": "Aufnahmen von TV-Serien",
     "@seriesRecordings": {
         "description": "Live TV series recordings label"
     },
@@ -2129,11 +2129,11 @@
     "@premiere": {
         "description": "Premiere category filter label"
     },
-    "guideTimeline": "Programmzeitleiste",
+    "guideTimeline": "Programminfo-Zeitleiste",
     "@guideTimeline": {
         "description": "Section title for the TV guide timeline"
     },
-    "failedToLoadGuide": "Leitfaden konnte nicht geladen werden: {error}",
+    "failedToLoadGuide": "Programminfo konnte nicht geladen werden: {error}",
     "@failedToLoadGuide": {
         "description": "Error when guide data fails to load",
         "placeholders": {
@@ -2142,7 +2142,7 @@
             }
         }
     },
-    "noChannelsFound": "Keine Kanäle gefunden",
+    "noChannelsFound": "Keine TV-Kanäle gefunden",
     "@noChannelsFound": {
         "description": "Empty state when no TV channels match the filter"
     },
@@ -2154,15 +2154,15 @@
     "@movie": {
         "description": "Movie category chip label"
     },
-    "removedFromFavoriteChannels": "Aus Lieblingskanälen entfernt",
+    "removedFromFavoriteChannels": "Aus Favoriten-Kanälen entfernt",
     "@removedFromFavoriteChannels": {
         "description": "Snackbar confirmation after removing a channel from favorites"
     },
-    "addedToFavoriteChannels": "Zu Lieblingskanälen hinzugefügt",
+    "addedToFavoriteChannels": "Zu Favoriten-Kanälen hinzugefügt",
     "@addedToFavoriteChannels": {
         "description": "Snackbar confirmation after adding a channel to favorites"
     },
-    "failedToUpdateFavoriteChannel": "Lieblingskanal konnte nicht aktualisiert werden",
+    "failedToUpdateFavoriteChannel": "Favoriten-Kanal konnte nicht aktualisiert werden",
     "@failedToUpdateFavoriteChannel": {
         "description": "Error when toggling channel favorite fails"
     },
@@ -2170,7 +2170,7 @@
     "@unfavoriteChannel": {
         "description": "Button label to remove a channel from favorites"
     },
-    "favoriteChannel": "Kanal favorisieren",
+    "favoriteChannel": "Kanal zu Favoriten hinzufügen",
     "@favoriteChannel": {
         "description": "Button label to add a channel to favorites"
     },
@@ -2195,7 +2195,7 @@
     "@failedToLoadRecordings": {
         "description": "Error when recordings fail to load"
     },
-    "scheduledInNext24Hours": "Geplant in den nächsten 24 Stunden",
+    "scheduledInNext24Hours": "Für die nächsten 24 Stunden geplant",
     "@scheduledInNext24Hours": {
         "description": "Section title for upcoming scheduled recordings"
     },
@@ -2219,7 +2219,7 @@
     "@cancelRecording": {
         "description": "Dialog title for cancelling a recording"
     },
-    "cancelScheduledRecordingOf": "Geplante Aufnahme von „{name}“ abbrechen?",
+    "cancelScheduledRecordingOf": "Geplante Aufnahme von \"{name}\" abbrechen?",
     "@cancelScheduledRecordingOf": {
         "description": "Confirmation message for cancelling a scheduled recording",
         "placeholders": {
@@ -2240,23 +2240,23 @@
     "@failedToCancelRecording": {
         "description": "Error when cancelling a recording fails"
     },
-    "failedToLoadSeriesRecordings": "Serienaufnahmen konnten nicht geladen werden",
+    "failedToLoadSeriesRecordings": "Aufnahmen von Serien konnten nicht geladen werden",
     "@failedToLoadSeriesRecordings": {
         "description": "Error when series recordings fail to load"
     },
-    "noSeriesRecordings": "Keine Serienaufnahmen",
+    "noSeriesRecordings": "Keine Aufnahmen von Serien",
     "@noSeriesRecordings": {
         "description": "Empty state when no series recordings exist"
     },
-    "cancelSeriesRecording": "Serienaufnahme abbrechen",
+    "cancelSeriesRecording": "Aufnahme der Serie abbrechen",
     "@cancelSeriesRecording": {
         "description": "Button label to cancel a series recording"
     },
-    "cancelSeriesRecordingQuestion": "Serienaufnahme abbrechen?",
+    "cancelSeriesRecordingQuestion": "Aufnahme der Serie abbrechen?",
     "@cancelSeriesRecordingQuestion": {
         "description": "Dialog title for cancelling a series recording"
     },
-    "stopRecordingName": "Aufzeichnung „{name}“ beenden?",
+    "stopRecordingName": "Aufnahme von \"{name}\" beenden?",
     "@stopRecordingName": {
         "description": "Confirmation message for stopping a series recording",
         "placeholders": {
@@ -2265,11 +2265,11 @@
             }
         }
     },
-    "failedToCancelSeriesRecording": "Serienaufnahme konnte nicht abgebrochen werden",
+    "failedToCancelSeriesRecording": "Aufnahme der Serie konnte nicht abgebrochen werden",
     "@failedToCancelSeriesRecording": {
         "description": "Error when cancelling a series recording fails"
     },
-    "searchThisLibrary": "Diese Bibliothek durchsuchen...",
+    "searchThisLibrary": "Bibliothek durchsuchen...",
     "@searchThisLibrary": {
         "description": "Search hint when scoped to a specific library"
     },
@@ -2277,7 +2277,7 @@
     "@searchEllipsis": {
         "description": "Search hint placeholder"
     },
-    "noResultsForQuery": "Keine Ergebnisse für „{query}“",
+    "noResultsForQuery": "Keine Suchergebnisse für \"{query}\"",
     "@noResultsForQuery": {
         "description": "Shown when search returns no results",
         "placeholders": {
@@ -2315,7 +2315,7 @@
     "@musicAlbums": {
         "description": "Section title for downloaded music albums"
     },
-    "noMediaInFilter": "Keine Medien in diesem Filter",
+    "noMediaInFilter": "Keine Medien entsprechend dieser Filterkriterien",
     "@noMediaInFilter": {
         "description": "Shown when no items match the selected filter"
     },
@@ -2331,7 +2331,7 @@
     "@deleteDownload": {
         "description": "Dialog title for deleting a download"
     },
-    "removeItemAndFiles": "„{name}“ und seine Dateien entfernen?",
+    "removeItemAndFiles": "\"{name}\" und zugehörige Dateien entfernen?",
     "@removeItemAndFiles": {
         "description": "Confirmation to delete a downloaded item and its files",
         "placeholders": {
@@ -2340,7 +2340,7 @@
             }
         }
     },
-    "tracksCount": "{count} Spuren",
+    "tracksCount": "{count} Titel",
     "@tracksCount": {
         "description": "Number of tracks in an album",
         "placeholders": {
@@ -2391,7 +2391,7 @@
     "@deleteEpisode": {
         "description": "Dialog title for deleting an episode"
     },
-    "removeName": "„{name}“ entfernen?",
+    "removeName": "\"{name}\" entfernen?",
     "@removeName": {
         "description": "Confirmation to remove an item by name",
         "placeholders": {
@@ -2421,7 +2421,7 @@
             }
         }
     },
-    "episodeNumber": "Folge {number}",
+    "episodeNumber": "Episode {number}",
     "@episodeNumber": {
         "description": "Episode label with number",
         "placeholders": {
@@ -6731,7 +6731,7 @@
     "@jellyfinAccount": {
         "description": "Auth option label for Seerr sign in using Jellyfin credentials"
     },
-    "localAccount": "Lokal",
+    "localAccount": "Seerr-lokal",
     "@localAccount": {
         "description": "Auth option label for Seerr sign in using local Seerr credentials"
     },
@@ -6779,7 +6779,7 @@
     "@musicVideos": {
         "description": "Section header for music videos filmography row"
     },
-    "record": "Aufzeichnen",
+    "record": "Aufnehmen",
     "@record": {
         "description": "Button label to schedule a live TV recording"
     },
@@ -6787,7 +6787,7 @@
     "@cancelRecordingAction": {
         "description": "Button label to cancel a scheduled live TV recording"
     },
-    "programSetToRecord": "Programm ist auf Aufnahme eingestellt",
+    "programSetToRecord": "Programm zur Aufnahme markiert",
     "@programSetToRecord": {
         "description": "Snackbar confirmation after scheduling a live TV program recording"
     },
@@ -7471,11 +7471,11 @@
             }
         }
     },
-    "directors": "",
+    "directors": "REGIE",
     "@directors": {
         "description": "Metadata label for directors"
     },
-    "writer": "",
+    "writer": "DREHBUCH",
     "@writer": {
         "description": "Metadata label for writer"
     },
