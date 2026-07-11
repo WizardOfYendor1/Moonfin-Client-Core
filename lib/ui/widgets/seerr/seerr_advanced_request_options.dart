@@ -5,6 +5,8 @@ import 'package:moonfin_design/moonfin_design.dart';
 import '../../../data/repositories/seerr_repository.dart';
 import '../../../data/services/seerr/seerr_api_models.dart';
 import '../../../l10n/app_localizations.dart';
+import '../focus/focusable_wrapper.dart';
+import 'seerr_tv_controls.dart';
 
 /// Holds the Radarr/Sonarr server, profile, and root folder selection for a
 /// request, including the saved-preference and anime defaults. Shared by the
@@ -176,115 +178,136 @@ class SeerrAdvancedRequestController extends ChangeNotifier {
   }
 }
 
-/// The advanced options expansion tile with server, quality profile, and root
-/// folder dropdowns, driven by a [SeerrAdvancedRequestController].
-class SeerrAdvancedRequestOptions extends StatelessWidget {
+/// The advanced options section with server, quality profile, and root folder
+/// pickers, driven by a [SeerrAdvancedRequestController]. Uses d-pad friendly
+/// rows and list pickers instead of Material dropdowns so it works on TV.
+class SeerrAdvancedRequestOptions extends StatefulWidget {
   final SeerrAdvancedRequestController controller;
 
   const SeerrAdvancedRequestOptions({super.key, required this.controller});
 
   @override
+  State<SeerrAdvancedRequestOptions> createState() =>
+      _SeerrAdvancedRequestOptionsState();
+}
+
+class _SeerrAdvancedRequestOptionsState
+    extends State<SeerrAdvancedRequestOptions> {
+  bool _expanded = false;
+
+  SeerrAdvancedRequestController get controller => widget.controller;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final headerColor = AppColorScheme.onSurface.withValues(alpha: 0.7);
     return ListenableBuilder(
       listenable: controller,
-      builder: (context, _) => ExpansionTile(
-        title: Text(
-          l10n.advancedOptions,
-          style: TextStyle(color: AppColorScheme.onSurface.withValues(alpha: 0.7)),
-        ),
-        tilePadding: EdgeInsets.zero,
+      builder: (context, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (controller.loading)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else if (controller.servers != null &&
-              controller.servers!.isNotEmpty) ...[
-            _buildServerDropdown(l10n),
-            const SizedBox(height: 16),
-            _buildProfileDropdown(l10n),
-            const SizedBox(height: 16),
-            _buildRootFolderDropdown(l10n),
-          ] else
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                l10n.noServiceServersConfigured,
-                style: TextStyle(color: AppColorScheme.onSurface.withValues(alpha: 0.54)),
+          FocusableWrapper(
+            onSelect: () => setState(() => _expanded = !_expanded),
+            borderRadius: 8,
+            useBackgroundFocus: true,
+            disableScale: true,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.advancedOptions,
+                      style: TextStyle(color: headerColor),
+                    ),
+                  ),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    color: headerColor,
+                  ),
+                ],
               ),
             ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 8),
+            if (controller.loading)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else if (controller.servers != null &&
+                controller.servers!.isNotEmpty) ...[
+              _buildPickerRow<SeerrServiceServerDetails>(
+                label: l10n.server,
+                items: controller.servers ?? const [],
+                idOf: (s) => s.server.id,
+                labelOf: _serverLabel,
+                selectedId: controller.selectedServerId,
+                onChanged: controller.onServerChanged,
+              ),
+              const SizedBox(height: 12),
+              _buildPickerRow<SeerrQualityProfile>(
+                label: l10n.qualityProfile,
+                items: controller.activeServer?.profiles ?? const [],
+                idOf: (p) => p.id,
+                labelOf: (p) => p.name,
+                selectedId: controller.selectedProfileId,
+                onChanged: controller.onProfileChanged,
+              ),
+              const SizedBox(height: 12),
+              _buildPickerRow<SeerrRootFolder>(
+                label: l10n.rootFolder,
+                items: controller.activeServer?.rootFolders ?? const [],
+                idOf: (f) => f.id,
+                labelOf: (f) => f.path,
+                selectedId: controller.selectedRootFolderId,
+                onChanged: controller.onRootFolderChanged,
+              ),
+            ] else
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  l10n.noServiceServersConfigured,
+                  style: TextStyle(
+                    color: AppColorScheme.onSurface.withValues(alpha: 0.54),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
-    labelText: label,
-    labelStyle: TextStyle(color: AppColorScheme.onSurface.withValues(alpha: 0.54)),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-    border: const OutlineInputBorder(),
-    enabledBorder: OutlineInputBorder(
-      borderSide: ThemeRegistry.active.borders.chipBorder,
-    ),
-  );
+  String _serverLabel(SeerrServiceServerDetails s) =>
+      '${s.server.name}${s.server.is4k ? " (4K)" : ""}';
 
-  Widget _buildServerDropdown(AppLocalizations l10n) {
-    final servers = controller.servers;
-    return DropdownButtonFormField<int>(
-      decoration: _decoration(l10n.server),
-      dropdownColor: AppColorScheme.surface,
-      initialValue:
-          controller.selectedServerId ?? servers?.firstOrNull?.server.id,
-      items: servers
-          ?.map(
-            (s) => DropdownMenuItem(
-              value: s.server.id,
-              child: Text(
-                '${s.server.name}${s.server.is4k ? " (4K)" : ""}',
-                style: TextStyle(color: AppColorScheme.onSurface),
-              ),
-            ),
-          )
-          .toList(),
-      onChanged: controller.onServerChanged,
-    );
-  }
-
-  Widget _buildProfileDropdown(AppLocalizations l10n) {
-    final profiles = controller.activeServer?.profiles ?? [];
-    return DropdownButtonFormField<int>(
-      decoration: _decoration(l10n.qualityProfile),
-      dropdownColor: AppColorScheme.surface,
-      initialValue: controller.selectedProfileId ?? profiles.firstOrNull?.id,
-      items: profiles
-          .map(
-            (p) => DropdownMenuItem(
-              value: p.id,
-              child: Text(p.name, style: TextStyle(color: AppColorScheme.onSurface)),
-            ),
-          )
-          .toList(),
-      onChanged: controller.onProfileChanged,
-    );
-  }
-
-  Widget _buildRootFolderDropdown(AppLocalizations l10n) {
-    final folders = controller.activeServer?.rootFolders ?? [];
-    return DropdownButtonFormField<int>(
-      decoration: _decoration(l10n.rootFolder),
-      dropdownColor: AppColorScheme.surface,
-      initialValue: controller.selectedRootFolderId ?? folders.firstOrNull?.id,
-      items: folders
-          .map(
-            (f) => DropdownMenuItem(
-              value: f.id,
-              child: Text(f.path, style: TextStyle(color: AppColorScheme.onSurface)),
-            ),
-          )
-          .toList(),
-      onChanged: controller.onRootFolderChanged,
+  Widget _buildPickerRow<T>({
+    required String label,
+    required List<T> items,
+    required int Function(T) idOf,
+    required String Function(T) labelOf,
+    required int? selectedId,
+    required ValueChanged<int?> onChanged,
+  }) {
+    final resolvedId = selectedId ?? (items.isEmpty ? null : idOf(items.first));
+    final selected = items.where((e) => idOf(e) == resolvedId).firstOrNull ??
+        items.firstOrNull;
+    return SeerrSelectorRow(
+      label: label,
+      value: selected == null ? '' : labelOf(selected),
+      onTap: () async {
+        final ids = [for (final e in items) idOf(e)];
+        final current = ids.indexOf(resolvedId ?? -1);
+        final picked = await showSeerrOptionPicker(
+          context,
+          title: label,
+          labels: [for (final e in items) labelOf(e)],
+          selectedIndex: current < 0 ? 0 : current,
+        );
+        if (picked != null) onChanged(ids[picked]);
+      },
     );
   }
 }

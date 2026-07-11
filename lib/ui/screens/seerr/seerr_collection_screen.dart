@@ -17,6 +17,7 @@ import '../../widgets/media_card.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/seerr/seerr_advanced_request_options.dart';
 import '../../widgets/seerr/seerr_quota_row.dart';
+import '../../widgets/seerr/seerr_tv_controls.dart';
 import '../../widgets/track_selector_dialog.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../widgets/focus/request_initial_focus.dart';
@@ -467,24 +468,18 @@ class _CollectionRequestSheetState extends State<_CollectionRequestSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CheckboxListTile(
-            title: Text(
-              '${l10n.selectAll} (${_requestable.length})',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          SeerrToggleRow(
+            title: '${l10n.selectAll} (${_requestable.length})',
             value: _allSelected,
+            checkbox: true,
+            autofocus: true,
             onChanged: (v) => setState(() {
-              if (v == true) {
+              if (v) {
                 _selectAll();
               } else {
                 _selected.clear();
               }
             }),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
           ),
           const Divider(color: Colors.white12, height: 1),
           ConstrainedBox(
@@ -499,11 +494,8 @@ class _CollectionRequestSheetState extends State<_CollectionRequestSheet> {
             ),
           ),
           if (vm.canRequest4kMovies)
-            SwitchListTile.adaptive(
-              title: Text(
-                l10n.uhd4k,
-                style: const TextStyle(color: Colors.white),
-              ),
+            SeerrToggleRow(
+              title: l10n.uhd4k,
               value: _is4k,
               onChanged: _submitting
                   ? null
@@ -512,7 +504,6 @@ class _CollectionRequestSheetState extends State<_CollectionRequestSheet> {
                       _applySavedPreferences();
                       _selectAll();
                     }),
-              contentPadding: EdgeInsets.zero,
             ),
           if (vm.canRequestAdvanced) ...[
             const Divider(color: Colors.white12),
@@ -529,43 +520,33 @@ class _CollectionRequestSheetState extends State<_CollectionRequestSheet> {
             ),
           ],
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _submitting || _selected.isEmpty || overCap
-                ? null
-                : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.white12,
-              disabledForegroundColor: Colors.white38,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-            child: _submitting && s.isRequesting
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        l10n.requestingProgress(
-                          s.requestProgressCurrent,
-                          s.requestProgressTotal,
-                        ),
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    ],
-                  )
-                : Text(
-                    l10n.requestMoviesCount(_selected.length),
-                    style: const TextStyle(fontSize: 15),
+          Row(
+            children: [
+              Expanded(
+                child: SeerrDialogButton(
+                  label: l10n.cancel,
+                  onPressed: _submitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SeerrDialogButton(
+                  label: l10n.requestMoviesCount(_selected.length),
+                  primary: true,
+                  primaryColor: const Color(0xFF6366F1),
+                  busy: _submitting && s.isRequesting,
+                  busyLabel: l10n.requestingProgress(
+                    s.requestProgressCurrent,
+                    s.requestProgressTotal,
                   ),
+                  onPressed: _submitting || _selected.isEmpty || overCap
+                      ? null
+                      : _submit,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -592,17 +573,13 @@ class _CollectionRequestSheetState extends State<_CollectionRequestSheet> {
       };
     }
 
-    return CheckboxListTile(
-      title: Text(
-        year != null ? '${part.displayTitle} ($year)' : part.displayTitle,
-        style: TextStyle(
-          color: requestable ? Colors.white : Colors.white38,
-          fontSize: 14,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      secondary: statusLabel != null
+    return SeerrToggleRow(
+      title: year != null
+          ? '${part.displayTitle} ($year)'
+          : part.displayTitle,
+      value: requestable ? selected : false,
+      checkbox: true,
+      trailing: statusLabel != null
           ? Text(
               statusLabel,
               style: TextStyle(
@@ -611,10 +588,9 @@ class _CollectionRequestSheetState extends State<_CollectionRequestSheet> {
               ),
             )
           : null,
-      value: requestable ? selected : false,
       onChanged: requestable && !_submitting
           ? (v) => setState(() {
-              if (v == true) {
+              if (v) {
                 if (_selected.length < _selectionCap) {
                   _selected.add(part.id);
                 }
@@ -623,9 +599,6 @@ class _CollectionRequestSheetState extends State<_CollectionRequestSheet> {
               }
             })
           : null,
-      contentPadding: EdgeInsets.zero,
-      controlAffinity: ListTileControlAffinity.leading,
-      dense: true,
     );
   }
 }

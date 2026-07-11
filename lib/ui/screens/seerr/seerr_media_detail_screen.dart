@@ -20,9 +20,11 @@ import '../../widgets/library_row.dart';
 import '../../widgets/seerr/seerr_advanced_request_options.dart';
 import '../../widgets/seerr/seerr_quota_row.dart';
 import '../../widgets/seerr/seerr_text_field.dart';
+import '../../widgets/seerr/seerr_tv_controls.dart';
 import '../../widgets/media_card.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/overlay_sheet.dart';
+import '../../widgets/focus/focusable_wrapper.dart';
 import '../../widgets/track_selector_dialog.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../widgets/focus/request_initial_focus.dart';
@@ -2024,53 +2026,70 @@ class _RequestDialogState extends State<_RequestDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final quotaRow = _buildQuotaRow(l10n);
+
+    var autofocusPending = true;
+    bool takeAutofocus() {
+      if (!autofocusPending) return false;
+      autofocusPending = false;
+      return true;
+    }
+
+    final children = <Widget>[];
+    if (widget.vm.canRequest4k) {
+      children.add(
+        SeerrToggleRow(
+          title: l10n.uhd4k,
+          value: _is4k,
+          autofocus: takeAutofocus(),
+          onChanged: (v) => setState(() {
+            _is4k = v;
+            _applySavedPreferences();
+          }),
+        ),
+      );
+    }
+    if (widget.isTv) {
+      children.add(const Divider(color: Colors.white12));
+      children.add(_buildSeasonSelector(autofocusAll: takeAutofocus()));
+    }
+    if (widget.vm.canRequestAdvanced) {
+      children.add(const Divider(color: Colors.white12));
+      children.add(SeerrAdvancedRequestOptions(controller: _advanced));
+    }
+    if (quotaRow != null) {
+      children.add(const SizedBox(height: 12));
+      children.add(quotaRow);
+    }
+    children.add(const SizedBox(height: 20));
+    children.add(
+      Row(
+        children: [
+          Expanded(
+            child: SeerrDialogButton(
+              label: l10n.cancel,
+              onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SeerrDialogButton(
+              label: l10n.submitRequest,
+              primary: true,
+              primaryColor: const Color(0xFF6366F1),
+              busy: _submitting,
+              onPressed: _quotaBlocked || _submitting ? null : _submit,
+            ),
+          ),
+        ],
+      ),
+    );
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (widget.vm.canRequest4k)
-            SwitchListTile.adaptive(
-              title: Text(
-                l10n.uhd4k,
-                style: const TextStyle(color: Colors.white),
-              ),
-              value: _is4k,
-              onChanged: (v) => setState(() {
-                _is4k = v;
-                _applySavedPreferences();
-              }),
-              contentPadding: EdgeInsets.zero,
-            ),
-          if (widget.isTv) ...[
-            const Divider(color: Colors.white12),
-            _buildSeasonSelector(),
-          ],
-          if (widget.vm.canRequestAdvanced) ...[
-            const Divider(color: Colors.white12),
-            SeerrAdvancedRequestOptions(controller: _advanced),
-          ],
-          if (quotaRow != null) ...[
-            const SizedBox(height: 12),
-            quotaRow,
-          ],
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _quotaBlocked ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6366F1),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.white12,
-              disabledForegroundColor: Colors.white38,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-            child: Text(
-              l10n.submitRequest,
-              style: const TextStyle(fontSize: 15),
-            ),
-          ),
-        ],
+        children: children,
       ),
     );
   }
@@ -2089,63 +2108,48 @@ class _RequestDialogState extends State<_RequestDialog> {
     return SeerrQuotaRow(label: label, blocked: blocked);
   }
 
-  Widget _buildSeasonSelector() {
+  Widget _buildSeasonSelector({bool autofocusAll = false}) {
     final l10n = AppLocalizations.of(context);
     final seasonCount = widget.numberOfSeasons;
     final requested = widget.requestedSeasons;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CheckboxListTile(
-          title: Text(
-            l10n.allSeasons,
-            style: const TextStyle(color: Colors.white),
-          ),
+        SeerrToggleRow(
+          title: l10n.allSeasons,
           value: _allSeasons,
+          checkbox: true,
+          autofocus: autofocusAll,
           onChanged: (v) => setState(() {
-            _allSeasons = v ?? true;
+            _allSeasons = v;
             if (_allSeasons) _selectedSeasons.clear();
           }),
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
         ),
         if (!_allSeasons && seasonCount > 0)
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: List.generate(seasonCount, (i) {
-              final num = i + 1;
-              final alreadyRequested = requested.contains(num);
-              final selected = _selectedSeasons.contains(num);
-              return FilterChip(
-                label: Text(
-                  l10n.seasonChip(num),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: alreadyRequested
-                        ? Colors.white38
-                        : selected
-                        ? Colors.white
-                        : Colors.white70,
-                  ),
-                ),
-                selected: selected,
-                onSelected: alreadyRequested
-                    ? null
-                    : (v) => setState(() {
-                        if (v) {
-                          _selectedSeasons.add(num);
-                        } else {
-                          _selectedSeasons.remove(num);
-                        }
-                      }),
-                selectedColor: const Color(0xFF6366F1),
-                checkmarkColor: Colors.white,
-                disabledColor: Colors.white.withValues(alpha: 0.05),
-                backgroundColor: Colors.white12,
-                side: BorderSide.none,
-              );
-            }),
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(seasonCount, (i) {
+                final num = i + 1;
+                final alreadyRequested = requested.contains(num);
+                final selected = _selectedSeasons.contains(num);
+                return SeerrChoiceChip(
+                  label: l10n.seasonChip(num),
+                  selected: selected,
+                  onSelected: alreadyRequested
+                      ? null
+                      : (v) => setState(() {
+                          if (v) {
+                            _selectedSeasons.add(num);
+                          } else {
+                            _selectedSeasons.remove(num);
+                          }
+                        }),
+                );
+              }),
+            ),
           ),
       ],
     );
@@ -2376,33 +2380,27 @@ class _ReportIssueDialogState extends State<_ReportIssueDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          RadioGroup<int>(
-            groupValue: _issueType,
-            onChanged: (v) =>
-                setState(() => _issueType = v ?? SeerrIssue.typeVideo),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final (value, label) in types)
-                  RadioListTile<int>(
-                    title: Text(
-                      label,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    value: value,
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                  ),
-              ],
-            ),
-          ),
+          for (var i = 0; i < types.length; i++)
+            _buildTypeOption(types[i].$1, types[i].$2, autofocus: i == 0),
           if (widget.isTv && _seasonNumbers.isNotEmpty) ...[
             const Divider(color: Colors.white12),
-            const SizedBox(height: 8),
-            _buildSeasonDropdown(l10n),
+            const SizedBox(height: 4),
+            SeerrSelectorRow(
+              label: l10n.season,
+              value: _season <= 0
+                  ? l10n.allSeasons
+                  : l10n.seasonNumber(_season),
+              onTap: () => _pickSeason(l10n),
+            ),
             if (_season > 0) ...[
               const SizedBox(height: 12),
-              _buildEpisodeDropdown(l10n),
+              SeerrSelectorRow(
+                label: l10n.episode,
+                value: _episode <= 0
+                    ? l10n.allEpisodes
+                    : l10n.episodeNumber(_episode),
+                onTap: () => _pickEpisode(l10n),
+              ),
             ],
           ],
           const SizedBox(height: 16),
@@ -2419,100 +2417,96 @@ class _ReportIssueDialogState extends State<_ReportIssueDialog> {
           const SizedBox(height: 20),
           ValueListenableBuilder(
             valueListenable: _messageController,
-            builder: (context, value, _) => ElevatedButton(
-              onPressed: value.text.trim().isEmpty || _submitting
-                  ? null
-                  : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber[800],
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.white12,
-                disabledForegroundColor: Colors.white38,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: _submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white70,
-                      ),
-                    )
-                  : Text(
-                      l10n.submitReport,
-                      style: const TextStyle(fontSize: 15),
+            builder: (context, value, _) {
+              final canSend = value.text.trim().isNotEmpty && !_submitting;
+              return Row(
+                children: [
+                  Expanded(
+                    child: SeerrDialogButton(
+                      label: l10n.cancel,
+                      onPressed: _submitting
+                          ? null
+                          : () => Navigator.of(context).pop(),
                     ),
-            ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SeerrDialogButton(
+                      label: l10n.submitReport,
+                      primary: true,
+                      busy: _submitting,
+                      onPressed: canSend ? _submit : null,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  InputDecoration _dropdownDecoration(String label) => InputDecoration(
-    labelText: label,
-    labelStyle: const TextStyle(color: Colors.white54),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-    border: const OutlineInputBorder(),
-    enabledBorder: OutlineInputBorder(
-      borderSide: ThemeRegistry.active.borders.chipBorder,
-    ),
-  );
-
-  Widget _buildSeasonDropdown(AppLocalizations l10n) {
-    return DropdownButtonFormField<int>(
-      decoration: _dropdownDecoration(l10n.season),
-      dropdownColor: const Color(0xFF1A1A2E),
-      initialValue: _season,
-      items: [
-        DropdownMenuItem(
-          value: 0,
-          child: Text(
-            l10n.allSeasons,
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        for (final num in _seasonNumbers)
-          DropdownMenuItem(
-            value: num,
-            child: Text(
-              l10n.seasonNumber(num),
-              style: const TextStyle(color: Colors.white),
+  Widget _buildTypeOption(int value, String label, {bool autofocus = false}) {
+    final selected = _issueType == value;
+    return FocusableWrapper(
+      autofocus: autofocus,
+      onSelect: () => setState(() => _issueType = value),
+      borderRadius: 8,
+      useBackgroundFocus: true,
+      disableScale: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected ? AppColorScheme.accent : Colors.white38,
+              size: 20,
             ),
-          ),
-      ],
-      onChanged: (v) => setState(() {
-        _season = v ?? 0;
-        _episode = 0;
-      }),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildEpisodeDropdown(AppLocalizations l10n) {
-    final count = _episodeCount ?? 0;
-    return DropdownButtonFormField<int>(
-      decoration: _dropdownDecoration(l10n.episode),
-      dropdownColor: const Color(0xFF1A1A2E),
-      initialValue: _episode,
-      items: [
-        DropdownMenuItem(
-          value: 0,
-          child: Text(
-            l10n.allEpisodes,
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        for (var i = 1; i <= count; i++)
-          DropdownMenuItem(
-            value: i,
-            child: Text(
-              l10n.episodeNumber(i),
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
+  Future<void> _pickSeason(AppLocalizations l10n) async {
+    final values = <int>[0, ..._seasonNumbers];
+    final current = values.indexOf(_season);
+    final picked = await showSeerrOptionPicker(
+      context,
+      title: l10n.season,
+      labels: [
+        l10n.allSeasons,
+        for (final num in _seasonNumbers) l10n.seasonNumber(num),
       ],
-      onChanged: (v) => setState(() => _episode = v ?? 0),
+      selectedIndex: current < 0 ? 0 : current,
     );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _season = values[picked];
+      _episode = 0;
+    });
+  }
+
+  Future<void> _pickEpisode(AppLocalizations l10n) async {
+    final count = _episodeCount ?? 0;
+    final picked = await showSeerrOptionPicker(
+      context,
+      title: l10n.episode,
+      labels: [
+        l10n.allEpisodes,
+        for (var i = 1; i <= count; i++) l10n.episodeNumber(i),
+      ],
+      selectedIndex: _episode.clamp(0, count),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _episode = picked);
   }
 }

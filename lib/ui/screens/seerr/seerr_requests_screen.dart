@@ -21,8 +21,10 @@ import '../../widgets/adaptive/adaptive_glass.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/seerr/seerr_text_field.dart';
+import '../../widgets/seerr/seerr_tv_controls.dart';
 import '../../widgets/track_selector_dialog.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/focus/focusable_wrapper.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 
 const _tmdbPosterBase = 'https://image.tmdb.org/t/p/w200';
@@ -1737,18 +1739,23 @@ class _IssueThreadDialogState extends State<_IssueThreadDialog> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _sending ? null : _sendComment,
-                  icon: _sending
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          Icons.send,
-                          color: onSurface.withValues(alpha: 0.7),
-                        ),
+                FocusableWrapper(
+                  onSelect: _sending ? null : _sendComment,
+                  borderRadius: 8,
+                  disableScale: true,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            Icons.send,
+                            color: onSurface.withValues(alpha: 0.7),
+                          ),
+                  ),
                 ),
               ],
             ),
@@ -1758,33 +1765,27 @@ class _IssueThreadDialogState extends State<_IssueThreadDialog> {
             children: [
               if (vm.canResolve(issue))
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: SeerrDialogButton(
+                    primary: true,
+                    primaryColor: resolveColor,
+                    foreground: _onStatusColor(resolveColor),
+                    icon: issue.isOpen ? Icons.check : Icons.refresh,
+                    label: issue.isOpen ? l10n.resolveAction : l10n.reopenAction,
                     onPressed: isActioning
                         ? null
                         : () => issue.isOpen
                               ? vm.resolveIssue(issue.id)
                               : vm.reopenIssue(issue.id),
-                    icon: Icon(
-                      issue.isOpen ? Icons.check : Icons.refresh,
-                      size: 18,
-                    ),
-                    label: Text(
-                      issue.isOpen ? l10n.resolveAction : l10n.reopenAction,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: resolveColor,
-                      foregroundColor: _onStatusColor(resolveColor),
-                    ),
                   ),
                 ),
               if (vm.canDelete(issue)) ...[
                 const SizedBox(width: 8),
-                TextButton(
-                  onPressed: isActioning ? null : _confirmDelete,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColorScheme.statusError,
+                Expanded(
+                  child: SeerrDialogButton(
+                    label: l10n.delete,
+                    foreground: AppColorScheme.statusError,
+                    onPressed: isActioning ? null : _confirmDelete,
                   ),
-                  child: Text(l10n.delete),
                 ),
               ],
             ],
