@@ -1320,12 +1320,15 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
       cardFocusExpansion: cardFocusExpansion,
       focusNode: focusNode,
       onKeyEvent: onNavKey,
-      onTap: () => item.mediaType == 'person'
-          ? context.push(Destinations.seerrPerson(item.id.toString()))
-          : context.push(
-              Destinations.seerrMedia(item.id.toString()),
-              extra: {'mediaType': item.mediaType ?? 'movie'},
-            ),
+      onTap: () => switch (item.mediaType) {
+        'person' => context.push(Destinations.seerrPerson(item.id.toString())),
+        'collection' =>
+          context.push(Destinations.seerrCollection(item.id.toString())),
+        _ => context.push(
+          Destinations.seerrMedia(item.id.toString()),
+          extra: {'mediaType': item.mediaType ?? 'movie'},
+        ),
+      },
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../preference/seerr_preferences.dart';
 import '../repositories/seerr_repository.dart';
 import '../services/seerr/seerr_api_models.dart';
+import '../services/seerr/seerr_error.dart';
 
 class SeerrMediaDetailState {
   final bool isLoading;
@@ -14,7 +15,9 @@ class SeerrMediaDetailState {
   final SeerrUser? currentUser;
   final bool isRequesting;
   final String? requestError;
+  final SeerrRequestErrorKind? requestErrorKind;
   final String? requestSuccess;
+  final SeerrQuota? quota;
 
   const SeerrMediaDetailState({
     this.isLoading = false,
@@ -26,7 +29,9 @@ class SeerrMediaDetailState {
     this.currentUser,
     this.isRequesting = false,
     this.requestError,
+    this.requestErrorKind,
     this.requestSuccess,
+    this.quota,
   });
 
   bool get isMovie => movie != null;
@@ -129,7 +134,10 @@ class SeerrMediaDetailState {
     if (requests == null) return {};
     final seasons = <int>{};
     for (final r in requests) {
-      if (r.status == SeerrRequest.statusDeclined) continue;
+      if (r.status == SeerrRequest.statusDeclined ||
+          r.status == SeerrRequest.statusFailed) {
+        continue;
+      }
       if (r.seasons != null) {
         for (final s in r.seasons!) {
           seasons.add(s.seasonNumber);
@@ -137,17 +145,6 @@ class SeerrMediaDetailState {
       }
     }
     return seasons;
-  }
-
-  String get requestStatusText {
-    if (isFullyAvailable) return 'Available';
-    if (isPartiallyAvailable) return 'Partially Available';
-    if (isProcessing) return 'Requested';
-    if (isPending) return 'Pending';
-    if (isBlacklisted) return 'Blocklisted';
-    if (isDeleted) return 'Deleted';
-    if (hasExistingRequest) return 'Requested';
-    return 'Not Requested';
   }
 
   SeerrMediaDetailState copyWith({
@@ -160,7 +157,9 @@ class SeerrMediaDetailState {
     SeerrUser? currentUser,
     bool? isRequesting,
     String? requestError,
+    SeerrRequestErrorKind? requestErrorKind,
     String? requestSuccess,
+    SeerrQuota? quota,
   }) =>
       SeerrMediaDetailState(
         isLoading: isLoading ?? this.isLoading,
@@ -172,7 +171,9 @@ class SeerrMediaDetailState {
         currentUser: currentUser ?? this.currentUser,
         isRequesting: isRequesting ?? this.isRequesting,
         requestError: requestError,
+        requestErrorKind: requestErrorKind,
         requestSuccess: requestSuccess,
+        quota: quota ?? this.quota,
       );
 }
 
@@ -322,6 +323,12 @@ class SeerrMediaDetailViewModel extends ChangeNotifier {
       );
 
       await _reloadDetails('Request submitted');
+    } on SeerrRequestException catch (e) {
+      _state = _state.copyWith(
+        isRequesting: false,
+        requestError: e.serverMessage ?? e.kind.name,
+        requestErrorKind: e.kind,
+      );
     } catch (e) {
       _state = _state.copyWith(
         isRequesting: false,
@@ -329,6 +336,56 @@ class SeerrMediaDetailViewModel extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  Future<void> loadQuota() async {
+    final user = _state.currentUser;
+    if (user == null || _state.quota != null) return;
+    try {
+      final quota = await _repo.getUserQuota(user.id);
+      _state = _state.copyWith(quota: quota);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<bool> submitIssue({
+    required int issueType,
+    required String message,
+    int problemSeason = 0,
+    int problemEpisode = 0,
+  }) async {
+    final mediaId = _state.mediaInfo?.id;
+    if (mediaId == null || _state.isRequesting) return false;
+
+    _state = _state.copyWith(
+      isRequesting: true,
+      requestError: null,
+      requestSuccess: null,
+    );
+    notifyListeners();
+
+    try {
+      await _repo.createIssue(
+        issueType: issueType,
+        message: message,
+        mediaId: mediaId,
+        problemSeason: problemSeason,
+        problemEpisode: problemEpisode,
+      );
+      _state = _state.copyWith(
+        isRequesting: false,
+        requestSuccess: 'Issue reported',
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _state = _state.copyWith(
+        isRequesting: false,
+        requestError: e.toString(),
+      );
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> cancelRequests(List<int> requestIds) async {
@@ -437,6 +494,14 @@ class SeerrMediaDetailViewModel extends ChangeNotifier {
     final user = _state.currentUser;
     if (user == null) return false;
     return user.hasAdvancedRequestPermission;
+  }
+
+  bool get canReportIssue {
+    final user = _state.currentUser;
+    if (user == null || !user.canCreateIssues) return false;
+    // Issues need the seerr media id, so the media has to exist on the server.
+    if (_state.mediaInfo?.id == null) return false;
+    return _state.isFullyAvailable || _state.isPartiallyAvailable;
   }
 
   String? get savedProfileId {

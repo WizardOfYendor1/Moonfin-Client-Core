@@ -65,6 +65,10 @@ class SeerrPreferences {
   Future<void> setShowInToolbar(bool value) =>
       _store.setBool(_userKey('show_in_toolbar'), value);
 
+  String get requestsFilter => _store.getString(_userKey('requests_filter')) ?? '';
+  Future<void> setRequestsFilter(String value) =>
+      _store.setString(_userKey('requests_filter'), value);
+
   bool get showRequestStatus => _store.getBool(_userKey('show_request_status')) ?? true;
   Future<void> setShowRequestStatus(bool value) =>
       _store.setBool(_userKey('show_request_status'), value);
@@ -194,6 +198,7 @@ class SeerrPreferences {
       'moonfin_mode', 'moonfin_display_name', 'moonfin_variant', 'moonfin_user_id',
       'last_connection_success',
       'show_in_navigation', 'show_in_toolbar', 'show_request_status',
+      'requests_filter',
       'block_nsfw', 'notify_new_requests', 'notify_library_added',
       'fetch_limit', 'rows_config', 'home_rows_config',
       'hd_movie_profile_id', '4k_movie_profile_id',

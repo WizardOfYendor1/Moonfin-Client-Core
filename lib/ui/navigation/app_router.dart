@@ -38,6 +38,7 @@ import '../screens/detail/item_list_screen.dart';
 import '../screens/detail/music_favorites_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/seerr/seerr_browse_screen.dart';
+import '../screens/seerr/seerr_collection_screen.dart';
 import '../screens/seerr/seerr_discover_screen.dart';
 import '../screens/seerr/seerr_media_detail_screen.dart';
 import '../screens/seerr/seerr_person_screen.dart';
@@ -767,6 +768,13 @@ final appRouter = GoRouter(
           itemId: itemId,
           mediaType: state.uri.queryParameters['mediaType'],
         );
+      },
+    ),
+    GoRoute(
+      path: Destinations.seerrCollectionDetail,
+      builder: (context, state) {
+        final collectionId = state.pathParameters['collectionId']!;
+        return SeerrCollectionScreen(collectionId: collectionId);
       },
     ),
     GoRoute(

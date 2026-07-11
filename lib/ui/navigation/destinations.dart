@@ -147,6 +147,7 @@ class Destinations {
   static const seerrBrowse = '/seerr/browse';
   static const seerrMediaDetail = '/seerr/media/:itemId';
   static const seerrPersonDetail = '/seerr/person/:personId';
+  static const seerrCollectionDetail = '/seerr/collection/:collectionId';
 
   // Downloads / Saved Media
   static const downloads = '/downloads';
@@ -278,6 +279,8 @@ class Destinations {
     return Uri(path: base, queryParameters: {'mediaType': mediaType}).toString();
   }
   static String seerrPerson(String personId) => '/seerr/person/$personId';
+  static String seerrCollection(String collectionId) =>
+      '/seerr/collection/$collectionId';
 
   static String downloadedSeries(String seriesId) =>
       '/downloads/series/$seriesId';
