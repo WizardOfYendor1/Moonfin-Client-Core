@@ -2505,6 +2505,7 @@ class _SettingsTextFieldState extends State<_SettingsTextField> {
               key: _tvFieldKey,
               controller: widget.controller,
               isFocused: focused,
+              popParentOnKeyboardClose: false,
               hint: widget.hint,
               preferSystemIme: GetIt.instance<UserPreferences>().get(
                 UserPreferences.preferSystemImeKeyboard,
