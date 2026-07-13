@@ -2132,7 +2132,17 @@ class _ContentRowsState extends State<_ContentRows>
         _scrollController.position.maxScrollExtent,
       );
       if (_scrollController.offset < target) {
-        _scrollController.jumpTo(target);
+        _verticalNavInFlight = true;
+        try {
+          await _scrollController.animateTo(
+            target,
+            duration: _focusHandoffDuration,
+            curve: _focusHandoffCurve,
+          );
+        } finally {
+          _verticalNavInFlight = false;
+        }
+        if (!mounted) return;
       }
     }
     await _focusAdjacentRowItem(widget.viewModel.rows, -1, 1);
