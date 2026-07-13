@@ -321,9 +321,7 @@ void main() async {
   configureHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (PlatformDetection.isAppleTV) {
-    registerGameCoreLicenses();
-  }
+  registerGameCoreLicenses();
 
   if (!PlatformDetection.isWeb && PlatformDetection.isWindows) {
     try {

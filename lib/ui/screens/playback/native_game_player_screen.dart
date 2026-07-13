@@ -10,13 +10,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:server_core/server_core.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../../../playback/appletv_game_player.dart';
+import '../../../playback/native_game_player.dart';
 import '../../../util/game_cores.dart';
+import '../../../util/platform_detection.dart';
 
-/// Native (tvOS) game player: the libretro core runs in the Runner and renders
-/// into a Flutter texture, so this screen stays plain Flutter. It downloads and
-/// extracts the ROM, plays with a Bluetooth controller, and syncs the save
-/// state on exit.
+/// Native game player: the libretro core runs in the runner and renders into a
+/// Flutter texture, so this screen stays plain Flutter. It downloads and
+/// extracts the ROM, plays with a game controller, and syncs the save state on
+/// exit. Used on tvOS (bundled cores) and Android/desktop (downloaded cores).
 class NativeGamePlayerScreen extends StatefulWidget {
   const NativeGamePlayerScreen({
     super.key,
@@ -39,7 +40,9 @@ class NativeGamePlayerScreen extends StatefulWidget {
 
 class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
   final MediaServerClient _client = GetIt.instance<MediaServerClient>();
-  final AppleTvGamePlayer _player = AppleTvGamePlayer();
+  final NativeGamePlayer _player = NativeGamePlayer.create();
+
+  String get _stateKey => gameStateKey(widget.gameId);
 
   String? _error;
   String _status = '';
@@ -63,7 +66,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    _events = AppleTvGamePlayer.events.listen(_onEvent);
+    _events = _player.events.listen(_onEvent);
     _prepare();
   }
 
@@ -116,7 +119,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
 
   void _onRemotePress(String? key) => _nav(key == 'select' ? 'confirm' : key);
 
-  // Menu opens or closes the overlay; the rest only act while it is open.
+  // Menu opens or closes the overlay. The rest only act while it is open.
   void _nav(String? action) {
     switch (action) {
       case 'menu':
@@ -140,11 +143,29 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
       setState(() => _error = 'This server does not support games.');
       return;
     }
-    final coreId = bundledCoreId(widget.core);
+    final coreId = libretroCoreId(widget.core);
     if (coreId == null) {
-      setState(
-          () => _error = 'This system is not supported on Apple TV yet.');
+      setState(() => _error = 'This system is not supported yet.');
       return;
+    }
+
+    // tvOS bundles its cores. Android and desktop load a downloaded file.
+    String? corePath;
+    if (!PlatformDetection.isAppleTV) {
+      if (!supportsCoreDownloads) {
+        if (mounted) {
+          setState(() => _error = 'This system is not supported on this device.');
+        }
+        return;
+      }
+      corePath = await installedCorePath(coreId);
+      if (corePath == null) {
+        if (mounted) {
+          setState(() => _error =
+              'The $coreId core is not installed. Add it in Settings, under Emulator Cores.');
+        }
+        return;
+      }
     }
 
     try {
@@ -203,6 +224,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
           await _loadSettings(games, coreId).catchError((_) => null);
       final info = await _player.load(
         core: coreId,
+        corePath: corePath,
         romPath: contentPath,
         systemDir: systemDir.path,
         saveDir: saveDir.path,
@@ -218,7 +240,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
 
       await _player.start();
       if (!widget.startFresh) {
-        final save = await games.getSave(widget.gameId);
+        final save = await games.getSave(_stateKey);
         if (save != null && save.isNotEmpty) {
           await _player.loadState(Uint8List.fromList(save));
         }
@@ -363,14 +385,14 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
     final games = _client.gamesApi;
     final bytes = await _player.saveState();
     if (bytes != null && bytes.isNotEmpty && games != null) {
-      await games.putSave(widget.gameId, bytes);
+      await games.putSave(_stateKey, bytes);
     }
     _closeOverlay();
   }
 
   Future<void> _loadState() async {
     final games = _client.gamesApi;
-    final save = await games?.getSave(widget.gameId);
+    final save = await games?.getSave(_stateKey);
     if (save != null && save.isNotEmpty) {
       await _player.loadState(Uint8List.fromList(save));
     }
@@ -412,11 +434,11 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
       if (_textureId != null && games != null) {
         final state = await _player.saveState();
         if (state != null && state.isNotEmpty) {
-          await games.putSave(widget.gameId, state);
+          await games.putSave(_stateKey, state);
         }
         final options = await _player.getCurrentOptions();
         if (options.isNotEmpty) {
-          final coreId = bundledCoreId(widget.core);
+          final coreId = libretroCoreId(widget.core);
           final blob = options.entries
               .map((e) => '${e.key}=${e.value}')
               .join('\n')

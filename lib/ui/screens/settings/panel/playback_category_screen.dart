@@ -64,6 +64,15 @@ class _PlaybackCategoryScreen extends StatelessWidget {
                       const _OfflineDownloadsScreen(),
                     ),
                   ),
+                if (supportsCoreDownloads)
+                  _TvSettingsListTile(
+                    leading: const Icon(Icons.videogame_asset),
+                    title: Text(l10n.emulatorCores),
+                    subtitle: Text(l10n.emulatorCoresSubtitle),
+                    onTap: () => context.pushSettingsScreen(
+                      const EmulatorCoresScreen(),
+                    ),
+                  ),
                 _TvSettingsListTile(
                   leading: const Icon(Icons.groups),
                   title: Text(l10n.syncPlay),

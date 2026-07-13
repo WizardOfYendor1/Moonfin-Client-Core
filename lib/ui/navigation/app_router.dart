@@ -11,6 +11,7 @@ import '../../playback/external_player_policy.dart';
 import '../../preference/user_preferences.dart';
 import '../../preference/preference_constants.dart';
 import '../../syncplay/syncplay_manager.dart';
+import '../../util/game_cores.dart';
 import '../../util/platform_detection.dart';
 import '../screens/auth/emby_connect_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -436,8 +437,9 @@ final appRouter = GoRouter(
         final startFresh = state.uri.queryParameters['fresh'] == '1';
         return _opaqueFullScreenPage<void>(
           state: state,
-          // tvOS has no WebView; games run on the native libretro bridge there.
-          child: PlatformDetection.isAppleTV
+          // Native libretro on tvOS, Android, and desktop. iOS stays on the
+          // EmulatorJS WebView.
+          child: usesNativeGameBackend
               ? NativeGamePlayerScreen(
                   libraryId: libraryId,
                   gameId: gameId,

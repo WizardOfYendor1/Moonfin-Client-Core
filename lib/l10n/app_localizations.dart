@@ -14602,6 +14602,42 @@ abstract class AppLocalizations {
   /// **'Offline Downloads'**
   String get settingsOfflineDownloads;
 
+  /// No description provided for @emulatorCores.
+  ///
+  /// In en, this message translates to:
+  /// **'Emulator Cores'**
+  String get emulatorCores;
+
+  /// No description provided for @emulatorCoresSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download systems to play games natively'**
+  String get emulatorCoresSubtitle;
+
+  /// No description provided for @emulatorCoresDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which systems to install. Cores are provided by the libretro project and let games run natively instead of in a browser view.'**
+  String get emulatorCoresDescription;
+
+  /// No description provided for @emulatorCoreDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get emulatorCoreDownloading;
+
+  /// No description provided for @emulatorCoreUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available for this device'**
+  String get emulatorCoreUnavailable;
+
+  /// No description provided for @emulatorCoreDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download the core. Check your connection and try again.'**
+  String get emulatorCoreDownloadFailed;
+
   /// No description provided for @settingsHigh.
   ///
   /// In en, this message translates to:
