@@ -16,6 +16,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   final MdbListRepository _mdbListRepository;
   final String libraryId;
   final String? genreId;
+  final String? studioName;
   final String? overrideName;
   final List<String>? includeItemTypes;
 
@@ -79,6 +80,8 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   List<Map<String, dynamic>> get libraries => _libraries;
 
   bool get isGenreBrowse => genreId != null;
+  bool get isStudioBrowse => studioName != null;
+  bool get isFilterBrowse => isGenreBrowse || isStudioBrowse;
 
   late ImageType _imageType;
   ImageType get imageType => _imageType;
@@ -157,6 +160,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
     required UserPreferences prefs,
     required MdbListRepository mdbListRepository,
     this.genreId,
+    this.studioName,
     this.overrideName,
     this.includeItemTypes,
   }) : _client = client,
@@ -184,7 +188,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
     }
   }
 
-  String get _prefKey => genreId ?? libraryId;
+  String get _prefKey => genreId ?? studioName ?? libraryId;
 
   String get _imagePrefKey {
     if (genreId != null && libraryId.isNotEmpty) {
@@ -212,7 +216,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (genreId != null) {
+      if (isFilterBrowse) {
         _libraryName = overrideName ?? '';
         if (!_initialLibraryFilterSet) {
           _libraryFilter = libraryId.isEmpty ? null : libraryId;
@@ -365,7 +369,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       includeTypes = ['MusicAlbum'];
     }
 
-    if (genreId != null && includeItemTypes == null) {
+    if (isFilterBrowse && includeItemTypes == null) {
       final currentExclude = excludeTypes ?? const <String>[];
       if (!currentExclude.contains('Episode')) {
         excludeTypes = [...currentExclude, 'Episode'];
@@ -422,6 +426,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       response = await _fetchItemsWithFallback(
         parentId: _effectiveParentId,
         genreIds: genreId != null ? [genreId!] : null,
+        studios: studioName != null ? [studioName!] : null,
         includeItemTypes: includeTypes,
         excludeItemTypes: excludeTypes,
         collapseBoxSetItems: collapseBoxSets,
@@ -485,6 +490,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   Future<Map<String, dynamic>> _fetchItemsWithFallback({
     String? parentId,
     List<String>? genreIds,
+    List<String>? studios,
     List<String>? includeItemTypes,
     List<String>? excludeItemTypes,
     bool? collapseBoxSetItems,
@@ -504,6 +510,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       return await _client.itemsApi.getItems(
         parentId: parentId,
         genreIds: genreIds,
+        studios: studios,
         includeItemTypes: includeItemTypes,
         excludeItemTypes: excludeItemTypes,
         collapseBoxSetItems: collapseBoxSetItems,
@@ -535,6 +542,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       return _client.itemsApi.getItems(
         parentId: parentId,
         genreIds: genreIds,
+        studios: studios,
         includeItemTypes: includeItemTypes,
         excludeItemTypes: excludeItemTypes,
         collapseBoxSetItems: collapseBoxSetItems,
@@ -557,7 +565,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
   }
 
   String? get _effectiveParentId {
-    if (genreId != null) return _libraryFilter;
+    if (isFilterBrowse) return _libraryFilter;
     return libraryId.isEmpty ? null : libraryId;
   }
 
@@ -722,12 +730,12 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       (includeItemTypes != null && includeItemTypes!.contains('Book'));
 
   bool get isHomeVideosLibrary =>
-      !isGenreBrowse &&
+      !isFilterBrowse &&
       includeItemTypes == null &&
       _collectionType == 'homevideos';
 
   bool get isMixedContentLibrary =>
-      !isGenreBrowse &&
+      !isFilterBrowse &&
       includeItemTypes == null &&
       (_collectionType == null ||
           _collectionType!.isEmpty ||

@@ -1919,16 +1919,24 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   }
 
   Widget _studiosTab(BuildContext context, AggregatedItem item) {
-    // Prefer TMDB production companies (with real logos) and fall back to the
-    // Jellyfin studio names when TMDB has nothing or no key is configured.
-    final studios = _tmdbStudios.isNotEmpty
-        ? [
-            for (final s in _tmdbStudios) (name: s.name, logoUrl: s.imageUrl),
-          ]
-        : [
-            for (final s in item.studios)
-              (name: s['Name']?.toString() ?? '', logoUrl: null),
-          ];
+    // Only the library's own studios can be filtered, so build the cards from
+    // those and reuse a TMDB logo whenever a studio name matches one.
+    final tmdbLogoByName = <String, String>{};
+    for (final company in _tmdbStudios) {
+      final logo = company.imageUrl;
+      if (logo != null) {
+        tmdbLogoByName[company.name.trim().toLowerCase()] = logo;
+      }
+    }
+    final studios = <({String name, String? logoUrl})>[];
+    for (final s in item.studios) {
+      final name = s['Name']?.toString() ?? '';
+      if (name.isEmpty) continue;
+      studios.add((
+        name: name,
+        logoUrl: tmdbLogoByName[name.trim().toLowerCase()],
+      ));
+    }
     if (studios.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -1971,7 +1979,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
               return FocusableWrapper(
                 focusNode: index == 0 ? _studiosFirstFocusNode : null,
                 onSelect: name.isNotEmpty
-                    ? () => context.push(Destinations.searchWith('studio:$name'))
+                    ? () => context.push(Destinations.studio(name))
                     : null,
                 borderRadius: 12,
                 suppressFocusGlow: true,

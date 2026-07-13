@@ -46,6 +46,7 @@ class LibraryBrowseScreen extends StatefulWidget {
   final String libraryId;
   final String? genreId;
   final String? genreName;
+  final String? studioName;
   final List<String>? includeItemTypes;
 
   const LibraryBrowseScreen({
@@ -53,6 +54,7 @@ class LibraryBrowseScreen extends StatefulWidget {
     required this.libraryId,
     this.genreId,
     this.genreName,
+    this.studioName,
     this.includeItemTypes,
   });
 
@@ -79,7 +81,8 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       prefs: _prefs,
       mdbListRepository: GetIt.instance<MdbListRepository>(),
       genreId: widget.genreId,
-      overrideName: widget.genreName,
+      studioName: widget.studioName,
+      overrideName: widget.genreName ?? widget.studioName,
       includeItemTypes: widget.includeItemTypes,
     );
     _vm.addListener(_onChanged);
@@ -231,7 +234,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
 
   double _gridBaseAspectRatio() {
     if (_vm.isMusicBrowse || _vm.isPlaylistBrowse) return 1.0;
-    if (_vm.isGenreBrowse) return _selectedImageAspectRatio();
+    if (_vm.isFilterBrowse) return _selectedImageAspectRatio();
     if (_vm.imageType != ImageType.poster &&
         _vm.items.isNotEmpty &&
         _vm.items.every(_vm.isNavigableFolder)) {
@@ -246,7 +249,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
 
   double _itemAspectRatio(AggregatedItem item) {
     if (_vm.isMusicBrowse || _vm.isPlaylistBrowse) return 1.0;
-    if (_vm.isGenreBrowse) return _selectedImageAspectRatio();
+    if (_vm.isFilterBrowse) return _selectedImageAspectRatio();
     if (_vm.isNavigableFolder(item) && _vm.imageType != ImageType.poster) {
       return 16 / 9;
     }
@@ -427,7 +430,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
       return null;
     }
 
-    if (prefersThumbArtwork && !_vm.isGenreBrowse) {
+    if (prefersThumbArtwork && !_vm.isFilterBrowse) {
       if (itemThumbTag != null) {
         return api.getThumbImageUrl(
           item.id,
@@ -671,7 +674,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final item = _vm.items[index];
                   final itemAspectRatio = _itemAspectRatio(item);
-                  final focusColor = _vm.isGenreBrowse
+                  final focusColor = _vm.isFilterBrowse
                       ? ThemeRegistry.active.borders.focusBorder.color
                       : Color(
                           _prefs.get(UserPreferences.focusColor).colorValue,

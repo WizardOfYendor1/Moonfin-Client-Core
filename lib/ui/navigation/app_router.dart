@@ -363,6 +363,13 @@ final appRouter = GoRouter(
         );
       },
     ),
+    GoRoute(
+      path: Destinations.studioBrowse,
+      builder: (context, state) {
+        final studioName = state.pathParameters['studioName']!;
+        return LibraryBrowseScreen(libraryId: '', studioName: studioName);
+      },
+    ),
 
     // Item details
     GoRoute(

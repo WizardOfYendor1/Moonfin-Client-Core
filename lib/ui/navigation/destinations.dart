@@ -77,6 +77,7 @@ class Destinations {
   static const musicBrowse = '/music/:libraryId';
   static const bookBrowse = '/books/:libraryId';
   static const genreBrowse = '/genre/:genreName';
+  static const studioBrowse = '/studio/:studioName';
 
   // Item details
   static const itemDetail = '/item/:itemId';
@@ -220,6 +221,9 @@ class Destinations {
     if (includeType != null) params.add('includeType=$includeType');
     return '$base?${params.join('&')}';
   }
+
+  static String studio(String studioName) =>
+      '/studio/${Uri.encodeComponent(studioName)}';
 
   static String folder(String folderId, {String? serverId}) {
     final base = '/folder/$folderId';
