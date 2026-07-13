@@ -122,6 +122,8 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
     nonisolated(unsafe) private var lifecycleObservers: [NSObjectProtocol] = []
     private var wasPlayingBeforeBackground = false
     private var wasPlayingBeforeInterruption = false
+    private var renderContextNeedsRebuild = false
+    private var pauseAfterRebuild = false
     private var engine: MPVEngine?
     private let videoSurface = MPVVideoSurface()
     private var activeProfile: MPVRenderProfile = .metal
@@ -992,6 +994,7 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         pendingMpvStartPosition = (startPosition ?? 0) > 0 ? startPosition : nil
         pendingMpvSeekAttempts = 0
         pendingMpvSeekLastAttemptAt = 0
+        pauseAfterRebuild = false
 
         configureAudioSession(installChannelLayoutFix: true)
 
@@ -1361,6 +1364,29 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
         mpvResumeGateWorkItem = nil
     }
 
+    /// Rebuilds the mpv engine after a real background transition. The MoltenVK
+    /// swapchain bound to the CAMetalLayer was invalidated while backgrounded, so
+    /// reusing it renders corrupt or no video. resetEngine before startMpvPlayback
+    /// forces ensureEngine to build a fresh engine, and therefore a fresh
+    /// swapchain, against the same layer. Playback resumes at the saved position.
+    private func rebuildRenderContextAfterBackground() {
+        guard let url = activePlaybackURL else {
+            wasPlayingBeforeBackground = false
+            return
+        }
+        let resumeAt = snapshotPlaybackPosition()
+        let resumePlaying = wasPlayingBeforeBackground
+        wasPlayingBeforeBackground = false
+        stopPlaybackOnly()
+        resetEngine()
+        if startMpvPlayback(url, startPosition: resumeAt) {
+            // startMpvPlayback always resumes playing, so if we were paused,
+            // re-pause once the reloaded frame lands (see playbackRestart) rather
+            // than now, where the restart event would flip the state back.
+            pauseAfterRebuild = !resumePlaying
+        }
+    }
+
     func snapshotPlaybackPosition() -> TimeInterval {
         if let engine, let pos = engine.getDoubleProperty("time-pos"), pos.isFinite, pos >= 0 {
             return pos
@@ -1383,6 +1409,10 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
                 state = .buffering(0.25)
             } else {
                 state = .playing
+            }
+            if pauseAfterRebuild {
+                pauseAfterRebuild = false
+                pause()
             }
             refreshTracksFromMpv()
         case MPVEngine.EventID.endFile.rawValue:
@@ -1728,6 +1758,23 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
 
         lifecycleObservers.append(
             center.addObserver(
+                forName: UIApplication.didEnterBackgroundNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    guard self.playbackBackendIdentifier == "mpv" else { return }
+                    // Backgrounding revokes GPU access and invalidates the
+                    // CAMetalLayer drawables, so mpv's MoltenVK swapchain is stale
+                    // once we return. Mark it for a rebuild on the way back.
+                    self.renderContextNeedsRebuild = true
+                }
+            }
+        )
+
+        lifecycleObservers.append(
+            center.addObserver(
                 forName: UIApplication.didBecomeActiveNotification,
                 object: nil,
                 queue: .main
@@ -1741,8 +1788,15 @@ class MpvPlayerWrapper: NSObject, ObservableObject {
                         return
                     }
 
-                    self.restoreColorPipelineAfterWake(force: true)
+                    if self.renderContextNeedsRebuild {
+                        self.renderContextNeedsRebuild = false
+                        self.rebuildRenderContextAfterBackground()
+                        return
+                    }
 
+                    // Resigned active without truly backgrounding, so the
+                    // swapchain is still valid and a light resume is enough.
+                    self.restoreColorPipelineAfterWake(force: true)
                     if self.wasPlayingBeforeBackground {
                         self.wasPlayingBeforeBackground = false
                         self.beginMpvResumeGateIfNeeded()
