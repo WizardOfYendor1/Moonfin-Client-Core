@@ -470,6 +470,18 @@ class HomeViewModel extends ChangeNotifier {
             sectionRows = await _loadConfig(cfg, forceRefresh: forceRefresh);
           } catch (e) {
             debugPrint('[Home] Failed to load section $cfg: $e');
+            // A thrown load is a transient failure, not a genuinely empty
+            // result. When we are refreshing and a populated row is already on
+            // screen, keep it instead of wiping it. Only fall through to
+            // clearing when there is nothing to preserve, so a cold load still
+            // drops its loading placeholder.
+            final hasVisibleRow = _rowsForConfig(
+              _rows,
+              cfg,
+            ).any((r) => !r.isLoading);
+            if (preserveExisting && hasVisibleRow) {
+              return;
+            }
             sectionRows = const <HomeRow>[];
           }
           final currentConfigs = _prefs.activeHomeSectionConfigs;
