@@ -1,9 +1,11 @@
 import Cocoa
 import FlutterMacOS
+import moonfin_game_host
 
 class MainFlutterWindow: NSWindow {
   private var sfSymbolChannel: FlutterMethodChannel?
   private var downloadDirChannel: FlutterMethodChannel?
+  private var gameChannel: NativeGameChannel?
   // Retained so the security-scoped access stays open for the session.
   private var accessedDownloadURL: URL?
 
@@ -164,6 +166,9 @@ class MainFlutterWindow: NSWindow {
         result(FlutterMethodNotImplemented)
       }
     }
+
+    let gameRegistrar = flutterViewController.registrar(forPlugin: "moonfin_game_host")
+    self.gameChannel = NativeGameChannel(registrar: gameRegistrar)
 
     super.awakeFromNib()
   }

@@ -12,7 +12,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../playback/native_game_player.dart';
 import '../../../util/game_cores.dart';
-import '../../../util/platform_detection.dart';
 
 /// Native game player: the libretro core runs in the runner and renders into a
 /// Flutter texture, so this screen stays plain Flutter. It downloads and
@@ -149,9 +148,10 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
       return;
     }
 
-    // tvOS bundles its cores. Android and desktop load a downloaded file.
+    // tvOS and macOS bundle their cores, so the native side loads them from the
+    // app. Android, Windows, and Linux load a downloaded file.
     String? corePath;
-    if (!PlatformDetection.isAppleTV) {
+    if (!bundlesGameCores) {
       if (!supportsCoreDownloads) {
         if (mounted) {
           setState(() => _error = 'This system is not supported on this device.');

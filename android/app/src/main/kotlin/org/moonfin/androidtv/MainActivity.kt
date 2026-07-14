@@ -69,6 +69,7 @@ class MainActivity : AudioServiceActivity() {
     private var externalPlayerChannel: MethodChannel? = null
     private var externalPlayerPendingResult: MethodChannel.Result? = null
     private var gamepadChannel: MethodChannel? = null
+    private var libretroBridge: LibretroBridge? = null
     private var watchNextChannel: MethodChannel? = null
     private var watchNextPublisher: WatchNextPublisher? = null
     private var pendingDeepLink: String? = null
@@ -202,6 +203,8 @@ class MainActivity : AudioServiceActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        libretroBridge = LibretroBridge(flutterEngine)
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -577,7 +580,15 @@ class MainActivity : AudioServiceActivity() {
     // which injects them into the core. Consumed only while active so app navigation is intact
     // otherwise; button events are also consumed in-game so they never reach Flutter focus.
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (gameActive) {
+        if (gameActive || libretroBridge?.isActive == true) {
+            if (libretroBridge?.isActive == true &&
+                event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
+                (event.keyCode == KeyEvent.KEYCODE_MENU ||
+                    event.keyCode == KeyEvent.KEYCODE_BUTTON_MODE)
+            ) {
+                libretroBridge?.onMenu()
+                return true
+            }
             val index = retroPadIndex(event.keyCode)
             if (index != null) {
                 if (event.repeatCount == 0 &&
@@ -592,7 +603,7 @@ class MainActivity : AudioServiceActivity() {
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        if (gameActive &&
+        if ((gameActive || libretroBridge?.isActive == true) &&
             event.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK &&
             event.action == MotionEvent.ACTION_MOVE
         ) {
@@ -653,6 +664,11 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun sendGamepadButton(index: Int, pressed: Boolean) {
+        val bridge = libretroBridge
+        if (bridge?.isActive == true) {
+            bridge.onButton(index, pressed)
+            return
+        }
         runOnUiThread {
             gamepadChannel?.invokeMethod("onButton", mapOf("index" to index, "pressed" to pressed))
         }

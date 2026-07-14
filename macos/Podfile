@@ -29,6 +29,10 @@ target 'Runner' do
   use_frameworks!
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+
+  pod 'libretro_host', :path => '../native/libretro_host'
+  pod 'moonfin_game_host', :path => 'game_host'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end

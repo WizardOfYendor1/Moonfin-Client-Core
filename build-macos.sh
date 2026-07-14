@@ -10,6 +10,7 @@ ALLOW_PROVISIONING_UPDATES="${ALLOW_PROVISIONING_UPDATES:-1}"
 BUILD_APPSTORE_PKG="${BUILD_APPSTORE_PKG:-1}"
 BUILD_DMG_GITHUB="${BUILD_DMG_GITHUB:-1}"
 CLEAN_FLUTTER="${CLEAN_FLUTTER:-0}"
+FETCH_CORES="${FETCH_CORES:-1}"
 
 DEVELOPER_ID="${DEVELOPER_ID:-}"
 APP_SIGN_ID="${APP_SIGN_ID:-$DEVELOPER_ID}"
@@ -87,6 +88,11 @@ fi
 
 echo "Resolving packages..."
 flutter pub get
+
+if [ "$FETCH_CORES" = "1" ]; then
+  echo "Fetching bundled emulator cores..."
+  "$REPO_ROOT/macos/game_host/fetch_cores.sh"
+fi
 
 echo "Preparing Flutter macOS generated files..."
 if [ "$BUILD_APPSTORE_PKG" = "1" ]; then

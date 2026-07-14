@@ -98,11 +98,18 @@ bool get usesNativeGameBackend =>
     PlatformDetection.isAndroid ||
     PlatformDetection.isDesktop;
 
+/// Whether this platform ships its cores inside the app and loads them from the
+/// bundle rather than downloading them. tvOS and macOS bundle (the Apple stores
+/// forbid downloading executable code), so neither shows the download manager.
+bool get bundlesGameCores =>
+    PlatformDetection.isAppleTV || PlatformDetection.isMacOS;
+
 /// Whether this device can download and run cores, and so should offer the
-/// emulator cores manager. tvOS bundles its cores and iOS plays through the
-/// WebView. On Android and desktop it also needs an architecture the libretro
-/// buildbot builds for, otherwise the manager would be empty.
+/// emulator cores manager. Bundled platforms (tvOS, macOS) and the WebView on
+/// iOS do not. Android, Windows, and Linux download, and also need an
+/// architecture the libretro buildbot builds for.
 bool get supportsCoreDownloads =>
+    !bundlesGameCores &&
     (PlatformDetection.isAndroid || PlatformDetection.isDesktop) &&
     _buildbotTarget() != null;
 
