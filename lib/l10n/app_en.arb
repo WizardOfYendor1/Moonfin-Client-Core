@@ -8093,6 +8093,10 @@
   "@showMediaDetailsOnLibraryPageDescription": {
     "description": "Setting description to show/hide focused media details at the top of the library page"
   },
+  "hideBackdropsInLibraries": "Hide Backdrops while Browsing?",
+  "@hideBackdropsInLibraries": {
+    "description": "Setting title to show/hide backdrops when browsing library pages"
+  },
   "useDetailedSubHeadings": "Use Detailed Sub-Headings",
   "@useDetailedSubHeadings": {
     "description": "Label for setting to toggle detailed or minimal subrow on library pages"

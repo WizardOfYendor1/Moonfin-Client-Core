@@ -238,7 +238,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> with GridFocusNodeMix
 
   Widget _buildContent(BuildContext context) {
     final isMobile = _isCompact(context);
-    final hasBackdrop = !isMobile && _backdropUrl != null;
+    final hideBackdrops = _prefs.get(UserPreferences.hideBackdropsInLibraries);
+    final hasBackdrop = !isMobile && !hideBackdrops && _backdropUrl != null;
     return Scaffold(
       backgroundColor: _navyBackground,
       body: Stack(

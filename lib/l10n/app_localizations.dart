@@ -15340,6 +15340,12 @@ abstract class AppLocalizations {
   /// **'Show details of the selected item at the top of Library pages.'**
   String get showMediaDetailsOnLibraryPageDescription;
 
+  /// Setting title to show/hide backdrops when browsing library pages
+  ///
+  /// In en, this message translates to:
+  /// **'Hide Backdrops while Browsing?'**
+  String get hideBackdropsInLibraries;
+
   /// Label for setting to toggle detailed or minimal subrow on library pages
   ///
   /// In en, this message translates to:

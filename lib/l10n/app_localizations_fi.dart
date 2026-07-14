@@ -8625,6 +8625,9 @@ class AppLocalizationsFi extends AppLocalizations {
       'Show details of the selected item at the top of Library pages.';
 
   @override
+  String get hideBackdropsInLibraries => 'Hide Backdrops while Browsing?';
+
+  @override
   String get useDetailedSubHeadings => 'Käytä yksityiskohtaisia ​​alaotsikoita';
 
   @override

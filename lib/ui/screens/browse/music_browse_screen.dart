@@ -85,6 +85,7 @@ class MusicBrowseScreen extends StatefulWidget {
 class _MusicBrowseScreenState extends State<MusicBrowseScreen> {
   late final MusicBrowseViewModel _vm;
   final _backgroundService = GetIt.instance<BackgroundService>();
+  final _prefs = GetIt.instance<UserPreferences>();
   StreamSubscription<String?>? _backgroundSub;
   String? _backdropUrl;
 
@@ -102,12 +103,14 @@ class _MusicBrowseScreenState extends State<MusicBrowseScreen> {
       if (mounted) setState(() => _backdropUrl = url);
     });
     _backdropUrl = _backgroundService.currentUrl;
+    _prefs.addListener(_onChanged);
   }
 
   @override
   void dispose() {
     _backgroundSub?.cancel();
     _vm.removeListener(_onChanged);
+    _prefs.removeListener(_onChanged);
     _vm.dispose();
     super.dispose();
   }
@@ -177,7 +180,8 @@ class _MusicBrowseScreenState extends State<MusicBrowseScreen> {
     final l10n = AppLocalizations.of(context);
     final isMobile = PlatformDetection.useMobileUi;
     final isDesktop = PlatformDetection.useDesktopUi;
-    final hasBackdrop = !isMobile && _backdropUrl != null;
+    final hideBackdrops = _prefs.get(UserPreferences.hideBackdropsInLibraries);
+    final hasBackdrop = !isMobile && !hideBackdrops && _backdropUrl != null;
     return Scaffold(
       backgroundColor: _navyBackground,
       body: Stack(

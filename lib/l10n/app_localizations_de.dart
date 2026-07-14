@@ -154,14 +154,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get detailScreenStyleModern => 'Modern';
 
   @override
-  String get expandedTabs => 'Expanded Tabs';
+  String get expandedTabs => 'Erweiterte Tabs';
 
   @override
   String get expandedTabsSubtitle =>
-      'Automatically show tab content while browsing tabs. Turn off to open and close each tab manually.';
+      'Tab-Inhalte beim Wechseln zwischen den Tabs automatisch anzeigen. Deaktivieren, um jeden Tab manuell zu öffnen und zu schließen.';
 
   @override
-  String get showTechnicalDetails => 'Show Technical Details?';
+  String get showTechnicalDetails => 'Technische Details anzeigen?';
 
   @override
   String get showTechnicalDetailsSubtitle =>
@@ -178,11 +178,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get recommendationSystemMoonfin => 'Moonfin Recommends';
 
   @override
-  String get recommendationSystemTmdb => 'TMDb Similarity';
+  String get recommendationSystemTmdb => 'TMDb-Ähnlichkeit';
 
   @override
   String get recommendationsApplyParentalRatingCap =>
-      'Apply Parental Rating Cap?';
+      'Begrenzung nach Altersfreigabe anwenden?';
 
   @override
   String get recommendationsApplyParentalRatingCapSubtitle =>
@@ -225,7 +225,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wechsel zwischen \"Moonfin\" und \"Neon Pulse\", ohne die App neu zu starten';
 
   @override
-  String get customThemeTitle => 'Custom Theme';
+  String get customThemeTitle => 'Benutzerdefiniertes Theme';
 
   @override
   String get customThemeSubtitle =>
@@ -8731,6 +8731,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get showMediaDetailsOnLibraryPageDescription =>
       'Show details of the selected item at the top of Library pages.';
+
+  @override
+  String get hideBackdropsInLibraries => 'Hide Backdrops while Browsing?';
 
   @override
   String get useDetailedSubHeadings =>
