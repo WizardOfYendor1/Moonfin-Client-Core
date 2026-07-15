@@ -720,7 +720,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 5), () {
+    final hideDelay = PlatformDetection.useMobileUi
+        ? const Duration(seconds: 8)
+        : const Duration(seconds: 5);
+    _hideTimer = Timer(hideDelay, () {
       if (!mounted) return;
       if (_isOverlayInteractionActive) {
         _scheduleHide();
@@ -746,8 +749,9 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
 
   bool get _isOverlayInteractionActive {
     if (_isGuidePickerOpen) return true;
-    if (!PlatformDetection.isTV) return false;
-    return _osdFocusOrder.any((node) => node.hasFocus);
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return true;
+    return false;
   }
 
   void _onControlFocusChanged() {
@@ -756,16 +760,9 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     final focused = order.indexWhere((node) => node.hasFocus);
     if (focused >= 0) {
       _focusedControlIndex = focused;
-    }
-    if (focused >= 0 && order[focused] != _tvPlaybackInfoFocus) {
-      _hideTimer?.cancel();
       if (!_infoVisible) {
         setState(() => _infoVisible = true);
       }
-      return;
-    }
-
-    if (_infoVisible) {
       _scheduleHide();
     }
   }
@@ -1318,6 +1315,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
           return KeyEventResult.handled;
         }
         if (PlatformDetection.isTV) {
+          _scheduleHide();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
