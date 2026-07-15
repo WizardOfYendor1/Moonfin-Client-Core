@@ -11032,29 +11032,221 @@ abstract class AppLocalizations {
   /// **'Add Tuner'**
   String get adminAddTuner;
 
+  /// No description provided for @adminEditTuner.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Tuner'**
+  String get adminEditTuner;
+
+  /// No description provided for @adminTunerTypeM3u.
+  ///
+  /// In en, this message translates to:
+  /// **'M3U Tuner'**
+  String get adminTunerTypeM3u;
+
+  /// No description provided for @adminTunerTypeHdHomerun.
+  ///
+  /// In en, this message translates to:
+  /// **'HDHomeRun'**
+  String get adminTunerTypeHdHomerun;
+
+  /// No description provided for @adminTunerFileOrUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'File or URL'**
+  String get adminTunerFileOrUrl;
+
+  /// No description provided for @adminTunerIpAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuner IP address'**
+  String get adminTunerIpAddress;
+
+  /// No description provided for @adminTunerFriendlyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Friendly name'**
+  String get adminTunerFriendlyName;
+
+  /// No description provided for @adminTunerUserAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'User agent'**
+  String get adminTunerUserAgent;
+
+  /// No description provided for @adminTunerCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Simultaneous connection limit'**
+  String get adminTunerCount;
+
+  /// No description provided for @adminTunerCountHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The maximum number of streams the tuner allows at once. Set to 0 for unlimited.'**
+  String get adminTunerCountHelp;
+
+  /// No description provided for @adminTunerFallbackBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'Fallback max streaming bitrate'**
+  String get adminTunerFallbackBitrate;
+
+  /// No description provided for @adminTunerImportFavoritesOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Import only favorite channels'**
+  String get adminTunerImportFavoritesOnly;
+
+  /// No description provided for @adminTunerAllowHwTranscoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow hardware transcoding'**
+  String get adminTunerAllowHwTranscoding;
+
+  /// No description provided for @adminTunerAllowFmp4.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow fMP4 transcoding container'**
+  String get adminTunerAllowFmp4;
+
+  /// No description provided for @adminTunerAllowStreamSharing.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow stream sharing'**
+  String get adminTunerAllowStreamSharing;
+
+  /// No description provided for @adminTunerEnableStreamLooping.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable stream looping'**
+  String get adminTunerEnableStreamLooping;
+
+  /// No description provided for @adminTunerIgnoreDts.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore DTS'**
+  String get adminTunerIgnoreDts;
+
+  /// No description provided for @adminTunerReadAtNativeFramerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Read input at native frame rate'**
+  String get adminTunerReadAtNativeFramerate;
+
+  /// No description provided for @adminEditProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Provider'**
+  String get adminEditProvider;
+
+  /// No description provided for @adminProviderXmltv.
+  ///
+  /// In en, this message translates to:
+  /// **'XMLTV'**
+  String get adminProviderXmltv;
+
+  /// No description provided for @adminProviderSchedulesDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedules Direct'**
+  String get adminProviderSchedulesDirect;
+
+  /// No description provided for @adminXmltvPath.
+  ///
+  /// In en, this message translates to:
+  /// **'File or URL'**
+  String get adminXmltvPath;
+
+  /// No description provided for @adminXmltvMoviePrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Movie prefix'**
+  String get adminXmltvMoviePrefix;
+
+  /// No description provided for @adminXmltvMovieCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Movie categories'**
+  String get adminXmltvMovieCategories;
+
+  /// No description provided for @adminXmltvCategoriesHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate multiple categories with a vertical bar.'**
+  String get adminXmltvCategoriesHelp;
+
+  /// No description provided for @adminXmltvKidsCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Kids categories'**
+  String get adminXmltvKidsCategories;
+
+  /// No description provided for @adminXmltvNewsCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'News categories'**
+  String get adminXmltvNewsCategories;
+
+  /// No description provided for @adminXmltvSportsCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Sports categories'**
+  String get adminXmltvSportsCategories;
+
+  /// No description provided for @adminSdUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get adminSdUsername;
+
+  /// No description provided for @adminSdPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get adminSdPassword;
+
+  /// No description provided for @adminSdCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get adminSdCountry;
+
+  /// No description provided for @adminSdCountrySelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a country'**
+  String get adminSdCountrySelect;
+
+  /// No description provided for @adminSdPostalCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Postal code'**
+  String get adminSdPostalCode;
+
+  /// No description provided for @adminSdGetListings.
+  ///
+  /// In en, this message translates to:
+  /// **'Get listings'**
+  String get adminSdGetListings;
+
+  /// No description provided for @adminSdListings.
+  ///
+  /// In en, this message translates to:
+  /// **'Listings'**
+  String get adminSdListings;
+
+  /// No description provided for @adminEnableAllTuners.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable all tuners'**
+  String get adminEnableAllTuners;
+
   /// No description provided for @adminTunerType.
   ///
   /// In en, this message translates to:
   /// **'Tuner Type'**
   String get adminTunerType;
-
-  /// No description provided for @adminTunerTypeHint.
-  ///
-  /// In en, this message translates to:
-  /// **'HDHomeRun, M3U, Other'**
-  String get adminTunerTypeHint;
-
-  /// No description provided for @adminUrlPath.
-  ///
-  /// In en, this message translates to:
-  /// **'URL / Path'**
-  String get adminUrlPath;
-
-  /// No description provided for @adminNameOptional.
-  ///
-  /// In en, this message translates to:
-  /// **'Name (optional)'**
-  String get adminNameOptional;
 
   /// No description provided for @adminTunerAdded.
   ///
@@ -11079,24 +11271,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Provider Type'**
   String get adminProviderType;
-
-  /// No description provided for @adminProviderTypeHint.
-  ///
-  /// In en, this message translates to:
-  /// **'SchedulesDirect or XMLTV'**
-  String get adminProviderTypeHint;
-
-  /// No description provided for @adminUsernameOptional.
-  ///
-  /// In en, this message translates to:
-  /// **'Username (optional)'**
-  String get adminUsernameOptional;
-
-  /// No description provided for @adminRefreshInterval.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh interval (hours)'**
-  String get adminRefreshInterval;
 
   /// No description provided for @adminProviderAdded.
   ///

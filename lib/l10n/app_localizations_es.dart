@@ -6190,16 +6190,115 @@ class AppLocalizationsEs extends AppLocalizations {
   String get adminAddTuner => 'Añadir sintonizador';
 
   @override
+  String get adminEditTuner => 'Edit Tuner';
+
+  @override
+  String get adminTunerTypeM3u => 'M3U Tuner';
+
+  @override
+  String get adminTunerTypeHdHomerun => 'HDHomeRun';
+
+  @override
+  String get adminTunerFileOrUrl => 'File or URL';
+
+  @override
+  String get adminTunerIpAddress => 'Tuner IP address';
+
+  @override
+  String get adminTunerFriendlyName => 'Friendly name';
+
+  @override
+  String get adminTunerUserAgent => 'User agent';
+
+  @override
+  String get adminTunerCount => 'Simultaneous connection limit';
+
+  @override
+  String get adminTunerCountHelp =>
+      'The maximum number of streams the tuner allows at once. Set to 0 for unlimited.';
+
+  @override
+  String get adminTunerFallbackBitrate => 'Fallback max streaming bitrate';
+
+  @override
+  String get adminTunerImportFavoritesOnly => 'Import only favorite channels';
+
+  @override
+  String get adminTunerAllowHwTranscoding => 'Allow hardware transcoding';
+
+  @override
+  String get adminTunerAllowFmp4 => 'Allow fMP4 transcoding container';
+
+  @override
+  String get adminTunerAllowStreamSharing => 'Allow stream sharing';
+
+  @override
+  String get adminTunerEnableStreamLooping => 'Enable stream looping';
+
+  @override
+  String get adminTunerIgnoreDts => 'Ignore DTS';
+
+  @override
+  String get adminTunerReadAtNativeFramerate =>
+      'Read input at native frame rate';
+
+  @override
+  String get adminEditProvider => 'Edit Provider';
+
+  @override
+  String get adminProviderXmltv => 'XMLTV';
+
+  @override
+  String get adminProviderSchedulesDirect => 'Schedules Direct';
+
+  @override
+  String get adminXmltvPath => 'File or URL';
+
+  @override
+  String get adminXmltvMoviePrefix => 'Movie prefix';
+
+  @override
+  String get adminXmltvMovieCategories => 'Movie categories';
+
+  @override
+  String get adminXmltvCategoriesHelp =>
+      'Separate multiple categories with a vertical bar.';
+
+  @override
+  String get adminXmltvKidsCategories => 'Kids categories';
+
+  @override
+  String get adminXmltvNewsCategories => 'News categories';
+
+  @override
+  String get adminXmltvSportsCategories => 'Sports categories';
+
+  @override
+  String get adminSdUsername => 'Username';
+
+  @override
+  String get adminSdPassword => 'Password';
+
+  @override
+  String get adminSdCountry => 'Country';
+
+  @override
+  String get adminSdCountrySelect => 'Select a country';
+
+  @override
+  String get adminSdPostalCode => 'Postal code';
+
+  @override
+  String get adminSdGetListings => 'Get listings';
+
+  @override
+  String get adminSdListings => 'Listings';
+
+  @override
+  String get adminEnableAllTuners => 'Enable all tuners';
+
+  @override
   String get adminTunerType => 'Tipo de sintonizador';
-
-  @override
-  String get adminTunerTypeHint => 'HDHomeRun, M3U, Otro';
-
-  @override
-  String get adminUrlPath => 'URL / Ruta';
-
-  @override
-  String get adminNameOptional => 'Nombre (opcional)';
 
   @override
   String get adminTunerAdded => 'Sintonizador añadido';
@@ -6214,15 +6313,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get adminProviderType => 'Tipo de proveedor';
-
-  @override
-  String get adminProviderTypeHint => 'SchedulesDirect o XMLTV';
-
-  @override
-  String get adminUsernameOptional => 'Nombre de usuario (opcional)';
-
-  @override
-  String get adminRefreshInterval => 'Intervalo de actualización (horas)';
 
   @override
   String get adminProviderAdded => 'Proveedor añadido';
@@ -15248,15 +15338,6 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   String get adminTunerType => 'Tipo de sintonizador';
 
   @override
-  String get adminTunerTypeHint => 'HDHomeRun, M3U, Otro';
-
-  @override
-  String get adminUrlPath => 'URL/ruta';
-
-  @override
-  String get adminNameOptional => 'Nombre (opcional)';
-
-  @override
   String get adminTunerAdded => 'Sintonizador añadido';
 
   @override
@@ -15269,15 +15350,6 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
 
   @override
   String get adminProviderType => 'Tipo de proveedor';
-
-  @override
-  String get adminProviderTypeHint => 'HorariosDirect o XMLTV';
-
-  @override
-  String get adminUsernameOptional => 'Nombre de usuario (opcional)';
-
-  @override
-  String get adminRefreshInterval => 'Intervalo de actualización (horas)';
 
   @override
   String get adminProviderAdded => 'Proveedor agregado';
@@ -17414,9 +17486,6 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   @override
   String get subtitlesUseEmbeddedFontSizesSubtitle =>
       'Aplique sugerencias de tamaño de fuente incrustadas en la pista de subtítulos. Desactive el uso del tamaño de los subtítulos en sus preferencias de estilo.';
-
-  @override
-  String get hideBackdropsInLibraries => 'Hide Backdrops while Browsing?';
 
   @override
   String get useDetailedSubHeadings => 'Utilice subtítulos detallados';
@@ -23217,15 +23286,6 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   String get adminTunerType => 'Tipo de sintonizador';
 
   @override
-  String get adminTunerTypeHint => 'HDHomeRun, M3U, Otro';
-
-  @override
-  String get adminUrlPath => 'URL/ruta';
-
-  @override
-  String get adminNameOptional => 'Nombre (opcional)';
-
-  @override
   String get adminTunerAdded => 'Sintonizador añadido';
 
   @override
@@ -23238,15 +23298,6 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
 
   @override
   String get adminProviderType => 'Tipo de proveedor';
-
-  @override
-  String get adminProviderTypeHint => 'HorariosDirect o XMLTV';
-
-  @override
-  String get adminUsernameOptional => 'Nombre de usuario (opcional)';
-
-  @override
-  String get adminRefreshInterval => 'Intervalo de actualización (horas)';
 
   @override
   String get adminProviderAdded => 'Proveedor agregado';
@@ -25383,9 +25434,6 @@ class AppLocalizationsEsAr extends AppLocalizationsEs {
   @override
   String get subtitlesUseEmbeddedFontSizesSubtitle =>
       'Aplique sugerencias de tamaño de fuente incrustadas en la pista de subtítulos. Desactive el uso del tamaño de los subtítulos en sus preferencias de estilo.';
-
-  @override
-  String get hideBackdropsInLibraries => 'Hide Backdrops while Browsing?';
 
   @override
   String get useDetailedSubHeadings => 'Utilice subtítulos detallados';
@@ -31186,15 +31234,6 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   String get adminTunerType => 'Tipo de sintonizador';
 
   @override
-  String get adminTunerTypeHint => 'HDHomeRun, M3U, Otro';
-
-  @override
-  String get adminUrlPath => 'URL/ruta';
-
-  @override
-  String get adminNameOptional => 'Nombre (opcional)';
-
-  @override
   String get adminTunerAdded => 'Sintonizador añadido';
 
   @override
@@ -31207,15 +31246,6 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
 
   @override
   String get adminProviderType => 'Tipo de proveedor';
-
-  @override
-  String get adminProviderTypeHint => 'HorariosDirect o XMLTV';
-
-  @override
-  String get adminUsernameOptional => 'Nombre de usuario (opcional)';
-
-  @override
-  String get adminRefreshInterval => 'Intervalo de actualización (horas)';
 
   @override
   String get adminProviderAdded => 'Proveedor agregado';
@@ -33352,9 +33382,6 @@ class AppLocalizationsEsDo extends AppLocalizationsEs {
   @override
   String get subtitlesUseEmbeddedFontSizesSubtitle =>
       'Aplique sugerencias de tamaño de fuente incrustadas en la pista de subtítulos. Desactive el uso del tamaño de los subtítulos en sus preferencias de estilo.';
-
-  @override
-  String get hideBackdropsInLibraries => 'Hide Backdrops while Browsing?';
 
   @override
   String get useDetailedSubHeadings => 'Utilice subtítulos detallados';
@@ -39155,15 +39182,6 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   String get adminTunerType => 'Tipo de sintonizador';
 
   @override
-  String get adminTunerTypeHint => 'HDHomeRun, M3U, Otro';
-
-  @override
-  String get adminUrlPath => 'URL/ruta';
-
-  @override
-  String get adminNameOptional => 'Nombre (opcional)';
-
-  @override
   String get adminTunerAdded => 'Sintonizador añadido';
 
   @override
@@ -39176,15 +39194,6 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
 
   @override
   String get adminProviderType => 'Tipo de proveedor';
-
-  @override
-  String get adminProviderTypeHint => 'HorariosDirect o XMLTV';
-
-  @override
-  String get adminUsernameOptional => 'Nombre de usuario (opcional)';
-
-  @override
-  String get adminRefreshInterval => 'Intervalo de actualización (horas)';
 
   @override
   String get adminProviderAdded => 'Proveedor agregado';
@@ -41321,9 +41330,6 @@ class AppLocalizationsEsMx extends AppLocalizationsEs {
   @override
   String get subtitlesUseEmbeddedFontSizesSubtitle =>
       'Aplique sugerencias de tamaño de fuente incrustadas en la pista de subtítulos. Desactive el uso del tamaño de los subtítulos en sus preferencias de estilo.';
-
-  @override
-  String get hideBackdropsInLibraries => 'Hide Backdrops while Browsing?';
 
   @override
   String get useDetailedSubHeadings => 'Utilice subtítulos detallados';
