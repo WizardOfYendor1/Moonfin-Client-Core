@@ -1132,12 +1132,7 @@ class PluginSyncService extends ChangeNotifier {
         UserPreferences.sinceYouWatchedSource,
         enumValues: prefs.SinceYouWatchedSource.values,
       );
-      _applyString(
-        resolved,
-        'sinceYouWatchedNumRows',
-        UserPreferences.sinceYouWatchedNumRows,
-        enumValues: prefs.SinceYouWatchedNumRows.values,
-      );
+      _applySinceYouWatchedNumRows(resolved);
       _applyString(
         resolved,
         'sinceYouWatchedSourceType',
@@ -1689,6 +1684,22 @@ class PluginSyncService extends ChangeNotifier {
     }
   }
 
+  // The server stores this as an int row count, so map it back onto the enum by value.
+  void _applySinceYouWatchedNumRows(Map<String, dynamic> data) {
+    final value = data['sinceYouWatchedNumRows'];
+    if (value is! int) return;
+
+    final match = prefs.SinceYouWatchedNumRows.values.where(
+      (e) => e.value == value,
+    );
+    if (match.isEmpty) return;
+
+    final effective = _prefs.getEffectivePreference(
+      UserPreferences.sinceYouWatchedNumRows,
+    );
+    _store.set(effective, match.first);
+  }
+
   void _applyString<T>(
     Map<String, dynamic> data,
     String serverKey,
@@ -1821,7 +1832,7 @@ class PluginSyncService extends ChangeNotifier {
       'displayAudioRows': _prefs.get(UserPreferences.displayAudioRows),
       'displaySinceYouWatchedRows': _prefs.get(UserPreferences.displaySinceYouWatchedRows),
       'sinceYouWatchedSource': _prefs.get(UserPreferences.sinceYouWatchedSource).name,
-      'sinceYouWatchedNumRows': _prefs.get(UserPreferences.sinceYouWatchedNumRows).name,
+      'sinceYouWatchedNumRows': _prefs.get(UserPreferences.sinceYouWatchedNumRows).value,
       'sinceYouWatchedSourceType': _prefs.get(UserPreferences.sinceYouWatchedSourceType).name,
       'sinceYouWatchedSourceItem': _prefs.get(UserPreferences.sinceYouWatchedSourceItem).name,
       'sinceYouWatchedIncludeWatched': _prefs.get(UserPreferences.sinceYouWatchedIncludeWatched),
