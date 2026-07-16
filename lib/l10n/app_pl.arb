@@ -37,7 +37,7 @@
     "@waitingForAuthorization": {
         "description": "Quick Connect polling status text"
     },
-    "back": "Wstecz",
+    "back": "Powrót",
     "@back": {
         "description": "Back button label"
     },
@@ -49,7 +49,7 @@
     "@loginFailed": {
         "description": "Generic login failure message"
     },
-    "quickConnectUnavailable": "QuickConnect niedostępny: {detail}",
+    "quickConnectUnavailable": "Szybkie połączenie nieudane: {detail}",
     "@quickConnectUnavailable": {
         "description": "Quick Connect generic error message",
         "placeholders": {
@@ -58,7 +58,7 @@
             }
         }
     },
-    "quickConnectUnavailableWithStatus": "QuickConnect niedostępny ({status}): {detail}",
+    "quickConnectUnavailableWithStatus": "Szybkie połączenie nieudane ({status}): {detail}",
     "@quickConnectUnavailableWithStatus": {
         "description": "Quick Connect error message with HTTP status info",
         "placeholders": {
@@ -798,7 +798,7 @@
     "@unread": {
         "description": "Status label for an unread book"
     },
-    "unwatched": "Nieobejrzane",
+    "unwatched": "Zaznacz jako obejrzane",
     "@unwatched": {
         "description": "Filter label for unwatched items"
     },
@@ -1075,7 +1075,7 @@
             }
         }
     },
-    "play": "Odtwórz",
+    "play": "Włącz",
     "@play": {
         "description": "Action button label to play media"
     },
@@ -1391,7 +1391,7 @@
     "@director": {
         "description": "Metadata label for director"
     },
-    "writers": "SCENARZYŚCI",
+    "writers": "SCENARIUSZ",
     "@writers": {
         "description": "Metadata label for writers"
     },
@@ -6763,7 +6763,7 @@
     "@musicVideos": {
         "description": "Section header for music videos filmography row"
     },
-    "record": "Nagraj",
+    "record": "Nagrywaj",
     "@record": {
         "description": "Button label to schedule a live TV recording"
     },
@@ -7358,7 +7358,7 @@
     "@recommendationSystemSubtitle": {
         "description": "Explanation under the recommendation system setting"
     },
-    "recommendationSystemMoonfin": "Moonfin poleca",
+    "recommendationSystemMoonfin": "Moonfin Recommends",
     "@recommendationSystemMoonfin": {
         "description": "Recommendation system option: Moonfin Recommends"
     },
@@ -7773,7 +7773,7 @@
     "@settingsMaxAudioChannels3_0": {
         "description": "Option: 3 channels"
     },
-    "settingsMaxAudioChannels4_0": "4.0 / 3.1 Kwadrofonia",
+    "settingsMaxAudioChannels4_0": "4.0 / 3.1 Quadraphonic",
     "@settingsMaxAudioChannels4_0": {
         "description": "Option: 4 channels"
     },
