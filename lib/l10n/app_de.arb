@@ -277,7 +277,7 @@
     "@guide": {
         "description": "Live TV guide button label"
     },
-    "recordings": "Aufnahmen",
+    "recordings": "TV-Aufnahmen",
     "@recordings": {
         "description": "Live TV recordings button label"
     },
@@ -782,7 +782,7 @@
     "@readStatus": {
         "description": "Filter label for read/watched items in book libraries"
     },
-    "watched": "Gesehen",
+    "watched": "Angesehen",
     "@watched": {
         "description": "Filter label for watched items"
     },
@@ -790,7 +790,7 @@
     "@unread": {
         "description": "Status label for an unread book"
     },
-    "unwatched": "Ungesehen",
+    "unwatched": "Nicht angesehen",
     "@unwatched": {
         "description": "Filter label for unwatched items"
     },
@@ -1108,7 +1108,7 @@
     "@version": {
         "description": "Action button label for version/media source selection"
     },
-    "cast": "Übertragen",
+    "cast": "Abspielen auf",
     "@cast": {
         "description": "Action button label for casting to a device"
     },
@@ -1501,7 +1501,7 @@
     "@readMore": {
         "description": "Toggle label to expand biography"
     },
-    "shuffle": "Zufallswiedergabe",
+    "shuffle": "Durchmischte Wiedergabe",
     "@shuffle": {
         "description": "Action button label for shuffle playback"
     },
