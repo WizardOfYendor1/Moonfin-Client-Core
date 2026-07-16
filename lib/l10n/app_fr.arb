@@ -8064,7 +8064,7 @@
     "@recommendationSystemMoonfin": {
         "description": "Recommendation system option: Moonfin Recommends"
     },
-    "audiobookSave": "Enregistrer",
+    "audiobookSave": "Sauvegarder",
     "detailScreenStyleModern": "Moderne",
     "@detailScreenStyleModern": {
         "description": "Detail screen style option: the responsive cinematic layout"
