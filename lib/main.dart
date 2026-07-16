@@ -137,17 +137,31 @@ Future<void> _restoreWindowGeometry() async {
   });
 }
 
+/// Resolves whether this Android device is a TV, which decides the leanback UI
+/// and the default playback engine.
 Future<void> _detectAndSetTvMode() async {
   if (const bool.fromEnvironment('MOONFIN_FORCE_TV')) {
     PlatformDetection.setTvMode(true);
     return;
   }
   if (!PlatformDetection.isAndroid) return;
-  try {
-    const channel = MethodChannel('org.moonfin.androidtv/platform');
-    final isTV = await channel.invokeMethod<bool>('isTvDevice') ?? false;
-    PlatformDetection.setTvMode(isTV);
-  } catch (_) {}
+  const channel = MethodChannel('org.moonfin.androidtv/platform');
+  const attempts = 3;
+  for (var attempt = 0; attempt < attempts; attempt++) {
+    try {
+      final isTV = await channel.invokeMethod<bool>('isTvDevice');
+      if (isTV != null) {
+        PlatformDetection.setTvMode(isTV);
+        return;
+      }
+    } catch (_) {}
+    if (attempt < attempts - 1) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+  }
+  debugPrint(
+    'TV detection failed after $attempts attempts, continuing as a non-TV device',
+  );
 }
 
 Future<void> _detectAndSetDisplayCapabilities() async {

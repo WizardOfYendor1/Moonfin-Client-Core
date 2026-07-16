@@ -198,7 +198,8 @@ class MainActivity : AudioServiceActivity() {
         return "moonfin://play?$query"
     }
 
-    private fun isTvDevice(): Boolean = isTelevision(this)
+    // Null travels back to Dart as "ask again" rather than as "not a TV".
+    private fun isTvDevice(): Boolean? = isTelevisionOrNull(this)
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
