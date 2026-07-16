@@ -29,6 +29,7 @@ import 'l10n/app_localizations.dart';
 import 'preference/user_preferences.dart';
 import 'syncplay/syncplay_manager.dart';
 import 'ui/navigation/app_router.dart';
+import 'ui/navigation/deep_link_navigator.dart';
 import 'ui/navigation/home_refresh_bus.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/theme/app_theme_controller.dart';
@@ -77,7 +78,7 @@ class _MoonfinAppState extends State<MoonfinApp> {
     _prefs.addListener(_syncIdiomFromPrefs);
     _prefs.addListener(_syncGlassFromPrefs);
     if (PlatformDetection.isAppleTV) {
-      TopShelfService().startDeepLinkListener(appRouter.go);
+      TopShelfService().startDeepLinkListener(navigateWhenReady);
       TvRemoteController.instance.init();
       TvRemoteController.instance.config = const TvRemoteConfig(
         shortSwipeThreshold: 0.45,
@@ -88,7 +89,7 @@ class _MoonfinAppState extends State<MoonfinApp> {
       );
     }
     if (PlatformDetection.isAndroid && PlatformDetection.isTV) {
-      WatchNextService().startDeepLinkListener(appRouter.go);
+      WatchNextService().startDeepLinkListener(navigateWhenReady);
     }
   }
 

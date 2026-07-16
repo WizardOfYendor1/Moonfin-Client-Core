@@ -195,7 +195,7 @@ class MainActivity : AudioServiceActivity() {
         } else {
             "id=${Uri.encode(itemId)}&serverId=${Uri.encode(serverId)}"
         }
-        return "moonfin://play?$query"
+        return "moonfin://item?$query"
     }
 
     // Null travels back to Dart as "ask again" rather than as "not a TV".
