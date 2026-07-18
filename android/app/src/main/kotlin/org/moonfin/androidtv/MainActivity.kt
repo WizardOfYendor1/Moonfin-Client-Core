@@ -75,6 +75,13 @@ class MainActivity : AudioServiceActivity() {
     private var gameActive = false
     private var hatX = 0
     private var hatY = 0
+
+    // Kept separate from hatX/hatY on purpose. Sharing them would let a
+    // UI-navigation value leak into the emulator's edge detector, which would
+    // then read the first in-game press as a hold already in progress and
+    // never send its matching button-up.
+    private var navX = 0
+    private var navY = 0
     private var pipEnabled = false
     private val handler = Handler(Looper.getMainLooper())
     private var dismissRunnable: Runnable? = null
@@ -253,7 +260,13 @@ class MainActivity : AudioServiceActivity() {
             when (call.method) {
                 "setActive" -> {
                     gameActive = call.argument<Boolean>("active") ?: false
-                    if (!gameActive) { hatX = 0; hatY = 0 }
+                    // Reset on every transition, in both directions. Otherwise
+                    // the first press after the switch reads as a hold already
+                    // in progress and gets dropped.
+                    hatX = 0
+                    hatY = 0
+                    navX = 0
+                    navY = 0
                     result.success(true)
                 }
                 else -> result.notImplemented()
@@ -615,6 +628,26 @@ class MainActivity : AudioServiceActivity() {
             }
             return true
         }
+
+        // Outside a game the left stick drives UI focus. The d-pad needs no
+        // help, because Android already turns the hat into KEYCODE_DPAD_* key
+        // events. Only the stick is invisible to Flutter, arriving as motion.
+        if (!gameActive &&
+            event.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK &&
+            event.action == MotionEvent.ACTION_MOVE
+        ) {
+            val x = stickDirection(event, MotionEvent.AXIS_X)
+            if (x != navX) {
+                navX = x
+                sendGamepadNavigate("h", if (x == -1) "left" else if (x == 1) "right" else "none")
+            }
+            val y = stickDirection(event, MotionEvent.AXIS_Y)
+            if (y != navY) {
+                navY = y
+                sendGamepadNavigate("v", if (y == -1) "up" else if (y == 1) "down" else "none")
+            }
+            // Not consumed, since other views may still want the motion event.
+        }
         return super.dispatchGenericMotionEvent(event)
     }
 
@@ -651,6 +684,27 @@ class MainActivity : AudioServiceActivity() {
         if (stick <= -0.5f) return -1
         if (stick >= 0.5f) return 1
         return 0
+    }
+
+    // -1 / 0 / +1 from an analog stick axis alone. Separate from axisDirection,
+    // which falls back from the hat to the stick. UI navigation has to ignore
+    // the hat, or every d-pad press would move focus twice.
+    private fun stickDirection(event: MotionEvent, stickAxis: Int): Int {
+        val stick = event.getAxisValue(stickAxis)
+        if (stick <= -0.5f) return -1
+        if (stick >= 0.5f) return 1
+        return 0
+    }
+
+    // The axis is "h" or "v" so Dart can tell which one a "none" recentre came
+    // from. Without it, releasing a diagonal is ambiguous.
+    private fun sendGamepadNavigate(axis: String, direction: String) {
+        runOnUiThread {
+            gamepadChannel?.invokeMethod(
+                "onNavigate",
+                mapOf("axis" to axis, "direction" to direction),
+            )
+        }
     }
 
     private fun sendGamepadButton(index: Int, pressed: Boolean) {

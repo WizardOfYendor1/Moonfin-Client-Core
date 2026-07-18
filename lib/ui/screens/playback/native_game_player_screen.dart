@@ -12,6 +12,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../playback/appletv_game_player.dart';
 import '../../../util/game_cores.dart';
+import '../../../util/focus/gamepad/gamepad_suppressor.dart';
 
 /// Native (tvOS) game player: the libretro core runs in the Runner and renders
 /// into a Flutter texture, so this screen stays plain Flutter. It downloads and
@@ -63,6 +64,11 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    // The pad belongs to the libretro core while a game is running. Inert on
+    // tvOS today (GamepadNavigationScope is disabled there), but kept
+    // symmetrical with GameEmulatorScreen so the invariant holds if tvOS ever
+    // gains UI-level pad navigation.
+    GamepadSuppressor.push();
     _events = AppleTvGamePlayer.events.listen(_onEvent);
     _prepare();
   }
@@ -70,6 +76,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
   @override
   void dispose() {
     _events?.cancel();
+    GamepadSuppressor.pop();
     WakelockPlus.disable();
     unawaited(_player.stop());
     super.dispose();

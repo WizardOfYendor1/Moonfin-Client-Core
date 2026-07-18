@@ -50,6 +50,7 @@ import 'util/platform_detection.dart';
 import 'ui/widgets/overlay_sheet.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 import 'util/focus/key_event_utils.dart';
+import 'util/focus/gamepad/gamepad_navigation_scope.dart';
 import 'ui/widgets/focus/request_initial_focus.dart';
 import 'package:custom_tv_text_field/custom_tv_text_field.dart';
 
@@ -236,18 +237,24 @@ class _MoonfinAppState extends State<MoonfinApp> {
                             if (PlatformDetection.isTV) const ScreensaverHost(),
                           ],
                         );
-                        return InputModeTracker(
-                          child: _GlobalShortcutScope(
-                            child: Material(
-                              type: MaterialType.transparency,
-                              child: CupertinoTheme(
-                                data: CupertinoThemeData(
-                                  brightness: Brightness.dark,
-                                  primaryColor: AppColorScheme.accent,
-                                  scaffoldBackgroundColor:
-                                      AppColorScheme.background,
+                        // Has to sit inside MaterialApp for ScrollIntent to
+                        // resolve, above the router so every route is covered,
+                        // and inside the Overlay so dialogs and sheets share
+                        // the same focus subtree.
+                        return GamepadNavigationScope(
+                          child: InputModeTracker(
+                            child: _GlobalShortcutScope(
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: CupertinoTheme(
+                                  data: CupertinoThemeData(
+                                    brightness: Brightness.dark,
+                                    primaryColor: AppColorScheme.accent,
+                                    scaffoldBackgroundColor:
+                                        AppColorScheme.background,
+                                  ),
+                                  child: content,
                                 ),
-                                child: content,
                               ),
                             ),
                           ),
@@ -567,6 +574,13 @@ class _GlobalShortcutScopeState extends State<_GlobalShortcutScope>
     if (key.isBackKey) {
       if (isBackspace && _isEditingText()) {
         return false;
+      }
+      // Back with the on-screen keyboard up should dismiss the keyboard rather
+      // than navigate. This runs ahead of the focus tree and the field has no
+      // key handling of its own, so without it the route pops out from under
+      // an open keyboard.
+      if (CustomTVTextField.closeTopKeyboard()) {
+        return true;
       }
       if (OverlaySheetController.closeTopSheet()) {
         return true;
