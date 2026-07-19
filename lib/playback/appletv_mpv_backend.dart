@@ -137,6 +137,11 @@ class AppleTvMpvBackend implements PlayerBackend {
       case 'toggleFavorite':
       case 'stillWatchingContinue':
       case 'stillWatchingStop':
+      case 'nextUpPlay':
+      case 'nextUpCancel':
+      case 'nextUpDismiss':
+      case 'skipSegment':
+      case 'userSeeked':
       case 'searchSubtitles':
       case 'downloadSubtitle':
       case 'syncplayLeave':
@@ -454,14 +459,10 @@ class AppleTvMpvBackend implements PlayerBackend {
     Map<String, dynamic>? trickplay,
     bool hasCast = false,
     List<Map<String, dynamic>> castPeople = const [],
-    Map<String, dynamic>? nextUp,
-    int nextUpThresholdMs = 0,
     Map<String, dynamic>? pauseMeta,
     int selectedBitrateMbps = -1,
-    List<Map<String, dynamic>> mediaSegments = const [],
     bool canFavorite = false,
     bool isFavorite = false,
-    bool showStillWatching = false,
     bool canDownloadSubtitles = false,
     Map<String, dynamic>? syncPlay,
     bool isLive = false,
@@ -485,14 +486,10 @@ class AppleTvMpvBackend implements PlayerBackend {
       'trickplay': ?trickplay,
       'hasCast': hasCast,
       'castPeople': castPeople,
-      'nextUp': ?nextUp,
-      'nextUpThresholdMs': nextUpThresholdMs,
       'pauseMeta': ?pauseMeta,
       'selectedBitrateMbps': selectedBitrateMbps,
-      'mediaSegments': mediaSegments,
       'canFavorite': canFavorite,
       'isFavorite': isFavorite,
-      'showStillWatching': showStillWatching,
       'canDownloadSubtitles': canDownloadSubtitles,
       'syncPlay': ?syncPlay,
       'isLive': isLive,
@@ -501,6 +498,53 @@ class AppleTvMpvBackend implements PlayerBackend {
       'channelList': channelList,
       'streamStats': streamStats,
     });
+  }
+
+  Future<void> showNextUp({
+    required String title,
+    required String episodeInfo,
+    required String imageUrl,
+    required bool isMinimal,
+    required String countdownStyle,
+    required int timeoutMs,
+  }) async {
+    await _invoke<void>('showNextUp', {
+      'title': title,
+      'episodeInfo': episodeInfo,
+      'imageUrl': imageUrl,
+      'isMinimal': isMinimal,
+      'countdownStyle': countdownStyle,
+      'timeoutMs': timeoutMs,
+    });
+  }
+
+  Future<void> hideNextUp() async {
+    await _invoke<void>('hideNextUp');
+  }
+
+  /// Returns whether the native modal actually presented so the caller can
+  /// fail open instead of waiting on a prompt that never appeared.
+  Future<bool> showStillWatching() async {
+    final presented = await _invoke<bool>('showStillWatching');
+    return presented ?? false;
+  }
+
+  Future<void> showSkipSegment(
+    String label, {
+    required String countdownStyle,
+    required int segmentStartMs,
+    required int segmentEndMs,
+  }) async {
+    await _invoke<void>('showSkipSegment', {
+      'label': label,
+      'countdownStyle': countdownStyle,
+      'segmentStartMs': segmentStartMs,
+      'segmentEndMs': segmentEndMs,
+    });
+  }
+
+  Future<void> hideSkipSegment() async {
+    await _invoke<void>('hideSkipSegment');
   }
 
   Future<void> showRemoteSubtitles(List<Map<String, dynamic>> results) async {
@@ -523,6 +567,10 @@ class AppleTvMpvBackend implements PlayerBackend {
       'rangeProgress': rangeProgressARGB,
       'rangeTrack': rangeTrackARGB,
     });
+  }
+
+  Future<void> setPromptStrings(Map<String, String> strings) async {
+    await _invoke<void>('setPromptStrings', strings);
   }
 
   @override

@@ -2,6 +2,22 @@ import AVFoundation
 import QuartzCore
 import UIKit
 
+// Localized prompt text pushed from Dart. The literals are the English
+// fallback for the window before the push arrives.
+struct PromptStrings {
+    var endsInTemplate = "Ends in {time}"
+    var upNext = "Up Next"
+    var playNext = "Play Next"
+    var stillWatchingTitle = "Still Watching?"
+    var stillWatchingBody = "Playback has been paused. Are you still watching?"
+    var stillWatchingContinue = "Continue"
+    var stillWatchingStop = "Stop"
+
+    func endsIn(_ time: String) -> String {
+        endsInTemplate.replacingOccurrences(of: "{time}", with: time)
+    }
+}
+
 final class AppleTvPlayerViewController: UIViewController {
     private let player: MpvPlayerWrapper
     var onExit: (() -> Void)?
@@ -16,6 +32,11 @@ final class AppleTvPlayerViewController: UIViewController {
     var onToggleFavorite: (() -> Void)?
     var onStillWatchingContinue: (() -> Void)?
     var onStillWatchingStop: (() -> Void)?
+    var onNextUpPlay: (() -> Void)?
+    var onNextUpCancel: (() -> Void)?
+    var onNextUpDismiss: (() -> Void)?
+    var onSkipSegmentSelect: (() -> Void)?
+    var onUserSeek: (() -> Void)?
     var onSearchSubtitles: (() -> Void)?
     var onDownloadSubtitle: ((String) -> Void)?
     var onSyncplayLeave: (() -> Void)?
@@ -56,20 +77,34 @@ final class AppleTvPlayerViewController: UIViewController {
     private var trickplay: TrickplayData?
     private var trickplaySheets: [Int: UIImage] = [:]
 
-    private var nextUp: (title: String, imageUrl: String)?
-    private var nextUpThresholdMs = 0
-    private var nextUpKey = ""
-    private var nextUpDismissed = false
+    // The Next Up card, skip button, and Still Watching prompt are pure
+    // renderers. The Dart side owns every decision (when to show, the
+    // authoritative countdown, what a press does) so tvOS behaves exactly
+    // like the Flutter player. The deadline below only draws the countdown.
     private var nextUpVisible = false
+    private var nextUpFocusOnPlay = true
+    private var nextUpCountdownDeadline: CFTimeInterval = 0
+    private var nextUpCountdownTotalMs = 0
+    private var nextUpCountdownStyle = "both"
 
     private var pauseMeta: (overview: String, imageUrl: String)?
 
-    private var mediaSegments: [(startMs: Int, endMs: Int, action: String, label: String)] = []
-    private var mediaSegmentsSignature = ""
-    private var skippedSegmentKeys: Set<String> = []
-    private var activeSkipSegmentKey: String?
+    private var skipSegmentActive = false
     private let skipSegmentButton = UIView()
+    private let skipSegmentGlass = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+    private let skipSegmentRow = UIStackView()
+    private let skipSegmentIcon = UIImageView()
     private let skipSegmentLabel = UILabel()
+    private let skipSegmentTimerLabel = UILabel()
+    private let skipSegmentRingContainer = UIView()
+    private let skipSegmentRingTrack = CAShapeLayer()
+    private let skipSegmentRing = CAShapeLayer()
+    private let skipSegmentRingNumber = UILabel()
+    private let skipSegmentRingIcon = UIImageView()
+    private var skipSegmentStartMs = 0
+    private var skipSegmentEndMs = 0
+    private var skipSegmentCountdownStyle = "none"
+    private let skipRingSize: CGFloat = 72
 
     private let loadingOverlay = UIView()
     private let loadingSpinner = UIActivityIndicatorView(style: .large)
@@ -91,6 +126,9 @@ final class AppleTvPlayerViewController: UIViewController {
     private var scrubHoldStart: TimeInterval = 0
     private var panScrubEngaged = false
     private var panScrubLastTranslationX: CGFloat = 0
+    // A touch pan borrows the scrubber zone while it runs. The zone the user
+    // was in is restored when the pan ends so the control bar stays reachable.
+    private var zoneBeforePanScrub: Zone?
 
     private struct TrickplayData {
         let urls: [String]
@@ -149,17 +187,31 @@ final class AppleTvPlayerViewController: UIViewController {
 
     private let defaultAccent = UIColor(red: 0.9, green: 0.1, blue: 0.55, alpha: 1)
     private var glassActive = false
+    private var hasThemeConfig = false
     private var glassAccent = UIColor(red: 0.04, green: 0.52, blue: 1.0, alpha: 1)
     private var glassRangeProgress = UIColor(red: 0.04, green: 0.52, blue: 1.0, alpha: 1)
     private var glassRangeTrack = UIColor(white: 1, alpha: 0.2)
     private var glassSurface = UIColor(white: 1, alpha: 0.12)
     private var glassOnSurface = UIColor.white
+    // Dart pushes the accent for every theme, not only glass ones, so this is
+    // the accent every prompt surface renders with. The pink constant only
+    // covers the window before the first theme config arrives.
+    private var themeAccent: UIColor { hasThemeConfig ? glassAccent : defaultAccent }
+    private var promptStrings = PromptStrings()
     private let statsStack = UIStackView()
 
     private let nextUpCard = UIView()
     private let nextUpImage = UIImageView()
+    private let nextUpEpisodeLabel = UILabel()
     private let nextUpTitleLabel = UILabel()
     private let nextUpCountdownLabel = UILabel()
+    private let nextUpPlayButton = UIView()
+    private let nextUpPlayLabel = UILabel()
+    private let nextUpCancelButton = UIView()
+    private let nextUpCancelIcon = UIImageView()
+    private let nextUpRing = CAShapeLayer()
+    private var nextUpCardWidth: NSLayoutConstraint?
+    private var nextUpImageHeight: NSLayoutConstraint?
 
     private let pauseOverlay = UIView()
     private let pauseImage = UIImageView()
@@ -199,6 +251,7 @@ final class AppleTvPlayerViewController: UIViewController {
 
     func applyThemeConfig(_ args: [String: Any]) {
         glassActive = (args["isGlass"] as? Bool) ?? false
+        hasThemeConfig = true
         if let v = (args["accent"] as? NSNumber)?.intValue {
             glassAccent = Self.color(fromARGB: v)
         }
@@ -227,12 +280,30 @@ final class AppleTvPlayerViewController: UIViewController {
         return UIColor(red: r, green: g, blue: b, alpha: a)
     }
 
+    func applyPromptStrings(_ args: [String: Any]) {
+        if let v = args["endsIn"] as? String { promptStrings.endsInTemplate = v }
+        if let v = args["upNext"] as? String { promptStrings.upNext = v }
+        if let v = args["playNext"] as? String { promptStrings.playNext = v }
+        if let v = args["stillWatchingTitle"] as? String { promptStrings.stillWatchingTitle = v }
+        if let v = args["stillWatchingBody"] as? String { promptStrings.stillWatchingBody = v }
+        if let v = args["stillWatchingContinue"] as? String { promptStrings.stillWatchingContinue = v }
+        if let v = args["stillWatchingStop"] as? String { promptStrings.stillWatchingStop = v }
+        if isViewLoaded {
+            upNextLabel.text = promptStrings.upNext.uppercased()
+            nextUpPlayLabel.text = promptStrings.playNext
+        }
+    }
+
     private func restyleForTheme() {
-        let accent = glassActive ? glassAccent : defaultAccent
-        let progress = glassActive ? glassRangeProgress : defaultAccent
-        scrubber.progressTintColor = progress
+        let accent = themeAccent
+        scrubber.progressTintColor = glassActive ? glassRangeProgress : accent
         channelBadge.backgroundColor = accent
         upNextLabel.textColor = accent
+        skipSegmentButton.layer.borderColor = accent.cgColor
+        skipSegmentIcon.tintColor = accent
+        skipSegmentRingIcon.tintColor = accent
+        skipSegmentRing.strokeColor = accent.cgColor
+        nextUpPlayButton.backgroundColor = accent
     }
 
     private func setupOsd() {
@@ -421,33 +492,98 @@ final class AppleTvPlayerViewController: UIViewController {
         }
     }
 
+    // Mirrors the Flutter SkipSegmentOverlay at the same 2x scale the Next Up
+    // card uses: a glass capsule with an accent focus ring, skip icon, label,
+    // optional inline timer, and an optional countdown ring that tracks the
+    // segment off the player position.
     private func setupSkipSegment() {
         skipSegmentButton.translatesAutoresizingMaskIntoConstraints = false
-        skipSegmentButton.backgroundColor = .white
-        skipSegmentButton.layer.cornerRadius = 10
-        skipSegmentButton.layer.borderWidth = 2
-        skipSegmentButton.layer.borderColor = UIColor.white.cgColor
+        skipSegmentButton.layer.borderWidth = 4
+        skipSegmentButton.layer.borderColor = themeAccent.cgColor
+        skipSegmentButton.clipsToBounds = true
         skipSegmentButton.isHidden = true
         view.addSubview(skipSegmentButton)
 
-        skipSegmentLabel.translatesAutoresizingMaskIntoConstraints = false
-        skipSegmentLabel.font = .systemFont(ofSize: 28, weight: .semibold)
-        skipSegmentLabel.textColor = .black
-        skipSegmentButton.addSubview(skipSegmentLabel)
+        skipSegmentGlass.translatesAutoresizingMaskIntoConstraints = false
+        skipSegmentButton.addSubview(skipSegmentGlass)
+
+        skipSegmentRow.translatesAutoresizingMaskIntoConstraints = false
+        skipSegmentRow.axis = .horizontal
+        skipSegmentRow.alignment = .center
+        skipSegmentButton.addSubview(skipSegmentRow)
+
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: 34, weight: .semibold)
+        skipSegmentIcon.image = UIImage(systemName: "forward.end.fill", withConfiguration: iconConfig)
+        skipSegmentIcon.tintColor = themeAccent
+
+        skipSegmentLabel.font = .systemFont(ofSize: 30, weight: .semibold)
+        skipSegmentLabel.textColor = .white
+
+        skipSegmentTimerLabel.font = .monospacedDigitSystemFont(ofSize: 28, weight: .semibold)
+        skipSegmentTimerLabel.textColor = UIColor(white: 1, alpha: 0.5)
+
+        skipSegmentRingContainer.translatesAutoresizingMaskIntoConstraints = false
+        let ringPath = UIBezierPath(
+            arcCenter: CGPoint(x: skipRingSize / 2, y: skipRingSize / 2),
+            radius: skipRingSize / 2 - 3,
+            startAngle: -.pi / 2,
+            endAngle: .pi * 1.5,
+            clockwise: true)
+        for layer in [skipSegmentRingTrack, skipSegmentRing] {
+            layer.fillColor = UIColor.clear.cgColor
+            layer.lineWidth = 6
+            layer.frame = CGRect(x: 0, y: 0, width: skipRingSize, height: skipRingSize)
+            layer.path = ringPath.cgPath
+            skipSegmentRingContainer.layer.addSublayer(layer)
+        }
+        skipSegmentRingTrack.strokeColor = UIColor(white: 1, alpha: 0.16).cgColor
+        skipSegmentRing.strokeColor = themeAccent.cgColor
+
+        skipSegmentRingNumber.translatesAutoresizingMaskIntoConstraints = false
+        skipSegmentRingNumber.font = .monospacedDigitSystemFont(ofSize: 28, weight: .semibold)
+        skipSegmentRingNumber.textColor = .white
+        skipSegmentRingContainer.addSubview(skipSegmentRingNumber)
+
+        let ringIconConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
+        skipSegmentRingIcon.image = UIImage(systemName: "forward.end.fill", withConfiguration: ringIconConfig)
+        skipSegmentRingIcon.tintColor = themeAccent
+        skipSegmentRingIcon.translatesAutoresizingMaskIntoConstraints = false
+        skipSegmentRingContainer.addSubview(skipSegmentRingIcon)
+
+        for item in [skipSegmentIcon, skipSegmentLabel, skipSegmentTimerLabel, skipSegmentRingContainer] {
+            skipSegmentRow.addArrangedSubview(item)
+        }
+        skipSegmentRow.setCustomSpacing(18, after: skipSegmentIcon)
+        skipSegmentRow.setCustomSpacing(16, after: skipSegmentLabel)
+        skipSegmentRow.setCustomSpacing(26, after: skipSegmentTimerLabel)
 
         NSLayoutConstraint.activate([
             skipSegmentButton.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor, constant: -90),
+                equalTo: view.trailingAnchor, constant: -48),
             skipSegmentButton.bottomAnchor.constraint(
-                equalTo: view.bottomAnchor, constant: -120),
-            skipSegmentLabel.topAnchor.constraint(
-                equalTo: skipSegmentButton.topAnchor, constant: 14),
-            skipSegmentLabel.bottomAnchor.constraint(
-                equalTo: skipSegmentButton.bottomAnchor, constant: -14),
-            skipSegmentLabel.leadingAnchor.constraint(
-                equalTo: skipSegmentButton.leadingAnchor, constant: 30),
-            skipSegmentLabel.trailingAnchor.constraint(
-                equalTo: skipSegmentButton.trailingAnchor, constant: -30),
+                equalTo: view.bottomAnchor, constant: -240),
+            skipSegmentGlass.topAnchor.constraint(equalTo: skipSegmentButton.topAnchor),
+            skipSegmentGlass.bottomAnchor.constraint(equalTo: skipSegmentButton.bottomAnchor),
+            skipSegmentGlass.leadingAnchor.constraint(equalTo: skipSegmentButton.leadingAnchor),
+            skipSegmentGlass.trailingAnchor.constraint(equalTo: skipSegmentButton.trailingAnchor),
+            skipSegmentRow.topAnchor.constraint(
+                equalTo: skipSegmentButton.topAnchor, constant: 20),
+            skipSegmentRow.bottomAnchor.constraint(
+                equalTo: skipSegmentButton.bottomAnchor, constant: -20),
+            skipSegmentRow.leadingAnchor.constraint(
+                equalTo: skipSegmentButton.leadingAnchor, constant: 40),
+            skipSegmentRow.trailingAnchor.constraint(
+                equalTo: skipSegmentButton.trailingAnchor, constant: -32),
+            skipSegmentRingContainer.widthAnchor.constraint(equalToConstant: skipRingSize),
+            skipSegmentRingContainer.heightAnchor.constraint(equalToConstant: skipRingSize),
+            skipSegmentRingNumber.centerXAnchor.constraint(
+                equalTo: skipSegmentRingContainer.centerXAnchor),
+            skipSegmentRingNumber.centerYAnchor.constraint(
+                equalTo: skipSegmentRingContainer.centerYAnchor),
+            skipSegmentRingIcon.centerXAnchor.constraint(
+                equalTo: skipSegmentRingContainer.centerXAnchor),
+            skipSegmentRingIcon.centerYAnchor.constraint(
+                equalTo: skipSegmentRingContainer.centerYAnchor),
         ])
     }
 
@@ -587,64 +723,139 @@ final class AppleTvPlayerViewController: UIViewController {
         ])
     }
 
+    // Mirrors the Flutter NextUpOverlay layout at TV scale: a thumbnail on
+    // top (extended only), an UP NEXT eyebrow with the episode pill and the
+    // countdown, the title, then a Play Next button beside a close button.
     private func setupNextUpCard() {
         nextUpCard.translatesAutoresizingMaskIntoConstraints = false
         nextUpCard.backgroundColor = UIColor(white: 0.08, alpha: 0.96)
-        nextUpCard.layer.cornerRadius = 14
+        nextUpCard.layer.cornerRadius = 18
+        nextUpCard.clipsToBounds = true
         nextUpCard.isHidden = true
         view.addSubview(nextUpCard)
 
         nextUpImage.translatesAutoresizingMaskIntoConstraints = false
         nextUpImage.contentMode = .scaleAspectFill
-        nextUpImage.layer.cornerRadius = 8
         nextUpImage.clipsToBounds = true
         nextUpCard.addSubview(nextUpImage)
 
         let upNext = upNextLabel
         upNext.translatesAutoresizingMaskIntoConstraints = false
-        upNext.text = "UP NEXT"
+        upNext.text = promptStrings.upNext.uppercased()
         upNext.font = .systemFont(ofSize: 20, weight: .bold)
-        upNext.textColor = defaultAccent
+        upNext.textColor = themeAccent
         nextUpCard.addSubview(upNext)
 
-        nextUpTitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        nextUpTitleLabel.font = .systemFont(ofSize: 26, weight: .semibold)
-        nextUpTitleLabel.textColor = .white
-        nextUpTitleLabel.numberOfLines = 2
-        nextUpCard.addSubview(nextUpTitleLabel)
+        nextUpEpisodeLabel.translatesAutoresizingMaskIntoConstraints = false
+        nextUpEpisodeLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        nextUpEpisodeLabel.textColor = UIColor(white: 1, alpha: 0.75)
+        nextUpCard.addSubview(nextUpEpisodeLabel)
 
         nextUpCountdownLabel.translatesAutoresizingMaskIntoConstraints = false
         nextUpCountdownLabel.font = .systemFont(ofSize: 20, weight: .regular)
         nextUpCountdownLabel.textColor = UIColor(white: 1, alpha: 0.6)
+        nextUpCountdownLabel.textAlignment = .right
         nextUpCard.addSubview(nextUpCountdownLabel)
+
+        nextUpTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        nextUpTitleLabel.font = .systemFont(ofSize: 28, weight: .semibold)
+        nextUpTitleLabel.textColor = .white
+        nextUpTitleLabel.numberOfLines = 2
+        nextUpCard.addSubview(nextUpTitleLabel)
+
+        nextUpPlayButton.translatesAutoresizingMaskIntoConstraints = false
+        nextUpPlayButton.backgroundColor = themeAccent
+        nextUpPlayButton.layer.cornerRadius = 12
+        nextUpCard.addSubview(nextUpPlayButton)
+
+        nextUpPlayLabel.translatesAutoresizingMaskIntoConstraints = false
+        nextUpPlayLabel.text = promptStrings.playNext
+        nextUpPlayLabel.font = .systemFont(ofSize: 26, weight: .semibold)
+        nextUpPlayLabel.textColor = .black
+        nextUpPlayLabel.textAlignment = .center
+        nextUpPlayButton.addSubview(nextUpPlayLabel)
+
+        nextUpRing.fillColor = UIColor.clear.cgColor
+        nextUpRing.strokeColor = UIColor(white: 1, alpha: 0.9).cgColor
+        nextUpRing.lineWidth = 4
+        nextUpRing.strokeEnd = 0
+        nextUpPlayButton.layer.addSublayer(nextUpRing)
+
+        nextUpCancelButton.translatesAutoresizingMaskIntoConstraints = false
+        nextUpCancelButton.backgroundColor = UIColor(white: 0.25, alpha: 0.9)
+        nextUpCancelButton.layer.cornerRadius = 12
+        nextUpCard.addSubview(nextUpCancelButton)
+
+        nextUpCancelIcon.translatesAutoresizingMaskIntoConstraints = false
+        nextUpCancelIcon.image = UIImage(
+            systemName: "xmark",
+            withConfiguration: UIImage.SymbolConfiguration(
+                pointSize: 22, weight: .semibold))
+        nextUpCancelIcon.tintColor = .white
+        nextUpCancelButton.addSubview(nextUpCancelIcon)
+
+        let cardWidth = nextUpCard.widthAnchor.constraint(equalToConstant: 680)
+        nextUpCardWidth = cardWidth
+        let imageHeight = nextUpImage.heightAnchor.constraint(
+            equalToConstant: 680 * 9 / 16)
+        nextUpImageHeight = imageHeight
 
         NSLayoutConstraint.activate([
             nextUpCard.trailingAnchor.constraint(
                 equalTo: view.trailingAnchor, constant: -90),
             nextUpCard.bottomAnchor.constraint(
                 equalTo: view.bottomAnchor, constant: -120),
-            nextUpCard.widthAnchor.constraint(equalToConstant: 560),
-            nextUpCard.heightAnchor.constraint(equalToConstant: 150),
+            cardWidth,
 
-            nextUpImage.leadingAnchor.constraint(
-                equalTo: nextUpCard.leadingAnchor, constant: 16),
-            nextUpImage.centerYAnchor.constraint(equalTo: nextUpCard.centerYAnchor),
-            nextUpImage.widthAnchor.constraint(equalToConstant: 200),
-            nextUpImage.heightAnchor.constraint(equalToConstant: 118),
+            nextUpImage.topAnchor.constraint(equalTo: nextUpCard.topAnchor),
+            nextUpImage.leadingAnchor.constraint(equalTo: nextUpCard.leadingAnchor),
+            nextUpImage.trailingAnchor.constraint(equalTo: nextUpCard.trailingAnchor),
+            imageHeight,
 
             upNext.leadingAnchor.constraint(
-                equalTo: nextUpImage.trailingAnchor, constant: 18),
-            upNext.topAnchor.constraint(equalTo: nextUpImage.topAnchor),
+                equalTo: nextUpCard.leadingAnchor, constant: 24),
+            upNext.topAnchor.constraint(
+                equalTo: nextUpImage.bottomAnchor, constant: 18),
+
+            nextUpEpisodeLabel.leadingAnchor.constraint(
+                equalTo: upNext.trailingAnchor, constant: 14),
+            nextUpEpisodeLabel.centerYAnchor.constraint(equalTo: upNext.centerYAnchor),
+
+            nextUpCountdownLabel.trailingAnchor.constraint(
+                equalTo: nextUpCard.trailingAnchor, constant: -24),
+            nextUpCountdownLabel.centerYAnchor.constraint(equalTo: upNext.centerYAnchor),
 
             nextUpTitleLabel.leadingAnchor.constraint(equalTo: upNext.leadingAnchor),
             nextUpTitleLabel.trailingAnchor.constraint(
-                equalTo: nextUpCard.trailingAnchor, constant: -16),
+                equalTo: nextUpCard.trailingAnchor, constant: -24),
             nextUpTitleLabel.topAnchor.constraint(
-                equalTo: upNext.bottomAnchor, constant: 6),
+                equalTo: upNext.bottomAnchor, constant: 8),
 
-            nextUpCountdownLabel.leadingAnchor.constraint(equalTo: upNext.leadingAnchor),
-            nextUpCountdownLabel.bottomAnchor.constraint(
-                equalTo: nextUpImage.bottomAnchor),
+            nextUpPlayButton.leadingAnchor.constraint(equalTo: upNext.leadingAnchor),
+            nextUpPlayButton.topAnchor.constraint(
+                equalTo: nextUpTitleLabel.bottomAnchor, constant: 18),
+            nextUpPlayButton.heightAnchor.constraint(equalToConstant: 64),
+            nextUpPlayButton.bottomAnchor.constraint(
+                equalTo: nextUpCard.bottomAnchor, constant: -20),
+
+            nextUpPlayLabel.leadingAnchor.constraint(
+                equalTo: nextUpPlayButton.leadingAnchor, constant: 28),
+            nextUpPlayLabel.trailingAnchor.constraint(
+                equalTo: nextUpPlayButton.trailingAnchor, constant: -28),
+            nextUpPlayLabel.centerYAnchor.constraint(
+                equalTo: nextUpPlayButton.centerYAnchor),
+
+            nextUpCancelButton.leadingAnchor.constraint(
+                equalTo: nextUpPlayButton.trailingAnchor, constant: 14),
+            nextUpCancelButton.centerYAnchor.constraint(
+                equalTo: nextUpPlayButton.centerYAnchor),
+            nextUpCancelButton.widthAnchor.constraint(equalToConstant: 64),
+            nextUpCancelButton.heightAnchor.constraint(equalToConstant: 64),
+
+            nextUpCancelIcon.centerXAnchor.constraint(
+                equalTo: nextUpCancelButton.centerXAnchor),
+            nextUpCancelIcon.centerYAnchor.constraint(
+                equalTo: nextUpCancelButton.centerYAnchor),
         ])
     }
 
@@ -843,7 +1054,6 @@ final class AppleTvPlayerViewController: UIViewController {
         subtitleTracks = parseTracks(args["subtitleTracks"])
         streamInfoSections = (args["streamInfoSections"] as? [[String: Any]]) ?? []
         selectedBitrateMbps = (args["selectedBitrateMbps"] as? NSNumber)?.intValue ?? -1
-        nextUpThresholdMs = (args["nextUpThresholdMs"] as? NSNumber)?.intValue ?? 0
         hasCast = (args["hasCast"] as? Bool) ?? false
         canFavorite = (args["canFavorite"] as? Bool) ?? false
         isFavorite = (args["isFavorite"] as? Bool) ?? false
@@ -856,10 +1066,6 @@ final class AppleTvPlayerViewController: UIViewController {
         } else {
             syncPlayEnabled = false
         }
-        if (args["showStillWatching"] as? Bool) == true {
-            presentStillWatching()
-        }
-
         castPeople = ((args["castPeople"] as? [[String: Any]]) ?? []).compactMap { e in
             guard let name = e["name"] as? String, !name.isEmpty else { return nil }
             return (
@@ -879,10 +1085,8 @@ final class AppleTvPlayerViewController: UIViewController {
         }
 
         parseTrickplay(args["trickplay"])
-        parseNextUp(args["nextUp"])
         parsePauseMeta(args["pauseMeta"])
         parseLive(args)
-        parseMediaSegments(args["mediaSegments"])
 
         loadLogo((args["logoUrl"] as? String) ?? "")
 
@@ -953,21 +1157,6 @@ final class AppleTvPlayerViewController: UIViewController {
         trickplayHeight?.constant = trickplayWidth * CGFloat(height) / CGFloat(width)
     }
 
-    private func parseNextUp(_ raw: Any?) {
-        guard let dict = raw as? [String: Any],
-            let title = dict["title"] as? String, !title.isEmpty
-        else {
-            nextUp = nil
-            return
-        }
-        let imageUrl = (dict["imageUrl"] as? String) ?? ""
-        if title != nextUpKey {
-            nextUpKey = title
-            nextUpDismissed = false
-        }
-        nextUp = (title: title, imageUrl: imageUrl)
-    }
-
     private func parsePauseMeta(_ raw: Any?) {
         guard let dict = raw as? [String: Any],
             let overview = dict["overview"] as? String, !overview.isEmpty
@@ -978,85 +1167,67 @@ final class AppleTvPlayerViewController: UIViewController {
         pauseMeta = (overview: overview, imageUrl: (dict["imageUrl"] as? String) ?? "")
     }
 
-    private func parseMediaSegments(_ raw: Any?) {
-        let parsed = ((raw as? [[String: Any]]) ?? []).compactMap {
-            entry -> (startMs: Int, endMs: Int, action: String, label: String)? in
-            guard let startMs = (entry["startMs"] as? NSNumber)?.intValue,
-                let endMs = (entry["endMs"] as? NSNumber)?.intValue,
-                let action = entry["action"] as? String, endMs > startMs
-            else { return nil }
-            return (
-                startMs: startMs, endMs: endMs, action: action,
-                label: (entry["label"] as? String) ?? "Skip")
-        }
-        let signature = parsed.map { "\($0.startMs)-\($0.endMs)" }.joined(separator: ",")
-        if signature != mediaSegmentsSignature {
-            mediaSegmentsSignature = signature
-            skippedSegmentKeys.removeAll()
-            hideSkipSegment()
-        }
-        mediaSegments = parsed
-    }
-
-    private func updateMediaSegments() {
-        guard !isLive, !mediaSegments.isEmpty, player.duration > 0 else {
-            hideSkipSegment()
-            return
-        }
-        let posMs = Int(player.currentTime * 1000)
-        skippedSegmentKeys = skippedSegmentKeys.filter { key in
-            guard let segment = mediaSegments.first(where: {
-                "\($0.startMs)-\($0.endMs)" == key
-            }) else { return false }
-            return posMs >= segment.startMs
-        }
-
-        guard let segment = mediaSegments.first(where: {
-            posMs >= $0.startMs && posMs < $0.endMs
-        }) else {
-            hideSkipSegment()
-            return
-        }
-        let key = "\(segment.startMs)-\(segment.endMs)"
-        if skippedSegmentKeys.contains(key) {
-            hideSkipSegment()
-            return
-        }
-        if segment.action == "skip" {
-            skippedSegmentKeys.insert(key)
-            hideSkipSegment()
-            player.seek(to: Double(segment.endMs) / 1000.0)
-            return
-        }
-        showSkipSegment(label: segment.label, key: key)
-    }
-
-    private func showSkipSegment(label: String, key: String) {
-        activeSkipSegmentKey = key
+    func showSkipSegment(
+        label: String, countdownStyle: String, segmentStartMs: Int, segmentEndMs: Int
+    ) {
+        skipSegmentActive = true
         skipSegmentLabel.text = label
+        skipSegmentCountdownStyle = countdownStyle
+        skipSegmentStartMs = segmentStartMs
+        skipSegmentEndMs = segmentEndMs
+        updateSkipSegmentCountdown()
         guard skipSegmentButton.isHidden else { return }
         skipSegmentButton.alpha = 0
         skipSegmentButton.isHidden = false
         UIView.animate(withDuration: 0.2) { self.skipSegmentButton.alpha = 1 }
     }
 
-    private func hideSkipSegment() {
-        activeSkipSegmentKey = nil
+    private func updateSkipSegmentCountdown() {
+        guard skipSegmentActive else { return }
+        skipSegmentButton.layoutIfNeeded()
+        skipSegmentButton.layer.cornerRadius = min(56, skipSegmentButton.bounds.height / 2)
+
+        let durationMs = skipSegmentEndMs - skipSegmentStartMs
+        let showTimer =
+            skipSegmentCountdownStyle == "timer" || skipSegmentCountdownStyle == "both"
+        let showRing =
+            skipSegmentCountdownStyle == "progressBar" || skipSegmentCountdownStyle == "both"
+        guard durationMs > 0, showTimer || showRing else {
+            skipSegmentTimerLabel.isHidden = true
+            skipSegmentRingContainer.isHidden = true
+            return
+        }
+
+        let positionMs = Int(player.currentTime * 1000)
+        let remainingSec = min(max(0, (skipSegmentEndMs - positionMs) / 1000), durationMs / 1000)
+        let numberInRing = showTimer && showRing && remainingSec < 60
+        let progress = 1 - Double(positionMs - skipSegmentStartMs) / Double(durationMs)
+
+        skipSegmentTimerLabel.isHidden = !showTimer || numberInRing
+        if !skipSegmentTimerLabel.isHidden {
+            let text = remainingSec >= 60
+                ? "\(remainingSec / 60):" + String(format: "%02d", remainingSec % 60)
+                : ":" + String(format: "%02d", remainingSec)
+            skipSegmentTimerLabel.text = promptStrings.endsIn(text)
+        }
+
+        skipSegmentRingContainer.isHidden = !showRing
+        skipSegmentRingNumber.isHidden = !numberInRing
+        skipSegmentRingIcon.isHidden = numberInRing
+        if showRing {
+            skipSegmentRingNumber.text = "\(remainingSec)"
+            skipSegmentRing.strokeEnd = CGFloat(min(1, max(0, progress)))
+        }
+    }
+
+    func hideSkipSegment() {
+        skipSegmentActive = false
         guard !skipSegmentButton.isHidden else { return }
         UIView.animate(withDuration: 0.15) {
             self.skipSegmentButton.alpha = 0
         } completion: { _ in
             self.skipSegmentButton.isHidden = true
         }
-    }
-
-    private func performSkipSegment() {
-        guard let key = activeSkipSegmentKey,
-            let segment = mediaSegments.first(where: { "\($0.startMs)-\($0.endMs)" == key })
-        else { return }
-        skippedSegmentKeys.insert(key)
-        hideSkipSegment()
-        player.seek(to: Double(segment.endMs) / 1000.0)
     }
 
     private func loadImage(
@@ -1159,16 +1330,62 @@ final class AppleTvPlayerViewController: UIViewController {
     }
 
     private func setupSwipeGestures() {
-        for direction in [UISwipeGestureRecognizer.Direction.up, .down] {
+        // The pan begins after a few points of travel and would otherwise
+        // cancel the swipes, leaving flicks dead. Both recognize
+        // simultaneously instead, which is safe because the pan only acts
+        // once horizontal travel dominates and the button zone is not focused.
+        for direction in [
+            UISwipeGestureRecognizer.Direction.up, .down, .left, .right,
+        ] {
             let swipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
             swipe.direction = direction
+            swipe.delegate = self
             view.addGestureRecognizer(swipe)
         }
-        // Drag on the remote touch surface to scrub continuously; horizontal
-        // travel maps to timeline time, replacing the old left/right swipe steps.
+        // Drag on the remote touch surface to scrub continuously, mapping
+        // horizontal travel to timeline time.
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handleScrubPan(_:)))
         pan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+        pan.delegate = self
         view.addGestureRecognizer(pan)
+        // The system dismisses a presented controller on menu through its own
+        // window level recognizer, and overriding pressesBegan can't stop it.
+        // Owning a menu recognizer here wins the arbitration, so back can hide
+        // the OSD instead of tearing down the player.
+        let menuTap = UITapGestureRecognizer(target: self, action: #selector(handleMenuTap))
+        menuTap.allowedPressTypes = [NSNumber(value: UIPress.PressType.menu.rawValue)]
+        view.addGestureRecognizer(menuTap)
+    }
+
+    @objc private func handleMenuTap() {
+        if nextUpVisible {
+            hideNextUpCard()
+            onNextUpDismiss?()
+            return
+        }
+        // Back dismisses the skip button for the rest of the segment, the way
+        // the Flutter player does. The segment state machine keeps it from
+        // showing again until the segment is left and reentered.
+        if skipSegmentActive {
+            hideSkipSegment()
+            return
+        }
+        if panScrubEngaged {
+            finishPanScrub(commit: false)
+            showOsd()
+            return
+        }
+        if scrubTargetMs != nil {
+            cancelScrub()
+            showOsd()
+            return
+        }
+        if !osdDismissed && isOsdOnScreen {
+            osdDismissed = true
+            hideOsd()
+            return
+        }
+        dismiss(animated: true)
     }
 
     @objc private func handleSwipe(_ recognizer: UISwipeGestureRecognizer) {
@@ -1184,12 +1401,27 @@ final class AppleTvPlayerViewController: UIViewController {
             focusedZone = .buttons
             updateFocusHighlight()
             showOsd()
+        case .left, .right:
+            // Horizontal flicks travel the action buttons. Scrubbing is the
+            // pan's job, and an engaged pan owns the scrubber zone anyway.
+            guard focusedZone == .buttons, isOsdOnScreen else { return }
+            handleHorizontal(forward: recognizer.direction == .right)
+            showOsd()
         default:
             break
         }
     }
 
     @objc private func handleScrubPan(_ recognizer: UIPanGestureRecognizer) {
+        // Teardown sits above the guard so a card or modal appearing mid-pan
+        // can't strand the engaged state and misroute the next press.
+        switch recognizer.state {
+        case .ended, .cancelled, .failed:
+            finishPanScrub()
+            return
+        default:
+            break
+        }
         guard presentedViewController == nil, !nextUpVisible, !isLive else { return }
         switch recognizer.state {
         case .began:
@@ -1198,10 +1430,14 @@ final class AppleTvPlayerViewController: UIViewController {
         case .changed:
             let t = recognizer.translation(in: view)
             if !panScrubEngaged {
-                // Engage only once horizontal travel clearly dominates, so an
-                // up/down swipe still switches focus zones instead of scrubbing.
-                guard abs(t.x) > 24, abs(t.x) > abs(t.y) else { return }
+                // Engage only once horizontal travel clearly dominates and the
+                // buttons aren't focused, so swipes keep switching zones and
+                // travelling the buttons instead of scrubbing.
+                guard abs(t.x) > 24, abs(t.x) > abs(t.y),
+                    focusedZone == .scrubber || !isOsdOnScreen
+                else { return }
                 panScrubEngaged = true
+                zoneBeforePanScrub = focusedZone
                 focusedZone = .scrubber
                 updateFocusHighlight()
                 showOsd()
@@ -1220,14 +1456,23 @@ final class AppleTvPlayerViewController: UIViewController {
             if deltaMs != 0 {
                 adjustScrub(byMs: deltaMs)
             }
-        case .ended, .cancelled, .failed:
-            if panScrubEngaged {
-                commitScrub()
-            }
-            panScrubEngaged = false
         default:
             break
         }
+    }
+
+    private func finishPanScrub(commit: Bool = true) {
+        if panScrubEngaged {
+            if commit {
+                commitScrub()
+            } else {
+                cancelScrub()
+            }
+            focusedZone = zoneBeforePanScrub ?? .buttons
+            updateFocusHighlight()
+        }
+        panScrubEngaged = false
+        zoneBeforePanScrub = nil
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
@@ -1235,23 +1480,49 @@ final class AppleTvPlayerViewController: UIViewController {
             super.pressesBegan(presses, with: event)
             return
         }
-        for press in presses {
-            switch press.type {
-            case .menu:
-                if nextUpVisible {
-                    dismissNextUp()
-                    return
+        // While the Next Up card is up it owns the remote. Every press is
+        // consumed here so nothing falls through to scrubbing, OSD handling,
+        // or the default menu behavior underneath the card.
+        if nextUpVisible {
+            for press in presses {
+                switch press.type {
+                case .select:
+                    hideNextUpCard()
+                    if nextUpFocusOnPlay {
+                        onNextUpPlay?()
+                    } else {
+                        onNextUpCancel?()
+                    }
+                case .leftArrow:
+                    nextUpFocusOnPlay = true
+                    updateNextUpFocusHighlight()
+                case .rightArrow:
+                    nextUpFocusOnPlay = false
+                    updateNextUpFocusHighlight()
+                default:
+                    // Menu is handled by the tap recognizer.
+                    break
                 }
-                if scrubTargetMs != nil {
-                    cancelScrub()
+            }
+            return
+        }
+        for press in presses {
+            // A press while a touch pan is scrubbing resolves the pan first so
+            // the press acts on the restored zone. Select means commit the
+            // seek, anything else commits and proceeds. Menu belongs to the
+            // tap recognizer, which cancels the pan itself.
+            if panScrubEngaged && press.type != .menu {
+                finishPanScrub()
+                if press.type == .select {
                     showOsd()
                     return
                 }
-                if !osdDismissed && osdContainer.alpha > 0.5 {
-                    osdDismissed = true
-                    hideOsd()
-                    return
-                }
+            }
+            switch press.type {
+            case .menu:
+                // Consumed so the down press can't reach the system while the
+                // recognizer decides on release.
+                return
             case .upArrow:
                 if isLive {
                     showOsd()
@@ -1271,13 +1542,9 @@ final class AppleTvPlayerViewController: UIViewController {
                 showOsd()
                 return
             case .select:
-                if nextUpVisible {
-                    onNext?()
-                    hideNextUp()
-                    return
-                }
-                if activeSkipSegmentKey != nil {
-                    performSkipSegment()
+                if skipSegmentActive {
+                    hideSkipSegment()
+                    onSkipSegmentSelect?()
                     showOsd()
                     return
                 }
@@ -1406,15 +1673,32 @@ final class AppleTvPlayerViewController: UIViewController {
         }
     }
 
-    private func presentStillWatching() {
-        guard !stillWatchingShown, presentedViewController == nil else { return }
+    // The Dart side pauses before requesting this and resumes on Continue, so
+    // the modal never touches the transport itself. Returning true is the
+    // promise that the prompt will be on screen, which the Dart side needs
+    // before it blocks waiting for an answer.
+    func presentStillWatching() -> Bool {
+        guard !stillWatchingShown else { return true }
         stillWatchingShown = true
-        player.pause()
+        hideNextUpCard()
+        if let presented = presentedViewController {
+            presented.dismiss(animated: false) { [weak self] in
+                self?.presentStillWatchingPanel()
+            }
+        } else {
+            presentStillWatchingPanel()
+        }
+        return true
+    }
+
+    private func presentStillWatchingPanel() {
         let panel = StillWatchingViewController(
+            strings: promptStrings,
+            accent: themeAccent,
+            surface: hasThemeConfig ? glassSurface : UIColor(white: 0.1, alpha: 1),
             onContinue: { [weak self] in
                 guard let self else { return }
                 self.stillWatchingShown = false
-                self.player.resume()
                 self.onStillWatchingContinue?()
             },
             onExit: { [weak self] in
@@ -1551,6 +1835,7 @@ final class AppleTvPlayerViewController: UIViewController {
         scrubTargetMs = nil
         trickplayContainer.isHidden = true
         player.seek(to: Double(target) / 1000.0)
+        onUserSeek?()
     }
 
     private func cancelScrub() {
@@ -1629,6 +1914,15 @@ final class AppleTvPlayerViewController: UIViewController {
             self.osdContainer.alpha = 0
             self.topContainer.alpha = 0
         }
+    }
+
+    // Alpha drops to 0 the moment the hide animation starts while the OSD
+    // keeps rendering through the fade, so the presentation layer is what
+    // says whether the user can still see it.
+    private var isOsdOnScreen: Bool {
+        if osdContainer.alpha > 0.5 { return true }
+        guard let presented = osdContainer.layer.presentation() else { return false }
+        return presented.opacity > 0.1
     }
 
     private func trackActionTitle(
@@ -1733,6 +2027,7 @@ final class AppleTvPlayerViewController: UIViewController {
                 UIAlertAction(title: "\(chapter.title) · \(stamp)", style: .default) {
                     [weak self] _ in
                     self?.player.seek(to: Double(chapter.startMs) / 1000.0)
+                    self?.onUserSeek?()
                     self?.showOsd()
                 })
         }
@@ -1952,42 +2247,102 @@ final class AppleTvPlayerViewController: UIViewController {
         present(panel, animated: true)
     }
 
-    private func showNextUp() {
-        guard let next = nextUp, !nextUpVisible else { return }
+    // Content is reassigned on every call so the card can never freeze on a
+    // previous episode. The countdown here is display only, the Dart timer
+    // decides what actually happens when it runs out.
+    func showNextUpCard(
+        title: String, episodeInfo: String, imageUrl: String,
+        isMinimal: Bool, countdownStyle: String, timeoutMs: Int
+    ) {
+        // Drop any in-flight touch scrub so its pending seek can't land
+        // underneath the card.
+        finishPanScrub(commit: false)
         nextUpVisible = true
-        nextUpTitleLabel.text = next.title
+        nextUpFocusOnPlay = true
+        nextUpCountdownStyle = countdownStyle
+        nextUpCountdownTotalMs = timeoutMs
+        nextUpCountdownDeadline =
+            timeoutMs > 0 ? CACurrentMediaTime() + Double(timeoutMs) / 1000.0 : 0
+        nextUpTitleLabel.text = title
+        nextUpTitleLabel.numberOfLines = isMinimal ? 1 : 2
+        nextUpEpisodeLabel.text = episodeInfo
+        nextUpEpisodeLabel.isHidden = episodeInfo.isEmpty
+        nextUpCountdownLabel.text = ""
+        let cardWidth: CGFloat = isMinimal ? 600 : 680
+        nextUpCardWidth?.constant = cardWidth
+        nextUpImage.isHidden = isMinimal || imageUrl.isEmpty
+        nextUpImageHeight?.constant = nextUpImage.isHidden ? 0 : cardWidth * 9 / 16
         nextUpImage.image = nil
-        loadImage(next.imageUrl) { [weak self] image in
-            guard let self, self.nextUpVisible else { return }
-            self.nextUpImage.image = image
+        if !nextUpImage.isHidden {
+            loadImage(imageUrl) { [weak self] image in
+                guard let self, self.nextUpVisible else { return }
+                self.nextUpImage.image = image
+            }
         }
-        nextUpCard.alpha = 0
-        nextUpCard.isHidden = false
-        UIView.animate(withDuration: 0.25) { self.nextUpCard.alpha = 1 }
+        nextUpRing.strokeEnd = 0
+        updateNextUpFocusHighlight()
+        // updateOsd keeps the OSD down while the card is visible, so this
+        // doesn't need to latch osdDismissed the way an explicit dismiss does.
+        hideOsd()
+        if nextUpCard.isHidden {
+            nextUpCard.alpha = 0
+            nextUpCard.isHidden = false
+            UIView.animate(withDuration: 0.25) { self.nextUpCard.alpha = 1 }
+        }
+        view.layoutIfNeeded()
+        updateNextUpRingPath()
     }
 
-    private func hideNextUp() {
+    func hideNextUpCard() {
+        guard nextUpVisible || !nextUpCard.isHidden else { return }
         nextUpVisible = false
         UIView.animate(withDuration: 0.2) { self.nextUpCard.alpha = 0 } completion: { _ in
             self.nextUpCard.isHidden = true
         }
     }
 
-    private func dismissNextUp() {
-        nextUpDismissed = true
-        hideNextUp()
+    private func updateNextUpFocusHighlight() {
+        nextUpPlayButton.layer.borderWidth = nextUpFocusOnPlay ? 4 : 0
+        nextUpPlayButton.layer.borderColor = UIColor.white.cgColor
+        nextUpCancelButton.layer.borderWidth = nextUpFocusOnPlay ? 0 : 4
+        nextUpCancelButton.layer.borderColor = UIColor.white.cgColor
     }
 
-    private func updateNextUp(remaining: TimeInterval) {
-        let active =
-            nextUp != nil && nextUpThresholdMs > 0 && !nextUpDismissed
-            && scrubTargetMs == nil && player.duration > 0
-            && remaining <= Double(nextUpThresholdMs) / 1000.0 && remaining > 0
-        if active {
-            showNextUp()
-            nextUpCountdownLabel.text = "Starts in \(Int(remaining.rounded()))s  ·  Select to play"
-        } else if nextUpVisible && (remaining <= 0 || nextUp == nil) {
-            hideNextUp()
+    private func updateNextUpRingPath() {
+        nextUpRing.frame = nextUpPlayButton.bounds
+        nextUpRing.path = UIBezierPath(
+            roundedRect: nextUpPlayButton.bounds.insetBy(dx: 2, dy: 2),
+            cornerRadius: 10
+        ).cgPath
+    }
+
+    private func updateNextUpCountdown() {
+        guard nextUpVisible, nextUpCountdownTotalMs > 0,
+            nextUpCountdownDeadline > 0
+        else {
+            nextUpRing.strokeEnd = 0
+            return
+        }
+        let remaining = max(0, nextUpCountdownDeadline - CACurrentMediaTime())
+        let showTimer =
+            nextUpCountdownStyle == "timer" || nextUpCountdownStyle == "both"
+        let showRing =
+            nextUpCountdownStyle == "progressBar" || nextUpCountdownStyle == "both"
+        if showTimer {
+            let seconds = Int(remaining.rounded(.up))
+            let text = seconds >= 60
+                ? "\(seconds / 60):" + String(format: "%02d", seconds % 60)
+                : ":" + String(format: "%02d", seconds)
+            nextUpCountdownLabel.text = promptStrings.endsIn(text)
+        } else {
+            nextUpCountdownLabel.text = ""
+        }
+        if showRing {
+            updateNextUpRingPath()
+            let total = Double(nextUpCountdownTotalMs) / 1000.0
+            nextUpRing.strokeEnd = total > 0 ? CGFloat(remaining / total) : 0
+        } else {
+            nextUpRing.strokeEnd = 0
         }
     }
 
@@ -2068,16 +2423,13 @@ final class AppleTvPlayerViewController: UIViewController {
             systemName: isPaused() ? "play.fill" : "pause.fill",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 27, weight: .medium))
 
-        let duration = player.duration
-        if duration > 0 {
-            updateNextUp(remaining: max(0, duration - player.currentTime))
-        }
+        updateNextUpCountdown()
+        updateSkipSegmentCountdown()
         updatePauseOverlay()
-        updateMediaSegments()
         updateLoadingOverlay()
 
         let shouldShow =
-            !osdDismissed
+            !osdDismissed && !nextUpVisible
             && (isPaused() || scrubTargetMs != nil
                 || (CACurrentMediaTime() - lastShowAt < 4.0))
         let visible = osdContainer.alpha > 0.5
@@ -2105,6 +2457,15 @@ final class AppleTvPlayerViewController: UIViewController {
         return h > 0
             ? String(format: "%d:%02d:%02d", h, m, s)
             : String(format: "%d:%02d", m, s)
+    }
+}
+
+extension AppleTvPlayerViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(
+        _: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith _: UIGestureRecognizer
+    ) -> Bool {
+        true
     }
 }
 
@@ -2747,11 +3108,32 @@ private final class ChannelRowCell: UITableViewCell {
     }
 }
 
+// Mirrors the Flutter StillWatchingDialog at the same 2x scale the other
+// prompt surfaces use: a glass card with an eye badge, title, body copy, a
+// full width accent Continue over a quiet Stop. Focus is the two stacked
+// buttons with the soft overlay Material renders, no border ring.
 private final class StillWatchingViewController: UIViewController {
+    private let strings: PromptStrings
+    private let accent: UIColor
+    private let surface: UIColor
     private let onContinue: () -> Void
     private let onExit: () -> Void
 
-    init(onContinue: @escaping () -> Void, onExit: @escaping () -> Void) {
+    private let continueOverlay = UIView()
+    private let stopOverlay = UIView()
+    private var focusOnContinue = true
+    private var answered = false
+
+    init(
+        strings: PromptStrings,
+        accent: UIColor,
+        surface: UIColor,
+        onContinue: @escaping () -> Void,
+        onExit: @escaping () -> Void
+    ) {
+        self.strings = strings
+        self.accent = accent
+        self.surface = surface
         self.onContinue = onContinue
         self.onExit = onExit
         super.init(nibName: nil, bundle: nil)
@@ -2763,67 +3145,205 @@ private final class StillWatchingViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(white: 0, alpha: 0.7)
+        view.backgroundColor = UIColor(white: 0, alpha: 0.54)
 
-        let panel = UIView()
-        panel.translatesAutoresizingMaskIntoConstraints = false
-        panel.backgroundColor = UIColor(white: 0.1, alpha: 0.97)
-        panel.layer.cornerRadius = 22
-        view.addSubview(panel)
+        // The system dismisses presented controllers on menu through its own
+        // window level recognizer, which would skip the exit callback and
+        // leave the Dart side waiting. Owning a menu recognizer wins the
+        // arbitration, the same as the player does.
+        let menuTap = UITapGestureRecognizer(target: self, action: #selector(handleMenuTap))
+        menuTap.allowedPressTypes = [NSNumber(value: UIPress.PressType.menu.rawValue)]
+        view.addGestureRecognizer(menuTap)
+
+        let card = UIView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.layer.cornerRadius = 48
+        card.clipsToBounds = true
+        view.addSubview(card)
+
+        let glass = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+        glass.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(glass)
+
+        let tint = UIView()
+        tint.translatesAutoresizingMaskIntoConstraints = false
+        tint.backgroundColor = surface.withAlphaComponent(0.22)
+        card.addSubview(tint)
+
+        let badge = UIView()
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        badge.backgroundColor = accent.withAlphaComponent(0.16)
+        badge.layer.cornerRadius = 54
+        badge.layer.borderWidth = 1
+        badge.layer.borderColor = accent.withAlphaComponent(0.4).cgColor
+        card.addSubview(badge)
+
+        let eye = UIImageView(
+            image: UIImage(
+                systemName: "eye",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 44, weight: .regular)))
+        eye.translatesAutoresizingMaskIntoConstraints = false
+        eye.tintColor = accent
+        badge.addSubview(eye)
 
         let title = UILabel()
         title.translatesAutoresizingMaskIntoConstraints = false
-        title.text = "Are you still watching?"
-        title.font = .systemFont(ofSize: 40, weight: .bold)
+        title.text = strings.stillWatchingTitle
+        title.font = .systemFont(ofSize: 38, weight: .semibold)
         title.textColor = .white
         title.textAlignment = .center
-        panel.addSubview(title)
+        card.addSubview(title)
 
-        let continueButton = UIButton(type: .system)
+        let body = UILabel()
+        body.translatesAutoresizingMaskIntoConstraints = false
+        body.text = strings.stillWatchingBody
+        body.font = .systemFont(ofSize: 28, weight: .regular)
+        body.textColor = UIColor(white: 1, alpha: 0.62)
+        body.textAlignment = .center
+        body.numberOfLines = 0
+        card.addSubview(body)
+
+        let continueButton = UIView()
         continueButton.translatesAutoresizingMaskIntoConstraints = false
-        continueButton.setTitle("Continue Watching", for: .normal)
-        continueButton.titleLabel?.font = .systemFont(ofSize: 30, weight: .semibold)
-        continueButton.addAction(
-            UIAction { [weak self] _ in
-                self?.dismiss(animated: true) { self?.onContinue() }
-            }, for: .primaryActionTriggered)
+        continueButton.backgroundColor = accent
+        continueButton.layer.cornerRadius = 28
+        continueButton.clipsToBounds = true
+        card.addSubview(continueButton)
 
-        let exitButton = UIButton(type: .system)
-        exitButton.translatesAutoresizingMaskIntoConstraints = false
-        exitButton.setTitle("Exit", for: .normal)
-        exitButton.titleLabel?.font = .systemFont(ofSize: 30, weight: .semibold)
-        exitButton.addAction(
-            UIAction { [weak self] _ in
-                self?.dismiss(animated: true) { self?.onExit() }
-            }, for: .primaryActionTriggered)
+        continueOverlay.translatesAutoresizingMaskIntoConstraints = false
+        continueOverlay.backgroundColor = UIColor(white: 1, alpha: 0.12)
+        continueButton.addSubview(continueOverlay)
 
-        let buttons = UIStackView(arrangedSubviews: [continueButton, exitButton])
-        buttons.translatesAutoresizingMaskIntoConstraints = false
-        buttons.axis = .horizontal
-        buttons.spacing = 40
-        buttons.distribution = .fillEqually
-        panel.addSubview(buttons)
+        let continueLabel = UILabel()
+        continueLabel.translatesAutoresizingMaskIntoConstraints = false
+        continueLabel.text = strings.stillWatchingContinue
+        continueLabel.font = .systemFont(ofSize: 30, weight: .semibold)
+        continueLabel.textColor = .white
+        continueLabel.textAlignment = .center
+        continueButton.addSubview(continueLabel)
+
+        let stopButton = UIView()
+        stopButton.translatesAutoresizingMaskIntoConstraints = false
+        stopButton.layer.cornerRadius = 28
+        stopButton.clipsToBounds = true
+        card.addSubview(stopButton)
+
+        stopOverlay.translatesAutoresizingMaskIntoConstraints = false
+        stopOverlay.backgroundColor = UIColor(white: 1, alpha: 0.12)
+        stopButton.addSubview(stopOverlay)
+
+        let stopLabel = UILabel()
+        stopLabel.translatesAutoresizingMaskIntoConstraints = false
+        stopLabel.text = strings.stillWatchingStop
+        stopLabel.font = .systemFont(ofSize: 28, weight: .medium)
+        stopLabel.textColor = UIColor(white: 1, alpha: 0.6)
+        stopLabel.textAlignment = .center
+        stopButton.addSubview(stopLabel)
 
         NSLayoutConstraint.activate([
-            panel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            panel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            panel.widthAnchor.constraint(equalToConstant: 820),
+            card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            card.widthAnchor.constraint(equalToConstant: 720),
 
-            title.topAnchor.constraint(equalTo: panel.topAnchor, constant: 56),
-            title.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 56),
-            title.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -56),
+            glass.topAnchor.constraint(equalTo: card.topAnchor),
+            glass.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            glass.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            glass.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            tint.topAnchor.constraint(equalTo: card.topAnchor),
+            tint.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            tint.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            tint.trailingAnchor.constraint(equalTo: card.trailingAnchor),
 
-            buttons.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 48),
-            buttons.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 80),
-            buttons.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -80),
-            buttons.bottomAnchor.constraint(equalTo: panel.bottomAnchor, constant: -56),
+            badge.topAnchor.constraint(equalTo: card.topAnchor, constant: 52),
+            badge.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            badge.widthAnchor.constraint(equalToConstant: 108),
+            badge.heightAnchor.constraint(equalToConstant: 108),
+            eye.centerXAnchor.constraint(equalTo: badge.centerXAnchor),
+            eye.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
+
+            title.topAnchor.constraint(equalTo: badge.bottomAnchor, constant: 32),
+            title.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 48),
+            title.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -48),
+
+            body.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 16),
+            body.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 48),
+            body.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -48),
+
+            continueButton.topAnchor.constraint(equalTo: body.bottomAnchor, constant: 48),
+            continueButton.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 48),
+            continueButton.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -48),
+            continueOverlay.topAnchor.constraint(equalTo: continueButton.topAnchor),
+            continueOverlay.bottomAnchor.constraint(equalTo: continueButton.bottomAnchor),
+            continueOverlay.leadingAnchor.constraint(equalTo: continueButton.leadingAnchor),
+            continueOverlay.trailingAnchor.constraint(equalTo: continueButton.trailingAnchor),
+            continueLabel.topAnchor.constraint(equalTo: continueButton.topAnchor, constant: 26),
+            continueLabel.bottomAnchor.constraint(equalTo: continueButton.bottomAnchor, constant: -26),
+            continueLabel.leadingAnchor.constraint(equalTo: continueButton.leadingAnchor),
+            continueLabel.trailingAnchor.constraint(equalTo: continueButton.trailingAnchor),
+
+            stopButton.topAnchor.constraint(equalTo: continueButton.bottomAnchor, constant: 20),
+            stopButton.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 48),
+            stopButton.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -48),
+            stopButton.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -48),
+            stopOverlay.topAnchor.constraint(equalTo: stopButton.topAnchor),
+            stopOverlay.bottomAnchor.constraint(equalTo: stopButton.bottomAnchor),
+            stopOverlay.leadingAnchor.constraint(equalTo: stopButton.leadingAnchor),
+            stopOverlay.trailingAnchor.constraint(equalTo: stopButton.trailingAnchor),
+            stopLabel.topAnchor.constraint(equalTo: stopButton.topAnchor, constant: 22),
+            stopLabel.bottomAnchor.constraint(equalTo: stopButton.bottomAnchor, constant: -22),
+            stopLabel.leadingAnchor.constraint(equalTo: stopButton.leadingAnchor),
+            stopLabel.trailingAnchor.constraint(equalTo: stopButton.trailingAnchor),
         ])
+
+        updateFocusHighlight()
+    }
+
+    private func updateFocusHighlight() {
+        continueOverlay.isHidden = !focusOnContinue
+        stopOverlay.isHidden = focusOnContinue
+    }
+
+    private func resolve(continueWatching: Bool) {
+        guard !answered else { return }
+        answered = true
+        dismiss(animated: true) {
+            continueWatching ? self.onContinue() : self.onExit()
+        }
+    }
+
+    @objc private func handleMenuTap() {
+        resolve(continueWatching: false)
+    }
+
+    // If the panel leaves the screen without an answer, resolve as continue
+    // so playback resumes instead of the prompt hanging the session.
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if !answered {
+            answered = true
+            onContinue()
+        }
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        for press in presses where press.type == .menu {
-            dismiss(animated: true) { self.onExit() }
-            return
+        for press in presses {
+            switch press.type {
+            case .upArrow:
+                focusOnContinue = true
+                updateFocusHighlight()
+                return
+            case .downArrow:
+                focusOnContinue = false
+                updateFocusHighlight()
+                return
+            case .select:
+                resolve(continueWatching: focusOnContinue)
+                return
+            case .menu:
+                return
+            default:
+                break
+            }
         }
         super.pressesBegan(presses, with: event)
     }

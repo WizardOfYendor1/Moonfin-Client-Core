@@ -16,6 +16,7 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
     private var lastMetadata: [String: Any]?
     private var lastSubtitleStyle: [String: Any]?
     private var lastThemeConfig: [String: Any]?
+    private var lastPromptStrings: [String: Any]?
     static var lastCommand = "-"
 
     init(messenger: FlutterBinaryMessenger, rootViewController: UIViewController) {
@@ -28,6 +29,14 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         control.setMethodCallHandler { [weak self] call, result in
             if call.method == "getCapabilities" {
                 result(VideoCapabilityDetector.deviceProfileCapabilities())
+                return
+            }
+            if call.method == "showStillWatching" {
+                // The Dart side blocks on the answer, so it must know whether
+                // the modal is actually on screen before it starts waiting.
+                Task { @MainActor in
+                    result(self?.playerVC?.presentStillWatching() ?? false)
+                }
                 return
             }
             result(nil)
@@ -66,6 +75,24 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
             lastMetadata = args
             playerVC?.applyUiMetadata(args)
             player?.applyNowPlayingMetadata(args)
+        case "showNextUp":
+            playerVC?.showNextUpCard(
+                title: (args["title"] as? String) ?? "",
+                episodeInfo: (args["episodeInfo"] as? String) ?? "",
+                imageUrl: (args["imageUrl"] as? String) ?? "",
+                isMinimal: (args["isMinimal"] as? Bool) ?? false,
+                countdownStyle: (args["countdownStyle"] as? String) ?? "both",
+                timeoutMs: (args["timeoutMs"] as? NSNumber)?.intValue ?? 0)
+        case "hideNextUp":
+            playerVC?.hideNextUpCard()
+        case "showSkipSegment":
+            playerVC?.showSkipSegment(
+                label: (args["label"] as? String) ?? "Skip",
+                countdownStyle: (args["countdownStyle"] as? String) ?? "both",
+                segmentStartMs: (args["segmentStartMs"] as? NSNumber)?.intValue ?? 0,
+                segmentEndMs: (args["segmentEndMs"] as? NSNumber)?.intValue ?? 0)
+        case "hideSkipSegment":
+            playerVC?.hideSkipSegment()
         case "showRemoteSubtitles":
             let results = (args["results"] as? [[String: Any]]) ?? []
             playerVC?.presentRemoteSubtitleResults(results)
@@ -75,6 +102,9 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         case "setThemeConfig":
             lastThemeConfig = args
             playerVC?.applyThemeConfig(args)
+        case "setPromptStrings":
+            lastPromptStrings = args
+            playerVC?.applyPromptStrings(args)
         case "play":
             player?.resume()
         case "pause":
@@ -211,6 +241,21 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         vc.onStillWatchingStop = { [weak self] in
             self?.send(["event": "stillWatchingStop"])
         }
+        vc.onNextUpPlay = { [weak self] in
+            self?.send(["event": "nextUpPlay"])
+        }
+        vc.onNextUpCancel = { [weak self] in
+            self?.send(["event": "nextUpCancel"])
+        }
+        vc.onNextUpDismiss = { [weak self] in
+            self?.send(["event": "nextUpDismiss"])
+        }
+        vc.onSkipSegmentSelect = { [weak self] in
+            self?.send(["event": "skipSegment"])
+        }
+        vc.onUserSeek = { [weak self] in
+            self?.send(["event": "userSeeked"])
+        }
         vc.onSearchSubtitles = { [weak self] in
             self?.send(["event": "searchSubtitles"])
         }
@@ -234,6 +279,9 @@ final class AppleTvVideoChannel: NSObject, FlutterStreamHandler {
         }
         if let theme = lastThemeConfig {
             vc.applyThemeConfig(theme)
+        }
+        if let strings = lastPromptStrings {
+            vc.applyPromptStrings(strings)
         }
         playerVC = vc
         rootViewController?.present(vc, animated: false) { [weak self] in
