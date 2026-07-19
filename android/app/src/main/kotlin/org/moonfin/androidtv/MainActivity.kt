@@ -621,9 +621,7 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
                 return true
             }
         }
-        if (keyHandler?.invoke(event) == true) {
-            return true
-        }
+        keyHandler?.invoke(event)
         return super.dispatchKeyEvent(event)
     }
 
