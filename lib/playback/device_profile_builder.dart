@@ -116,6 +116,14 @@ class DeviceProfileBuilder {
     // so the output route limits rendering, not decoding: stereo-only routes
     // still direct-play multichannel/compressed audio and downmix locally.
     bool universalAudioDecode = false,
+    // Media3 only: its MediaCodecAudioRenderer owns passthrough and outranks
+    // the FFmpeg renderer, so on an AVR route a lossless track (TrueHD/MLP)
+    // may be bitstreamed instead of locally decoded and fail silently when
+    // the route can't carry it. When set, lossless codecs are advertised on
+    // AVR routes only if passthrough is genuinely enabled and capable, and
+    // the server transcodes otherwise. Backends whose local decode is
+    // authoritative (mpv on media_kit and tvOS) must leave this false.
+    bool losslessAudioRequiresPassthroughOnAvrRoutes = false,
     MaxVideoResolution maxResolution = MaxVideoResolution.auto,
     bool pgsDirectPlay = true,
     bool assDirectPlay = true,
@@ -227,6 +235,13 @@ class DeviceProfileBuilder {
         ? maxAudioChannels
         : (universalAudioDecode ? 8 : effectiveMaxChannels);
     final limitStereoDirectPlay = forceStereo && !universalAudioDecode;
+    // Transcode-target channel cap. A universal-decode player in stereo mode
+    // delivers stereo by downmixing locally, so its transcodes stay uncapped
+    // (a video-forced transcode would otherwise collapse to 2ch and
+    // contradict the 8ch direct-play advertisement). An explicit user cap of
+    // 1-2 channels is a stated intent and stays honored end to end.
+    final capTranscodeToStereo = limitStereoDirectPlay ||
+        (maxAudioChannels > 0 && maxAudioChannels <= 2);
     final effectiveAudioFallbackCodec = _resolveAudioFallbackCodec(
       requested: audioFallbackCodec,
       capabilityProfile: capabilityProfile,
@@ -242,6 +257,8 @@ class DeviceProfileBuilder {
                   audioOutputMode: audioOutputMode,
                   capabilityProfile: capabilityProfile,
                   universalAudioDecode: universalAudioDecode,
+                  losslessAudioRequiresPassthroughOnAvrRoutes:
+                      losslessAudioRequiresPassthroughOnAvrRoutes,
                   ac3PassthroughEnabled: ac3PassthroughEnabled,
                   eac3PassthroughEnabled: eac3PassthroughEnabled,
                   eac3JocPassthroughEnabled: eac3JocPassthroughEnabled,
@@ -318,7 +335,7 @@ class DeviceProfileBuilder {
               'AudioCodec': mpegTsAudioCodecs.join(','),
               'CopyTimestamps': false,
               'EnableSubtitlesInManifest': true,
-              if (forceStereo) 'MaxAudioChannels': '2',
+              if (capTranscodeToStereo) 'MaxAudioChannels': '2',
             },
             <String, dynamic>{
               'Type': 'Video',
@@ -332,7 +349,7 @@ class DeviceProfileBuilder {
               ).join(','),
               'CopyTimestamps': false,
               'EnableSubtitlesInManifest': true,
-              if (forceStereo) 'MaxAudioChannels': '2',
+              if (capTranscodeToStereo) 'MaxAudioChannels': '2',
             },
             <String, dynamic>{
               'Type': 'Audio',
@@ -340,7 +357,7 @@ class DeviceProfileBuilder {
               'Container': 'ts',
               'Protocol': 'hls',
               'AudioCodec': 'aac',
-              if (forceStereo) 'MaxAudioChannels': '2',
+              if (capTranscodeToStereo) 'MaxAudioChannels': '2',
             },
           ]
         : _buildWebTranscodingProfiles(
@@ -854,6 +871,7 @@ class DeviceProfileBuilder {
     required AudioOutputMode audioOutputMode,
     required AudioCapabilityProfile capabilityProfile,
     bool universalAudioDecode = false,
+    bool losslessAudioRequiresPassthroughOnAvrRoutes = false,
     required bool ac3PassthroughEnabled,
     required bool eac3PassthroughEnabled,
     required bool eac3JocPassthroughEnabled,
@@ -881,7 +899,21 @@ class DeviceProfileBuilder {
 
     if (universalAudioDecode) {
       if (codec == 'truehd' || codec == 'mlp') {
-        return capabilityProfile.canDecodeTrueHd;
+        // iOS ships no TrueHD decoder, so the getter reports false there.
+        if (!capabilityProfile.canDecodeTrueHd) return false;
+        if (losslessAudioRequiresPassthroughOnAvrRoutes &&
+            capabilityProfile.isAvReceiverRoute) {
+          // On HDMI/ARC/eARC this backend may bitstream TrueHD to the
+          // receiver instead of decoding locally. Only advertise it when
+          // the route can genuinely carry it and passthrough resolves
+          // enabled. Otherwise let the server transcode rather than risk a
+          // silent bitstream, since plain ARC can't carry TrueHD at all.
+          return trueHdPassthroughEnabled &&
+              capabilityProfile.canPassthroughTrueHd;
+        }
+        // Speaker, headphones, bluetooth, and other routes decode locally
+        // through FFmpeg, so direct play is safe.
+        return true;
       }
       return true;
     }

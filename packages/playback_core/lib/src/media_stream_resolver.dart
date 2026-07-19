@@ -90,20 +90,20 @@ abstract class MediaStreamResolver {
       // `AudioStreamIndex` and `audioStreamIndex` makes the server merge the two
       // values into "1,1", which fails integer parsing -> HTTP 500 on the
       // manifest ("Failed to open" / source error, especially when resuming an
-      // audio-transcoded stream). Emit a single canonical key and strip any
-      // camelCase variant.
+      // audio-transcoded stream). Emit a single canonical key and strip every
+      // other casing (exact-key remove would miss e.g. server-echoed variants).
       if (audioStreamIndex != null) {
-        params.remove('audioStreamIndex');
+        params.removeWhere((key, _) => key.toLowerCase() == 'audiostreamindex');
         params['AudioStreamIndex'] = '$audioStreamIndex';
       }
 
-      if (subtitleStreamIndex != null) {
+      if (subtitleStreamIndex != null &&
+          (subtitleStreamIndex >= 0 || subtitleStreamIndex == -1)) {
+        params.removeWhere(
+          (key, _) => key.toLowerCase() == 'subtitlestreamindex',
+        );
         if (subtitleStreamIndex >= 0) {
-          params.remove('subtitleStreamIndex');
           params['SubtitleStreamIndex'] = '$subtitleStreamIndex';
-        } else if (subtitleStreamIndex == -1) {
-          params.remove('SubtitleStreamIndex');
-          params.remove('subtitleStreamIndex');
         }
       }
 

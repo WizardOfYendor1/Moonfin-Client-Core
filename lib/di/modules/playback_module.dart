@@ -492,6 +492,16 @@ void registerPlaybackModule() {
           ? PlatformDetection.audioCapabilitiesSnapshot
           : const <String, dynamic>{},
       audioSpdifCodecs: audioSpdifCodecs,
+      // Preference state behind the channel math, so a report showing an
+      // unexpected stereo cap is attributable without a settings screenshot.
+      audioPreferenceContext: <String, dynamic>{
+        'audioOutputMode': prefs.resolveAudioOutputMode().name,
+        'prefMaxAudioChannels': prefs.resolveMaxAudioChannels(),
+        'audioPassthroughPreset':
+            prefs.get(UserPreferences.audioPassthroughPreset).name,
+        if (Media3PlayerBackend.ffmpegDecoderDiagnostics != null)
+          'ffmpegDecoder': Media3PlayerBackend.ffmpegDecoderDiagnostics,
+      },
     );
   });
   manager.setExternalPlaybackDecider((items) {

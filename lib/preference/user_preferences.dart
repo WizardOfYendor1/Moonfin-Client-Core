@@ -702,6 +702,9 @@ class UserPreferences extends ChangeNotifier {
         await clearPassthroughOverrides();
       case AudioPassthroughPreset.stereo:
         await set(audioOutputMode, AudioOutputMode.forceStereo);
+        // Reset like the other presets: a leftover explicit channel cap from
+        // Advanced would otherwise keep forcing 2ch server transcodes.
+        await set(maxAudioChannels, 0);
         await clearPassthroughOverrides();
       case AudioPassthroughPreset.advanced:
         // Snapshot the current effective values into explicit prefs so the
