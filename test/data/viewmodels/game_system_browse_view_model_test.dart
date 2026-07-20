@@ -101,6 +101,78 @@ void main() {
     expect(viewModel.backdropGame?.id, game.id);
   });
 
+  testWidgets('detail cache evicts the least recently used entry', (
+    tester,
+  ) async {
+    final games = List.generate(
+      GameSystemBrowseViewModel.detailCacheCapacity + 1,
+      (index) => GameSummary(
+        id: 'game-${index.toString().padLeft(3, '0')}',
+        title: 'Game ${index.toString().padLeft(3, '0')}',
+        system: 'atari2600',
+        core: 'stella',
+        fileName: 'Game ${index.toString().padLeft(3, '0')}.a26',
+      ),
+    );
+    final cacheApi = _FakeGamesApi(games: games);
+    final cacheViewModel = GameSystemBrowseViewModel(
+      gamesApi: cacheApi,
+      libraryId: 'retro',
+      systemId: 'atari2600',
+    );
+    addTearDown(cacheViewModel.dispose);
+    await cacheViewModel.load();
+
+    final orderedGames = cacheViewModel.games;
+    for (
+      var index = 0;
+      index < GameSystemBrowseViewModel.detailCacheCapacity;
+      index++
+    ) {
+      cacheViewModel.activateGame(
+        orderedGames[index],
+        showBackdrop: false,
+        loadDetails: true,
+      );
+      await tester.pump(GameSystemBrowseViewModel.detailDebounceDuration);
+      await tester.pump();
+    }
+
+    expect(
+      cacheViewModel.gameDetails,
+      hasLength(GameSystemBrowseViewModel.detailCacheCapacity),
+    );
+    final mostRecentlyReused = orderedGames.first;
+    cacheViewModel.activateGame(
+      mostRecentlyReused,
+      showBackdrop: false,
+      loadDetails: true,
+    );
+    await tester.pump(GameSystemBrowseViewModel.detailDebounceDuration);
+    await tester.pump();
+
+    final newlyLoaded = orderedGames.last;
+    cacheViewModel.activateGame(
+      newlyLoaded,
+      showBackdrop: false,
+      loadDetails: true,
+    );
+    await tester.pump(GameSystemBrowseViewModel.detailDebounceDuration);
+    await tester.pump();
+
+    expect(
+      cacheViewModel.gameDetails,
+      hasLength(GameSystemBrowseViewModel.detailCacheCapacity),
+    );
+    expect(cacheViewModel.gameDetails, contains(mostRecentlyReused.id));
+    expect(cacheViewModel.gameDetails, isNot(contains(orderedGames[1].id)));
+    expect(cacheViewModel.gameDetails, contains(newlyLoaded.id));
+    expect(
+      cacheApi.detailRequests,
+      GameSystemBrowseViewModel.detailCacheCapacity + 1,
+    );
+  });
+
   test('unsupported servers expose a stable error state', () async {
     final unsupported = GameSystemBrowseViewModel(
       gamesApi: null,
@@ -117,9 +189,12 @@ void main() {
 }
 
 class _FakeGamesApi implements GamesApi {
-  int detailRequests = 0;
+  _FakeGamesApi({List<GameSummary>? games}) : games = games ?? _defaultGames;
 
-  static const _games = [
+  int detailRequests = 0;
+  final List<GameSummary> games;
+
+  static const _defaultGames = [
     GameSummary(
       id: 'river',
       title: 'River Raid',
@@ -140,22 +215,22 @@ class _FakeGamesApi implements GamesApi {
   Future<List<GameSummary>> getGames(
     String libraryId, {
     String? system,
-  }) async => [..._games];
+  }) async => [...games];
 
   @override
-  Future<List<GameSystem>> getSystems(String libraryId) async => const [
+  Future<List<GameSystem>> getSystems(String libraryId) async => [
     GameSystem(
       id: 'atari2600',
       name: 'Atari 2600',
       core: 'stella',
-      gameCount: 2,
+      gameCount: games.length,
     ),
   ];
 
   @override
   Future<GameDetail?> getGame(String libraryId, String gameId) async {
     detailRequests++;
-    final game = _games.firstWhere((candidate) => candidate.id == gameId);
+    final game = games.firstWhere((candidate) => candidate.id == gameId);
     return GameDetail(
       id: game.id,
       title: game.title,

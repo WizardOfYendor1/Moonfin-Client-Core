@@ -45,6 +45,12 @@ class GameSystemScreen extends StatefulWidget {
 
 class _GameSystemScreenState extends State<GameSystemScreen>
     with GridFocusNodeMixin<GameSystemScreen> {
+  static const _compactBreakpoint = 600.0;
+  static const _compactHorizontalPadding = 16.0;
+  static const _desktopHorizontalPadding = 60.0;
+  static const _gridTopPadding = 8.0;
+  static const _gridBottomFocusPeek = 52.0;
+
   final UserPreferences _prefs = GetIt.instance<UserPreferences>();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -128,7 +134,12 @@ class _GameSystemScreenState extends State<GameSystemScreen>
   @override
   Widget build(BuildContext context) {
     final compact =
-        PlatformDetection.useMobileUi || MediaQuery.sizeOf(context).width < 600;
+        PlatformDetection.useMobileUi ||
+        MediaQuery.sizeOf(context).width < _compactBreakpoint;
+    final desktopScale = _prefs.get(UserPreferences.desktopUiScale).scaleFactor;
+    final horizontalPadding = compact
+        ? _compactHorizontalPadding
+        : _desktopHorizontalPadding * desktopScale;
     final screenSize = MediaQuery.sizeOf(context);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final hideBackdrops = _prefs.get(UserPreferences.hideBackdropsInLibraries);
@@ -166,6 +177,8 @@ class _GameSystemScreenState extends State<GameSystemScreen>
           ),
           _buildBody(
             compact,
+            desktopScale: desktopScale,
+            horizontalPadding: horizontalPadding,
             showDetails: showDetails,
             showBackdrop: showBackdrop,
           ),
@@ -181,6 +194,8 @@ class _GameSystemScreenState extends State<GameSystemScreen>
 
   Widget _buildBody(
     bool compact, {
+    required double desktopScale,
+    required double horizontalPadding,
     required bool showDetails,
     required bool showBackdrop,
   }) {
@@ -206,12 +221,19 @@ class _GameSystemScreenState extends State<GameSystemScreen>
 
     return Column(
       children: [
-        _buildHeader(compact, showDetails: showDetails),
+        _buildHeader(
+          compact,
+          desktopScale: desktopScale,
+          horizontalPadding: horizontalPadding,
+          showDetails: showDetails,
+        ),
         Expanded(
           child: _browse.visibleGames.isEmpty
               ? Center(child: Text(AppLocalizations.of(context).noItemsFound))
               : _buildGrid(
                   _browse.visibleGames,
+                  desktopScale: desktopScale,
+                  horizontalPadding: horizontalPadding,
                   showDetails: showDetails,
                   showBackdrop: showBackdrop,
                 ),
@@ -220,10 +242,13 @@ class _GameSystemScreenState extends State<GameSystemScreen>
     );
   }
 
-  Widget _buildHeader(bool compact, {required bool showDetails}) {
+  Widget _buildHeader(
+    bool compact, {
+    required double desktopScale,
+    required double horizontalPadding,
+    required bool showDetails,
+  }) {
     final systemName = _browse.displaySystemName;
-    final desktopScale = _prefs.get(UserPreferences.desktopUiScale).scaleFactor;
-    final horizontalPadding = compact ? 16.0 : 60.0 * desktopScale;
     final topPadding = compact ? MediaQuery.paddingOf(context).top + 8 : 8.0;
     final availableWidth =
         MediaQuery.sizeOf(context).width - horizontalPadding * 2;
@@ -413,16 +438,16 @@ class _GameSystemScreenState extends State<GameSystemScreen>
   }) {
     if (!_gridScrollController.hasClients) return;
     final row = index ~/ crossAxisCount;
-    final rowTop = 8 + row * (cellHeight + mainAxisSpacing);
+    final rowTop = _gridTopPadding + row * (cellHeight + mainAxisSpacing);
     final rowBottom = rowTop + cellHeight;
     final position = _gridScrollController.position;
     final current = position.pixels;
     final viewportHeight = position.viewportDimension;
     var target = current;
-    if (rowTop - 8 < current) {
-      target = rowTop - 8;
-    } else if (rowBottom + 52 > current + viewportHeight) {
-      target = rowBottom + 52 - viewportHeight;
+    if (rowTop - _gridTopPadding < current) {
+      target = rowTop - _gridTopPadding;
+    } else if (rowBottom + _gridBottomFocusPeek > current + viewportHeight) {
+      target = rowBottom + _gridBottomFocusPeek - viewportHeight;
     }
     target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((target - current).abs() < 1) return;
@@ -478,7 +503,7 @@ class _GameSystemScreenState extends State<GameSystemScreen>
     // Do not let those transient hover targets compete with poster requests by
     // fetching their backdrop and details. Once wheel input stops, reactivate
     // the card still under the pointer; the view model then applies its normal
-    // 250 ms library-style selection debounce.
+    // detail and backdrop debounce tiers.
     _suppressHoverEnrichment = true;
     _hoverScrollSettle?.cancel();
     final hovered = _hoveredGame;
@@ -550,22 +575,19 @@ class _GameSystemScreenState extends State<GameSystemScreen>
 
   Widget _buildGrid(
     List<GameSummary> games, {
+    required double desktopScale,
+    required double horizontalPadding,
     required bool showDetails,
     required bool showBackdrop,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 600;
-        final horizontalPadding = compact ? 16.0 : 60.0;
         const spacing = 12.0;
         const imageHeightRatio = 1.34;
         const captionGap = 6.0;
         const captionHeight = 42.0;
 
         final availableWidth = constraints.maxWidth - horizontalPadding * 2;
-        final desktopScale = _prefs
-            .get(UserPreferences.desktopUiScale)
-            .scaleFactor;
         final preferredCardWidth =
             _prefs.resolveLibraryPosterSize().portraitHeight *
             (2 / 3) *
@@ -602,7 +624,7 @@ class _GameSystemScreenState extends State<GameSystemScreen>
             scrollCacheExtent: const ScrollCacheExtent.viewport(1),
             padding: EdgeInsets.fromLTRB(
               horizontalPadding,
-              8,
+              _gridTopPadding,
               horizontalPadding,
               32,
             ),
@@ -615,59 +637,57 @@ class _GameSystemScreenState extends State<GameSystemScreen>
             itemCount: games.length,
             itemBuilder: (context, index) {
               final game = games[index];
-              return LayoutBuilder(
-                builder: (context, cardConstraints) => GamePosterCard(
-                  imageUrl: gameThumbUrl(widget.libraryId, game.id),
-                  title: game.title,
-                  fileName: game.fileName,
-                  seed: game.id,
-                  width: cardConstraints.maxWidth,
-                  focusNode: getGridItemFocusNode(index, prefix: 'game_grid'),
-                  focusColor: focusColor,
-                  cardFocusExpansion: cardFocusExpansion,
-                  suppressFocusGlow: isNeon,
-                  autoScroll: false,
-                  onFocus: () {
-                    _activateBrowseGame(
-                      game,
-                      showBackdrop: showBackdrop,
-                      showDetails: showDetails,
-                    );
-                    _scrollToGridRow(
-                      index: index,
-                      crossAxisCount: columnCount,
-                      cellHeight: cardHeight,
-                      mainAxisSpacing: 14,
-                    );
-                  },
-                  onFocusLost: () => _browse.deactivateGame(game),
-                  onHoverStart: () => _activateHoveredGame(
+              return GamePosterCard(
+                imageUrl: gameThumbUrl(widget.libraryId, game.id),
+                title: game.title,
+                fileName: game.fileName,
+                seed: game.id,
+                width: cardWidth,
+                focusNode: getGridItemFocusNode(index, prefix: 'game_grid'),
+                focusColor: focusColor,
+                cardFocusExpansion: cardFocusExpansion,
+                suppressFocusGlow: isNeon,
+                autoScroll: false,
+                onFocus: () {
+                  _activateBrowseGame(
                     game,
                     showBackdrop: showBackdrop,
                     showDetails: showDetails,
-                  ),
-                  onHoverEnd: () => _deactivateHoveredGame(game),
-                  onKeyEvent: (_, event) {
-                    if (PlatformDetection.isTV &&
-                        event.isActionable &&
-                        event.logicalKey.isBackKey &&
-                        _allLetterFocus.context != null) {
-                      _allLetterFocus.requestFocus();
+                  );
+                  _scrollToGridRow(
+                    index: index,
+                    crossAxisCount: columnCount,
+                    cellHeight: cardHeight,
+                    mainAxisSpacing: 14,
+                  );
+                },
+                onFocusLost: () => _browse.deactivateGame(game),
+                onHoverStart: () => _activateHoveredGame(
+                  game,
+                  showBackdrop: showBackdrop,
+                  showDetails: showDetails,
+                ),
+                onHoverEnd: () => _deactivateHoveredGame(game),
+                onKeyEvent: (_, event) {
+                  if (PlatformDetection.isTV &&
+                      event.isActionable &&
+                      event.logicalKey.isBackKey &&
+                      _allLetterFocus.context != null) {
+                    _allLetterFocus.requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  if (event.isActionable && event.logicalKey.isRightKey) {
+                    final isLastColumn =
+                        (index % columnCount) == columnCount - 1;
+                    final isLastItem = index == games.length - 1;
+                    if (isLastColumn || isLastItem) {
                       return KeyEventResult.handled;
                     }
-                    if (event.isActionable && event.logicalKey.isRightKey) {
-                      final isLastColumn =
-                          (index % columnCount) == columnCount - 1;
-                      final isLastItem = index == games.length - 1;
-                      if (isLastColumn || isLastItem) {
-                        return KeyEventResult.handled;
-                      }
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  onTap: () => context.push(
-                    Destinations.gameDetailOf(widget.libraryId, game.id),
-                  ),
+                  }
+                  return KeyEventResult.ignored;
+                },
+                onTap: () => context.push(
+                  Destinations.gameDetailOf(widget.libraryId, game.id),
                 ),
               );
             },

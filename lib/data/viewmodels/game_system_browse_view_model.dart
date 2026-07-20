@@ -28,6 +28,7 @@ class GameSystemBrowseViewModel extends ChangeNotifier {
   // clearly settled so normal browsing does not churn blurred backgrounds.
   static const detailDebounceDuration = Duration(milliseconds: 75);
   static const backdropDebounceDuration = Duration(milliseconds: 650);
+  static const detailCacheCapacity = 128; // max limit for LRU cache. Semi-arbitrary and tunable if issues arise
 
   final GamesApi? _gamesApi;
   final String libraryId;
@@ -227,8 +228,12 @@ class GameSystemBrowseViewModel extends ChangeNotifier {
   }
 
   Future<GameDetail?> _loadGameDetails(GameSummary game) {
-    final cached = gameDetails[game.id];
-    if (cached != null) return Future.value(cached);
+    final cached = gameDetails.remove(game.id);
+    if (cached != null) {
+      // Map preserves insertion order, so reinsert cache hits to maintain LRU.
+      gameDetails[game.id] = cached;
+      return Future.value(cached);
+    }
 
     final pending = _detailRequests[game.id];
     if (pending != null) return pending;
@@ -250,7 +255,11 @@ class GameSystemBrowseViewModel extends ChangeNotifier {
     try {
       final detail = await api.getGame(libraryId, game.id);
       if (detail == null) return null;
+      gameDetails.remove(game.id);
       gameDetails[game.id] = detail;
+      if (gameDetails.length > detailCacheCapacity) {
+        gameDetails.remove(gameDetails.keys.first);
+      }
       return detail;
     } catch (exception) {
       debugPrint(
