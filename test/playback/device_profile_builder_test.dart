@@ -115,6 +115,37 @@ Set<String> _videoDirectPlayAudioCodecs(Map<String, dynamic> profile) {
   return <String>{};
 }
 
+List<String> _videoTranscodingVideoCodecs(Map<String, dynamic> profile) {
+  final transcodingProfiles =
+      profile['TranscodingProfiles'] as List<dynamic>? ?? const [];
+
+  return transcodingProfiles
+      .where((raw) => (raw as Map<dynamic, dynamic>)['Type'] == 'Video')
+      .map((raw) => (raw as Map<dynamic, dynamic>)['VideoCodec']?.toString() ?? '')
+      .toList(growable: false);
+}
+
+Set<String> _videoDirectPlayVideoCodecs(Map<String, dynamic> profile) {
+  final directPlayProfiles =
+      profile['DirectPlayProfiles'] as List<dynamic>? ?? const [];
+
+  for (final rawProfile in directPlayProfiles) {
+    final directPlay = rawProfile as Map<dynamic, dynamic>;
+    if (directPlay['Type'] != 'Video') {
+      continue;
+    }
+
+    final value = directPlay['VideoCodec']?.toString() ?? '';
+    return value
+        .split(',')
+        .map((token) => token.trim())
+        .where((token) => token.isNotEmpty)
+        .toSet();
+  }
+
+  return <String>{};
+}
+
 Set<String> _hlsMpegTsAudioCodecs(Map<String, dynamic> profile) {
   final transcodingProfiles =
       profile['TranscodingProfiles'] as List<dynamic>? ?? const [];
@@ -297,6 +328,29 @@ void main() {
       final unsupportedRanges = _codecUnsupportedRangeTypes(profile, 'hevc');
 
       expect(unsupportedRanges, contains('DOVI_INVALID'));
+    });
+  });
+
+  group('DeviceProfileBuilder HLS transcode video codec', () {
+    test('transcodes only to h264 even when hevc decode is supported', () {
+      final profile = DeviceProfileBuilder.build(
+        supportsHevc: true,
+        supportsHevcMain10: true,
+        supportsHevcHdr10: true,
+      );
+
+      // The server encodes to the first codec it's offered with no capability
+      // check, so every video HLS transcoding profile must target h264 only to
+      // avoid forcing a software HEVC re-encode.
+      final videoTargets = _videoTranscodingVideoCodecs(profile);
+      expect(videoTargets, isNotEmpty);
+      for (final codec in videoTargets) {
+        expect(codec, 'h264');
+      }
+
+      // Direct play still advertises hevc, so HEVC content plays without
+      // transcoding.
+      expect(_videoDirectPlayVideoCodecs(profile), contains('hevc'));
     });
   });
 

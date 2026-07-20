@@ -291,10 +291,12 @@ class DeviceProfileBuilder {
       allowedAudioCodecs: effectiveAllowedAudioCodecs,
     );
 
-    final hlsVideoCodecs = <String>[
-      if (effectiveSupportsHevc) 'hevc',
-      'h264',
-    ].join(',');
+    // Transcode video only to H264. The server encodes to the first codec it's
+    // offered with no check that it can do so, so listing HEVC forces a software
+    // libx265 re-encode with no H264 fallback, which stalls or fails on servers
+    // without a hardware HEVC encoder. HEVC content still direct plays through
+    // the direct-play profile, which advertises hevc separately.
+    const hlsVideoCodecs = 'h264';
 
     final hasKnownHevcDoviHdr10PlusBug =
         applyKnownDeviceDefects &&
