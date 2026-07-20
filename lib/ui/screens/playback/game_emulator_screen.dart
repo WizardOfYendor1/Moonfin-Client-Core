@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:server_core/server_core.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -506,13 +507,23 @@ class _GameEmulatorScreenState extends State<GameEmulatorScreen> {
   Future<void> _exit() async {
     if (_saving) return;
     _saving = true;
-    await _saveState();
-    await _saveSettings();
+    // The save reads state back out of the WebView, and on Windows and web that
+    // round-trip can stall on a large PSP state. Give it a few seconds and leave
+    // anyway, otherwise the WebView stays on screen and swallows every input.
+    try {
+      await _persistOnExit().timeout(const Duration(seconds: 3));
+    } catch (_) {
+    } finally {
+      _saving = false;
+    }
     await _restoreSystemUi();
     await WakelockPlus.disable();
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
+    if (mounted) context.pop();
+  }
+
+  Future<void> _persistOnExit() async {
+    await _saveState();
+    await _saveSettings();
   }
 
   @override
