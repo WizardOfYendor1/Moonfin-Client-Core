@@ -65,6 +65,12 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
   int _fastForward = 1;
   List<GameCoreOption> _options = const [];
 
+  // The overlay lists are driven by an index rather than Flutter focus, so they
+  // need to be scrolled to the selection by hand.
+  static const double _rowExtent = 58;
+  final ScrollController _overlayScroll = ScrollController();
+  final ScrollController _settingsScroll = ScrollController();
+
   // Controller Start is deferred so it can double as the menu gesture: a quick
   // press reaches the game on release, holding it opens the overlay.
   static const _startHoldDuration = Duration(milliseconds: 1500);
@@ -133,6 +139,8 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
     _events?.cancel();
     _gamepadEvents?.cancel();
     _startHoldTimer?.cancel();
+    _overlayScroll.dispose();
+    _settingsScroll.dispose();
     GamepadSuppressor.pop();
     WakelockPlus.disable();
     unawaited(_player.stop());
@@ -583,14 +591,36 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
     final count = _settingsOpen ? _options.length : _actions().length;
     if (count == 0) return;
     final next = ((_settingsOpen ? _settingsSelected : _selected) + delta) % count;
+    final wrapped = next < 0 ? next + count : next;
     setState(() {
-      final wrapped = next < 0 ? next + count : next;
       if (_settingsOpen) {
         _settingsSelected = wrapped;
       } else {
         _selected = wrapped;
       }
     });
+    _ensureVisible(_settingsOpen ? _settingsScroll : _overlayScroll, wrapped);
+  }
+
+  // Scrolls the selected row back into view, walking the list by whole rows.
+  void _ensureVisible(ScrollController controller, int index) {
+    if (!controller.hasClients) return;
+    final position = controller.position;
+    final top = index * _rowExtent;
+    final bottom = top + _rowExtent;
+    var target = position.pixels;
+    if (top < position.pixels) {
+      target = top;
+    } else if (bottom > position.pixels + position.viewportDimension) {
+      target = bottom - position.viewportDimension;
+    }
+    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (target == position.pixels) return;
+    controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+    );
   }
 
   void _confirm() {
@@ -953,27 +983,9 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
 
   Widget _buildOverlay() {
     final title = _settingsOpen ? 'Emulator settings' : (widget.gameName ?? 'Paused');
-    final rows = _settingsOpen
-        ? _options
-            .asMap()
-            .entries
-            .map((e) => _overlayRow(
-                  '${e.value.label}:  ${e.value.current}',
-                  e.key == _settingsSelected,
-                  () {
-                    setState(() => _settingsSelected = e.key);
-                    _changeValue(1);
-                  },
-                ))
-            .toList()
-        : _actions()
-            .asMap()
-            .entries
-            .map((e) => _overlayRow(e.value.label, e.key == _selected, () {
-                  setState(() => _selected = e.key);
-                  e.value.onSelect();
-                }))
-            .toList();
+    final actions = _settingsOpen ? const <_OverlayAction>[] : _actions();
+    final count = _settingsOpen ? _options.length : actions.length;
+    final selected = _settingsOpen ? _settingsSelected : _selected;
 
     // The scrim resumes on tap, and the panel absorbs taps so only its rows
     // act.
@@ -985,39 +997,68 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
         alignment: Alignment.center,
         child: GestureDetector(
           onTap: () {},
-          child: Container(
-            width: 520,
-            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1C1C1E),
-              borderRadius: BorderRadius.circular(20),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 520,
+              maxHeight: MediaQuery.sizeOf(context).height * 0.82,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16, left: 12),
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w600,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1E),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16, left: 12),
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                if (_settingsOpen && _options.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'This core has no adjustable options.',
-                      style: TextStyle(color: Colors.white54, fontSize: 20),
+                  if (_settingsOpen && _options.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        'This core has no adjustable options.',
+                        style: TextStyle(color: Colors.white54, fontSize: 20),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.builder(
+                        // A distinct key per list so each controller attaches
+                        // to its own scroll position.
+                        key: ValueKey(_settingsOpen),
+                        controller:
+                            _settingsOpen ? _settingsScroll : _overlayScroll,
+                        shrinkWrap: true,
+                        itemExtent: _rowExtent,
+                        itemCount: count,
+                        itemBuilder: (context, i) => _settingsOpen
+                            ? _overlayRow(
+                                '${_options[i].label}:  ${_options[i].current}',
+                                i == selected,
+                                () {
+                                  setState(() => _settingsSelected = i);
+                                  _changeValue(1);
+                                },
+                              )
+                            : _overlayRow(actions[i].label, i == selected, () {
+                                setState(() => _selected = i);
+                                actions[i].onSelect();
+                              }),
+                      ),
                     ),
-                  )
-                else
-                  ...rows,
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1031,13 +1072,16 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 3),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.centerLeft,
         decoration: BoxDecoration(
           color: selected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: selected ? Colors.black : Colors.white,
             fontSize: 22,
