@@ -7,13 +7,13 @@ import 'package:flutter/services.dart';
 import 'package:gamepads/gamepads.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:server_core/server_core.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../playback/native_game_player.dart';
 import '../../../util/game_cores.dart';
+import '../../../util/game_storage.dart';
 import '../../../util/platform_detection.dart';
 import '../../../util/focus/gamepad/gamepad_suppressor.dart';
 
@@ -416,15 +416,12 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen> {
         return;
       }
 
-      final cacheRoot = await getApplicationCacheDirectory();
-      final gamesRoot = Directory('${cacheRoot.path}/games');
-      final systemDir = Directory('${gamesRoot.path}/system');
-      final saveDir = Directory('${gamesRoot.path}/saves');
-      final cacheDir = Directory(
-          '${gamesRoot.path}/cache/${widget.libraryId}/${widget.gameId}');
-      for (final dir in [systemDir, saveDir, cacheDir]) {
-        await dir.create(recursive: true);
-      }
+      await GameStorage.migrateOffCache();
+      final systemDir = await GameStorage.systemDir();
+      final saveDir = await GameStorage.saveDir();
+      final cacheDir =
+          await GameStorage.romDir(widget.libraryId, widget.gameId);
+      await GameStorage.writeMeta(cacheDir, detail.title, detail.system);
 
       setState(() => _status = 'Downloading...');
       final romFile = File('${cacheDir.path}/${detail.fileName}');

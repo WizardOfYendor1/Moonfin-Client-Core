@@ -8473,6 +8473,37 @@ class AppLocalizationsFr extends AppLocalizations {
       'Could not download the core. Check your connection and try again.';
 
   @override
+  String get downloadedGames => 'Downloaded Games';
+
+  @override
+  String get downloadedGamesSubtitle => 'Free up space used by game files';
+
+  @override
+  String get downloadedGamesDescription =>
+      'Games are copied to this device before they play. Remove the ones you have finished to free up space. Saves are kept on the server and are not deleted.';
+
+  @override
+  String get downloadedGamesEmpty =>
+      'No games have been downloaded to this device yet.';
+
+  @override
+  String downloadedGamesTotal(int count, String size) {
+    return '$count games, $size';
+  }
+
+  @override
+  String get removeAllDownloadedGames => 'Remove All';
+
+  @override
+  String removeDownloadedGameConfirm(String title) {
+    return 'Remove $title from this device? It will download again the next time you play it.';
+  }
+
+  @override
+  String get removeAllDownloadedGamesConfirm =>
+      'Remove all downloaded games from this device? They will download again the next time you play them.';
+
+  @override
   String get settingsHigh => 'Haut';
 
   @override

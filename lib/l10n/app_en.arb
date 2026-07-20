@@ -7931,6 +7931,51 @@
   "emulatorCoreDownloading": "Downloading",
   "emulatorCoreUnavailable": "Not available for this device",
   "emulatorCoreDownloadFailed": "Could not download the core. Check your connection and try again.",
+  "downloadedGames": "Downloaded Games",
+  "@downloadedGames": {
+    "description": "Settings screen title for managing game files stored on the device"
+  },
+  "downloadedGamesSubtitle": "Free up space used by game files",
+  "@downloadedGamesSubtitle": {
+    "description": "Subtitle for the Downloaded Games settings entry"
+  },
+  "downloadedGamesDescription": "Games are copied to this device before they play. Remove the ones you have finished to free up space. Saves are kept on the server and are not deleted.",
+  "@downloadedGamesDescription": {
+    "description": "Explanation at the top of the Downloaded Games settings screen"
+  },
+  "downloadedGamesEmpty": "No games have been downloaded to this device yet.",
+  "@downloadedGamesEmpty": {
+    "description": "Shown on the Downloaded Games screen when nothing is cached"
+  },
+  "downloadedGamesTotal": "{count} games, {size}",
+  "@downloadedGamesTotal": {
+    "description": "Summary of how many games are stored and how much space they take, where size is a formatted amount such as 1.4 GB",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "removeAllDownloadedGames": "Remove All",
+  "@removeAllDownloadedGames": {
+    "description": "Button that deletes every downloaded game from the device"
+  },
+  "removeDownloadedGameConfirm": "Remove {title} from this device? It will download again the next time you play it.",
+  "@removeDownloadedGameConfirm": {
+    "description": "Confirmation prompt before deleting a single downloaded game, where title is the game name",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "removeAllDownloadedGamesConfirm": "Remove all downloaded games from this device? They will download again the next time you play them.",
+  "@removeAllDownloadedGamesConfirm": {
+    "description": "Confirmation prompt before deleting every downloaded game"
+  },
   "settingsHigh": "High",
   "settingsLow": "Low",
   "settingsCustomPath": "Custom Path",
