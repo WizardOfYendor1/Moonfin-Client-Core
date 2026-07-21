@@ -5340,20 +5340,6 @@ class _ContentRowsState extends State<_ContentRows>
       // Ask for the banner ratio. At 16/9 the artwork comes back about three
       // times too narrow for the card and has to be upscaled.
       final maxW = (height * kBannerAspectRatio * requestScale).toInt();
-      if (itemBannerTag != null) {
-        return imageApi.getBannerImageUrl(
-          item.id,
-          maxWidth: maxW,
-          tag: itemBannerTag,
-        );
-      }
-      if (item.backdropImageTags.isNotEmpty) {
-        return imageApi.getBackdropImageUrl(
-          item.id,
-          maxWidth: maxW,
-          tag: item.backdropImageTags.first,
-        );
-      }
       if (isMyMediaRow) {
         final myMediaPrimary = _resolvePrimaryImageUrl(
           item,
@@ -5364,11 +5350,25 @@ class _ContentRowsState extends State<_ContentRows>
           return myMediaPrimary;
         }
       }
+      if (itemBannerTag != null) {
+        return imageApi.getBannerImageUrl(
+          item.id,
+          maxWidth: maxW,
+          tag: itemBannerTag,
+        );
+      }
       if (itemThumbTag != null) {
         return imageApi.getThumbImageUrl(
           item.id,
           maxWidth: maxW,
           tag: itemThumbTag,
+        );
+      }
+      if (item.backdropImageTags.isNotEmpty) {
+        return imageApi.getBackdropImageUrl(
+          item.id,
+          maxWidth: maxW,
+          tag: item.backdropImageTags.first,
         );
       }
       return _resolveImageUrl(

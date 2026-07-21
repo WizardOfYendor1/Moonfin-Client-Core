@@ -1806,8 +1806,6 @@ class UserPreferences extends ChangeNotifier {
 
   static ImageType _defaultHomeRowImageType(HomeSectionType sectionType) {
     return switch (sectionType) {
-      HomeSectionType.resume ||
-      HomeSectionType.nextUp => ImageType.banner,
       HomeSectionType.libraryTilesSmall => ImageType.thumb,
       _ => ImageType.poster,
     };
