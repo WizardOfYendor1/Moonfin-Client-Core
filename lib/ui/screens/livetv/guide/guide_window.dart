@@ -5,12 +5,13 @@ import 'guide_selection.dart';
 DateTime floorToQuarterHour(DateTime t) =>
     DateTime(t.year, t.month, t.day, t.hour, t.minute - (t.minute % 15));
 
-/// Left edge of the guide window: the previous quarter hour, less a fifteen
-/// minute back-slice so a still-airing programme keeps width as it ends.
-DateTime guideLeftEdge(DateTime now) =>
-    floorToQuarterHour(now).subtract(const Duration(minutes: 15));
+/// Rounds down to :00 or :30.
+DateTime floorToHalfHour(DateTime t) =>
+    DateTime(t.year, t.month, t.day, t.hour, t.minute - (t.minute % 30));
 
-Duration backSlice(DateTime now) => now.difference(guideLeftEdge(now));
+/// Left edge of the guide window: the nearest top or bottom of the hour at
+/// or before [now]. Looking further back is the `‹` control's job.
+DateTime guideLeftEdge(DateTime now) => floorToHalfHour(now);
 
 /// The cell the selection currently addresses, or null when nothing in [cells]
 /// represents it any more.
