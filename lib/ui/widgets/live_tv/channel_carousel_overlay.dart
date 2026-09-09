@@ -32,7 +32,7 @@ class ChannelCarouselOverlay extends StatefulWidget {
     required this.onChannelSelected,
     required this.onDismiss,
     required this.onShowControls,
-    this.inactivityDuration = const Duration(seconds: 5),
+    this.inactivityDuration = const Duration(minutes: 2),
     this.viewModelFactory,
   });
 

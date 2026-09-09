@@ -95,6 +95,20 @@ void main() {
 
   setUp(() => ThemeRegistry.setActiveById(ThemeRegistry.moonfinId));
 
+  test('the overlay stays up for two minutes unless dismissed', () {
+    // Owner requirement: the changer is for browsing, so it must not vanish
+    // mid-look; the player relies on this default and passes no override.
+    final overlay = ChannelCarouselOverlay(
+      client: _CarouselClient(),
+      channels: const [],
+      currentChannelId: 'ch0',
+      onChannelSelected: (_) {},
+      onDismiss: () {},
+      onShowControls: () {},
+    );
+    expect(overlay.inactivityDuration, const Duration(minutes: 2));
+  });
+
   tearDown(() => HardwareKeyboard.instance.clearState());
 
   Future<_CarouselGuide> pumpOverlay(WidgetTester tester,
