@@ -436,4 +436,144 @@ void main() {
       expect(guideCalls, 1);
     });
   });
+
+  group('re-entry and exit', () {
+    setUp(() {
+      when(
+        () => liveTv.getChannels(
+          sortBy: any(named: 'sortBy'),
+          sortOrder: any(named: 'sortOrder'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) async => {
+            'Items': [_channel('c0')],
+          });
+    });
+
+    test('re-entry with a window over 30 minutes stale forces a reload',
+        () async {
+      var clock = DateTime(2026, 9, 9, 20);
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      final guideCallsBefore = verify(
+        () => liveTv.getGuide(
+          startDate: any(named: 'startDate'),
+          endDate: any(named: 'endDate'),
+          channelIds: any(named: 'channelIds'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          enableImages: any(named: 'enableImages'),
+          enableUserData: any(named: 'enableUserData'),
+          userId: any(named: 'userId'),
+        ),
+      ).callCount;
+
+      clock = clock.add(const Duration(minutes: 31));
+      await vm.reloadIfStale();
+
+      final guideCallsAfter = verify(
+        () => liveTv.getGuide(
+          startDate: any(named: 'startDate'),
+          endDate: any(named: 'endDate'),
+          channelIds: any(named: 'channelIds'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          enableImages: any(named: 'enableImages'),
+          enableUserData: any(named: 'enableUserData'),
+          userId: any(named: 'userId'),
+        ),
+      ).callCount;
+      expect(guideCallsAfter, greaterThan(guideCallsBefore));
+      // A forced reload recomputes the window from the current clock.
+      expect(vm.windowStart, DateTime(2026, 9, 9, 20));
+    });
+
+    test('re-entry within 30 minutes does not reload', () async {
+      var clock = DateTime(2026, 9, 9, 20);
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      final guideCallsBefore = verify(
+        () => liveTv.getGuide(
+          startDate: any(named: 'startDate'),
+          endDate: any(named: 'endDate'),
+          channelIds: any(named: 'channelIds'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          enableImages: any(named: 'enableImages'),
+          enableUserData: any(named: 'enableUserData'),
+          userId: any(named: 'userId'),
+        ),
+      ).callCount;
+
+      clock = clock.add(const Duration(minutes: 29));
+      await vm.reloadIfStale();
+
+      final guideCallsAfter = verify(
+        () => liveTv.getGuide(
+          startDate: any(named: 'startDate'),
+          endDate: any(named: 'endDate'),
+          channelIds: any(named: 'channelIds'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          enableImages: any(named: 'enableImages'),
+          enableUserData: any(named: 'enableUserData'),
+          userId: any(named: 'userId'),
+        ),
+      ).callCount;
+      expect(guideCallsAfter, guideCallsBefore);
+    });
+
+    test('exiting a paged-ahead session resets the window to now', () async {
+      var clock = DateTime(2026, 9, 9, 20);
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+
+      await vm.shiftWindow(6);
+      expect(vm.windowStart, DateTime(2026, 9, 9, 26));
+
+      clock = clock.add(const Duration(hours: 2));
+      vm.resetWindowOnExit();
+
+      expect(vm.windowStart, DateTime(2026, 9, 9, 22));
+      expect(vm.windowEnd, DateTime(2026, 9, 9, 25));
+      expect(vm.guideDate, clock);
+    });
+  });
+
+  group('recording defaults carry the programme id', () {
+    setUp(() {
+      when(
+        () => liveTv.getChannels(
+          sortBy: any(named: 'sortBy'),
+          sortOrder: any(named: 'sortOrder'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) async => {
+            'Items': [_channel('c0')],
+          });
+      when(() => liveTv.createTimer(any())).thenAnswer((_) async {});
+    });
+
+    test('toggleProgramRecording creates a timer for the program\'s own id',
+        () async {
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load();
+
+      final program = GuideProgram(
+        id: 'program-42',
+        channelId: 'c0',
+        name: 'Test',
+        startDate: DateTime(2026, 9, 9, 20),
+        endDate: DateTime(2026, 9, 9, 21),
+        rawData: const {},
+      );
+      await vm.toggleProgramRecording(program);
+
+      verify(() => liveTv.createTimer('program-42')).called(1);
+    });
+  });
 }

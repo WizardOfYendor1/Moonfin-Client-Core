@@ -150,7 +150,10 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     ChannelSortBy? initialSortBy,
     DateTime Function()? now,
   })  : _sortBy = initialSortBy ?? _savedSortBy(),
-        _now = now ?? DateTime.now;
+        _now = now ?? DateTime.now,
+        _guideDate = (now ?? DateTime.now)(),
+        _windowStart = (now ?? DateTime.now)(),
+        _windowEnd = (now ?? DateTime.now)();
 
   /// Clock the boundary refresh reads, injectable so tests can advance it.
   final DateTime Function() _now;
@@ -243,13 +246,15 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   GuideFilter _filter = GuideFilter.all;
   GuideFilter get filter => _filter;
 
-  DateTime _guideDate = DateTime.now();
+  // Seeded from the injected clock in the constructor, so the initial value
+  // is testable rather than tied to the real wall clock.
+  DateTime _guideDate;
   DateTime get guideDate => _guideDate;
 
-  DateTime _windowStart = DateTime.now();
+  DateTime _windowStart;
   DateTime get windowStart => _windowStart;
 
-  DateTime _windowEnd = DateTime.now();
+  DateTime _windowEnd;
   DateTime get windowEnd => _windowEnd;
 
   List<GuideChannel> get filteredChannels {
@@ -396,7 +401,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
         _guideDate.year,
         _guideDate.month,
         _guideDate.day,
-        DateTime.now().hour,
+        _now().hour,
       );
       _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
 
@@ -471,8 +476,26 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   }
 
   Future<void> goToNow() async {
-    _guideDate = DateTime.now();
+    _guideDate = _now();
     await load(windowHours: _guideWindowHours);
+  }
+
+  /// Call when the guide becomes visible. A window left open past 30 minutes
+  /// stale forces a full reload; this is the one re-entry path where that is
+  /// still correct, since background refresh elsewhere avoids it.
+  Future<void> reloadIfStale({int? windowHours}) async {
+    if (_windowStart.add(const Duration(minutes: 30)).isBefore(_now())) {
+      await load(windowHours: windowHours);
+    }
+  }
+
+  /// Call when the guide is left after paging the window ahead or to another
+  /// date, so the next entry starts live instead of wherever it wandered to.
+  void resetWindowOnExit() {
+    final now = _now();
+    _guideDate = now;
+    _windowStart = DateTime(now.year, now.month, now.day, now.hour);
+    _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
   }
 
   Future<void> _fetchChannels() async {
