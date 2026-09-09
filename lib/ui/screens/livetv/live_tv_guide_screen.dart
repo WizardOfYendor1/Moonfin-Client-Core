@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +31,7 @@ import 'epg/widgets/epg_now_next_card.dart';
 import 'epg/widgets/epg_program_cell.dart';
 import 'guide/guide_cell.dart';
 import 'guide/guide_selection.dart';
+import 'guide/guide_window.dart';
 
 const _kChannelColumnWidth = 160.0;
 const _kRowHeight = 84.0;
@@ -42,6 +45,9 @@ const _kMinGuideHours = 3;
 const _kMaxGuideHours = 12;
 const _kMiniPlayerWidth = 300.0;
 const _kMiniPlayerHeight = 168.0;
+// A re-anchor waits this long after the last d-pad event, so the window
+// never moves under an in-progress navigation.
+const _kReanchorInputQuiet = Duration(seconds: 1);
 
 /// The transport keys a TV remote offers for paging; `lib/util/focus/` has no
 /// shared helper for them.
@@ -159,6 +165,12 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   /// The single deferred vertical move, or null when nothing is pending.
   _PendingVerticalMove? _pendingVerticalMove;
 
+  /// One-shot timer to the next quarter hour; rescheduled when it fires.
+  Timer? _reanchorTimer;
+
+  /// When the last d-pad event arrived, or null before the first one.
+  DateTime? _lastDpadEventAt;
+
   /// Mounted program rows by row index, so the screen can focus a cell in a
   /// row whose focus nodes are private to that row's state.
   final Map<int, _GuideProgramRowState> _rowStates = {};
@@ -183,6 +195,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     _programScrollController.addListener(_syncVerticalScroll);
     _timeHeaderHorizontalScrollController.addListener(_syncHorizontalFromHeader);
     _guideHorizontalScrollController.addListener(_syncHorizontalFromGuide);
+    _scheduleReanchor();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -432,6 +445,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
 
   @override
   void dispose() {
+    _reanchorTimer?.cancel();
     _vm.removeListener(_onChanged);
     _vm.dispose();
     _channelScrollController.dispose();
@@ -1249,6 +1263,77 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     });
   }
 
+  /// Records the input so a re-anchor can stay out of the way, then drops the
+  /// deferred move.
+  void _onNavigationKey() {
+    _lastDpadEventAt = DateTime.now();
+    _cancelPendingVerticalMove();
+  }
+
+  /// Arms a single timer for the next :00/:15/:30/:45 rather than polling.
+  void _scheduleReanchor() {
+    _reanchorTimer?.cancel();
+    final now = DateTime.now();
+    final next = floorToQuarterHour(now).add(const Duration(minutes: 15));
+    _reanchorTimer = Timer(next.difference(now), _onReanchorTick);
+  }
+
+  /// The window is at the live position while it starts at or just behind now;
+  /// paging ahead or choosing another date moves it out of that span.
+  bool _isWindowAtLive(DateTime now) =>
+      !_vm.windowStart.isAfter(now) &&
+      now.difference(_vm.windowStart) < const Duration(hours: 1);
+
+  void _onReanchorTick() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    final lastInput = _lastDpadEventAt;
+    if (lastInput != null) {
+      final quiet = _kReanchorInputQuiet - now.difference(lastInput);
+      if (quiet > Duration.zero) {
+        // Mid-input: wait out the quiet period instead of moving under the user.
+        _reanchorTimer = Timer(quiet, _onReanchorTick);
+        return;
+      }
+    }
+    _scheduleReanchor();
+    _reanchor(now);
+  }
+
+  /// Re-resolves the selection against the window as the clock moves it, and
+  /// puts focus back on the cell the new anchor lands on.
+  void _reanchor(DateTime now) {
+    final selection = _selection;
+    if (selection == null || !_isWindowAtLive(now)) return;
+    final cells = _cellsForChannel(selection.channelId);
+    if (cells.isEmpty) return;
+
+    final updated = reanchorSelection(
+      current: selection,
+      cells: cells,
+      now: now,
+    );
+    if (updated.anchorTime == selection.anchorTime &&
+        updated.programId == selection.programId) {
+      return;
+    }
+
+    _cancelPendingVerticalMove();
+    _selection = updated;
+    _focusSelectedCell(updated, cells);
+  }
+
+  void _focusSelectedCell(GuideSelection selection, List<GuideCell> cells) {
+    if (_cellsAreLoading(cells)) return;
+    final rowIndex = _vm.filteredChannels.indexWhere(
+      (channel) => channel.id == selection.channelId,
+    );
+    if (rowIndex < 0) return;
+    _rowStates[rowIndex]?.focusCellAt(
+      resolveCellIndexAt(cells, selection.anchorTime),
+    );
+  }
+
   /// Drops the deferred move: the destination it referred to is no longer what
   /// the user is asking for.
   void _cancelPendingVerticalMove() {
@@ -1329,7 +1414,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
       selection: _selection,
       onVerticalMove: _moveSelectionVertically,
       onPageRows: _pageChannelRows,
-      onNavigationKey: _cancelPendingVerticalMove,
+      onNavigationKey: _onNavigationKey,
       onRowMounted: _scheduleApplyPendingVerticalMove,
       windowStart: _vm.windowStart,
       windowEnd: _vm.windowEnd,
