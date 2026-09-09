@@ -26,6 +26,7 @@ import 'epg/widgets/epg_filter_rail.dart';
 import 'epg/widgets/epg_hero_preview.dart';
 import 'epg/widgets/epg_now_next_card.dart';
 import 'epg/widgets/epg_program_cell.dart';
+import 'guide/guide_cell.dart';
 
 const _kChannelColumnWidth = 160.0;
 const _kRowHeight = 84.0;
@@ -1130,35 +1131,44 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     );
   }
 
-  Widget _buildProgramRow(List<GuideProgram> programs, int rowIndex) {
-    if (programs.isEmpty) {
-      return Container(
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: ThemeRegistry.active.borders.cardBorder,
-          ),
-        ),
-      );
-    }
+  Widget _buildProgramRow(
+    String channelId,
+    List<GuideProgram> programs,
+    int rowIndex,
+  ) {
+    final cells = buildRowCells(
+      visible: programs,
+      unfiltered: _vm.unfilteredProgramsForChannel(channelId),
+      windowStart: _vm.windowStart,
+      windowEnd: _vm.windowEnd,
+      loadState: _vm.loadStateFor(channelId),
+    );
 
     return _GuideProgramRow(
-      programs: programs,
+      cells: cells,
       rowIndex: rowIndex,
       windowStart: _vm.windowStart,
       windowEnd: _vm.windowEnd,
       apple: _apple,
       onLeftEdge: () => _focusChannelRow(rowIndex),
-      onProgramSelected: widget.miniPlayerMode
-          ? (program) => _watchChannel(program.channelId)
-          : _showProgramDetails,
+      // A non-programme cell selects to a no-op; Phase 5 owns select semantics.
+      onProgramSelected: (cell) {
+        final program = cell.program;
+        if (program == null) return;
+        if (widget.miniPlayerMode) {
+          _watchChannel(channelId);
+        } else {
+          _showProgramDetails(program);
+        }
+      },
       onTopEdge: rowIndex == 0
           ? (widget.miniPlayerMode
               ? _focusMiniPlayer
               : () => _filterFocusNodeFor(0).requestFocus())
           : null,
-      onProgramFocused: (program, _, _) {
-        _focusedProgram.value = program;
-        _focusedChannel.value = _vm.channelForId(program.channelId);
+      onProgramFocused: (cell, _, _) {
+        _focusedProgram.value = cell.program;
+        _focusedChannel.value = _vm.channelForId(channelId);
         _scrollToRow(rowIndex);
       },
       onHorizontalMove: _ensureProgramVisible,
@@ -1401,7 +1411,8 @@ class _GuideGridView extends StatefulWidget {
   final double guideWidth;
   final ScrollController verticalController;
   final ScrollController horizontalController;
-  final Widget Function(List<GuideProgram>, int rowIndex) buildProgramRow;
+  final Widget Function(String channelId, List<GuideProgram>, int rowIndex)
+  buildProgramRow;
   final List<GuideProgram> Function(String channelId) programsForChannel;
   final bool Function(String channelId) hasProgramsFor;
   final Widget Function() buildPlaceholderRow;
@@ -1441,6 +1452,7 @@ class _GuideGridViewState extends State<_GuideGridView> {
               height: _kRowHeight,
               child: loaded
                   ? widget.buildProgramRow(
+                      channel.id,
                       widget.programsForChannel(channel.id),
                       index,
                     )
@@ -1582,21 +1594,21 @@ class _GuideFocusableSurfaceState extends State<_GuideFocusableSurface> {
 }
 
 class _GuideProgramRow extends StatefulWidget {
-  final List<GuideProgram> programs;
+  final List<GuideCell> cells;
   final int rowIndex;
   final DateTime windowStart;
   final DateTime windowEnd;
   final bool apple;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onTopEdge;
-  final ValueChanged<GuideProgram> onProgramSelected;
-  final void Function(GuideProgram program, double left, double width)
+  final ValueChanged<GuideCell> onProgramSelected;
+  final void Function(GuideCell cell, double left, double width)
   onProgramFocused;
   final void Function(double left, double width)? onHorizontalMove;
   final String Function(DateTime) formatTime;
 
   const _GuideProgramRow({
-    required this.programs,
+    required this.cells,
     required this.rowIndex,
     required this.windowStart,
     required this.windowEnd,
@@ -1625,16 +1637,16 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
   @override
   void didUpdateWidget(covariant _GuideProgramRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.programs.length != widget.programs.length) {
+    if (oldWidget.cells.length != widget.cells.length) {
       _syncFocusNodes();
     }
   }
 
   void _syncFocusNodes() {
-    while (_focusNodes.length < widget.programs.length) {
+    while (_focusNodes.length < widget.cells.length) {
       _focusNodes.add(FocusNode(debugLabel: 'GuideProgramRow${widget.rowIndex}:${_focusNodes.length}'));
     }
-    while (_focusNodes.length > widget.programs.length) {
+    while (_focusNodes.length > widget.cells.length) {
       _focusNodes.removeLast().dispose();
     }
   }
@@ -1649,7 +1661,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
 
   KeyEventResult _handleProgramKeyEvent(int index, FocusNode node, KeyEvent event) {
     final selected = handleOneShotSelect(event, () {
-      widget.onProgramSelected(widget.programs[index]);
+      widget.onProgramSelected(widget.cells[index]);
     });
     if (selected != KeyEventResult.ignored) return selected;
     if (!event.isActionable) return KeyEventResult.ignored;
@@ -1684,20 +1696,19 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
   }
 
   void _notifyHorizontalMove(int index) {
-    final geometry = _programGeometry(index);
+    final geometry = _cellGeometry(index);
     widget.onHorizontalMove?.call(geometry.left, geometry.width);
   }
 
-  ({double left, double width}) _programGeometry(int index) {
-    final program = widget.programs[index];
-    final totalMinutes = widget.windowEnd.difference(widget.windowStart).inMinutes.toDouble();
-    final offsetMinutes = program.startDate.difference(widget.windowStart).inMinutes.toDouble();
-    final clampedStart = offsetMinutes < 0 ? 0.0 : offsetMinutes;
-    final endOffset = program.endDate.difference(widget.windowStart).inMinutes.toDouble();
-    final clampedEnd = endOffset > totalMinutes ? totalMinutes : endOffset;
+  /// The single source of a cell's timeline geometry. `buildRowCells` already
+  /// clips every cell to the window, so no clamping is needed here.
+  ({double left, double width}) _cellGeometry(int index) {
+    final cell = widget.cells[index];
+    final startMinutes = cell.start.difference(widget.windowStart).inMinutes.toDouble();
+    final endMinutes = cell.end.difference(widget.windowStart).inMinutes.toDouble();
     return (
-      left: clampedStart * _kPixelsPerMinute,
-      width: (clampedEnd - clampedStart) * _kPixelsPerMinute,
+      left: startMinutes * _kPixelsPerMinute,
+      width: (endMinutes - startMinutes) * _kPixelsPerMinute,
     );
   }
 
@@ -1713,8 +1724,8 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
       ),
       child: Stack(
         children: [
-          for (var index = 0; index < widget.programs.length; index++)
-            _buildProgramCell(index, widget.programs[index], now),
+          for (var index = 0; index < widget.cells.length; index++)
+            _buildProgramCell(index, widget.cells[index], now),
         ],
       ),
     );
@@ -1722,16 +1733,19 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
 
   Widget _buildProgramCell(
     int index,
-    GuideProgram program,
+    GuideCell cell,
     DateTime now,
   ) {
-    final geometry = _programGeometry(index);
+    final geometry = _cellGeometry(index);
     final left = geometry.left;
     final width = geometry.width;
 
     if (width <= 0) return const SizedBox.shrink();
 
-    final isLive = now.isAfter(program.startDate) && now.isBefore(program.endDate);
+    final program = cell.program;
+    final isLive = program != null &&
+        now.isAfter(program.startDate) &&
+        now.isBefore(program.endDate);
 
     return Positioned(
       left: left,
@@ -1742,21 +1756,24 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
         padding: const EdgeInsets.only(right: 1),
         child: _GuideFocusableSurface(
           focusNode: _focusNodes[index],
-          onPressed: () => widget.onProgramSelected(program),
+          onPressed: () => widget.onProgramSelected(cell),
           onKeyEvent: (node, event) =>
               _handleProgramKeyEvent(index, node, event),
           onFocusChange: (focused) {
             if (!focused) return;
-            widget.onProgramFocused(program, left, width);
+            widget.onProgramFocused(cell, left, width);
           },
           builder: (focused) => EpgProgramCell(
-            title: program.name,
-            timeLabel:
-                '${widget.formatTime(program.startDate)} - ${widget.formatTime(program.endDate)}',
-            genre: epgGenreFor(program),
+            title: program?.name ?? '',
+            timeLabel: program == null
+                ? null
+                : '${widget.formatTime(program.startDate)} - ${widget.formatTime(program.endDate)}',
+            genre: program == null
+                ? EpgGenre('', AppColorScheme.onSurface.withValues(alpha: 0.18))
+                : epgGenreFor(program),
             isLive: isLive,
             progress: isLive ? program.progressAt(now) : 0,
-            hasTimer: program.hasTimer,
+            hasTimer: program?.hasTimer ?? false,
             focused: focused,
             apple: widget.apple,
             showMeta: width > 80,
