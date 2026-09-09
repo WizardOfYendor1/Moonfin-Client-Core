@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:playback_core/playback_core.dart';
 import 'package:moonfin/l10n/app_localizations.dart';
 import 'package:moonfin/preference/user_preferences.dart';
+import 'package:moonfin/ui/screens/livetv/guide/guide_window.dart';
 import 'package:moonfin/ui/screens/livetv/live_tv_guide_screen.dart';
 import 'package:server_core/server_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,12 +16,16 @@ class _MockMediaServerClient extends Mock implements MediaServerClient {}
 
 class _MockLiveTvApi extends Mock implements LiveTvApi {}
 
-/// The window the screen fetches: today floored to the current hour, per
-/// `LiveTvGuideViewModel.load`. Mirrors `guide_navigation_widget_test.dart`.
-DateTime _windowStart() {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day, now.hour);
-}
+class _MockPlaybackManager extends Mock implements PlaybackManager {}
+
+/// The window's left edge, computed exactly as the screen computes it: the
+/// previous quarter hour less the fifteen-minute back-slice. Captured once per
+/// test so the fixture and the screen share one origin.
+late DateTime _windowStart;
+
+/// `AlertDialog.adaptive` builds a private subclass, which `find.byType` will
+/// not match, so match the supertype instead.
+final Finder _alertDialog = find.byWidgetPredicate((w) => w is AlertDialog);
 
 Map<String, dynamic> _channelRaw(String id, String name) => <String, dynamic>{
   'Id': id,
@@ -92,6 +98,13 @@ void main() {
 
     channels = <Map<String, dynamic>>[];
     programs = <Map<String, dynamic>>[];
+    _windowStart = guideLeftEdge(DateTime.now());
+
+    final playback = _MockPlaybackManager();
+    when(() => playback.backend).thenReturn(null);
+    when(() => playback.backendChangedStream)
+        .thenAnswer((_) => const Stream<PlayerBackend>.empty());
+    GetIt.instance.registerSingleton<PlaybackManager>(playback);
 
     client = _MockMediaServerClient();
     liveTvApi = _MockLiveTvApi();
@@ -139,18 +152,22 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    final guide = LiveTvGuideScreen(
+      miniPlayerMode: miniPlayerMode,
+      embedded: miniPlayerMode,
+      onChannelSelected: miniPlayerMode ? (onChannelSelected ?? (_) {}) : null,
+      onClose: miniPlayerMode ? () {} : null,
+    );
+
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: LiveTvGuideScreen(
-          miniPlayerMode: miniPlayerMode,
-          embedded: miniPlayerMode,
-          onChannelSelected: miniPlayerMode
-              ? (onChannelSelected ?? (_) {})
-              : null,
-          onClose: miniPlayerMode ? () {} : null,
-        ),
+        // Embedded mode drops the guide's own Scaffold because the host
+        // supplies it; stand in for that host here.
+        home: miniPlayerMode
+            ? Material(color: Colors.black, child: guide)
+            : guide,
       ),
     );
     await tester.pumpAndSettle();
@@ -163,42 +180,40 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('opening the dialog leaves Watch holding primary focus, not Record', (
-    tester,
-  ) async {
-    final windowStart = _windowStart();
-    channels = [_channelRaw('cA', 'Channel A')];
-    // Spans the whole window so it is neither ended nor future.
-    programs = [
-      _programRaw(
-        channelId: 'cA',
-        start: windowStart.subtract(const Duration(minutes: 30)),
-        end: windowStart.add(const Duration(hours: 4)),
-      ),
-    ];
+  testWidgets(
+    'opening the dialog leaves Watch holding primary focus, not Record',
+    (tester) async {
+      channels = [_channelRaw('cA', 'Channel A')];
+      // Spans the whole window, whatever width the surface derives, so the
+      // programme is neither ended nor future and cell 0 is always it.
+      programs = [
+        _programRaw(
+          channelId: 'cA',
+          start: _windowStart.subtract(const Duration(minutes: 30)),
+          end: _windowStart.add(const Duration(hours: 13)),
+        ),
+      ];
 
-    await pumpGuide(tester);
-    await openDialogOnRow0(tester);
+      await pumpGuide(tester);
+      await openDialogOnRow0(tester);
 
-    expect(find.byType(AlertDialog), findsOneWidget);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AlertDialog)),
-    );
-    expect(_primaryFocusHasText(l10n.watch), isTrue);
-    expect(_primaryFocusHasText(l10n.record), isFalse);
-  });
+      expect(_alertDialog, findsOneWidget);
+      final l10n = AppLocalizations.of(tester.element(_alertDialog));
+      expect(_primaryFocusHasText(l10n.watch), isTrue);
+      expect(_primaryFocusHasText(l10n.record), isFalse);
+    },
+  );
 
   testWidgets('an ended series programme offers no single-episode record '
       'action but offers series recording', (tester) async {
-    final windowStart = _windowStart();
     channels = [_channelRaw('cB', 'Channel B')];
     programs = [
       _programRaw(
         channelId: 'cB',
-        start: windowStart.subtract(const Duration(hours: 1)),
-        // A one-second-wide clipped cell that ended the instant the window
-        // opened; the window's own start can never be later than "now".
-        end: windowStart.add(const Duration(seconds: 1)),
+        start: _windowStart.subtract(const Duration(hours: 1)),
+        // The back-slice is fifteen to thirty minutes wide, so a cell ending
+        // five minutes into the window has certainly ended by now.
+        end: _windowStart.add(const Duration(minutes: 5)),
         isSeries: true,
       ),
     ];
@@ -206,10 +221,8 @@ void main() {
     await pumpGuide(tester);
     await openDialogOnRow0(tester);
 
-    expect(find.byType(AlertDialog), findsOneWidget);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AlertDialog)),
-    );
+    expect(_alertDialog, findsOneWidget);
+    final l10n = AppLocalizations.of(tester.element(_alertDialog));
     expect(find.text(l10n.record), findsNothing);
     expect(find.text(l10n.cancelRecordingAction), findsNothing);
     expect(find.text(l10n.recordSeries), findsOneWidget);
@@ -217,13 +230,12 @@ void main() {
 
   testWidgets('an ended non-series programme offers no record action and no '
       'series action either', (tester) async {
-    final windowStart = _windowStart();
     channels = [_channelRaw('cC', 'Channel C')];
     programs = [
       _programRaw(
         channelId: 'cC',
-        start: windowStart.subtract(const Duration(hours: 1)),
-        end: windowStart.add(const Duration(seconds: 1)),
+        start: _windowStart.subtract(const Duration(hours: 1)),
+        end: _windowStart.add(const Duration(minutes: 5)),
         isSeries: false,
       ),
     ];
@@ -231,10 +243,8 @@ void main() {
     await pumpGuide(tester);
     await openDialogOnRow0(tester);
 
-    expect(find.byType(AlertDialog), findsOneWidget);
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(AlertDialog)),
-    );
+    expect(_alertDialog, findsOneWidget);
+    final l10n = AppLocalizations.of(tester.element(_alertDialog));
     expect(find.text(l10n.record), findsNothing);
     expect(find.text(l10n.cancelRecordingAction), findsNothing);
     expect(find.text(l10n.recordSeries), findsNothing);
@@ -244,13 +254,12 @@ void main() {
   testWidgets('in miniPlayerMode centre-press tunes and no dialog appears', (
     tester,
   ) async {
-    final windowStart = _windowStart();
     channels = [_channelRaw('cD', 'Channel D')];
     programs = [
       _programRaw(
         channelId: 'cD',
-        start: windowStart.subtract(const Duration(minutes: 30)),
-        end: windowStart.add(const Duration(hours: 4)),
+        start: _windowStart.subtract(const Duration(minutes: 30)),
+        end: _windowStart.add(const Duration(hours: 13)),
       ),
     ];
     String? tunedChannelId;
@@ -262,7 +271,7 @@ void main() {
     );
     await openDialogOnRow0(tester);
 
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(_alertDialog, findsNothing);
     expect(tunedChannelId, 'cD');
   });
 }

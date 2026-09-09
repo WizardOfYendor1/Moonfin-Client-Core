@@ -38,9 +38,6 @@ import 'guide/guide_window.dart';
 // lazily-loaded edge, so rows are usually populated by the time they're visible.
 const _kProgramPrefetchRows = 12;
 const _kGuideScrollLead = 24.0;
-/// Row height at which a cell can afford the second, meta text line. Below it
-/// the time label overflows the row, so only the title is drawn.
-const _kMetaRowHeight = 60.0;
 
 const _kMinGuideHours = 3;
 const _kMaxGuideHours = 12;
@@ -2390,7 +2387,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
           hasTimer: program?.hasTimer ?? false,
           focused: focused,
           apple: widget.apple,
-          showMeta: width > 80 && widget.rowHeight >= _kMetaRowHeight,
+          showMeta: width > 80,
           placeholderLabel: cell.kind == GuideCellKind.gap
               ? widget.noProgramDataLabel
               : null,

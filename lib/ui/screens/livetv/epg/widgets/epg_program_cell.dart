@@ -121,9 +121,9 @@ class EpgProgramCell extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(
               (apple ? 10 : 12) + textLeftPadding,
-              6,
+              4,
               8,
-              6,
+              4,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,10 +174,16 @@ class EpgProgramCell extends StatelessWidget {
                   ],
                 ),
                 if (showMeta && timeLabel != null) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    timeLabel!,
-                    style: textTheme.labelSmall?.copyWith(color: muted),
+                  const SizedBox(height: 2),
+                  // Flexible so a scaled-up label is clipped by the row rather
+                  // than overflowing it; maxLines stops it wrapping when narrow.
+                  Flexible(
+                    child: Text(
+                      timeLabel!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.labelSmall?.copyWith(color: muted),
+                    ),
                   ),
                 ],
               ],

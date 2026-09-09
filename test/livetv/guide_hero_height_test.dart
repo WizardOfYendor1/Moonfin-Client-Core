@@ -6,17 +6,23 @@ void main() {
   testWidgets('compact standalone hero keeps a fixed height', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: EpgHeroPreview(
-          title: 'Programme',
-          timeLabel: '7:00 - 8:00',
-          genreLabel: 'Drama',
-          synopsis: 'A synopsis that continues onto a second line for context.',
-          channelLogoUrl: null,
-          channelName: 'Channel One',
-          channelNumber: '1',
-          isLive: false,
-          apple: false,
-          compact: true,
+        // The hero sizes itself only when its parent leaves the height loose,
+        // which is what the guide's Column gives it.
+        home: Align(
+          alignment: Alignment.topCenter,
+          child: EpgHeroPreview(
+            title: 'Programme',
+            timeLabel: '7:00 - 8:00',
+            genreLabel: 'Drama',
+            synopsis:
+                'A synopsis that continues onto a second line for context.',
+            channelLogoUrl: null,
+            channelName: 'Channel One',
+            channelNumber: '1',
+            isLive: false,
+            apple: false,
+            compact: true,
+          ),
         ),
       ),
     );
