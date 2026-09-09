@@ -74,6 +74,21 @@ class GuideProgram {
 
   Duration get duration => endDate.difference(startDate);
 
+  /// The broadcast classification (`TV-G`, `TV-14`, ...) when the guide data
+  /// carries one.
+  String? get officialRating => rawData['OfficialRating'] as String?;
+
+  /// The programme's categories in a fixed order, as the same [GuideFilter]
+  /// values the guide's filter chips label, so callers localise them once.
+  List<GuideFilter> get categoryTags => [
+    if (isMovie) GuideFilter.movies,
+    if (isSeries) GuideFilter.series,
+    if (isSports) GuideFilter.sports,
+    if (isNews) GuideFilter.news,
+    if (isKids) GuideFilter.kids,
+    if (isPremiere) GuideFilter.premiere,
+  ];
+
   bool get isLive {
     final now = DateTime.now();
     return now.isAfter(startDate) && now.isBefore(endDate);
@@ -109,7 +124,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   // The guide renders a fixed 2.5-hour span; see GuideLayoutProfile.
   static const _defaultGuideWindow = Duration(minutes: 150);
   // Programs only need the synopsis; channel logos come from the separate
-  // /LiveTv/Channels fetch, so we don't request ImageTags here.
+  // /LiveTv/Channels fetch, so we don't request ImageTags here. OfficialRating
+  // needs no entry: it is not an ItemFields value and the server returns it
+  // unconditionally.
   static const _fields = 'Overview';
 
   // Programs are loaded lazily in batches of this many channels as the guide is
@@ -349,10 +366,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
       rawData: optimisticRaw,
     );
 
-    final channels = List<GuideChannel>.from(_channels);
-    channels[index] = updated;
-    _channels = channels;
-    _notifyListeners();
+    _applyChannelUpdate(updated);
 
     try {
       if (next) {
@@ -361,12 +375,32 @@ class LiveTvGuideViewModel extends ChangeNotifier {
         await _client.userLibraryApi.unmarkFavorite(channelId);
       }
     } catch (_) {
-      final reverted = List<GuideChannel>.from(_channels);
-      reverted[index] = current;
-      _channels = reverted;
-      _notifyListeners();
+      _applyChannelUpdate(current);
       rethrow;
     }
+  }
+
+  /// Only the favorites-first comparator reads [GuideChannel.isFavorite], so a
+  /// toggle under any other sort leaves the lineup where the viewer left it.
+  bool get _sortReadsFavorite => _sortBy == ChannelSortBy.favoritesFirst;
+
+  /// Replaces one channel by id and re-sorts when the active sort depends on
+  /// what changed. Selection is resolved by id by the screen, so it survives.
+  void _applyChannelUpdate(GuideChannel updated) {
+    final channels = List<GuideChannel>.from(_channels);
+    final at = channels.indexWhere((c) => c.id == updated.id);
+    if (at < 0) return;
+    channels[at] = updated;
+    final resort = _sortReadsFavorite;
+    if (resort) {
+      channels.sort(comparatorFor(_sortBy));
+      // The lazy-load prefix follows list order, so walk it again from the top.
+      // Already-fetched channels are skipped in _loadNextBatch.
+      _programsHighWater = 0;
+    }
+    _channels = channels;
+    _notifyListeners();
+    if (resort) unawaited(loadMorePrograms());
   }
 
   Future<void> toggleProgramRecording(GuideProgram program) async {

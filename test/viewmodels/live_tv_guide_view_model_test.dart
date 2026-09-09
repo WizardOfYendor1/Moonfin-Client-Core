@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:moonfin/data/viewmodels/live_tv_guide_view_model.dart';
+import 'package:moonfin/preference/preference_constants.dart';
 import 'package:server_core/server_core.dart';
 
 class _MockClient extends Mock implements MediaServerClient {}
 
 class _MockLiveTvApi extends Mock implements LiveTvApi {}
+
+class _MockUserLibraryApi extends Mock implements UserLibraryApi {}
 
 Map<String, dynamic> _channel(String id) => {'Id': id, 'Name': 'Ch $id'};
 
@@ -700,6 +703,48 @@ void main() {
 
         verify(() => liveTv.createTimer('program-42')).called(1);
       },
+    );
+  });
+
+  test('favoriting re-sorts only when the sort reads the favorite flag', () async {
+    final channels = [
+      {'Id': 'c1', 'Name': 'Ch 1', 'ChannelNumber': '1'},
+      {'Id': 'c2', 'Name': 'Ch 2', 'ChannelNumber': '2'},
+      {'Id': 'c3', 'Name': 'Ch 3', 'ChannelNumber': '3'},
+    ];
+    when(
+      () => liveTv.getChannels(
+        sortBy: any(named: 'sortBy'),
+        sortOrder: any(named: 'sortOrder'),
+        fields: any(named: 'fields'),
+        enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+        userId: any(named: 'userId'),
+      ),
+    ).thenAnswer((_) async => {'Items': channels});
+    final userLibrary = _MockUserLibraryApi();
+    when(() => client.userLibraryApi).thenReturn(userLibrary);
+    when(() => userLibrary.markFavorite(any())).thenAnswer((_) async {});
+
+    final byNumber = LiveTvGuideViewModel(
+      client,
+      initialSortBy: ChannelSortBy.number,
+    );
+    await byNumber.load();
+    await byNumber.toggleChannelFavorite('c3');
+    expect(
+      byNumber.filteredChannels.map((c) => c.id),
+      ['c1', 'c2', 'c3'],
+    );
+
+    final favoritesFirst = LiveTvGuideViewModel(
+      client,
+      initialSortBy: ChannelSortBy.favoritesFirst,
+    );
+    await favoritesFirst.load();
+    await favoritesFirst.toggleChannelFavorite('c3');
+    expect(
+      favoritesFirst.filteredChannels.map((c) => c.id),
+      ['c3', 'c1', 'c2'],
     );
   });
 }
