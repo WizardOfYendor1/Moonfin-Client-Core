@@ -34,6 +34,7 @@ const _kRowHeight = 84.0;
 const _kProgramPrefetchRows = 12;
 const _kTimeHeaderHeight = 40.0;
 const _kPixelsPerMinute = 6.0;
+const _kGuideScrollLead = 24.0;
 const _kMinGuideHours = 3;
 const _kMaxGuideHours = 12;
 const _kMiniPlayerWidth = 300.0;
@@ -1155,22 +1156,41 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
               ? _focusMiniPlayer
               : () => _filterFocusNodeFor(0).requestFocus())
           : null,
-      onProgramFocused: (program, left, width) {
+      onProgramFocused: (program, _, _) {
         _focusedProgram.value = program;
         _focusedChannel.value = _vm.channelForId(program.channelId);
         _scrollToRow(rowIndex);
-        if (_guideHorizontalScrollController.hasClients) {
-          final viewport = _guideHorizontalScrollController.position.viewportDimension;
-          final max = _guideHorizontalScrollController.position.maxScrollExtent;
-          final target = (left + (width / 2) - (viewport / 2)).clamp(0.0, max);
-          _guideHorizontalScrollController.animateTo(
-            target,
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-          );
-        }
       },
+      onHorizontalMove: _ensureProgramVisible,
       formatTime: _formatTime,
+    );
+  }
+
+  /// Scrolls the guide the minimum distance needed to bring a cell on screen.
+  void _ensureProgramVisible(double left, double width) {
+    if (!_guideHorizontalScrollController.hasClients) return;
+    final position = _guideHorizontalScrollController.position;
+    final offset = position.pixels;
+    final viewport = position.viewportDimension;
+    final right = left + width;
+
+    double? target;
+    if (left < offset) {
+      target = left - _kGuideScrollLead;
+    } else if (right > offset + viewport) {
+      // A cell wider than the viewport aligns on its leading edge instead.
+      target = width > viewport
+          ? left - _kGuideScrollLead
+          : right + _kGuideScrollLead - viewport;
+    }
+    if (target == null) return;
+
+    final clamped = target.clamp(0.0, position.maxScrollExtent);
+    if (clamped == offset) return;
+    _guideHorizontalScrollController.animateTo(
+      clamped,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
     );
   }
 
@@ -1572,6 +1592,7 @@ class _GuideProgramRow extends StatefulWidget {
   final ValueChanged<GuideProgram> onProgramSelected;
   final void Function(GuideProgram program, double left, double width)
   onProgramFocused;
+  final void Function(double left, double width)? onHorizontalMove;
   final String Function(DateTime) formatTime;
 
   const _GuideProgramRow({
@@ -1584,6 +1605,7 @@ class _GuideProgramRow extends StatefulWidget {
     this.onTopEdge,
     required this.onProgramSelected,
     required this.onProgramFocused,
+    this.onHorizontalMove,
     required this.formatTime,
   });
 
@@ -1636,6 +1658,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
     if (key.isLeftKey) {
       if (index > 0) {
         _focusNodes[index - 1].requestFocus();
+        _notifyHorizontalMove(index - 1);
         return KeyEventResult.handled;
       }
       if (widget.onLeftEdge != null) {
@@ -1647,6 +1670,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
     if (key.isRightKey) {
       if (index < _focusNodes.length - 1) {
         _focusNodes[index + 1].requestFocus();
+        _notifyHorizontalMove(index + 1);
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
@@ -1659,9 +1683,26 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
     return KeyEventResult.ignored;
   }
 
+  void _notifyHorizontalMove(int index) {
+    final geometry = _programGeometry(index);
+    widget.onHorizontalMove?.call(geometry.left, geometry.width);
+  }
+
+  ({double left, double width}) _programGeometry(int index) {
+    final program = widget.programs[index];
+    final totalMinutes = widget.windowEnd.difference(widget.windowStart).inMinutes.toDouble();
+    final offsetMinutes = program.startDate.difference(widget.windowStart).inMinutes.toDouble();
+    final clampedStart = offsetMinutes < 0 ? 0.0 : offsetMinutes;
+    final endOffset = program.endDate.difference(widget.windowStart).inMinutes.toDouble();
+    final clampedEnd = endOffset > totalMinutes ? totalMinutes : endOffset;
+    return (
+      left: clampedStart * _kPixelsPerMinute,
+      width: (clampedEnd - clampedStart) * _kPixelsPerMinute,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final totalMinutes = widget.windowEnd.difference(widget.windowStart).inMinutes.toDouble();
     final now = DateTime.now();
 
     return Container(
@@ -1673,7 +1714,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
       child: Stack(
         children: [
           for (var index = 0; index < widget.programs.length; index++)
-            _buildProgramCell(index, widget.programs[index], totalMinutes, now),
+            _buildProgramCell(index, widget.programs[index], now),
         ],
       ),
     );
@@ -1682,15 +1723,11 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
   Widget _buildProgramCell(
     int index,
     GuideProgram program,
-    double totalMinutes,
     DateTime now,
   ) {
-    final offsetMinutes = program.startDate.difference(widget.windowStart).inMinutes.toDouble();
-    final clampedStart = offsetMinutes < 0 ? 0.0 : offsetMinutes;
-    final endOffset = program.endDate.difference(widget.windowStart).inMinutes.toDouble();
-    final clampedEnd = endOffset > totalMinutes ? totalMinutes : endOffset;
-    final left = clampedStart * _kPixelsPerMinute;
-    final width = (clampedEnd - clampedStart) * _kPixelsPerMinute;
+    final geometry = _programGeometry(index);
+    final left = geometry.left;
+    final width = geometry.width;
 
     if (width <= 0) return const SizedBox.shrink();
 
