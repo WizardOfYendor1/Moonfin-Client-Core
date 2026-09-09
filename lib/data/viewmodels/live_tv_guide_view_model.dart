@@ -97,6 +97,9 @@ enum GuideFilter {
 
 enum GuideState { loading, ready, error }
 
+/// Per-channel program fetch state, distinct from the guide-wide [GuideState].
+enum GuideChannelLoadState { loaded, loading, failed }
+
 class LiveTvGuideViewModel extends ChangeNotifier {
   final MediaServerClient _client;
 
@@ -131,6 +134,14 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   /// Whether a given channel's programs have been fetched yet.
   bool hasProgramsFor(String channelId) =>
       _programsLoadedIds.contains(channelId);
+
+  /// The fetch state for a single channel's programs. Programs are fetched in
+  /// batches whose failure surfaces as the guide-wide [GuideState.error], so
+  /// this never reports [GuideChannelLoadState.failed] today.
+  GuideChannelLoadState loadStateFor(String channelId) =>
+      _programsLoadedIds.contains(channelId)
+          ? GuideChannelLoadState.loaded
+          : GuideChannelLoadState.loading;
 
   LiveTvGuideViewModel(this._client, {ChannelSortBy? initialSortBy})
       : _sortBy = initialSortBy ?? ChannelSortBy.number;
@@ -242,6 +253,11 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     }
     return all.where(_matchesFilter).toList();
   }
+
+  /// The raw cached programs for a channel, unfiltered, so a hole can be told
+  /// apart as filtered rather than missing.
+  List<GuideProgram> unfilteredProgramsForChannel(String channelId) =>
+      _programsByChannel[channelId] ?? const [];
 
   GuideChannel? channelForId(String channelId) {
     for (final channel in _channels) {
