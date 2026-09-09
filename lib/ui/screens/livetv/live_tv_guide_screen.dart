@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:moonfin_design/moonfin_design.dart';
@@ -41,6 +42,27 @@ const _kMinGuideHours = 3;
 const _kMaxGuideHours = 12;
 const _kMiniPlayerWidth = 300.0;
 const _kMiniPlayerHeight = 168.0;
+
+/// The transport keys a TV remote offers for paging; `lib/util/focus/` has no
+/// shared helper for them.
+final Set<LogicalKeyboardKey> _kPageForwardKeys = <LogicalKeyboardKey>{
+  LogicalKeyboardKey.mediaFastForward,
+  LogicalKeyboardKey.mediaTrackNext,
+  LogicalKeyboardKey.pageDown,
+};
+
+final Set<LogicalKeyboardKey> _kPageBackKeys = <LogicalKeyboardKey>{
+  LogicalKeyboardKey.mediaRewind,
+  LogicalKeyboardKey.mediaTrackPrevious,
+  LogicalKeyboardKey.pageUp,
+};
+
+/// 1 pages a viewport of rows forward, -1 back, 0 when the key does not page.
+int _pageRowDirection(LogicalKeyboardKey key) {
+  if (_kPageForwardKeys.contains(key)) return 1;
+  if (_kPageBackKeys.contains(key)) return -1;
+  return 0;
+}
 
 int _guideHoursForWidth(double availableWidth) {
   final guideWidth = availableWidth - _kChannelColumnWidth;
@@ -351,7 +373,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
         },
       );
       if (picked != null) {
-        _vm.setDate(picked);
+        await _vm.setDate(picked);
+        if (mounted) _anchorToWindowStart();
       }
     } finally {
       _isShowingDatePicker = false;
@@ -930,10 +953,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
           const SizedBox(width: 4),
           _GuidePillButton(
             label: AppLocalizations.of(context).now,
-            onPressed: () {
-              _cancelPendingVerticalMove();
-              _vm.goToNow();
-            },
+            onPressed: _goToNow,
           ),
           const SizedBox(width: 4),
           _GuidePillButton(
@@ -1240,6 +1260,46 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     _vm.shiftWindow(hours);
   }
 
+  /// Whole rows the grid shows at once, so a page key moves exactly one screen.
+  int _rowsPerViewport() {
+    if (!_programScrollController.hasClients) return 1;
+    final rows =
+        (_programScrollController.position.viewportDimension / _kRowHeight)
+            .floor();
+    return rows < 1 ? 1 : rows;
+  }
+
+  /// Pages channel rows by one viewport. This is vertical movement, so it runs
+  /// through the same resolver and leaves the anchor time untouched.
+  void _pageChannelRows(int fromRowIndex, int direction) {
+    final channels = _vm.filteredChannels;
+    if (channels.isEmpty) return;
+    final target = (fromRowIndex + direction * _rowsPerViewport()).clamp(
+      0,
+      channels.length - 1,
+    );
+    if (target == fromRowIndex) return;
+    _moveSelectionVertically(fromRowIndex, target - fromRowIndex);
+    // A row a viewport away is usually unbuilt; scrolling mounts it so the
+    // deferred move can complete.
+    if (_pendingVerticalMove != null) _scrollToRow(target);
+  }
+
+  /// Puts the anchor on the new window start after a jump, so it addresses the
+  /// first cell of every row instead of a time the window no longer covers.
+  void _anchorToWindowStart() {
+    final selection = _selection;
+    if (selection == null) return;
+    _selection = selection.copyWith(anchorTime: _vm.windowStart);
+  }
+
+  Future<void> _goToNow() async {
+    _cancelPendingVerticalMove();
+    await _vm.goToNow();
+    if (!mounted) return;
+    _anchorToWindowStart();
+  }
+
   /// Anchor for the first focused cell: now while the window covers it, and
   /// the window start otherwise.
   DateTime _seedAnchorInto(GuideCell cell) {
@@ -1268,6 +1328,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
       rowStates: _rowStates,
       selection: _selection,
       onVerticalMove: _moveSelectionVertically,
+      onPageRows: _pageChannelRows,
       onNavigationKey: _cancelPendingVerticalMove,
       onRowMounted: _scheduleApplyPendingVerticalMove,
       windowStart: _vm.windowStart,
@@ -1725,6 +1786,9 @@ class _GuideProgramRow extends StatefulWidget {
   final GuideSelection? selection;
   final void Function(int fromRowIndex, int delta) onVerticalMove;
 
+  /// Pages whole channel rows; like any vertical move it preserves the anchor.
+  final void Function(int fromRowIndex, int direction) onPageRows;
+
   /// Fired before any arrow key is acted on, so a deferred move the user has
   /// moved past can be dropped.
   final VoidCallback onNavigationKey;
@@ -1750,6 +1814,7 @@ class _GuideProgramRow extends StatefulWidget {
     required this.rowStates,
     required this.selection,
     required this.onVerticalMove,
+    required this.onPageRows,
     required this.onNavigationKey,
     required this.onRowMounted,
     required this.windowStart,
@@ -1861,6 +1926,12 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
     if (!event.isActionable) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
+    final pageDirection = _pageRowDirection(key);
+    if (pageDirection != 0) {
+      widget.onNavigationKey();
+      widget.onPageRows(widget.rowIndex, pageDirection);
+      return KeyEventResult.handled;
+    }
     if (key.isLeftKey || key.isRightKey || key.isUpKey || key.isDownKey) {
       widget.onNavigationKey();
     }
