@@ -469,7 +469,7 @@ void main() {
     expect(focused.index, _cellIndexForRow(50, anchorMinutes));
   });
 
-  testWidgets('UP from row zero reaches the filter rail in standalone mode', (
+  testWidgets('UP from row zero climbs the controls row then the genre rail', (
     tester,
   ) async {
     await pumpGuide(tester);
@@ -479,8 +479,40 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
+    expect(_focusedLabel(), 'GuideWindowBar:0');
 
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
     expect(_focusedLabel(), 'GuideFilter:0');
+  });
+
+  testWidgets('the controls row is one horizontal run and descends to the '
+      'channel column', (tester) async {
+    await pumpGuide(tester);
+
+    _nodeLabelled(tester, 'GuideWindowBar:0').requestFocus();
+    await tester.pumpAndSettle();
+
+    // Every button from the window chevrons through to Recordings.
+    for (var index = 1; index <= 5; index++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(_focusedLabel(), 'GuideWindowBar:$index');
+    }
+    // The right-hand end refuses rather than escaping the row.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(_focusedLabel(), 'GuideWindowBar:5');
+
+    for (var index = 4; index >= 0; index--) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(_focusedLabel(), 'GuideWindowBar:$index');
+    }
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(_focusedLabel(), 'GuideChannel:0');
   });
 
   testWidgets('UP from row zero reaches the mini player in miniPlayerMode', (

@@ -59,6 +59,16 @@ final Set<LogicalKeyboardKey> _kPageBackKeys = <LogicalKeyboardKey>{
   LogicalKeyboardKey.pageUp,
 };
 
+/// Indices of the controls row's buttons, left to right. LEFT/RIGHT walk this
+/// range, so a button added to the row must take the next index in order.
+const int _kWindowBarPrevious = 0;
+const int _kWindowBarNow = 1;
+const int _kWindowBarNext = 2;
+const int _kWindowBarSort = 3;
+const int _kWindowBarDate = 4;
+const int _kWindowBarRecordings = 5;
+const int _kWindowBarLast = _kWindowBarRecordings;
+
 /// 1 pages a viewport of rows forward, -1 back, 0 when the key does not page.
 int _pageRowDirection(LogicalKeyboardKey key) {
   if (_kPageForwardKeys.contains(key)) return 1;
@@ -149,6 +159,11 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   final _miniPlayerFocusNode = FocusNode(debugLabel: 'GuideMiniPlayer');
   final Map<int, FocusNode> _channelFocusNodes = {};
   final Map<int, FocusNode> _filterFocusNodes = {};
+  final Map<int, FocusNode> _windowBarFocusNodes = {};
+
+  /// Where the controls row was left, so returning to it from either
+  /// direction lands where the user last was.
+  int _lastWindowBarIndex = _kWindowBarPrevious;
 
   bool _syncingScroll = false;
   bool _syncingHorizontalScroll = false;
@@ -172,7 +187,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   /// The single deferred vertical move, or null when nothing is pending.
   _PendingVerticalMove? _pendingVerticalMove;
 
-  /// One-shot timer to the next quarter hour; rescheduled when it fires.
+  /// One-shot timer to the next half hour; rescheduled when it fires.
   Timer? _reanchorTimer;
   Timer? _displayClockTimer;
 
@@ -435,6 +450,27 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _filterFocusNodeFor(0).requestFocus();
   }
 
+  /// Moves within the controls row, refusing a move off either end.
+  void _focusWindowBar(int index) {
+    if (index < _kWindowBarPrevious || index > _kWindowBarLast) return;
+    _cancelPendingVerticalMove();
+    _lastWindowBarIndex = index;
+    _windowBarFocusNodeFor(index).requestFocus();
+  }
+
+  /// UP out of the grid or channel column. The mini-player surface has no
+  /// controls row, so it keeps going straight to the player.
+  void _focusWindowBarFromGrid() {
+    if (widget.miniPlayerMode) {
+      _focusMiniPlayer();
+      return;
+    }
+    _focusWindowBar(_lastWindowBarIndex);
+  }
+
+  /// DOWN out of the genre rail lands on the same button UP left behind.
+  void _focusWindowBarFromGenres() => _focusWindowBar(_lastWindowBarIndex);
+
   void _focusRowFromMiniPlayer() {
     final channels = _vm.filteredChannels;
     if (channels.isEmpty) return;
@@ -496,18 +532,34 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             _vm.setSortBy(value);
             Navigator.of(dialogContext).pop();
           },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final option in ChannelSortBy.values)
-                RadioListTile<ChannelSortBy>(
-                  value: option,
-                  title: Text(
-                    option.displayName,
-                    style: const TextStyle(color: Colors.white),
+          // RadioGroup binds the arrow keys to "select the adjacent radio", so
+          // on a d-pad the first move commits a sort and closes the dialog.
+          // Restore plain directional focus; centre-press still picks.
+          child: Shortcuts(
+            shortcuts: const <ShortcutActivator, Intent>{
+              SingleActivator(LogicalKeyboardKey.arrowUp):
+                  DirectionalFocusIntent(TraversalDirection.up),
+              SingleActivator(LogicalKeyboardKey.arrowDown):
+                  DirectionalFocusIntent(TraversalDirection.down),
+              SingleActivator(LogicalKeyboardKey.arrowLeft):
+                  DirectionalFocusIntent(TraversalDirection.left),
+              SingleActivator(LogicalKeyboardKey.arrowRight):
+                  DirectionalFocusIntent(TraversalDirection.right),
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final option in ChannelSortBy.values)
+                  RadioListTile<ChannelSortBy>(
+                    value: option,
+                    autofocus: option == _vm.sortBy,
+                    title: Text(
+                      option.displayName,
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -546,6 +598,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       node.dispose();
     }
     _filterFocusNodes.clear();
+    for (final node in _windowBarFocusNodes.values) {
+      node.dispose();
+    }
+    _windowBarFocusNodes.clear();
     _focusedProgram.dispose();
     _focusedChannel.dispose();
     super.dispose();
@@ -750,6 +806,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   Widget _buildFilterRail({
     EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(16, 6, 16, 6),
+    VoidCallback? onNavigateDown,
   }) {
     final filters = GuideFilter.values;
     return Padding(
@@ -763,7 +820,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         },
         apple: _apple,
         focusNodeFor: _filterFocusNodeFor,
-        onNavigateDown: () => _focusChannelRow(0),
+        onNavigateDown: onNavigateDown ?? () => _focusChannelRow(0),
       ),
     );
   }
@@ -772,6 +829,13 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     return _filterFocusNodes.putIfAbsent(
       index,
       () => FocusNode(debugLabel: 'GuideFilter:$index'),
+    );
+  }
+
+  FocusNode _windowBarFocusNodeFor(int index) {
+    return _windowBarFocusNodes.putIfAbsent(
+      index,
+      () => FocusNode(debugLabel: 'GuideWindowBar:$index'),
     );
   }
 
@@ -1071,48 +1135,41 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           Expanded(
             child: _buildFilterRail(
               padding: const EdgeInsets.symmetric(vertical: 2),
+              onNavigateDown: _focusWindowBarFromGenres,
             ),
-          ),
-          const SizedBox(width: 12),
-          _GuidePillButton(icon: Icons.sort, onPressed: _openSortDialog),
-          const SizedBox(width: 8),
-          _GuidePillButton(
-            icon: Icons.calendar_today,
-            onPressed: _openDatePicker,
-          ),
-          const SizedBox(width: 8),
-          _GuidePillButton(
-            icon: Icons.fiber_dvr,
-            label: AppLocalizations.of(context).recordings,
-            onPressed: _openRecordings,
           ),
         ],
       ),
     );
   }
 
-  /// Window paging and the rendered range, left-aligned just above the grid.
+  /// Window paging and the rendered range on the left, the filter, calendar
+  /// and recordings controls on the right. Every button in the row is one
+  /// continuous LEFT/RIGHT run between the genre rail and the channel column.
   Widget _buildGuideWindowBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
       child: Row(
         children: [
-          _GuidePillButton(
+          _windowBarButton(
+            _kWindowBarPrevious,
             icon: Icons.chevron_left,
             onPressed: () => _shiftGuideWindow(-_vm.guideWindow),
           ),
           const SizedBox(width: 4),
-          _GuidePillButton(
+          _windowBarButton(
+            _kWindowBarNow,
             label: AppLocalizations.of(context).now,
             onPressed: _goToNow,
           ),
           const SizedBox(width: 4),
-          _GuidePillButton(
+          _windowBarButton(
+            _kWindowBarNext,
             icon: Icons.chevron_right,
             onPressed: () => _shiftGuideWindow(_vm.guideWindow),
           ),
           const SizedBox(width: 12),
-          Flexible(
+          Expanded(
             child: Text(
               '${_formatDate(_vm.guideDate)}  ${_formatTime(_vm.windowStart)} – ${_formatTime(_vm.windowEnd)}',
               style: TextStyle(
@@ -1122,8 +1179,64 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: 12),
+          _windowBarButton(
+            _kWindowBarSort,
+            icon: Icons.sort,
+            onPressed: _openSortDialog,
+          ),
+          const SizedBox(width: 8),
+          _windowBarButton(
+            _kWindowBarDate,
+            icon: Icons.calendar_today,
+            onPressed: _openDatePicker,
+          ),
+          const SizedBox(width: 8),
+          _windowBarButton(
+            _kWindowBarRecordings,
+            icon: Icons.fiber_dvr,
+            label: AppLocalizations.of(context).recordings,
+            onPressed: _openRecordings,
+          ),
         ],
       ),
+    );
+  }
+
+  /// One button of the controls row, wired into its horizontal run and into
+  /// the genre rail above and the channel column below.
+  Widget _windowBarButton(
+    int index, {
+    IconData? icon,
+    String? label,
+    required VoidCallback onPressed,
+  }) {
+    return _GuidePillButton(
+      icon: icon,
+      label: label,
+      focusNode: _windowBarFocusNodeFor(index),
+      onPressed: onPressed,
+      onKeyEvent: (_, event) {
+        if (!event.isActionable) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        if (key.isLeftKey) {
+          _focusWindowBar(index - 1);
+          return KeyEventResult.handled;
+        }
+        if (key.isRightKey) {
+          _focusWindowBar(index + 1);
+          return KeyEventResult.handled;
+        }
+        if (key.isUpKey) {
+          _focusFilterRail();
+          return KeyEventResult.handled;
+        }
+        if (key.isDownKey) {
+          _focusChannelRow(0);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
     );
   }
 
@@ -1284,11 +1397,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           return KeyEventResult.ignored;
         }
         if (event.logicalKey.isUpKey) {
-          if (widget.miniPlayerMode) {
-            _focusMiniPlayer();
-          } else {
-            _filterFocusNodeFor(0).requestFocus();
-          }
+          _focusWindowBarFromGrid();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -1313,6 +1422,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           number: channel.number,
           focused: focused,
           apple: _apple,
+          isFavorite: channel.isFavorite,
         ),
       ),
     );
@@ -1391,11 +1501,12 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _cancelPendingVerticalMove();
   }
 
-  /// Arms a single timer for the next :00/:15/:30/:45 rather than polling.
+  /// Arms a single timer for the next :00/:30 rather than polling; the window
+  /// only moves on the half hour [guideLeftEdge] floors to.
   void _scheduleReanchor() {
     _reanchorTimer?.cancel();
     final now = DateTime.now();
-    final next = floorToQuarterHour(now).add(const Duration(minutes: 15));
+    final next = floorToHalfHour(now).add(const Duration(minutes: 30));
     _reanchorTimer = Timer(next.difference(now), _onReanchorTick);
   }
 
@@ -1615,9 +1726,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             break;
         }
       },
-      onTopEdge: rowIndex == 0
-          ? (widget.miniPlayerMode ? _focusMiniPlayer : _focusFilterRail)
-          : null,
+      onTopEdge: rowIndex == 0 ? _focusWindowBarFromGrid : null,
       onProgramFocused: (cell, _, _) {
         _focusedProgram.value = cell.program;
         _focusedChannel.value = _vm.channelForId(channelId);
@@ -1636,7 +1745,6 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
               );
       },
       onHorizontalMove: _onHorizontalMove,
-      formatTime: _formatTime,
     );
   }
 
@@ -1714,6 +1822,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     // That airing is over; only a future or currently-airing showing can still be recorded.
     final isEnded = now.isAfter(program.endDate);
     final isFuture = now.isBefore(program.startDate);
+    // Airing right now with a timer set: the recording is in progress, so
+    // cancelling it is the action the dialog was almost certainly opened for.
+    final isRecordingNow = hasTimer && !isEnded && !isFuture;
     final l10n = AppLocalizations.of(context);
     var dialogActionInProgress = false;
 
@@ -1788,6 +1899,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           // That airing is over; single-episode recording no longer applies.
           if (!isEnded)
             adaptiveDialogAction(
+              autofocus: isRecordingNow,
               onPressed: () async {
                 if (dialogActionInProgress) return;
                 dialogActionInProgress = true;
@@ -1890,7 +2002,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             ),
           ),
           adaptiveDialogAction(
-            autofocus: true,
+            autofocus: !isRecordingNow,
             onPressed: () {
               if (dialogActionInProgress) return;
               dialogActionInProgress = true;
@@ -1971,8 +2083,16 @@ class _GuidePillButton extends StatefulWidget {
   final String? label;
   final IconData? icon;
   final VoidCallback? onPressed;
+  final FocusNode? focusNode;
+  final FocusOnKeyEventCallback? onKeyEvent;
 
-  const _GuidePillButton({this.label, this.icon, this.onPressed});
+  const _GuidePillButton({
+    this.label,
+    this.icon,
+    this.onPressed,
+    this.focusNode,
+    this.onKeyEvent,
+  });
 
   @override
   State<_GuidePillButton> createState() => _GuidePillButtonState();
@@ -1985,6 +2105,8 @@ class _GuidePillButtonState extends State<_GuidePillButton> {
   Widget build(BuildContext context) {
     final active = _focused;
     return _GuideFocusableSurface(
+      focusNode: widget.focusNode,
+      onKeyEvent: widget.onKeyEvent,
       onPressed: widget.onPressed,
       onFocusChange: (focused) {
         if (_focused != focused) setState(() => _focused = focused);
@@ -2130,7 +2252,6 @@ class _GuideProgramRow extends StatefulWidget {
   onProgramFocused;
   final void Function(GuideCell cell, double left, double width)?
   onHorizontalMove;
-  final String Function(DateTime) formatTime;
 
   /// Label for a real schedule gap (A3); a genre-filtered hole never shows it.
   final String noProgramDataLabel;
@@ -2156,7 +2277,6 @@ class _GuideProgramRow extends StatefulWidget {
     required this.onProgramSelected,
     required this.onProgramFocused,
     this.onHorizontalMove,
-    required this.formatTime,
     required this.noProgramDataLabel,
   });
 
@@ -2385,9 +2505,11 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
         listenable: widget.horizontalController,
         builder: (_, _) => EpgProgramCell(
           title: program?.name ?? '',
-          timeLabel: program == null
-              ? null
-              : '${widget.formatTime(program.startDate)} - ${widget.formatTime(program.endDate)}',
+          timeLabel: null,
+          // The geometry clips a cell to the window, so the programme's own
+          // start is the only thing that says it began before the left edge.
+          startsBeforeWindow:
+              program != null && program.startDate.isBefore(widget.windowStart),
           genre: program == null
               ? EpgGenre('', AppColorScheme.onSurface.withValues(alpha: 0.18))
               : epgGenreFor(program),
@@ -2397,7 +2519,6 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
           hasTimer: program?.hasTimer ?? false,
           focused: focused,
           apple: widget.apple,
-          showMeta: width > 80,
           placeholderLabel: cell.kind == GuideCellKind.gap
               ? widget.noProgramDataLabel
               : null,

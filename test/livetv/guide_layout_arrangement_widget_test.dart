@@ -206,7 +206,9 @@ void main() {
     expect(texts.any((t) => t.contains('101')), isFalse);
   });
 
-  testWidgets('DOWN from the genre rail reaches the grid', (tester) async {
+  testWidgets('DOWN from the genre rail descends through the controls row', (
+    tester,
+  ) async {
     await pumpGuide(tester);
 
     _nodeLabelled(tester, 'GuideFilter:0').requestFocus();
@@ -214,7 +216,10 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'GuideWindowBar:0');
 
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
     expect(FocusManager.instance.primaryFocus?.debugLabel, 'GuideChannel:0');
   });
 

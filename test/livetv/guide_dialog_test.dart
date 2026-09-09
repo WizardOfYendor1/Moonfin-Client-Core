@@ -6,6 +6,7 @@ import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:playback_core/playback_core.dart';
 import 'package:moonfin/l10n/app_localizations.dart';
+import 'package:moonfin/preference/preference_constants.dart';
 import 'package:moonfin/preference/user_preferences.dart';
 import 'package:moonfin/ui/screens/livetv/guide/guide_window.dart';
 import 'package:moonfin/ui/screens/livetv/live_tv_guide_screen.dart';
@@ -42,6 +43,7 @@ Map<String, dynamic> _programRaw({
   required DateTime start,
   required DateTime end,
   bool isSeries = false,
+  bool hasTimer = false,
 }) => <String, dynamic>{
   'Id': '$channelId-p',
   'ChannelId': channelId,
@@ -49,6 +51,7 @@ Map<String, dynamic> _programRaw({
   'StartDate': start.toIso8601String(),
   'EndDate': end.toIso8601String(),
   'IsSeries': isSeries,
+  if (hasTimer) 'TimerId': '$channelId-t',
 };
 
 /// Every focus node in the guide carries a debug label, the only handle a
@@ -249,6 +252,62 @@ void main() {
     expect(find.text(l10n.cancelRecordingAction), findsNothing);
     expect(find.text(l10n.recordSeries), findsNothing);
     expect(find.text(l10n.cancelSeriesRecording), findsNothing);
+  });
+
+  testWidgets('a programme recording right now focuses cancelling it, not '
+      'Watch', (tester) async {
+    channels = [_channelRaw('cE', 'Channel E')];
+    programs = [
+      _programRaw(
+        channelId: 'cE',
+        start: _windowStart.subtract(const Duration(minutes: 30)),
+        end: _windowStart.add(const Duration(hours: 13)),
+        hasTimer: true,
+      ),
+    ];
+
+    await pumpGuide(tester);
+    await openDialogOnRow0(tester);
+
+    expect(_alertDialog, findsOneWidget);
+    final l10n = AppLocalizations.of(tester.element(_alertDialog));
+    expect(_primaryFocusHasText(l10n.cancelRecordingAction), isTrue);
+    expect(_primaryFocusHasText(l10n.watch), isFalse);
+  });
+
+  testWidgets('arrow keys move between sort options instead of committing one '
+      'and closing', (tester) async {
+    channels = [_channelRaw('cF', 'Channel F')];
+    programs = [
+      _programRaw(
+        channelId: 'cF',
+        start: _windowStart.subtract(const Duration(minutes: 30)),
+        end: _windowStart.add(const Duration(hours: 13)),
+      ),
+    ];
+
+    await pumpGuide(tester);
+    await tester.tap(find.byIcon(Icons.sort));
+    await tester.pumpAndSettle();
+    expect(_alertDialog, findsOneWidget);
+
+    final first = ChannelSortBy.values.first;
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+
+    expect(_alertDialog, findsOneWidget, reason: 'the dialog must stay open');
+    expect(
+      _primaryFocusHasText(ChannelSortBy.values[1].displayName),
+      isTrue,
+      reason: 'DOWN moves focus to the next option',
+    );
+    expect(
+      GetIt.instance<UserPreferences>().get(
+        UserPreferences.liveTvChannelSortBy,
+      ),
+      first,
+      reason: 'moving must not commit a sort',
+    );
   });
 
   testWidgets('in miniPlayerMode centre-press tunes and no dialog appears', (
