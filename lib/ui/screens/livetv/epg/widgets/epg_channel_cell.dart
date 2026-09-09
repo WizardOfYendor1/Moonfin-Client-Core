@@ -2,9 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
-/// Channel identity cell for the guide rail: logo tile + accent number chip +
-/// name. Pure presentation; the host owns focus + key handling and passes
-/// [focused]. Idiom-aware surface (glass-tinted on Apple, accent tint on
+/// Channel identity cell for the guide rail: logo tile pinned left, with the
+/// accent number chip and the channel name right-justified against the cell's
+/// trailing edge. Pure presentation; the host owns focus + key handling and
+/// passes [focused]. Idiom-aware surface (glass-tinted on Apple, accent tint on
 /// Material).
 class EpgChannelCell extends StatelessWidget {
   final String? logoUrl;
@@ -13,6 +14,9 @@ class EpgChannelCell extends StatelessWidget {
   final bool focused;
   final bool apple;
 
+  /// Marks the channel as a favourite with a red heart beside the number.
+  final bool isFavorite;
+
   const EpgChannelCell({
     super.key,
     required this.logoUrl,
@@ -20,6 +24,7 @@ class EpgChannelCell extends StatelessWidget {
     required this.number,
     required this.focused,
     required this.apple,
+    this.isFavorite = false,
   });
 
   @override
@@ -42,6 +47,7 @@ class EpgChannelCell extends StatelessWidget {
     );
 
     final chip = number == null ? null : _numberChip(number!, accent);
+    final hasTopRow = chip != null || isFavorite;
 
     final body = Row(
       children: [
@@ -50,11 +56,33 @@ class EpgChannelCell extends StatelessWidget {
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (chip != null) ...[chip, const SizedBox(height: 3)],
-              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: nameStyle),
+              if (hasTopRow) ...[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (isFavorite) ...[
+                      const Icon(
+                        Icons.favorite,
+                        size: 11,
+                        color: AppColors.red500,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    ?chip,
+                  ],
+                ),
+                const SizedBox(height: 3),
+              ],
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: nameStyle,
+              ),
             ],
           ),
         ),
@@ -77,38 +105,43 @@ class EpgChannelCell extends StatelessWidget {
   }
 
   Widget _logo(double size, double radius) => SizedBox(
-        width: size,
-        height: size,
-        child: ClipRRect(
-          borderRadius: AppRadius.circular(radius * 0.6),
-          child: (logoUrl != null && logoUrl!.isNotEmpty)
-              ? CachedNetworkImage(
-                  imageUrl: logoUrl!,
-                  fit: BoxFit.contain,
-                  errorWidget: (context, url, error) => _fallback(),
-                )
-              : _fallback(),
-        ),
-      );
+    width: size,
+    height: size,
+    child: ClipRRect(
+      borderRadius: AppRadius.circular(radius * 0.6),
+      child: (logoUrl != null && logoUrl!.isNotEmpty)
+          ? CachedNetworkImage(
+              imageUrl: logoUrl!,
+              fit: BoxFit.contain,
+              errorWidget: (context, url, error) => _fallback(),
+            )
+          : _fallback(),
+    ),
+  );
 
-  Widget _fallback() => Icon(Icons.tv,
-      size: 16, color: AppColorScheme.onSurface.withValues(alpha: 0.4));
+  Widget _fallback() => Icon(
+    Icons.tv,
+    size: 16,
+    color: AppColorScheme.onSurface.withValues(alpha: 0.4),
+  );
 
   Widget _numberChip(String number, Color accent) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-        decoration: BoxDecoration(
-          color: focused ? accent : AppColorScheme.onSurface.withValues(alpha: 0.12),
-          borderRadius: AppRadius.circular(7),
-        ),
-        child: Text(
-          number,
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-            color: focused
-                ? const Color(0xFF062430)
-                : AppColorScheme.onSurface.withValues(alpha: 0.85),
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+    decoration: BoxDecoration(
+      color: focused
+          ? accent
+          : AppColorScheme.onSurface.withValues(alpha: 0.12),
+      borderRadius: AppRadius.circular(7),
+    ),
+    child: Text(
+      number,
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w600,
+        color: focused
+            ? const Color(0xFF062430)
+            : AppColorScheme.onSurface.withValues(alpha: 0.85),
+      ),
+    ),
+  );
 }
