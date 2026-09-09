@@ -38,6 +38,10 @@ import 'guide/guide_window.dart';
 // lazily-loaded edge, so rows are usually populated by the time they're visible.
 const _kProgramPrefetchRows = 12;
 const _kGuideScrollLead = 24.0;
+/// Row height at which a cell can afford the second, meta text line. Below it
+/// the time label overflows the row, so only the title is drawn.
+const _kMetaRowHeight = 60.0;
+
 const _kMinGuideHours = 3;
 const _kMaxGuideHours = 12;
 const _kMiniPlayerWidth = 300.0;
@@ -1290,7 +1294,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       },
       builder: (focused) => Container(
         height: _layoutProfile.rowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        // The cell brings its own vertical padding; doubling it here starved
+        // the number chip and name of height and overflowed the row.
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           border: Border(bottom: ThemeRegistry.active.borders.cardBorder),
         ),
@@ -1575,6 +1581,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       windowStart: _vm.windowStart,
       windowEnd: _vm.windowEnd,
       pixelsPerMinute: _layoutProfile.pixelsPerMinute,
+      rowHeight: _layoutProfile.rowHeight,
       horizontalController: _guideHorizontalScrollController,
       apple: _apple,
       onLeftEdge: () => _onProgramLeftEdge(rowIndex),
@@ -2105,6 +2112,7 @@ class _GuideProgramRow extends StatefulWidget {
   final DateTime windowStart;
   final DateTime windowEnd;
   final double pixelsPerMinute;
+  final double rowHeight;
   final ScrollController horizontalController;
   final bool apple;
   final VoidCallback? onLeftEdge;
@@ -2132,6 +2140,7 @@ class _GuideProgramRow extends StatefulWidget {
     required this.windowStart,
     required this.windowEnd,
     required this.pixelsPerMinute,
+    required this.rowHeight,
     required this.horizontalController,
     required this.apple,
     this.onLeftEdge,
@@ -2381,7 +2390,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
           hasTimer: program?.hasTimer ?? false,
           focused: focused,
           apple: widget.apple,
-          showMeta: width > 80,
+          showMeta: width > 80 && widget.rowHeight >= _kMetaRowHeight,
           placeholderLabel: cell.kind == GuideCellKind.gap
               ? widget.noProgramDataLabel
               : null,

@@ -6,8 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:playback_core/playback_core.dart';
 import 'package:moonfin/l10n/app_localizations.dart';
 import 'package:moonfin/preference/user_preferences.dart';
+import 'package:moonfin/ui/screens/livetv/guide/guide_window.dart';
 import 'package:moonfin/ui/screens/livetv/live_tv_guide_screen.dart';
 import 'package:server_core/server_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +17,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _MockMediaServerClient extends Mock implements MediaServerClient {}
 
 class _MockLiveTvApi extends Mock implements LiveTvApi {}
+
+class _MockPlaybackManager extends Mock implements PlaybackManager {}
 
 /// Deliberately asymmetric row shapes: differing programme durations give the
 /// rows differing cell counts and boundaries, which is what makes a drifting
@@ -28,12 +32,10 @@ const _channelCount = 48;
 const _deferredChannelCount = 60;
 const _firstDeferredChannelId = 'ch50';
 
-/// The guide window the screen computes: today at the current hour, three
-/// hours wide at the surface size these tests pump.
-DateTime _windowStart() {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day, now.hour);
-}
+/// The window's left edge, computed exactly as the screen computes it: the
+/// previous quarter hour less the fifteen-minute back-slice. Captured once per
+/// test so the fixture and the assertions share one origin.
+late DateTime _fixtureWindowStart;
 
 int _durationForRow(int row) => _durations[row % _durations.length];
 
@@ -56,10 +58,11 @@ Map<String, dynamic> _channelRaw(int index) => <String, dynamic>{
 List<Map<String, dynamic>> _programsFor(String channelId) {
   final row = int.parse(channelId.substring(2));
   final duration = _durationForRow(row);
-  final start = _windowStart();
+  final start = _fixtureWindowStart;
   final programs = <Map<String, dynamic>>[];
-  // Four hours of listings so the three-hour window is fully covered.
-  for (var minute = 0; minute < 240; minute += duration) {
+  // Twelve hours of listings, so whatever window width the surface derives is
+  // tiled edge to edge and every row's cells are whole programmes.
+  for (var minute = 0; minute < 720; minute += duration) {
     programs.add(<String, dynamic>{
       'Id': '$channelId-p$minute',
       'ChannelId': channelId,
@@ -71,6 +74,22 @@ List<Map<String, dynamic>> _programsFor(String channelId) {
     });
   }
   return programs;
+}
+
+Widget _hosted(Widget guide, {required bool embedded}) =>
+    embedded ? Material(color: Colors.black, child: guide) : guide;
+
+/// `AlertDialog.adaptive` builds a private subclass, which `find.byType` will
+/// not match, so match the supertype instead.
+final Finder _alertDialog = find.byWidgetPredicate((w) => w is AlertDialog);
+
+/// `pumpAndSettle` cannot be used once any row is loading — that row's cell
+/// draws an indefinite progress indicator, so frames never stop. Pump a fixed
+/// span instead, comfortably past the guide's 200 ms row-scroll animation.
+Future<void> _pumpFrames(WidgetTester tester) async {
+  for (var i = 0; i < 24; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
 }
 
 /// Every focus node in the guide carries a debug label, which is the only
@@ -123,8 +142,16 @@ void main() {
     GetIt.instance.registerSingleton<UserPreferences>(UserPreferences(store));
 
     channelCount = _channelCount;
+    _fixtureWindowStart = guideLeftEdge(DateTime.now());
     deferredChannelId = null;
     releaseDeferredGuide = <VoidCallback>[];
+
+    final playback = _MockPlaybackManager();
+    when(() => playback.backend).thenReturn(null);
+    when(
+      () => playback.backendChangedStream,
+    ).thenAnswer((_) => const Stream<PlayerBackend>.empty());
+    GetIt.instance.registerSingleton<PlaybackManager>(playback);
 
     client = _MockMediaServerClient();
     liveTvApi = _MockLiveTvApi();
@@ -184,8 +211,8 @@ void main() {
     WidgetTester tester, {
     bool miniPlayerMode = false,
   }) async {
-    // Narrow enough that the three-hour window overflows the viewport, so a
-    // horizontal offset can be non-zero and a stray scroll would show up.
+    // Wide enough for a multi-hour window and tall enough for a dozen rows;
+    // the guide sizes its own time density to whatever surface it is given.
     tester.view.physicalSize = const Size(900, 700);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -194,11 +221,16 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: LiveTvGuideScreen(
-          miniPlayerMode: miniPlayerMode,
+        // Embedded mode drops the guide's own Scaffold because the host
+        // supplies it; stand in for that host here.
+        home: _hosted(
+          LiveTvGuideScreen(
+            miniPlayerMode: miniPlayerMode,
+            embedded: miniPlayerMode,
+            onChannelSelected: miniPlayerMode ? (_) {} : null,
+            onClose: miniPlayerMode ? () {} : null,
+          ),
           embedded: miniPlayerMode,
-          onChannelSelected: miniPlayerMode ? (_) {} : null,
-          onClose: miniPlayerMode ? () {} : null,
         ),
       ),
     );
@@ -225,36 +257,46 @@ void main() {
   Future<void> pressDown(WidgetTester tester, int times) async {
     for (var i = 0; i < times; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pumpAndSettle();
+      await _pumpFrames(tester);
     }
+  }
+
+  /// Asserts the measured on-device regression: after [presses] DOWN presses
+  /// the horizontal viewport is byte-for-byte where it started and the
+  /// selection is still on the cell holding the anchor. Six presses drifted by
+  /// about an hour; forty-five collapsed onto the row's first cell.
+  Future<void> expectNoDrift(WidgetTester tester, int presses) async {
+    await pumpGuide(tester);
+    final anchorMinutes = await establishAnchor(tester);
+    final before = _horizontalOffsets(tester);
+    expect(before, isNotEmpty);
+
+    await pressDown(tester, presses);
+
+    expect(_horizontalOffsets(tester), before);
+
+    // Without this the offset check alone would pass on a guide that never
+    // moved at all, which is not what the regression was about.
+    final focused = _focusedCell();
+    expect(focused, isNotNull, reason: 'focus left the grid');
+    expect(focused!.row, presses);
+    expect(
+      focused.index,
+      _cellIndexForRow(presses, anchorMinutes),
+      reason: 'the selection drifted away from the anchor in time',
+    );
   }
 
   testWidgets('six DOWN presses leave the horizontal offset untouched', (
     tester,
   ) async {
-    await pumpGuide(tester);
-    await establishAnchor(tester);
-
-    final before = _horizontalOffsets(tester);
-    expect(before.any((offset) => offset > 0), isTrue);
-
-    await pressDown(tester, 6);
-
-    expect(_horizontalOffsets(tester), before);
+    await expectNoDrift(tester, 6);
   });
 
   testWidgets('forty-five DOWN presses leave the horizontal offset untouched', (
     tester,
   ) async {
-    await pumpGuide(tester);
-    await establishAnchor(tester);
-
-    final before = _horizontalOffsets(tester);
-    expect(before.any((offset) => offset > 0), isTrue);
-
-    await pressDown(tester, 45);
-
-    expect(_horizontalOffsets(tester), before);
+    await expectNoDrift(tester, 45);
   });
 
   testWidgets('every row visited selects the cell holding the anchor', (
@@ -343,7 +385,7 @@ void main() {
       release();
     }
     releaseDeferredGuide.clear();
-    await tester.pumpAndSettle();
+    await _pumpFrames(tester);
   }
 
   testWidgets('DOWN onto a loading row holds focus and consumes the key', (
@@ -352,7 +394,7 @@ void main() {
     final anchorMinutes = await reachLoadedEdge(tester);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pumpAndSettle();
+    await _pumpFrames(tester);
 
     final focused = _focusedCell();
     expect(focused, isNotNull, reason: 'focus left the grid');
@@ -364,11 +406,11 @@ void main() {
     final anchorMinutes = await reachLoadedEdge(tester);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pumpAndSettle();
+    await _pumpFrames(tester);
     expect(_focusedCell()!.row, 49);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pumpAndSettle();
+    await _pumpFrames(tester);
     expect(_focusedCell()!.row, 48);
 
     await releaseGuideData(tester);
@@ -383,13 +425,13 @@ void main() {
     final anchorMinutes = await reachLoadedEdge(tester);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pumpAndSettle();
+    await _pumpFrames(tester);
     expect(_focusedCell()!.row, 49);
 
     // Select on the focused programme opens the details dialog.
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
+    await _pumpFrames(tester);
+    expect(_alertDialog, findsOneWidget);
 
     await releaseGuideData(tester);
     expect(
@@ -398,8 +440,8 @@ void main() {
       reason: 'the deferred DOWN pulled focus back into the grid',
     );
 
-    Navigator.of(tester.element(find.byType(AlertDialog))).pop();
-    await tester.pumpAndSettle();
+    Navigator.of(tester.element(_alertDialog)).pop();
+    await _pumpFrames(tester);
 
     final focused = _focusedCell();
     expect(focused, isNotNull);
@@ -413,7 +455,7 @@ void main() {
     final anchorMinutes = await reachLoadedEdge(tester);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pumpAndSettle();
+    await _pumpFrames(tester);
     expect(_focusedCell()!.row, 49);
 
     await releaseGuideData(tester);
