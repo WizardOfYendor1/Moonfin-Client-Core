@@ -39,8 +39,6 @@ import 'guide/guide_window.dart';
 const _kProgramPrefetchRows = 12;
 const _kGuideScrollLead = 24.0;
 
-const _kMinGuideHours = 3;
-const _kMaxGuideHours = 12;
 const _kMiniPlayerWidth = 300.0;
 const _kMiniPlayerHeight = 168.0;
 // A re-anchor waits this long after the last d-pad event, so the window
@@ -68,16 +66,17 @@ int _pageRowDirection(LogicalKeyboardKey key) {
   return 0;
 }
 
-int _guideHoursForWidth(double availableWidth, {GuideLayoutProfile? profile}) {
+Duration _guideWindowForWidth(
+  double availableWidth, {
+  GuideLayoutProfile? profile,
+}) {
   final layout =
       profile ??
       GuideLayoutProfile.fromAvailableArea(
         availableWidth: availableWidth,
         availableHeight: 540,
       );
-  return layout
-      .guideHoursForWidth(availableWidth)
-      .clamp(_kMinGuideHours, _kMaxGuideHours);
+  return layout.guideWindowForWidth(availableWidth);
 }
 
 class LiveTvGuideScreen extends StatefulWidget {
@@ -153,7 +152,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   bool _syncingScroll = false;
   bool _syncingHorizontalScroll = false;
-  int _lastComputedHours = _kMinGuideHours;
+  Duration _lastComputedWindow = GuideLayoutProfile.guideWindow;
   bool _isShowingDatePicker = false;
   bool _isOpeningRecordings = false;
   int? _lastFocusedRowIndex;
@@ -227,7 +226,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       _layoutProfile = profile;
       unawaited(
         _vm.load(
-          windowHours: _guideHoursForWidth(width, profile: profile),
+          window: _guideWindowForWidth(width, profile: profile),
           windowStart: guideLeftEdge(DateTime.now()),
           livePosition: true,
         ),
@@ -245,7 +244,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   Future<void> _resumeGuide(DateTime now) async {
     await _vm.reloadIfStale(
-      windowHours: _lastComputedHours,
+      window: _lastComputedWindow,
       windowStart: guideLeftEdge(now),
     );
     if (!mounted) return;
@@ -623,13 +622,13 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
         );
         _layoutProfile = profile;
-        final hours = _guideHoursForWidth(availableWidth, profile: profile);
-        if (hours != _lastComputedHours && _vm.state == GuideState.ready) {
-          _lastComputedHours = hours;
+        final window = _guideWindowForWidth(availableWidth, profile: profile);
+        if (window != _lastComputedWindow && _vm.state == GuideState.ready) {
+          _lastComputedWindow = window;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             _cancelPendingVerticalMove();
-            _vm.setWindowHours(hours);
+            _vm.setWindow(window);
           });
         }
         final landscape =
@@ -1076,7 +1075,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           _GuidePillButton(
             icon: Icons.chevron_left,
             onPressed: () =>
-                _shiftGuideWindow(Duration(hours: -_vm.guideWindowHours)),
+                _shiftGuideWindow(-_vm.guideWindow),
           ),
           const SizedBox(width: 4),
           _GuidePillButton(
@@ -1087,7 +1086,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           _GuidePillButton(
             icon: Icons.chevron_right,
             onPressed: () =>
-                _shiftGuideWindow(Duration(hours: _vm.guideWindowHours)),
+                _shiftGuideWindow(_vm.guideWindow),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1687,7 +1686,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
     if (!mounted) return;
     await _vm.reloadIfStale(
-      windowHours: _lastComputedHours,
+      window: _lastComputedWindow,
       windowStart: guideLeftEdge(DateTime.now()),
     );
     if (mounted) _vm.scheduleBoundaryRefresh();

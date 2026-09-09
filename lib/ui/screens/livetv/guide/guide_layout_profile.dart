@@ -2,6 +2,16 @@ import 'dart:math' as math;
 
 /// Logical dimensions used to keep the guide readable across available areas.
 class GuideLayoutProfile {
+  /// The guide renders a fixed 2.5-hour span at every width. Holding the span
+  /// constant instead of widening it with the viewport is what keeps a
+  /// programme cell wide enough for its title to be readable.
+  static const Duration guideWindow = Duration(minutes: 150);
+
+  /// Bounds for a span derived from a viewport, so an unexpected width can
+  /// never fetch a wildly different range from the one the grid draws.
+  static const Duration minGuideWindow = Duration(minutes: 120);
+  static const Duration maxGuideWindow = Duration(minutes: 180);
+
   final double rowHeight;
   final double channelColumnWidth;
   final double pixelsPerMinute;
@@ -27,27 +37,28 @@ class GuideLayoutProfile {
     final densityHeight = math.max(1.0, availableHeight) / scale;
     final heightProgress = ((densityHeight - 320) / 480).clamp(0.0, 1.0);
     final channelColumnWidth = (width * 0.2).clamp(120.0, 240.0);
-    final targetSlots = width < 720
-        ? 8
-        : width < 1100
-        ? 12
-        : 16;
     final guideWidth = math.max(1.0, width - channelColumnWidth);
 
     return GuideLayoutProfile(
       rowHeight: 50 + (6 * heightProgress),
       channelColumnWidth: channelColumnWidth,
-      pixelsPerMinute: guideWidth / (targetSlots * 30),
+      pixelsPerMinute: guideWidth / guideWindow.inMinutes,
       timeHeaderHeight: 22 + (2 * heightProgress),
-      targetSlots: targetSlots,
+      targetSlots: guideWindow.inMinutes ~/ 30,
     );
   }
 
-  /// Derives the fetched window span from the same profile the grid renders.
-  int guideHoursForWidth(double availableWidth) {
+  /// Derives the fetched window span from the same profile the grid renders,
+  /// so the window always fills the viewport exactly.
+  Duration guideWindowForWidth(double availableWidth) {
     final guideWidth = availableWidth - channelColumnWidth;
-    if (guideWidth <= 0) return 3;
-    final hours = (guideWidth / (pixelsPerMinute * 60)).floor();
-    return hours.clamp(3, 12);
+    if (guideWidth <= 0) return guideWindow;
+    final minutes = (guideWidth / pixelsPerMinute).round();
+    return Duration(
+      minutes: minutes.clamp(
+        minGuideWindow.inMinutes,
+        maxGuideWindow.inMinutes,
+      ),
+    );
   }
 }

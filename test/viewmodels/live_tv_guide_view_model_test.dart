@@ -574,14 +574,14 @@ void main() {
       final vm = LiveTvGuideViewModel(client, now: () => clock);
       await vm.load();
 
-      await vm.shiftWindow(6);
+      await vm.shiftWindow(const Duration(hours: 6));
       expect(vm.windowStart, DateTime(2026, 9, 9, 26));
 
       clock = clock.add(const Duration(hours: 2));
       vm.resetWindowOnExit();
 
       expect(vm.windowStart, DateTime(2026, 9, 9, 22));
-      expect(vm.windowEnd, DateTime(2026, 9, 9, 25));
+      expect(vm.windowEnd, DateTime(2026, 9, 10, 0, 30));
       expect(vm.guideDate, clock);
     });
 
@@ -589,7 +589,7 @@ void main() {
       var clock = DateTime(2026, 9, 9, 20);
       final vm = LiveTvGuideViewModel(client, now: () => clock);
       await vm.load();
-      await vm.shiftWindow(3);
+      await vm.shiftWindow(const Duration(hours: 3));
 
       final liveStart = DateTime(2026, 9, 9, 21, 45);
       clock = DateTime(2026, 9, 9, 22);

@@ -48,7 +48,7 @@ class _CarouselGuide extends LiveTvGuideViewModel {
   }
 
   @override
-  Future<void> load({int? windowHours, List<String>? initialChannelIds,
+  Future<void> load({Duration? window, List<String>? initialChannelIds,
       DateTime? windowStart, bool livePosition = true}) async {
     requests.add(initialChannelIds!);
     notifyListeners();

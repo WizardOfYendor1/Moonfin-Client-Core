@@ -106,7 +106,8 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   final MediaServerClient _client;
   bool _disposed = false;
 
-  static const _defaultGuideWindowHours = 3;
+  // The guide renders a fixed 2.5-hour span; see GuideLayoutProfile.
+  static const _defaultGuideWindow = Duration(minutes: 150);
   // Programs only need the synopsis; channel logos come from the separate
   // /LiveTv/Channels fetch, so we don't request ImageTags here.
   static const _fields = 'Overview';
@@ -115,8 +116,8 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   // scrolled, instead of one giant all-channels request (issue #666 timeout).
   static const _programBatchSize = 50;
 
-  int _guideWindowHours = _defaultGuideWindowHours;
-  int get guideWindowHours => _guideWindowHours;
+  Duration _guideWindow = _defaultGuideWindow;
+  Duration get guideWindow => _guideWindow;
 
   // How many of [_channels] (in order) have had their programs requested.
   int _programsHighWater = 0;
@@ -397,12 +398,12 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   }
 
   Future<void> load({
-    int? windowHours,
+    Duration? window,
     List<String>? initialChannelIds,
     DateTime? windowStart,
     bool livePosition = true,
   }) async {
-    if (windowHours != null) _guideWindowHours = windowHours;
+    if (window != null) _guideWindow = window;
     _state = GuideState.loading;
     _notifyListeners();
 
@@ -417,7 +418,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
             _guideDate.day,
             _now().hour,
           );
-      _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+      _windowEnd = _windowStart.add(_guideWindow);
       _atLivePosition = livePosition;
 
       if (initialChannelIds == null) {
@@ -455,14 +456,14 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   Future<void> setDate(DateTime date) async {
     _guideDate = date;
     _windowStart = DateTime(date.year, date.month, date.day, _windowStart.hour);
-    _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+    _windowEnd = _windowStart.add(_guideWindow);
     _atLivePosition = false;
     await _reloadPrograms();
   }
 
-  Future<void> shiftWindow(int hours) async {
-    _windowStart = _windowStart.add(Duration(hours: hours));
-    _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+  Future<void> shiftWindow(Duration amount) async {
+    _windowStart = _windowStart.add(amount);
+    _windowEnd = _windowStart.add(_guideWindow);
     _guideDate = _windowStart;
     _atLivePosition = false;
     await _reloadPrograms();
@@ -483,7 +484,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     final ids = _programsLoadedIds.toList();
     final generation = ++_programGeneration;
     _windowStart = start;
-    _windowEnd = start.add(Duration(hours: _guideWindowHours));
+    _windowEnd = start.add(_guideWindow);
     _guideDate = start;
     _atLivePosition = livePosition;
     _notifyListeners();
@@ -510,10 +511,10 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     _notifyListeners();
   }
 
-  Future<void> setWindowHours(int hours) async {
-    if (hours == _guideWindowHours) return;
-    _guideWindowHours = hours;
-    _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+  Future<void> setWindow(Duration window) async {
+    if (window == _guideWindow) return;
+    _guideWindow = window;
+    _windowEnd = _windowStart.add(_guideWindow);
     await _reloadPrograms();
   }
 
@@ -542,7 +543,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   Future<void> goToNow({DateTime? windowStart}) async {
     _guideDate = _now();
     await load(
-      windowHours: _guideWindowHours,
+      window: _guideWindow,
       windowStart: windowStart,
       livePosition: true,
     );
@@ -551,12 +552,12 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   /// Call when the guide becomes visible. A window left open past 30 minutes
   /// stale forces a full reload; this is the one re-entry path where that is
   /// still correct, since background refresh elsewhere avoids it.
-  Future<void> reloadIfStale({int? windowHours, DateTime? windowStart}) async {
+  Future<void> reloadIfStale({Duration? window, DateTime? windowStart}) async {
     if (_reloadOnEntry ||
         _windowStart.add(const Duration(minutes: 30)).isBefore(_now())) {
       _guideDate = _now();
       await load(
-        windowHours: windowHours,
+        window: window,
         windowStart: windowStart,
         livePosition: true,
       );
@@ -572,7 +573,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     if (_windowStart != nextStart) _reloadOnEntry = true;
     _guideDate = now;
     _windowStart = nextStart;
-    _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+    _windowEnd = _windowStart.add(_guideWindow);
     _atLivePosition = true;
   }
 
@@ -819,7 +820,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     final ids = _programsLoadedIds.toList();
     if (ids.isEmpty) return;
     final from = _windowStart.isBefore(now) ? _windowStart : now;
-    final rolling = now.add(Duration(hours: _guideWindowHours));
+    final rolling = now.add(_guideWindow);
     final to = rolling.isAfter(_windowEnd) ? rolling : _windowEnd;
 
     for (var i = 0; i < ids.length; i += _programBatchSize) {
