@@ -669,6 +669,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       children: [
         _buildTopSection(),
         const SizedBox(height: 8),
+        // The window control sits directly above the grid; the tick strip's
+        // left region is only channel-column wide and 22-24 px tall, so it
+        // cannot hold the chevrons and the range text at the narrowest size.
+        if (!widget.miniPlayerMode) _buildGuideWindowBar(),
         Expanded(child: _buildBody()),
       ],
     );
@@ -704,12 +708,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildToolbar(),
-        _buildFilterRail(),
-        const SizedBox(height: 8),
-        _buildHero(),
-      ],
+      children: [_buildToolbar(), const SizedBox(height: 8), _buildHero()],
     );
   }
 
@@ -721,31 +720,26 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         final channel = program == null
             ? _focusedChannel.value
             : _vm.channelForId(program.channelId);
-        final logoUrl = channel?.imageTag == null
-            ? null
-            : _vm.imageApi.getPrimaryImageUrl(
-                channel!.id,
-                maxHeight: 96,
-                tag: channel.imageTag,
-              );
+        // Focus on the channel column has no programme, so the band previews
+        // what that channel is airing now under the channel's name.
+        final preview =
+            program ??
+            (channel == null ? null : _vm.nowNextForChannel(channel.id).now);
         final now = DateTime.now();
         final isLive =
-            program != null &&
-            now.isAfter(program.startDate) &&
-            now.isBefore(program.endDate);
+            preview != null &&
+            now.isAfter(preview.startDate) &&
+            now.isBefore(preview.endDate);
         return EpgHeroPreview(
           title:
               program?.name ??
               channel?.name ??
               AppLocalizations.of(context).guideTimeline,
-          timeLabel: program == null
+          timeLabel: preview == null
               ? null
-              : '${_formatTime(program.startDate)} - ${_formatTime(program.endDate)}',
-          genreLabel: program == null ? null : epgGenreFor(program).label,
-          synopsis: program?.overview,
-          channelLogoUrl: logoUrl,
-          channelName: channel?.name,
-          channelNumber: channel?.number,
+              : '${_formatTime(preview.startDate)} - ${_formatTime(preview.endDate)}',
+          genreLabel: preview == null ? null : epgGenreFor(preview).label,
+          synopsis: program != null ? program.overview : preview?.name,
           isLive: isLive,
           apple: _apple,
           compact: true,
@@ -754,10 +748,12 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
   }
 
-  Widget _buildFilterRail() {
+  Widget _buildFilterRail({
+    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(16, 6, 16, 6),
+  }) {
     final filters = GuideFilter.values;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      padding: padding,
       child: EpgFilterRail(
         labels: [for (final f in filters) _filterLabel(f)],
         selectedIndex: filters.indexOf(_vm.filter),
@@ -1072,33 +1068,12 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             ),
             const SizedBox(width: 8),
           ],
-          _GuidePillButton(
-            icon: Icons.chevron_left,
-            onPressed: () =>
-                _shiftGuideWindow(-_vm.guideWindow),
-          ),
-          const SizedBox(width: 4),
-          _GuidePillButton(
-            label: AppLocalizations.of(context).now,
-            onPressed: _goToNow,
-          ),
-          const SizedBox(width: 4),
-          _GuidePillButton(
-            icon: Icons.chevron_right,
-            onPressed: () =>
-                _shiftGuideWindow(_vm.guideWindow),
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              '${_formatDate(_vm.guideDate)}  ${_formatTime(_vm.windowStart)} – ${_formatTime(_vm.windowEnd)}',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 14,
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: _buildFilterRail(
+              padding: const EdgeInsets.symmetric(vertical: 2),
             ),
           ),
+          const SizedBox(width: 12),
           _GuidePillButton(icon: Icons.sort, onPressed: _openSortDialog),
           const SizedBox(width: 8),
           _GuidePillButton(
@@ -1110,6 +1085,42 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             icon: Icons.fiber_dvr,
             label: AppLocalizations.of(context).recordings,
             onPressed: _openRecordings,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Window paging and the rendered range, left-aligned just above the grid.
+  Widget _buildGuideWindowBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+      child: Row(
+        children: [
+          _GuidePillButton(
+            icon: Icons.chevron_left,
+            onPressed: () => _shiftGuideWindow(-_vm.guideWindow),
+          ),
+          const SizedBox(width: 4),
+          _GuidePillButton(
+            label: AppLocalizations.of(context).now,
+            onPressed: _goToNow,
+          ),
+          const SizedBox(width: 4),
+          _GuidePillButton(
+            icon: Icons.chevron_right,
+            onPressed: () => _shiftGuideWindow(_vm.guideWindow),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              '${_formatDate(_vm.guideDate)}  ${_formatTime(_vm.windowStart)} – ${_formatTime(_vm.windowEnd)}',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 14,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

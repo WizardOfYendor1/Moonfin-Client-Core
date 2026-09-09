@@ -1,21 +1,17 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../../widgets/adaptive/adaptive_glass.dart';
 
-/// Landscape hero band that previews the focused program and its channel. Pure
-/// presentation; the host feeds it the focused values (typically via a
-/// ValueListenableBuilder) so only this band rebuilds as focus moves. Idiom
-/// aware: frosted glass on Apple, a tokenized translucent panel on Material.
+/// Landscape hero band that previews the focused program. Pure presentation;
+/// the host feeds it the focused values (typically via a ValueListenableBuilder)
+/// so only this band rebuilds as focus moves. Idiom aware: frosted glass on
+/// Apple, a tokenized translucent panel on Material.
 class EpgHeroPreview extends StatelessWidget {
   final String? title;
   final String? timeLabel;
   final String? genreLabel;
   final String? synopsis;
-  final String? channelLogoUrl;
-  final String? channelName;
-  final String? channelNumber;
   final bool isLive;
   final bool apple;
   final bool compact;
@@ -26,9 +22,6 @@ class EpgHeroPreview extends StatelessWidget {
     required this.timeLabel,
     required this.genreLabel,
     required this.synopsis,
-    required this.channelLogoUrl,
-    required this.channelName,
-    required this.channelNumber,
     required this.isLive,
     required this.apple,
     this.compact = false,
@@ -46,46 +39,35 @@ class EpgHeroPreview extends StatelessWidget {
 
     final inner = Padding(
       padding: EdgeInsets.fromLTRB(20, compact ? 8 : 16, 20, compact ? 8 : 16),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.titleLarge,
-                ),
-                if (meta.isNotEmpty) ...[
-                  SizedBox(height: compact ? 4 : 6),
-                  Text(
-                    meta,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodyMedium?.copyWith(color: muted),
-                  ),
-                ],
-                if (synopsis != null && synopsis!.isNotEmpty) ...[
-                  SizedBox(height: compact ? 4 : 8),
-                  Text(
-                    synopsis!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: AppColorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          Text(
+            title ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.titleLarge,
           ),
-          if (channelName != null) ...[
-            const SizedBox(width: 20),
-            _channelBlock(textTheme, muted),
+          if (meta.isNotEmpty) ...[
+            SizedBox(height: compact ? 4 : 6),
+            Text(
+              meta,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodyMedium?.copyWith(color: muted),
+            ),
+          ],
+          if (synopsis != null && synopsis!.isNotEmpty) ...[
+            SizedBox(height: compact ? 4 : 8),
+            Text(
+              synopsis!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodySmall?.copyWith(
+                color: AppColorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
           ],
         ],
       ),
@@ -110,45 +92,4 @@ class EpgHeroPreview extends StatelessWidget {
             child: content,
           );
   }
-
-  Widget _channelBlock(TextTheme textTheme, Color muted) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      SizedBox(
-        width: 46,
-        height: 46,
-        child: ClipRRect(
-          borderRadius: AppRadius.circular(apple ? 12 : 8),
-          child: (channelLogoUrl != null && channelLogoUrl!.isNotEmpty)
-              ? CachedNetworkImage(
-                  imageUrl: channelLogoUrl!,
-                  fit: BoxFit.contain,
-                  errorWidget: (context, url, error) => Icon(
-                    Icons.tv,
-                    color: AppColorScheme.onSurface.withValues(alpha: 0.4),
-                  ),
-                )
-              : Icon(
-                  Icons.tv,
-                  color: AppColorScheme.onSurface.withValues(alpha: 0.4),
-                ),
-        ),
-      ),
-      const SizedBox(width: 10),
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(channelName!, style: textTheme.titleSmall),
-          if (channelNumber != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              channelNumber!,
-              style: textTheme.labelMedium?.copyWith(color: muted),
-            ),
-          ],
-        ],
-      ),
-    ],
-  );
 }

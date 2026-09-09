@@ -16,9 +16,6 @@ void main() {
             genreLabel: 'Drama',
             synopsis:
                 'A synopsis that continues onto a second line for context.',
-            channelLogoUrl: null,
-            channelName: 'Channel One',
-            channelNumber: '1',
             isLive: false,
             apple: false,
             compact: true,
