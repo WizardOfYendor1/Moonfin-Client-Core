@@ -13,6 +13,11 @@ import '../epg_genre.dart';
 /// unlabelled. [loading] and [failed] override everything else with their own
 /// treatment for a non-program placeholder cell spanning the whole row.
 class EpgProgramCell extends StatelessWidget {
+  static const String _metaSeparator = ' \u00B7 ';
+
+  /// Below this content width the metadata line is dropped entirely.
+  static const double _minMetaWidth = 96;
+
   final String title;
 
   /// Retained for API compatibility only — the cell no longer renders it.
@@ -36,6 +41,12 @@ class EpgProgramCell extends StatelessWidget {
   /// marker that survives even when the title has no room at all.
   final bool startsBeforeWindow;
 
+  /// Official rating (`TV-G`, `PG-13`); first item of the metadata line.
+  final String? rating;
+
+  /// Category labels (`Sports`, `News`) shown after the rating.
+  final List<String> tags;
+
   const EpgProgramCell({
     super.key,
     required this.title,
@@ -53,6 +64,8 @@ class EpgProgramCell extends StatelessWidget {
     this.failed = false,
     this.textLeftPadding = 0,
     this.startsBeforeWindow = false,
+    this.rating,
+    this.tags = const [],
   });
 
   @override
@@ -111,12 +124,15 @@ class EpgProgramCell extends StatelessWidget {
       );
     }
 
+    // Regular weight throughout: focus and on-now already read from the
+    // background tint and the focus border.
     final titleStyle = (textTheme.bodySmall ?? const TextStyle()).copyWith(
-      fontWeight: placeholderLabel != null
-          ? FontWeight.w400
-          : (focused || isLive ? FontWeight.w600 : FontWeight.w400),
+      fontWeight: FontWeight.w400,
       color: placeholderLabel != null ? muted : AppColorScheme.onSurface,
     );
+
+    final metaStyle = (textTheme.labelSmall ?? const TextStyle(fontSize: 10))
+        .copyWith(color: muted);
 
     final markerStyle = titleStyle.copyWith(
       fontWeight: FontWeight.w700,
@@ -149,52 +165,104 @@ class EpgProgramCell extends StatelessWidget {
               ),
             ),
           LayoutBuilder(
-            builder: (context, cell) => Padding(
+            builder: (context, cell) {
               // A marker cell this narrow gives up its inset so `<<` still fits.
-              padding: showMarker && cell.maxWidth < 48
+              final padding = showMarker && cell.maxWidth < 48
                   ? EdgeInsets.fromLTRB(2 + textLeftPadding, 4, 2, 4)
                   : EdgeInsets.fromLTRB(
                       (apple ? 10 : 12) + textLeftPadding,
                       4,
                       8,
                       4,
-                    ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  showMarker
-                      ? _markerRow(context, titleStyle, markerStyle)
-                      : Row(
-                          children: [
-                            if (apple) ...[
-                              _genreDot(),
-                              const SizedBox(width: 6),
-                            ],
-                            Flexible(
-                              child: Text(
-                                placeholderLabel ?? title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: titleStyle,
+                    );
+
+              final scaler = MediaQuery.textScalerOf(context);
+              final titleLine = _lineHeight(titleStyle, scaler);
+              final metaLine = _lineHeight(metaStyle, scaler);
+              final innerWidth = cell.maxWidth.isFinite
+                  ? cell.maxWidth - padding.horizontal
+                  : double.infinity;
+              final innerHeight = cell.maxHeight.isFinite
+                  ? cell.maxHeight - padding.vertical
+                  : double.infinity;
+
+              // Metadata earns a line only when the row is tall enough for it
+              // on top of a full title line; the title is never given up.
+              final metaItems =
+                  placeholderLabel == null && innerWidth >= _minMetaWidth
+                  ? _fittingMeta(innerWidth, metaStyle, scaler)
+                  : const <String>[];
+              final showMetaLine =
+                  metaItems.isNotEmpty && innerHeight >= titleLine + metaLine;
+              // The dot and the timer marker are dropped before the title is:
+              // a cell this narrow has no room for either.
+              final ornaments = (apple ? 12.0 : 0.0) + (hasTimer ? 15.0 : 0.0);
+              final showOrnaments =
+                  !innerWidth.isFinite || innerWidth >= ornaments + 12;
+              final wrapTitle =
+                  placeholderLabel == null &&
+                  innerWidth >= _minMetaWidth &&
+                  innerHeight >=
+                      2 * titleLine + (showMetaLine ? metaLine : 0.0);
+
+              return Padding(
+                padding: padding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  // Programmes read from the top down; a gap label stays centred.
+                  mainAxisAlignment: placeholderLabel != null
+                      ? MainAxisAlignment.center
+                      : MainAxisAlignment.start,
+                  children: [
+                    showMarker
+                        ? _markerRow(context, titleStyle, markerStyle)
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (apple && showOrnaments) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: _genreDot(),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  placeholderLabel ?? title,
+                                  maxLines: wrapTitle ? 2 : 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: titleStyle,
+                                ),
                               ),
-                            ),
-                            if (hasTimer) ...[
-                              const SizedBox(width: 6),
-                              _timerDot(),
+                              if (hasTimer && showOrnaments) ...[
+                                const SizedBox(width: 6),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: _timerDot(),
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                ],
-              ),
-            ),
+                          ),
+                    if (showMetaLine)
+                      Text(
+                        metaItems.join(_metaSeparator),
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.clip,
+                        style: metaStyle,
+                      ),
+                  ],
+                ),
+              );
+            },
           ),
           // Progress reads as a seekbar, not as cell structure: range tokens
-          // rather than the genre colour, on its own visible track, and inset
-          // past the boundary marker so the two never merge.
+          // rather than the genre colour, on its own visible track, and held
+          // clear of the boundary marker by a visible gap.
           if (isLive && progress > 0)
             Positioned(
-              left: apple ? 0 : separatorWidth,
+              left: apple ? 0 : separatorWidth + AppSpacing.spaceSm,
               right: 0,
               bottom: 0,
               child: LinearProgressIndicator(
@@ -288,6 +356,41 @@ class EpgProgramCell extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Metadata that fits the given width, rating first and tags after, dropping
+  /// from the end once the line is full.
+  List<String> _fittingMeta(double width, TextStyle style, TextScaler scaler) {
+    final items = <String>[
+      if (rating != null && rating!.trim().isNotEmpty) rating!.trim(),
+      for (final tag in tags)
+        if (tag.trim().isNotEmpty) tag.trim(),
+    ];
+    if (items.isEmpty) return const [];
+    if (!width.isFinite) return items;
+
+    final fitted = <String>[];
+    var used = 0.0;
+    for (final item in items) {
+      final piece = fitted.isEmpty ? item : '$_metaSeparator$item';
+      final pieceWidth = _textWidth(piece, style, scaler);
+      if (used + pieceWidth > width) break;
+      used += pieceWidth;
+      fitted.add(item);
+    }
+    return fitted;
+  }
+
+  static double _lineHeight(TextStyle style, TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ag', style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height.ceilToDouble();
   }
 
   static double _textWidth(String text, TextStyle style, TextScaler scaler) {
