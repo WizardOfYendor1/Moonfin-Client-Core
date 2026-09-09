@@ -19,6 +19,20 @@ Map<String, dynamic> _program(String id, String channelId, DateTime start) => {
       'EndDate': start.add(const Duration(minutes: 30)).toIso8601String(),
     };
 
+Map<String, dynamic> _span(
+  String id,
+  String channelId,
+  DateTime start,
+  DateTime end,
+) =>
+    {
+      'Id': id,
+      'ChannelId': channelId,
+      'Name': id,
+      'StartDate': start.toIso8601String(),
+      'EndDate': end.toIso8601String(),
+    };
+
 void main() {
   late _MockClient client;
   late _MockLiveTvApi liveTv;
@@ -226,5 +240,200 @@ void main() {
     expect(captured.single, ['c7', 'c9']);
     // The ordered scroll prefix is untouched by a targeted open.
     expect(vm.programsHighWater, 0);
+  });
+
+  group('program-end boundary refresh', () {
+    final base = DateTime.now();
+    late DateTime clock;
+    late int guideCalls;
+    late List<Map<String, dynamic>> items;
+    late List<DateTime> requestedFrom;
+    late List<DateTime> requestedTo;
+    late bool guideThrows;
+
+    DateTime at(int minutes) => base.add(Duration(minutes: minutes));
+
+    setUp(() {
+      clock = base;
+      guideCalls = 0;
+      guideThrows = false;
+      items = <Map<String, dynamic>>[];
+      requestedFrom = <DateTime>[];
+      requestedTo = <DateTime>[];
+
+      when(
+        () => liveTv.getChannels(
+          sortBy: any(named: 'sortBy'),
+          sortOrder: any(named: 'sortOrder'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) async => {
+            'Items': [_channel('c0')],
+          });
+
+      when(
+        () => liveTv.getGuide(
+          startDate: any(named: 'startDate'),
+          endDate: any(named: 'endDate'),
+          channelIds: any(named: 'channelIds'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          enableImages: any(named: 'enableImages'),
+          enableUserData: any(named: 'enableUserData'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((invocation) async {
+        guideCalls++;
+        requestedFrom.add(invocation.namedArguments[#startDate] as DateTime);
+        requestedTo.add(invocation.namedArguments[#endDate] as DateTime);
+        if (guideThrows) throw StateError('guide unavailable');
+        return {'Items': List<Map<String, dynamic>>.from(items)};
+      });
+    });
+
+    // A retained ended program plus one airing program; the schedule stops at
+    // at(30), so a refresh past that boundary genuinely needs extending.
+    void seedLapsingSchedule() {
+      items = [
+        _span('ended', 'c0', at(-90), at(-60)),
+        _span('airing', 'c0', at(-60), at(30)),
+      ];
+    }
+
+    test('the boundary is the next future end, not the retained minimum', () {
+      seedLapsingSchedule();
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      return vm.load().then((_) {
+        vm.scheduleBoundaryRefresh();
+        // at(-60) is retained by the back-slice and must never be selected.
+        expect(vm.boundaryDueAt, at(30));
+        vm.cancelBoundaryRefresh();
+      });
+    });
+
+    test('an elapsed boundary refreshes exactly once, not in a loop', () async {
+      seedLapsingSchedule();
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      vm.scheduleBoundaryRefresh();
+      expect(guideCalls, 1);
+
+      clock = at(31);
+      await vm.handleBoundaryElapsed();
+      await pumpEventQueue();
+
+      // The server returns the same retained programs; one request, no storm.
+      expect(guideCalls, 2);
+      expect(vm.programsForChannel('c0').map((p) => p.id), [
+        'ended',
+        'airing',
+      ]);
+      // Both past boundaries are processed, so neither can be selected again.
+      expect(vm.nextBoundaryAt, isNull);
+      vm.cancelBoundaryRefresh();
+    });
+
+    test('no newer coverage arms the retry delay', () async {
+      seedLapsingSchedule();
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      vm.scheduleBoundaryRefresh();
+
+      clock = at(31);
+      await vm.handleBoundaryElapsed();
+
+      expect(
+        vm.boundaryDueAt,
+        at(31).add(LiveTvGuideViewModel.noNewCoverageRetry),
+      );
+      vm.cancelBoundaryRefresh();
+    });
+
+    test('a cached next program promotes with no request', () async {
+      items = [
+        _span('ended', 'c0', at(-90), at(-60)),
+        _span('airing', 'c0', at(-60), at(30)),
+        _span('next', 'c0', at(30), at(90)),
+      ];
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      vm.scheduleBoundaryRefresh();
+      expect(guideCalls, 1);
+
+      clock = at(31);
+      await vm.handleBoundaryElapsed();
+
+      expect(guideCalls, 1);
+      expect(vm.boundaryDueAt, at(90));
+      vm.cancelBoundaryRefresh();
+    });
+
+    test('the refresh range spans the guide viewport', () async {
+      seedLapsingSchedule();
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      vm.scheduleBoundaryRefresh();
+
+      clock = at(31);
+      items = [
+        ...items,
+        _span('next', 'c0', at(30), at(200)),
+      ];
+      await vm.handleBoundaryElapsed();
+
+      // A narrower range would shrink a displayed guide's cached coverage.
+      expect(requestedFrom.last.isAfter(vm.windowStart), isFalse);
+      expect(requestedTo.last.isBefore(vm.windowEnd), isFalse);
+      expect(vm.boundaryDueAt, at(200));
+      vm.cancelBoundaryRefresh();
+    });
+
+    test('a failed refresh backs off and keeps the data', () async {
+      seedLapsingSchedule();
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      vm.scheduleBoundaryRefresh();
+
+      clock = at(31);
+      guideThrows = true;
+      await vm.handleBoundaryElapsed();
+
+      expect(vm.programsForChannel('c0').map((p) => p.id), [
+        'ended',
+        'airing',
+      ]);
+      expect(
+        vm.boundaryDueAt,
+        at(31).add(LiveTvGuideViewModel.failureBackoff),
+      );
+      vm.cancelBoundaryRefresh();
+    });
+
+    test('a boundary passed while suspended refreshes on resume', () async {
+      seedLapsingSchedule();
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      vm.scheduleBoundaryRefresh();
+
+      // The timer could not fire while the app was suspended.
+      clock = at(45);
+      vm.scheduleBoundaryRefresh();
+      await pumpEventQueue();
+
+      expect(guideCalls, 2);
+      vm.cancelBoundaryRefresh();
+    });
+
+    test('an empty schedule arms no timer', () async {
+      items = <Map<String, dynamic>>[];
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      vm.scheduleBoundaryRefresh();
+
+      expect(vm.boundaryDueAt, isNull);
+      expect(guideCalls, 1);
+    });
   });
 }

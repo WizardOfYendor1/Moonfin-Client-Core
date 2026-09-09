@@ -145,8 +145,15 @@ class LiveTvGuideViewModel extends ChangeNotifier {
           ? GuideChannelLoadState.loaded
           : GuideChannelLoadState.loading;
 
-  LiveTvGuideViewModel(this._client, {ChannelSortBy? initialSortBy})
-      : _sortBy = initialSortBy ?? _savedSortBy();
+  LiveTvGuideViewModel(
+    this._client, {
+    ChannelSortBy? initialSortBy,
+    DateTime Function()? now,
+  })  : _sortBy = initialSortBy ?? _savedSortBy(),
+        _now = now ?? DateTime.now;
+
+  /// Clock the boundary refresh reads, injectable so tests can advance it.
+  final DateTime Function() _now;
 
   /// The guide's order depends on the active sort, so a caller that passes none
   /// still starts from the saved preference.
@@ -489,6 +496,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     _programsByChannel.clear();
     _programsLoadedIds.clear();
     _programsHighWater = 0;
+    _processedBoundaries.clear();
   }
 
   /// Clears any cached programs and loads the first batch of channels. Used on
@@ -567,6 +575,169 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     }
     _programsLoadedIds.addAll(ids);
     notifyListeners();
+  }
+
+  // --- Next-future-boundary refresh -----------------------------------------
+
+  /// Delay before retrying when the server returned nothing beyond the coverage
+  /// already held; without it that case retries immediately and spins.
+  @visibleForTesting
+  static const noNewCoverageRetry = Duration(minutes: 5);
+
+  /// Backoff after a failed refresh request.
+  @visibleForTesting
+  static const failureBackoff = Duration(minutes: 1);
+
+  Timer? _boundaryTimer;
+  DateTime? _boundaryDueAt;
+
+  // Boundaries already handled, so one can never be selected twice.
+  final Set<DateTime> _processedBoundaries = <DateTime>{};
+
+  /// When the armed refresh will run, or null when nothing is scheduled.
+  @visibleForTesting
+  DateTime? get boundaryDueAt => _boundaryDueAt;
+
+  /// The earliest cached program end that is after now and unprocessed.
+  @visibleForTesting
+  DateTime? get nextBoundaryAt => _nextBoundary(_now());
+
+  /// Arms a one-shot refresh on the next unprocessed future program boundary.
+  ///
+  /// This view model is not a lifecycle observer: the surface that owns it must
+  /// call this again on app resume, because timers do not fire while suspended.
+  void scheduleBoundaryRefresh() {
+    _boundaryTimer?.cancel();
+    _boundaryTimer = null;
+    final now = _now();
+    _processedBoundaries.removeWhere(
+      (b) => b.isBefore(now.subtract(const Duration(hours: 1))),
+    );
+
+    // The armed boundary has passed without firing (suspension, or data that
+    // was already expired): refresh once now rather than scheduling in the past.
+    final due = _boundaryDueAt;
+    if (due != null && !due.isAfter(now)) {
+      _boundaryDueAt = null;
+      unawaited(handleBoundaryElapsed());
+      return;
+    }
+    _boundaryDueAt = null;
+
+    final next = _nextBoundary(now);
+    // Empty schedule: no timer at all, the quarter-hour tick is the fallback.
+    if (next == null) return;
+    _arm(next.difference(now), next);
+  }
+
+  /// Stops the boundary refresh; call when the surface is torn down.
+  void cancelBoundaryRefresh() {
+    _boundaryTimer?.cancel();
+    _boundaryTimer = null;
+    _boundaryDueAt = null;
+  }
+
+  @override
+  void dispose() {
+    cancelBoundaryRefresh();
+    super.dispose();
+  }
+
+  void _arm(Duration delay, DateTime dueAt) {
+    _boundaryDueAt = dueAt;
+    _boundaryTimer = Timer(delay, () => unawaited(handleBoundaryElapsed()));
+  }
+
+  void _armRetry(Duration delay) => _arm(delay, _now().add(delay));
+
+  /// Runs the boundary refresh: promote from cache where the schedule already
+  /// covers the new time, request only where coverage must be extended.
+  @visibleForTesting
+  Future<void> handleBoundaryElapsed() async {
+    _boundaryTimer?.cancel();
+    _boundaryTimer = null;
+    _boundaryDueAt = null;
+
+    final now = _now();
+    for (final boundary in _boundaries()) {
+      if (!boundary.isAfter(now)) _processedBoundaries.add(boundary);
+    }
+
+    if (!_coverageLapsed(now)) {
+      // The next program is already cached, so the cells promote in place.
+      notifyListeners();
+      scheduleBoundaryRefresh();
+      return;
+    }
+
+    final before = _coverageEnd();
+    try {
+      await _refreshLoadedChannels(now);
+    } catch (_) {
+      // Keep the data we hold; a failed refresh must not blank the guide.
+      _armRetry(failureBackoff);
+      return;
+    }
+
+    final after = _coverageEnd();
+    if (after == null || (before != null && !after.isAfter(before))) {
+      _armRetry(noNewCoverageRetry);
+      return;
+    }
+    scheduleBoundaryRefresh();
+  }
+
+  /// Replaces every cached channel over a range that spans the guide viewport,
+  /// in batches, so no surface's coverage can shrink to a rolling horizon.
+  Future<void> _refreshLoadedChannels(DateTime now) async {
+    final ids = _programsByChannel.keys.toList();
+    if (ids.isEmpty) return;
+    final from = _windowStart.isBefore(now) ? _windowStart : now;
+    final rolling = now.add(Duration(hours: _guideWindowHours));
+    final to = rolling.isAfter(_windowEnd) ? rolling : _windowEnd;
+
+    for (var i = 0; i < ids.length; i += _programBatchSize) {
+      await replacePrograms(
+        channelIds: ids.sublist(i, min(i + _programBatchSize, ids.length)),
+        from: from,
+        to: to,
+      );
+    }
+  }
+
+  Iterable<DateTime> _boundaries() =>
+      _programsByChannel.values.expand((ps) => ps.map((p) => p.endDate));
+
+  DateTime? _nextBoundary(DateTime now) {
+    DateTime? next;
+    for (final boundary in _boundaries()) {
+      if (!boundary.isAfter(now)) continue;
+      if (_processedBoundaries.contains(boundary)) continue;
+      if (next == null || boundary.isBefore(next)) next = boundary;
+    }
+    return next;
+  }
+
+  /// The latest program end held for any channel.
+  DateTime? _coverageEnd() {
+    DateTime? end;
+    for (final boundary in _boundaries()) {
+      if (end == null || boundary.isAfter(end)) end = boundary;
+    }
+    return end;
+  }
+
+  /// True when some channel with cached programs has run out of them, which is
+  /// the only case a local promotion cannot cover.
+  bool _coverageLapsed(DateTime now) {
+    for (final programs in _programsByChannel.values) {
+      if (programs.isEmpty) continue;
+      final end = programs
+          .map((p) => p.endDate)
+          .reduce((a, b) => a.isAfter(b) ? a : b);
+      if (!end.isAfter(now)) return true;
+    }
+    return false;
   }
 
   /// Requests the guide for one set of channels over one range, with
