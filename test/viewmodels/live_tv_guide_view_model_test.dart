@@ -524,23 +524,12 @@ void main() {
         var clock = DateTime(2026, 9, 9, 20);
         final vm = LiveTvGuideViewModel(client, now: () => clock);
         await vm.load();
-        final guideCallsBefore = verify(
-          () => liveTv.getGuide(
-            startDate: any(named: 'startDate'),
-            endDate: any(named: 'endDate'),
-            channelIds: any(named: 'channelIds'),
-            fields: any(named: 'fields'),
-            enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-            enableImages: any(named: 'enableImages'),
-            enableUserData: any(named: 'enableUserData'),
-            userId: any(named: 'userId'),
-          ),
-        ).callCount;
+        clearInteractions(liveTv);
 
         clock = clock.add(const Duration(minutes: 31));
         await vm.reloadIfStale();
 
-        final guideCallsAfter = verify(
+        verify(
           () => liveTv.getGuide(
             startDate: any(named: 'startDate'),
             endDate: any(named: 'endDate'),
@@ -551,8 +540,7 @@ void main() {
             enableUserData: any(named: 'enableUserData'),
             userId: any(named: 'userId'),
           ),
-        ).callCount;
-        expect(guideCallsAfter, greaterThan(guideCallsBefore));
+        ).called(1);
         // A forced reload recomputes the window from the current clock.
         expect(vm.windowStart, DateTime(2026, 9, 9, 20));
       },
@@ -562,23 +550,12 @@ void main() {
       var clock = DateTime(2026, 9, 9, 20);
       final vm = LiveTvGuideViewModel(client, now: () => clock);
       await vm.load();
-      final guideCallsBefore = verify(
-        () => liveTv.getGuide(
-          startDate: any(named: 'startDate'),
-          endDate: any(named: 'endDate'),
-          channelIds: any(named: 'channelIds'),
-          fields: any(named: 'fields'),
-          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-          enableImages: any(named: 'enableImages'),
-          enableUserData: any(named: 'enableUserData'),
-          userId: any(named: 'userId'),
-        ),
-      ).callCount;
+      clearInteractions(liveTv);
 
       clock = clock.add(const Duration(minutes: 29));
       await vm.reloadIfStale();
 
-      final guideCallsAfter = verify(
+      verifyNever(
         () => liveTv.getGuide(
           startDate: any(named: 'startDate'),
           endDate: any(named: 'endDate'),
@@ -589,8 +566,7 @@ void main() {
           enableUserData: any(named: 'enableUserData'),
           userId: any(named: 'userId'),
         ),
-      ).callCount;
-      expect(guideCallsAfter, guideCallsBefore);
+      );
     });
 
     test('exiting a paged-ahead session resets the window to now', () async {
