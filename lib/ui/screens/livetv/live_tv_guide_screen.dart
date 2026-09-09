@@ -833,81 +833,98 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
             ? channel.name
             : '${channel.number}  ${channel.name}';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: AppRadius.circular(12),
-        border: Border.fromBorderSide(ThemeRegistry.active.borders.cardBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.miniPlayerMode) ...[
-            SizedBox(
-              width: _kMiniPlayerWidth,
-              height: _kMiniPlayerHeight,
-              child: _buildMiniPlayerCard(),
-            ),
-            const SizedBox(width: 16),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: AppTypography.fontSizeXl,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+    return Stack(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: AppRadius.circular(12),
+            border:
+                Border.fromBorderSide(ThemeRegistry.active.borders.cardBorder),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (widget.miniPlayerMode) ...[
+                SizedBox(
+                  width: _kMiniPlayerWidth,
+                  height: _kMiniPlayerHeight,
+                  child: _buildMiniPlayerCard(),
                 ),
-                if (timeRange != null || channelLabel != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    [?timeRange, ?channelLabel].join('   '),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: AppTypography.fontSizeSm,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (episodeTitle != null && episodeTitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    episodeTitle,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: AppTypography.fontSizeSm,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                if (overview != null && overview.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    overview,
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: AppTypography.fontSizeSm,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                const SizedBox(width: 16),
               ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: AppTypography.fontSizeXl,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (timeRange != null || channelLabel != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        [?timeRange, ?channelLabel].join('   '),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: AppTypography.fontSizeSm,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (episodeTitle != null && episodeTitle.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        episodeTitle,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: AppTypography.fontSizeSm,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (overview != null && overview.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        overview,
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: AppTypography.fontSizeSm,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Back-only dismissal is a TV rule; desktop and web need a clickable exit.
+        if (!PlatformDetection.isTV)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: _GuidePillButton(
+              icon: Icons.close,
+              onPressed: widget.embedded && widget.onClose != null
+                  ? widget.onClose!
+                  : () => Navigator.of(context).pop(),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -1509,6 +1526,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     final isFavoriteChannel = channel?.isFavorite ?? false;
     final hasTimer = program.hasTimer;
     final hasSeriesTimer = program.hasSeriesTimer;
+    final now = DateTime.now();
+    // That airing is over; only a future or currently-airing showing can still be recorded.
+    final isEnded = now.isAfter(program.endDate);
+    final isFuture = now.isBefore(program.startDate);
     final l10n = AppLocalizations.of(context);
     var dialogActionInProgress = false;
 
@@ -1559,39 +1580,41 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
           ),
         ),
         actions: [
-          adaptiveDialogAction(
-            onPressed: () async {
-              if (dialogActionInProgress) return;
-              dialogActionInProgress = true;
-              try {
-                await _vm.toggleProgramRecording(program);
-                if (!pageContext.mounted) return;
-                Navigator.of(dialogContext).pop();
-                ScaffoldMessenger.of(pageContext).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      hasTimer
-                          ? l10n.recordingCancelled
-                          : l10n.programSetToRecord,
+          // That airing is over; single-episode recording no longer applies.
+          if (!isEnded)
+            adaptiveDialogAction(
+              onPressed: () async {
+                if (dialogActionInProgress) return;
+                dialogActionInProgress = true;
+                try {
+                  await _vm.toggleProgramRecording(program);
+                  if (!pageContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        hasTimer
+                            ? l10n.recordingCancelled
+                            : l10n.programSetToRecord,
+                      ),
                     ),
-                  ),
-                );
-              } catch (_) {
-                    dialogActionInProgress = false;
-                if (!pageContext.mounted) return;
-                ScaffoldMessenger.of(pageContext).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      hasTimer
-                          ? l10n.failedToCancelRecording
-                          : l10n.unableToCreateRecording,
+                  );
+                } catch (_) {
+                  dialogActionInProgress = false;
+                  if (!pageContext.mounted) return;
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        hasTimer
+                            ? l10n.failedToCancelRecording
+                            : l10n.unableToCreateRecording,
+                      ),
                     ),
-                  ),
-                );
-              }
-            },
-            child: Text(hasTimer ? l10n.cancelRecordingAction : l10n.record),
-          ),
+                  );
+                }
+              },
+              child: Text(hasTimer ? l10n.cancelRecordingAction : l10n.record),
+            ),
           if (program.isSeries)
             adaptiveDialogAction(
               onPressed: () async {
@@ -1664,13 +1687,17 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
             ),
           ),
           adaptiveDialogAction(
+            autofocus: true,
             onPressed: () {
               if (dialogActionInProgress) return;
               dialogActionInProgress = true;
               Navigator.of(dialogContext).pop();
               _watchChannel(program.channelId);
             },
-            child: Text(l10n.watch),
+            // A future or ended showing will not itself play; the label says so.
+            child: Text(
+              isEnded || isFuture ? l10n.watchChannelLive : l10n.watch,
+            ),
           ),
           adaptiveDialogAction(
             onPressed: () {

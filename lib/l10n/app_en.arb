@@ -2902,6 +2902,10 @@
   "@watch": {
     "description": "Button label to start watching a channel"
   },
+  "watchChannelLive": "Watch channel live",
+  "@watchChannelLive": {
+    "description": "Button label to tune a channel live when the selected program is not the one that will play (ended or upcoming)"
+  },
   "close": "Close",
   "@close": {
     "description": "Button label to close a dialog"
