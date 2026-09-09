@@ -1437,14 +1437,25 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
       windowEnd: _vm.windowEnd,
       apple: _apple,
       onLeftEdge: () => _focusChannelRow(rowIndex),
-      // A non-programme cell selects to a no-op; Phase 5 owns select semantics.
+      noProgramDataLabel: AppLocalizations.of(context).noProgramData,
+      // Per A3: a gap or filtered hole tunes live, never opens the recording
+      // dialog; loading is inert; failed has no retry producer yet.
       onProgramSelected: (cell) {
-        final program = cell.program;
-        if (program == null) return;
-        if (widget.miniPlayerMode) {
-          _watchChannel(channelId);
-        } else {
-          _showProgramDetails(program);
+        switch (cell.kind) {
+          case GuideCellKind.program:
+            final program = cell.program;
+            if (program == null) return;
+            if (widget.miniPlayerMode) {
+              _watchChannel(channelId);
+            } else {
+              _showProgramDetails(program);
+            }
+          case GuideCellKind.gap:
+          case GuideCellKind.filtered:
+            _watchChannel(channelId);
+          case GuideCellKind.loading:
+          case GuideCellKind.failed:
+            break;
         }
       },
       onTopEdge: rowIndex == 0
@@ -1920,6 +1931,9 @@ class _GuideProgramRow extends StatefulWidget {
   onHorizontalMove;
   final String Function(DateTime) formatTime;
 
+  /// Label for a real schedule gap (A3); a genre-filtered hole never shows it.
+  final String noProgramDataLabel;
+
   const _GuideProgramRow({
     required this.cells,
     required this.rowIndex,
@@ -1938,6 +1952,7 @@ class _GuideProgramRow extends StatefulWidget {
     required this.onProgramFocused,
     this.onHorizontalMove,
     required this.formatTime,
+    required this.noProgramDataLabel,
   });
 
   @override
@@ -2172,6 +2187,10 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
             focused: focused,
             apple: widget.apple,
             showMeta: width > 80,
+            placeholderLabel:
+                cell.kind == GuideCellKind.gap ? widget.noProgramDataLabel : null,
+            loading: cell.kind == GuideCellKind.loading,
+            failed: cell.kind == GuideCellKind.failed,
           ),
         ),
       ),

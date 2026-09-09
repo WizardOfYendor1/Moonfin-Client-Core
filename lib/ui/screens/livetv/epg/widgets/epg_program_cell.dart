@@ -7,6 +7,11 @@ import '../epg_genre.dart';
 /// (left/width along the timeline) and owns focus, passing [focused]. The genre
 /// shows as a colored left bar on Material and a subtle dot on Apple; the on-now
 /// program gets a LIVE badge + progress, scheduled recordings a red dot.
+///
+/// [placeholderLabel] renders centered muted text over neutral filler, for a
+/// real schedule gap; leave it null for a genre-filtered hole, which must stay
+/// unlabelled. [loading] and [failed] override everything else with their own
+/// treatment for a non-program placeholder cell spanning the whole row.
 class EpgProgramCell extends StatelessWidget {
   final String title;
   final String? timeLabel;
@@ -17,6 +22,9 @@ class EpgProgramCell extends StatelessWidget {
   final bool focused;
   final bool apple;
   final bool showMeta; // false for very narrow cells
+  final String? placeholderLabel;
+  final bool loading;
+  final bool failed;
 
   const EpgProgramCell({
     super.key,
@@ -29,6 +37,9 @@ class EpgProgramCell extends StatelessWidget {
     required this.focused,
     required this.apple,
     this.showMeta = true,
+    this.placeholderLabel,
+    this.loading = false,
+    this.failed = false,
   });
 
   @override
@@ -51,14 +62,45 @@ class EpgProgramCell extends StatelessWidget {
           : AppColorScheme.surface.withValues(alpha: 0.5);
     }
 
+    final focusBorder =
+        focused ? Border.all(color: accent, width: apple ? 1.5 : 2) : null;
+
+    // Loading and failed placeholders span the whole row while programs are
+    // unresolved for this channel; both override the normal program layout.
+    if (loading) {
+      return Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: AppRadius.circular(radius),
+          border: focusBorder,
+        ),
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: muted),
+          ),
+        ),
+      );
+    }
+    if (failed) {
+      final errorColor = AppColorScheme.statusError;
+      return Container(
+        decoration: BoxDecoration(
+          color: errorColor.withValues(alpha: 0.12),
+          borderRadius: AppRadius.circular(radius),
+          border: focusBorder ?? Border.all(color: errorColor.withValues(alpha: 0.4)),
+        ),
+        child: Center(child: Icon(Icons.refresh, size: 16, color: errorColor)),
+      );
+    }
+
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: bg,
         borderRadius: AppRadius.circular(radius),
-        border: focused
-            ? Border.all(color: accent, width: apple ? 1.5 : 2)
-            : null,
+        border: focusBorder,
       ),
       child: Stack(
         children: [
@@ -94,13 +136,18 @@ class EpgProgramCell extends StatelessWidget {
                     ],
                     Flexible(
                       child: Text(
-                        title,
+                        placeholderLabel ?? title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodyMedium?.copyWith(
-                          fontWeight:
-                              focused || isLive ? FontWeight.w600 : FontWeight.w400,
-                          color: AppColorScheme.onSurface,
+                          fontWeight: placeholderLabel != null
+                              ? FontWeight.w400
+                              : (focused || isLive
+                                  ? FontWeight.w600
+                                  : FontWeight.w400),
+                          color: placeholderLabel != null
+                              ? muted
+                              : AppColorScheme.onSurface,
                         ),
                       ),
                     ),

@@ -2792,6 +2792,10 @@
   "@noChannelsFound": {
     "description": "Empty state when no TV channels match the filter"
   },
+  "noProgramData": "No program data",
+  "@noProgramData": {
+    "description": "Guide cell label for a real EPG schedule gap, not a genre-filtered program"
+  },
   "liveBadge": "LIVE",
   "@liveBadge": {
     "description": "Badge label shown on currently airing programs"
