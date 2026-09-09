@@ -62,13 +62,15 @@ class EpgChannelCell extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: AppRadius.circular(radius),
-        border: focused
-            ? Border.all(color: accent.withValues(alpha: 0.7), width: 1)
-            : null,
+        // Always reserve the border so focus does not change the cell height.
+        border: Border.all(
+          color: focused ? accent.withValues(alpha: 0.7) : Colors.transparent,
+          width: 1,
+        ),
       ),
       child: body,
     );
