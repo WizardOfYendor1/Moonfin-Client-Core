@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +22,11 @@ class _MockLiveTvApi extends Mock implements LiveTvApi {}
 const _durations = <int>[20, 30, 45, 60, 180];
 
 const _channelCount = 48;
+
+/// One batch is 50 channels, so a lineup past that leaves the tail rows
+/// genuinely unloaded — the only honest way to observe a loading row.
+const _deferredChannelCount = 60;
+const _firstDeferredChannelId = 'ch50';
 
 /// The guide window the screen computes: today at the current hour, three
 /// hours wide at the surface size these tests pump.
@@ -99,6 +106,14 @@ void main() {
   late _MockMediaServerClient client;
   late _MockLiveTvApi liveTvApi;
 
+  /// Overridable per test so a lineup can outgrow a single program batch.
+  late int channelCount;
+
+  /// When set, any guide request covering this channel is held open until the
+  /// test releases it, so its row can be observed mid-load.
+  String? deferredChannelId;
+  late List<VoidCallback> releaseDeferredGuide;
+
   setUp(() async {
     await GetIt.instance.reset();
     SharedPreferences.setMockInitialValues(const {});
@@ -106,6 +121,10 @@ void main() {
     await store.init();
     GetIt.instance.registerSingleton<PreferenceStore>(store);
     GetIt.instance.registerSingleton<UserPreferences>(UserPreferences(store));
+
+    channelCount = _channelCount;
+    deferredChannelId = null;
+    releaseDeferredGuide = <VoidCallback>[];
 
     client = _MockMediaServerClient();
     liveTvApi = _MockLiveTvApi();
@@ -124,7 +143,7 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => <String, dynamic>{
-        'Items': [for (var i = 0; i < _channelCount; i++) _channelRaw(i)],
+        'Items': [for (var i = 0; i < channelCount; i++) _channelRaw(i)],
       },
     );
 
@@ -143,9 +162,15 @@ void main() {
       final ids =
           (invocation.namedArguments[#channelIds] as List?)?.cast<String>() ??
           const <String>[];
-      return <String, dynamic>{
+      final payload = <String, dynamic>{
         'Items': [for (final id in ids) ..._programsFor(id)],
       };
+      final gate = deferredChannelId;
+      if (gate == null || !ids.contains(gate)) return payload;
+
+      final completer = Completer<Map<String, dynamic>>();
+      releaseDeferredGuide.add(() => completer.complete(payload));
+      return completer.future;
     });
 
     GetIt.instance.registerSingleton<MediaServerClient>(client);
@@ -289,6 +314,114 @@ void main() {
     expect(focused, isNotNull);
     expect(focused!.row, 4);
     expect(focused.index, _cellIndexForRow(4, anchorMinutes));
+  });
+
+  /// Pumps a lineup one batch longer than the loader fetches, walks focus to
+  /// the last loaded row (49), and leaves row 50's request outstanding.
+  /// Returns the anchor's offset in minutes from the window start.
+  Future<int> reachLoadedEdge(WidgetTester tester) async {
+    channelCount = _deferredChannelCount;
+    deferredChannelId = _firstDeferredChannelId;
+
+    await pumpGuide(tester);
+    final anchorMinutes = await establishAnchor(tester);
+    await pressDown(tester, 49);
+
+    final focused = _focusedCell();
+    expect(focused, isNotNull);
+    expect(focused!.row, 49, reason: 'did not reach the last loaded row');
+    expect(
+      releaseDeferredGuide,
+      isNotEmpty,
+      reason: 'the next batch was never requested, so no row is loading',
+    );
+    return anchorMinutes;
+  }
+
+  Future<void> releaseGuideData(WidgetTester tester) async {
+    for (final release in releaseDeferredGuide) {
+      release();
+    }
+    releaseDeferredGuide.clear();
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('DOWN onto a loading row holds focus and consumes the key', (
+    tester,
+  ) async {
+    final anchorMinutes = await reachLoadedEdge(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+
+    final focused = _focusedCell();
+    expect(focused, isNotNull, reason: 'focus left the grid');
+    expect(focused!.row, 49);
+    expect(focused.index, _cellIndexForRow(49, anchorMinutes));
+  });
+
+  testWidgets('a later UP supersedes the deferred DOWN', (tester) async {
+    final anchorMinutes = await reachLoadedEdge(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(_focusedCell()!.row, 49);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(_focusedCell()!.row, 48);
+
+    await releaseGuideData(tester);
+
+    final focused = _focusedCell();
+    expect(focused, isNotNull);
+    expect(focused!.row, 48, reason: 'the deferred DOWN fired anyway');
+    expect(focused.index, _cellIndexForRow(48, anchorMinutes));
+  });
+
+  testWidgets('opening a dialog cancels the deferred DOWN', (tester) async {
+    final anchorMinutes = await reachLoadedEdge(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(_focusedCell()!.row, 49);
+
+    // Select on the focused programme opens the details dialog.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+
+    await releaseGuideData(tester);
+    expect(
+      _focusedCell(),
+      isNull,
+      reason: 'the deferred DOWN pulled focus back into the grid',
+    );
+
+    Navigator.of(tester.element(find.byType(AlertDialog))).pop();
+    await tester.pumpAndSettle();
+
+    final focused = _focusedCell();
+    expect(focused, isNotNull);
+    expect(focused!.row, 49, reason: 'the deferred DOWN fired after the dialog');
+    expect(focused.index, _cellIndexForRow(49, anchorMinutes));
+  });
+
+  testWidgets('the deferred DOWN applies when the row data arrives', (
+    tester,
+  ) async {
+    final anchorMinutes = await reachLoadedEdge(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(_focusedCell()!.row, 49);
+
+    await releaseGuideData(tester);
+
+    final focused = _focusedCell();
+    expect(focused, isNotNull, reason: 'the deferred DOWN never fired');
+    expect(focused!.row, 50);
+    expect(focused.index, _cellIndexForRow(50, anchorMinutes));
   });
 
   testWidgets('UP from row zero reaches the filter rail in standalone mode', (

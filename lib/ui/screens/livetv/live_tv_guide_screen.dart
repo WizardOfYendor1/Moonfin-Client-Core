@@ -95,6 +95,19 @@ class LiveTvGuideScreen extends StatefulWidget {
   State<LiveTvGuideScreen> createState() => _LiveTvGuideScreenState();
 }
 
+/// A vertical move that could not be resolved when the key was pressed. At
+/// most one is held; it is superseded by the next navigation key and cancelled
+/// outright by anything that invalidates the destination.
+class _PendingVerticalMove {
+  final int targetRowIndex;
+  final DateTime anchorTime;
+
+  const _PendingVerticalMove({
+    required this.targetRowIndex,
+    required this.anchorTime,
+  });
+}
+
 class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   late final LiveTvGuideViewModel _vm;
   final _prefs = GetIt.instance<UserPreferences>();
@@ -120,6 +133,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   /// The grid's selection model; vertical navigation resolves against its
   /// anchor time instead of focus geometry. Seeded on the first cell focus.
   GuideSelection? _selection;
+
+  /// The single deferred vertical move, or null when nothing is pending.
+  _PendingVerticalMove? _pendingVerticalMove;
 
   /// Mounted program rows by row index, so the screen can focus a cell in a
   /// row whose focus nodes are private to that row's state.
@@ -210,6 +226,12 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   void _onChanged() {
     if (!mounted) return;
     setState(_initializeMiniPlayerMode);
+    if (_pendingVerticalMove == null) return;
+    // The target row can only be focused once the notification's rebuild has
+    // mounted it, so resolve the intent after this frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _applyPendingVerticalMove();
+    });
   }
 
   void _initializeMiniPlayerMode() {
@@ -277,13 +299,20 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   }
 
   void _focusChannelRow(int index) {
+    _cancelPendingVerticalMove();
     _scrollToRow(index);
     _channelFocusNodeFor(index).requestFocus();
   }
 
   void _focusMiniPlayer() {
     if (!widget.miniPlayerMode) return;
+    _cancelPendingVerticalMove();
     _miniPlayerFocusNode.requestFocus();
+  }
+
+  void _focusFilterRail() {
+    _cancelPendingVerticalMove();
+    _filterFocusNodeFor(0).requestFocus();
   }
 
   void _focusRowFromMiniPlayer() {
@@ -306,6 +335,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
 
   Future<void> _openDatePicker() async {
     if (_isShowingDatePicker) return;
+    _cancelPendingVerticalMove();
     _isShowingDatePicker = true;
     try {
       final picked = await showDatePicker(
@@ -329,6 +359,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   }
 
   void _openSortDialog() {
+    _cancelPendingVerticalMove();
     final l10n = AppLocalizations.of(context);
     showFocusRestoringDialog(
       context: context,
@@ -343,6 +374,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
           onChanged: (value) {
             if (value == null) return;
             _prefs.set(UserPreferences.liveTvChannelSortBy, value);
+            _cancelPendingVerticalMove();
             _vm.setSortBy(value);
             Navigator.of(dialogContext).pop();
           },
@@ -366,6 +398,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
 
   Future<void> _openRecordings() async {
     if (_isOpeningRecordings) return;
+    _cancelPendingVerticalMove();
     _isOpeningRecordings = true;
     try {
       await context.push(Destinations.liveTvRecordings);
@@ -450,21 +483,6 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     }
   }
 
-  // A faint skeleton bar shown in a program row whose channel hasn't been
-  // fetched yet. Channel logos still render; they load with the channel list.
-  Widget _buildProgramPlaceholderRow() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 24),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Color(0x0FFFFFFF),
-          borderRadius: BorderRadius.all(Radius.circular(6)),
-        ),
-        child: SizedBox.expand(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) =>
       RequestInitialFocus(child: _buildContent(context));
@@ -478,7 +496,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
         if (hours != _lastComputedHours && _vm.state == GuideState.ready) {
           _lastComputedHours = hours;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _vm.setWindowHours(hours);
+            if (!mounted) return;
+            _cancelPendingVerticalMove();
+            _vm.setWindowHours(hours);
           });
         }
         final landscape = widget.miniPlayerMode ||
@@ -607,7 +627,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
       child: EpgFilterRail(
         labels: [for (final f in filters) _filterLabel(f)],
         selectedIndex: filters.indexOf(_vm.filter),
-        onSelect: (i) => _vm.setFilter(filters[i]),
+        onSelect: (i) {
+          _cancelPendingVerticalMove();
+          _vm.setFilter(filters[i]);
+        },
         apple: _apple,
         focusNodeFor: _filterFocusNodeFor,
         onNavigateDown: () => _focusChannelRow(0),
@@ -902,17 +925,20 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
           ],
           _GuidePillButton(
             icon: Icons.chevron_left,
-            onPressed: () => _vm.shiftWindow(-_vm.guideWindowHours),
+            onPressed: () => _shiftGuideWindow(-_vm.guideWindowHours),
           ),
           const SizedBox(width: 4),
           _GuidePillButton(
             label: AppLocalizations.of(context).now,
-            onPressed: () => _vm.goToNow(),
+            onPressed: () {
+              _cancelPendingVerticalMove();
+              _vm.goToNow();
+            },
           ),
           const SizedBox(width: 4),
           _GuidePillButton(
             icon: Icons.chevron_right,
-            onPressed: () => _vm.shiftWindow(_vm.guideWindowHours),
+            onPressed: () => _shiftGuideWindow(_vm.guideWindowHours),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -992,8 +1018,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
         HorizontalScrollSection(
           title: AppLocalizations.of(context).guideTimeline,
           scrollController: _timeHeaderHorizontalScrollController,
-          onScrollPastStart: () => _vm.shiftWindow(-1),
-          onScrollPastEnd: () => _vm.shiftWindow(1),
+          onScrollPastStart: () => _shiftGuideWindow(-1),
+          onScrollPastEnd: () => _shiftGuideWindow(1),
           titleStyle: const TextStyle(
             color: Colors.white70,
             fontSize: 12,
@@ -1047,8 +1073,6 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
                   verticalController: _programScrollController,
                   horizontalController: _guideHorizontalScrollController,
                   buildProgramRow: _buildProgramRow,
-                  hasProgramsFor: _vm.hasProgramsFor,
-                  buildPlaceholderRow: _buildProgramPlaceholderRow,
                 ),
               ),
             ],
@@ -1155,8 +1179,14 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     return _cellsForChannel(channels[rowIndex].id);
   }
 
+  /// True while a row's cells are nothing but the placeholder the loading
+  /// state produces, so there is no real cell to land on yet.
+  static bool _cellsAreLoading(List<GuideCell> cells) =>
+      cells.length == 1 && cells.first.kind == GuideCellKind.loading;
+
   /// Moves one row while holding [GuideSelection.anchorTime], so the selection
-  /// keeps its place in time instead of following the nearest rectangle.
+  /// keeps its place in time instead of following the nearest rectangle. An
+  /// unresolvable row defers the move instead of landing arbitrarily.
   void _moveSelectionVertically(int fromRowIndex, int delta) {
     final selection = _selection;
     if (selection == null) return;
@@ -1164,7 +1194,50 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     if (target < 0 || target >= _vm.filteredChannels.length) return;
     final cells = _cellsForRow(target);
     if (cells.isEmpty) return;
-    _rowStates[target]?.focusCellAt(resolveCellIndexAt(cells, selection.anchorTime));
+
+    final rowState = _rowStates[target];
+    if (rowState == null || _cellsAreLoading(cells)) {
+      _pendingVerticalMove = _PendingVerticalMove(
+        targetRowIndex: target,
+        anchorTime: selection.anchorTime,
+      );
+      return;
+    }
+    rowState.focusCellAt(resolveCellIndexAt(cells, selection.anchorTime));
+  }
+
+  /// Completes the deferred move once its row is mounted and loaded; the
+  /// intent survives until then or until something clears it.
+  void _applyPendingVerticalMove() {
+    final pending = _pendingVerticalMove;
+    if (pending == null) return;
+    final cells = _cellsForRow(pending.targetRowIndex);
+    if (cells.isEmpty || _cellsAreLoading(cells)) return;
+    final rowState = _rowStates[pending.targetRowIndex];
+    if (rowState == null) return;
+
+    _pendingVerticalMove = null;
+    rowState.focusCellAt(resolveCellIndexAt(cells, pending.anchorTime));
+  }
+
+  /// Defers the apply to after the current frame; rows report themselves while
+  /// building, when focus must not be requested.
+  void _scheduleApplyPendingVerticalMove() {
+    if (_pendingVerticalMove == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _applyPendingVerticalMove();
+    });
+  }
+
+  /// Drops the deferred move: the destination it referred to is no longer what
+  /// the user is asking for.
+  void _cancelPendingVerticalMove() {
+    _pendingVerticalMove = null;
+  }
+
+  void _shiftGuideWindow(int hours) {
+    _cancelPendingVerticalMove();
+    _vm.shiftWindow(hours);
   }
 
   /// Anchor for the first focused cell: now while the window covers it, and
@@ -1195,6 +1268,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
       rowStates: _rowStates,
       selection: _selection,
       onVerticalMove: _moveSelectionVertically,
+      onNavigationKey: _cancelPendingVerticalMove,
+      onRowMounted: _scheduleApplyPendingVerticalMove,
       windowStart: _vm.windowStart,
       windowEnd: _vm.windowEnd,
       apple: _apple,
@@ -1210,9 +1285,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
         }
       },
       onTopEdge: rowIndex == 0
-          ? (widget.miniPlayerMode
-              ? _focusMiniPlayer
-              : () => _filterFocusNodeFor(0).requestFocus())
+          ? (widget.miniPlayerMode ? _focusMiniPlayer : _focusFilterRail)
           : null,
       onProgramFocused: (cell, _, _) {
         _focusedProgram.value = cell.program;
@@ -1284,6 +1357,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   }
 
   void _showProgramDetails(GuideProgram program) {
+    _cancelPendingVerticalMove();
     final pageContext = context;
     final channel = _vm.channelForId(program.channelId);
     final isFavoriteChannel = channel?.isFavorite ?? false;
@@ -1472,8 +1546,6 @@ class _GuideGridView extends StatefulWidget {
   final ScrollController verticalController;
   final ScrollController horizontalController;
   final Widget Function(String channelId, int rowIndex) buildProgramRow;
-  final bool Function(String channelId) hasProgramsFor;
-  final Widget Function() buildPlaceholderRow;
 
   const _GuideGridView({
     required this.channels,
@@ -1481,8 +1553,6 @@ class _GuideGridView extends StatefulWidget {
     required this.verticalController,
     required this.horizontalController,
     required this.buildProgramRow,
-    required this.hasProgramsFor,
-    required this.buildPlaceholderRow,
   });
 
   @override
@@ -1502,14 +1572,12 @@ class _GuideGridViewState extends State<_GuideGridView> {
           itemCount: widget.channels.length,
           itemExtent: _kRowHeight,
           itemBuilder: (context, index) {
-            final channel = widget.channels[index];
-            final loaded = widget.hasProgramsFor(channel.id);
+            // Always the real row; an unloaded channel's `loading` cell carries
+            // the loading treatment and stays focusable.
             return SizedBox(
               width: widget.guideWidth,
               height: _kRowHeight,
-              child: loaded
-                  ? widget.buildProgramRow(channel.id, index)
-                  : widget.buildPlaceholderRow(),
+              child: widget.buildProgramRow(widget.channels[index].id, index),
             );
           },
         ),
@@ -1656,6 +1724,14 @@ class _GuideProgramRow extends StatefulWidget {
   /// Null until the first cell takes focus.
   final GuideSelection? selection;
   final void Function(int fromRowIndex, int delta) onVerticalMove;
+
+  /// Fired before any arrow key is acted on, so a deferred move the user has
+  /// moved past can be dropped.
+  final VoidCallback onNavigationKey;
+
+  /// Fired when this row registers itself, so a move deferred on an unmounted
+  /// row can complete.
+  final VoidCallback onRowMounted;
   final DateTime windowStart;
   final DateTime windowEnd;
   final bool apple;
@@ -1674,6 +1750,8 @@ class _GuideProgramRow extends StatefulWidget {
     required this.rowStates,
     required this.selection,
     required this.onVerticalMove,
+    required this.onNavigationKey,
+    required this.onRowMounted,
     required this.windowStart,
     required this.windowEnd,
     required this.apple,
@@ -1697,6 +1775,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
     super.initState();
     _syncFocusNodes();
     widget.rowStates[widget.rowIndex] = this;
+    widget.onRowMounted();
   }
 
   @override
@@ -1782,6 +1861,9 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
     if (!event.isActionable) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
+    if (key.isLeftKey || key.isRightKey || key.isUpKey || key.isDownKey) {
+      widget.onNavigationKey();
+    }
     if (key.isLeftKey) {
       if (index > 0) {
         _focusNodes[index - 1].requestFocus();
