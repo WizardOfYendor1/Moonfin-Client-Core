@@ -27,6 +27,7 @@ import 'epg/widgets/epg_hero_preview.dart';
 import 'epg/widgets/epg_now_next_card.dart';
 import 'epg/widgets/epg_program_cell.dart';
 import 'guide/guide_cell.dart';
+import 'guide/guide_selection.dart';
 
 const _kChannelColumnWidth = 160.0;
 const _kRowHeight = 84.0;
@@ -115,6 +116,14 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
   final ValueNotifier<GuideChannel?> _focusedChannel = ValueNotifier(null);
   bool _didInitializeMiniPlayerMode = false;
   late EpgMobileView _mobileView;
+
+  /// The grid's selection model; vertical navigation resolves against its
+  /// anchor time instead of focus geometry. Seeded on the first cell focus.
+  GuideSelection? _selection;
+
+  /// Mounted program rows by row index, so the screen can focus a cell in a
+  /// row whose focus nodes are private to that row's state.
+  final Map<int, _GuideProgramRowState> _rowStates = {};
 
   bool get _apple => AppUiIdiomResolver.isApple;
 
@@ -1038,7 +1047,6 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
                   verticalController: _programScrollController,
                   horizontalController: _guideHorizontalScrollController,
                   buildProgramRow: _buildProgramRow,
-                  programsForChannel: _vm.programsForChannel,
                   hasProgramsFor: _vm.hasProgramsFor,
                   buildPlaceholderRow: _buildProgramPlaceholderRow,
                 ),
@@ -1131,22 +1139,62 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
     );
   }
 
-  Widget _buildProgramRow(
-    String channelId,
-    List<GuideProgram> programs,
-    int rowIndex,
-  ) {
-    final cells = buildRowCells(
-      visible: programs,
-      unfiltered: _vm.unfilteredProgramsForChannel(channelId),
-      windowStart: _vm.windowStart,
-      windowEnd: _vm.windowEnd,
-      loadState: _vm.loadStateFor(channelId),
-    );
+  /// The cell timeline for one channel; the single place `buildRowCells` is
+  /// called, so a row the screen navigates to is built the same way it renders.
+  List<GuideCell> _cellsForChannel(String channelId) => buildRowCells(
+    visible: _vm.programsForChannel(channelId),
+    unfiltered: _vm.unfilteredProgramsForChannel(channelId),
+    windowStart: _vm.windowStart,
+    windowEnd: _vm.windowEnd,
+    loadState: _vm.loadStateFor(channelId),
+  );
 
+  List<GuideCell> _cellsForRow(int rowIndex) {
+    final channels = _vm.filteredChannels;
+    if (rowIndex < 0 || rowIndex >= channels.length) return const [];
+    return _cellsForChannel(channels[rowIndex].id);
+  }
+
+  /// Moves one row while holding [GuideSelection.anchorTime], so the selection
+  /// keeps its place in time instead of following the nearest rectangle.
+  void _moveSelectionVertically(int fromRowIndex, int delta) {
+    final selection = _selection;
+    if (selection == null) return;
+    final target = fromRowIndex + delta;
+    if (target < 0 || target >= _vm.filteredChannels.length) return;
+    final cells = _cellsForRow(target);
+    if (cells.isEmpty) return;
+    _rowStates[target]?.focusCellAt(resolveCellIndexAt(cells, selection.anchorTime));
+  }
+
+  /// Anchor for the first focused cell: now while the window covers it, and
+  /// the window start otherwise.
+  DateTime _seedAnchorInto(GuideCell cell) {
+    final now = DateTime.now();
+    final base = !now.isBefore(_vm.windowStart) && now.isBefore(_vm.windowEnd)
+        ? now
+        : _vm.windowStart;
+    return clampAnchorInto(cell, base);
+  }
+
+  /// A horizontal move is the only navigation that rewrites the anchor.
+  void _onHorizontalMove(GuideCell cell, double left, double width) {
+    final selection = _selection;
+    if (selection != null) {
+      _selection = selection.copyWith(
+        anchorTime: clampAnchorInto(cell, cell.start),
+      );
+    }
+    _ensureProgramVisible(left, width);
+  }
+
+  Widget _buildProgramRow(String channelId, int rowIndex) {
     return _GuideProgramRow(
-      cells: cells,
+      cells: _cellsForChannel(channelId),
       rowIndex: rowIndex,
+      rowStates: _rowStates,
+      selection: _selection,
+      onVerticalMove: _moveSelectionVertically,
       windowStart: _vm.windowStart,
       windowEnd: _vm.windowEnd,
       apple: _apple,
@@ -1170,8 +1218,20 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen> {
         _focusedProgram.value = cell.program;
         _focusedChannel.value = _vm.channelForId(channelId);
         _scrollToRow(rowIndex);
+        final current = _selection;
+        _selection = current == null
+            ? GuideSelection(
+                channelId: channelId,
+                anchorTime: _seedAnchorInto(cell),
+                programId: cell.program?.id,
+              )
+            : current.copyWith(
+                channelId: channelId,
+                programId: cell.program?.id,
+                clearProgramId: cell.program == null,
+              );
       },
-      onHorizontalMove: _ensureProgramVisible,
+      onHorizontalMove: _onHorizontalMove,
       formatTime: _formatTime,
     );
   }
@@ -1411,9 +1471,7 @@ class _GuideGridView extends StatefulWidget {
   final double guideWidth;
   final ScrollController verticalController;
   final ScrollController horizontalController;
-  final Widget Function(String channelId, List<GuideProgram>, int rowIndex)
-  buildProgramRow;
-  final List<GuideProgram> Function(String channelId) programsForChannel;
+  final Widget Function(String channelId, int rowIndex) buildProgramRow;
   final bool Function(String channelId) hasProgramsFor;
   final Widget Function() buildPlaceholderRow;
 
@@ -1423,7 +1481,6 @@ class _GuideGridView extends StatefulWidget {
     required this.verticalController,
     required this.horizontalController,
     required this.buildProgramRow,
-    required this.programsForChannel,
     required this.hasProgramsFor,
     required this.buildPlaceholderRow,
   });
@@ -1451,11 +1508,7 @@ class _GuideGridViewState extends State<_GuideGridView> {
               width: widget.guideWidth,
               height: _kRowHeight,
               child: loaded
-                  ? widget.buildProgramRow(
-                      channel.id,
-                      widget.programsForChannel(channel.id),
-                      index,
-                    )
+                  ? widget.buildProgramRow(channel.id, index)
                   : widget.buildPlaceholderRow(),
             );
           },
@@ -1596,6 +1649,13 @@ class _GuideFocusableSurfaceState extends State<_GuideFocusableSurface> {
 class _GuideProgramRow extends StatefulWidget {
   final List<GuideCell> cells;
   final int rowIndex;
+
+  /// The screen's registry of mounted rows; this row adds and removes itself.
+  final Map<int, _GuideProgramRowState> rowStates;
+
+  /// Null until the first cell takes focus.
+  final GuideSelection? selection;
+  final void Function(int fromRowIndex, int delta) onVerticalMove;
   final DateTime windowStart;
   final DateTime windowEnd;
   final bool apple;
@@ -1604,12 +1664,16 @@ class _GuideProgramRow extends StatefulWidget {
   final ValueChanged<GuideCell> onProgramSelected;
   final void Function(GuideCell cell, double left, double width)
   onProgramFocused;
-  final void Function(double left, double width)? onHorizontalMove;
+  final void Function(GuideCell cell, double left, double width)?
+  onHorizontalMove;
   final String Function(DateTime) formatTime;
 
   const _GuideProgramRow({
     required this.cells,
     required this.rowIndex,
+    required this.rowStates,
+    required this.selection,
+    required this.onVerticalMove,
     required this.windowStart,
     required this.windowEnd,
     required this.apple,
@@ -1632,14 +1696,62 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
   void initState() {
     super.initState();
     _syncFocusNodes();
+    widget.rowStates[widget.rowIndex] = this;
   }
 
   @override
   void didUpdateWidget(covariant _GuideProgramRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.rowIndex != widget.rowIndex) {
+      if (widget.rowStates[oldWidget.rowIndex] == this) {
+        widget.rowStates.remove(oldWidget.rowIndex);
+      }
+      widget.rowStates[widget.rowIndex] = this;
+    }
     if (oldWidget.cells.length != widget.cells.length) {
       _syncFocusNodes();
     }
+    if (_cellsDiffer(oldWidget.cells, widget.cells)) {
+      _reresolveFocus();
+    }
+  }
+
+  /// Re-binds focus to the selected programme after a data change, so a
+  /// same-length refresh cannot leave focus on a different show.
+  void _reresolveFocus() {
+    final focused = _focusNodes.indexWhere((node) => node.hasFocus);
+    if (focused < 0) return;
+    final selection = widget.selection;
+    if (selection == null || widget.cells.isEmpty) return;
+
+    final programId = selection.programId;
+    var target = programId == null
+        ? -1
+        : widget.cells.indexWhere((cell) => cell.program?.id == programId);
+    if (target < 0) {
+      target = resolveCellIndexAt(widget.cells, selection.anchorTime);
+    }
+    if (target == focused) return;
+    _focusNodes[target].requestFocus();
+  }
+
+  static bool _cellsDiffer(List<GuideCell> a, List<GuideCell> b) {
+    if (a.length != b.length) return true;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].start != b[i].start ||
+          a[i].end != b[i].end ||
+          a[i].program?.id != b[i].program?.id) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Focuses one of this row's cells on the screen's behalf; the nodes are
+  /// private to this state.
+  void focusCellAt(int index) {
+    if (index < 0 || index >= _focusNodes.length) return;
+    _focusNodes[index].requestFocus();
   }
 
   void _syncFocusNodes() {
@@ -1653,6 +1765,9 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
 
   @override
   void dispose() {
+    if (widget.rowStates[widget.rowIndex] == this) {
+      widget.rowStates.remove(widget.rowIndex);
+    }
     for (final node in _focusNodes) {
       node.dispose();
     }
@@ -1687,8 +1802,19 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
       }
       return KeyEventResult.ignored;
     }
-    if (key.isUpKey && widget.onTopEdge != null) {
-      widget.onTopEdge!();
+    if (key.isUpKey) {
+      // The row-0 exit takes precedence over the vertical move.
+      if (widget.onTopEdge != null) {
+        widget.onTopEdge!();
+        return KeyEventResult.handled;
+      }
+      widget.onVerticalMove(widget.rowIndex, -1);
+      return KeyEventResult.handled;
+    }
+    if (key.isDownKey) {
+      // Consumed even when refused, so directional traversal cannot pick a
+      // cell by geometry and drift the selection in time.
+      widget.onVerticalMove(widget.rowIndex, 1);
       return KeyEventResult.handled;
     }
 
@@ -1697,7 +1823,11 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
 
   void _notifyHorizontalMove(int index) {
     final geometry = _cellGeometry(index);
-    widget.onHorizontalMove?.call(geometry.left, geometry.width);
+    widget.onHorizontalMove?.call(
+      widget.cells[index],
+      geometry.left,
+      geometry.width,
+    );
   }
 
   /// The single source of a cell's timeline geometry. `buildRowCells` already
