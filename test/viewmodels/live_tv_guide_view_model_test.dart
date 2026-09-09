@@ -57,54 +57,53 @@ void main() {
   });
 
   test(
-    'load() fetches only the first batch; loadMorePrograms() paginates the rest',
-    () async {
-      // 120 channels → batches of 50 (never one giant all-channels request).
-      final channels = List.generate(120, (i) => _channel('c$i'));
-      when(
-        () => liveTv.getChannels(
-          sortBy: any(named: 'sortBy'),
-          sortOrder: any(named: 'sortOrder'),
-          fields: any(named: 'fields'),
-          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-          userId: any(named: 'userId'),
-        ),
-      ).thenAnswer((_) async => {'Items': channels});
+      'load() fetches only the first batch; loadMorePrograms() paginates the rest',
+      () async {
+    // 120 channels → batches of 50 (never one giant all-channels request).
+    final channels = List.generate(120, (i) => _channel('c$i'));
+    when(
+      () => liveTv.getChannels(
+        sortBy: any(named: 'sortBy'),
+        sortOrder: any(named: 'sortOrder'),
+        fields: any(named: 'fields'),
+        enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+        userId: any(named: 'userId'),
+      ),
+    ).thenAnswer((_) async => {'Items': channels});
 
-      final vm = LiveTvGuideViewModel(client);
-      await vm.load();
+    final vm = LiveTvGuideViewModel(client);
+    await vm.load();
 
-      // Initial load requested exactly one batch of 50 channels, not all 120.
-      final captured = verify(
-        () => liveTv.getGuide(
-          startDate: any(named: 'startDate'),
-          endDate: any(named: 'endDate'),
-          channelIds: captureAny(named: 'channelIds'),
-          fields: any(named: 'fields'),
-          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-          enableImages: any(named: 'enableImages'),
-          enableUserData: any(named: 'enableUserData'),
-          userId: any(named: 'userId'),
-        ),
-      ).captured;
-      expect(captured.length, 1);
-      expect((captured.single as List).length, 50);
-      expect(vm.programsHighWater, 50);
-      expect(vm.hasMorePrograms, isTrue);
+    // Initial load requested exactly one batch of 50 channels, not all 120.
+    final captured = verify(
+      () => liveTv.getGuide(
+        startDate: any(named: 'startDate'),
+        endDate: any(named: 'endDate'),
+        channelIds: captureAny(named: 'channelIds'),
+        fields: any(named: 'fields'),
+        enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+        enableImages: any(named: 'enableImages'),
+        enableUserData: any(named: 'enableUserData'),
+        userId: any(named: 'userId'),
+      ),
+    ).captured;
+    expect(captured.length, 1);
+    expect((captured.single as List).length, 50);
+    expect(vm.programsHighWater, 50);
+    expect(vm.hasMorePrograms, isTrue);
 
-      await vm.loadMorePrograms();
-      expect(vm.programsHighWater, 100);
-      expect(vm.hasMorePrograms, isTrue);
+    await vm.loadMorePrograms();
+    expect(vm.programsHighWater, 100);
+    expect(vm.hasMorePrograms, isTrue);
 
-      await vm.loadMorePrograms();
-      expect(vm.programsHighWater, 120);
-      expect(vm.hasMorePrograms, isFalse);
+    await vm.loadMorePrograms();
+    expect(vm.programsHighWater, 120);
+    expect(vm.hasMorePrograms, isFalse);
 
-      // Further calls are no-ops once every channel has been requested.
-      await vm.loadMorePrograms();
-      expect(vm.programsHighWater, 120);
-    },
-  );
+    // Further calls are no-ops once every channel has been requested.
+    await vm.loadMorePrograms();
+    expect(vm.programsHighWater, 120);
+  });
 
   test('a stale response for a superseded window is discarded', () async {
     final pending = <Completer<Map<String, dynamic>>>[];
@@ -165,9 +164,11 @@ void main() {
         enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
         userId: any(named: 'userId'),
       ),
-    ).thenAnswer((_) async => {
-          'Items': [_channel('c0'), _channel('c1')],
-        });
+    ).thenAnswer(
+      (_) async => {
+        'Items': [_channel('c0'), _channel('c1')],
+      },
+    );
 
     final start = DateTime(2026, 9, 9, 20);
     void stubGuide(String prefix) {
@@ -185,9 +186,7 @@ void main() {
       ).thenAnswer((invocation) async {
         final ids = invocation.namedArguments[#channelIds] as List<String>;
         return {
-          'Items': [
-            for (final id in ids) _program('$prefix-$id', id, start),
-          ],
+          'Items': [for (final id in ids) _program('$prefix-$id', id, start)],
         };
       });
     }
@@ -242,6 +241,65 @@ void main() {
     expect(vm.programsHighWater, 0);
   });
 
+  test(
+    'moving the window replaces loaded rows without a loading state',
+    () async {
+      when(
+        () => liveTv.getChannels(
+          sortBy: any(named: 'sortBy'),
+          sortOrder: any(named: 'sortOrder'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer(
+        (_) async => {
+          'Items': [_channel('c0')],
+        },
+      );
+
+      final firstStart = DateTime(2026, 9, 9, 20);
+      final secondStart = firstStart.add(const Duration(minutes: 30));
+      final replacement = Completer<Map<String, dynamic>>();
+      var call = 0;
+      when(
+        () => liveTv.getGuide(
+          startDate: any(named: 'startDate'),
+          endDate: any(named: 'endDate'),
+          channelIds: any(named: 'channelIds'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          enableImages: any(named: 'enableImages'),
+          enableUserData: any(named: 'enableUserData'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) {
+        call++;
+        if (call == 1) {
+          return Future.value({
+            'Items': [_program('old', 'c0', firstStart)],
+          });
+        }
+        return replacement.future;
+      });
+
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load(windowStart: firstStart);
+      final moving = vm.setWindowStart(secondStart);
+      await pumpEventQueue();
+
+      expect(vm.state, GuideState.ready);
+      expect(vm.windowStart, secondStart);
+      expect(vm.programsForChannel('c0').single.id, 'old');
+
+      replacement.complete({
+        'Items': [_program('new', 'c0', secondStart)],
+      });
+      await moving;
+      expect(vm.programsForChannel('c0').single.id, 'new');
+    },
+  );
+
   group('program-end boundary refresh', () {
     final base = DateTime.now();
     late DateTime clock;
@@ -269,9 +327,11 @@ void main() {
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           userId: any(named: 'userId'),
         ),
-      ).thenAnswer((_) async => {
-            'Items': [_channel('c0')],
-          });
+      ).thenAnswer(
+        (_) async => {
+          'Items': [_channel('c0')],
+        },
+      );
 
       when(
         () => liveTv.getGuide(
@@ -326,10 +386,7 @@ void main() {
 
       // The server returns the same retained programs; one request, no storm.
       expect(guideCalls, 2);
-      expect(vm.programsForChannel('c0').map((p) => p.id), [
-        'ended',
-        'airing',
-      ]);
+      expect(vm.programsForChannel('c0').map((p) => p.id), ['ended', 'airing']);
       // Both past boundaries are processed, so neither can be selected again.
       expect(vm.nextBoundaryAt, isNull);
       vm.cancelBoundaryRefresh();
@@ -377,10 +434,7 @@ void main() {
       vm.scheduleBoundaryRefresh();
 
       clock = at(31);
-      items = [
-        ...items,
-        _span('next', 'c0', at(30), at(200)),
-      ];
+      items = [...items, _span('next', 'c0', at(30), at(200))];
       await vm.handleBoundaryElapsed();
 
       // A narrower range would shrink a displayed guide's cached coverage.
@@ -400,14 +454,8 @@ void main() {
       guideThrows = true;
       await vm.handleBoundaryElapsed();
 
-      expect(vm.programsForChannel('c0').map((p) => p.id), [
-        'ended',
-        'airing',
-      ]);
-      expect(
-        vm.boundaryDueAt,
-        at(31).add(LiveTvGuideViewModel.failureBackoff),
-      );
+      expect(vm.programsForChannel('c0').map((p) => p.id), ['ended', 'airing']);
+      expect(vm.boundaryDueAt, at(31).add(LiveTvGuideViewModel.failureBackoff));
       vm.cancelBoundaryRefresh();
     });
 
@@ -435,6 +483,22 @@ void main() {
       expect(vm.boundaryDueAt, isNull);
       expect(guideCalls, 1);
     });
+
+    test('an all-expired schedule refreshes immediately once', () async {
+      items = [_span('expired', 'c0', at(-90), at(-30))];
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+
+      vm.scheduleBoundaryRefresh();
+      await pumpEventQueue();
+
+      expect(guideCalls, 2);
+      expect(
+        vm.boundaryDueAt,
+        clock.add(LiveTvGuideViewModel.noNewCoverageRetry),
+      );
+      vm.cancelBoundaryRefresh();
+    });
   });
 
   group('re-entry and exit', () {
@@ -447,48 +511,52 @@ void main() {
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           userId: any(named: 'userId'),
         ),
-      ).thenAnswer((_) async => {
-            'Items': [_channel('c0')],
-          });
+      ).thenAnswer(
+        (_) async => {
+          'Items': [_channel('c0')],
+        },
+      );
     });
 
-    test('re-entry with a window over 30 minutes stale forces a reload',
-        () async {
-      var clock = DateTime(2026, 9, 9, 20);
-      final vm = LiveTvGuideViewModel(client, now: () => clock);
-      await vm.load();
-      final guideCallsBefore = verify(
-        () => liveTv.getGuide(
-          startDate: any(named: 'startDate'),
-          endDate: any(named: 'endDate'),
-          channelIds: any(named: 'channelIds'),
-          fields: any(named: 'fields'),
-          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-          enableImages: any(named: 'enableImages'),
-          enableUserData: any(named: 'enableUserData'),
-          userId: any(named: 'userId'),
-        ),
-      ).callCount;
+    test(
+      're-entry with a window over 30 minutes stale forces a reload',
+      () async {
+        var clock = DateTime(2026, 9, 9, 20);
+        final vm = LiveTvGuideViewModel(client, now: () => clock);
+        await vm.load();
+        final guideCallsBefore = verify(
+          () => liveTv.getGuide(
+            startDate: any(named: 'startDate'),
+            endDate: any(named: 'endDate'),
+            channelIds: any(named: 'channelIds'),
+            fields: any(named: 'fields'),
+            enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+            enableImages: any(named: 'enableImages'),
+            enableUserData: any(named: 'enableUserData'),
+            userId: any(named: 'userId'),
+          ),
+        ).callCount;
 
-      clock = clock.add(const Duration(minutes: 31));
-      await vm.reloadIfStale();
+        clock = clock.add(const Duration(minutes: 31));
+        await vm.reloadIfStale();
 
-      final guideCallsAfter = verify(
-        () => liveTv.getGuide(
-          startDate: any(named: 'startDate'),
-          endDate: any(named: 'endDate'),
-          channelIds: any(named: 'channelIds'),
-          fields: any(named: 'fields'),
-          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-          enableImages: any(named: 'enableImages'),
-          enableUserData: any(named: 'enableUserData'),
-          userId: any(named: 'userId'),
-        ),
-      ).callCount;
-      expect(guideCallsAfter, greaterThan(guideCallsBefore));
-      // A forced reload recomputes the window from the current clock.
-      expect(vm.windowStart, DateTime(2026, 9, 9, 20));
-    });
+        final guideCallsAfter = verify(
+          () => liveTv.getGuide(
+            startDate: any(named: 'startDate'),
+            endDate: any(named: 'endDate'),
+            channelIds: any(named: 'channelIds'),
+            fields: any(named: 'fields'),
+            enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+            enableImages: any(named: 'enableImages'),
+            enableUserData: any(named: 'enableUserData'),
+            userId: any(named: 'userId'),
+          ),
+        ).callCount;
+        expect(guideCallsAfter, greaterThan(guideCallsBefore));
+        // A forced reload recomputes the window from the current clock.
+        expect(vm.windowStart, DateTime(2026, 9, 9, 20));
+      },
+    );
 
     test('re-entry within 30 minutes does not reload', () async {
       var clock = DateTime(2026, 9, 9, 20);
@@ -540,6 +608,33 @@ void main() {
       expect(vm.windowEnd, DateTime(2026, 9, 9, 25));
       expect(vm.guideDate, clock);
     });
+
+    test('a reset window is reloaded on the next entry', () async {
+      var clock = DateTime(2026, 9, 9, 20);
+      final vm = LiveTvGuideViewModel(client, now: () => clock);
+      await vm.load();
+      await vm.shiftWindow(3);
+
+      final liveStart = DateTime(2026, 9, 9, 21, 45);
+      clock = DateTime(2026, 9, 9, 22);
+      vm.resetWindowOnExit(windowStart: liveStart);
+      clearInteractions(liveTv);
+
+      await vm.reloadIfStale(windowStart: liveStart);
+
+      verify(
+        () => liveTv.getGuide(
+          startDate: liveStart,
+          endDate: any(named: 'endDate'),
+          channelIds: any(named: 'channelIds'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          enableImages: any(named: 'enableImages'),
+          enableUserData: any(named: 'enableUserData'),
+          userId: any(named: 'userId'),
+        ),
+      ).called(1);
+    });
   });
 
   group('recording defaults carry the programme id', () {
@@ -552,28 +647,32 @@ void main() {
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           userId: any(named: 'userId'),
         ),
-      ).thenAnswer((_) async => {
-            'Items': [_channel('c0')],
-          });
+      ).thenAnswer(
+        (_) async => {
+          'Items': [_channel('c0')],
+        },
+      );
       when(() => liveTv.createTimer(any())).thenAnswer((_) async {});
     });
 
-    test('toggleProgramRecording creates a timer for the program\'s own id',
-        () async {
-      final vm = LiveTvGuideViewModel(client);
-      await vm.load();
+    test(
+      'toggleProgramRecording creates a timer for the program\'s own id',
+      () async {
+        final vm = LiveTvGuideViewModel(client);
+        await vm.load();
 
-      final program = GuideProgram(
-        id: 'program-42',
-        channelId: 'c0',
-        name: 'Test',
-        startDate: DateTime(2026, 9, 9, 20),
-        endDate: DateTime(2026, 9, 9, 21),
-        rawData: const {},
-      );
-      await vm.toggleProgramRecording(program);
+        final program = GuideProgram(
+          id: 'program-42',
+          channelId: 'c0',
+          name: 'Test',
+          startDate: DateTime(2026, 9, 9, 20),
+          endDate: DateTime(2026, 9, 9, 21),
+          rawData: const {},
+        );
+        await vm.toggleProgramRecording(program);
 
-      verify(() => liveTv.createTimer('program-42')).called(1);
-    });
+        verify(() => liveTv.createTimer('program-42')).called(1);
+      },
+    );
   });
 }

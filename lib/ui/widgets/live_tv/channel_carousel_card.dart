@@ -21,8 +21,10 @@ class ChannelCarouselCard extends StatelessWidget {
   final bool hasTimer;
   final bool centered;
 
-  static const double _width = 168;
-  static const double _height = 108;
+  static const double cardWidth = 168;
+  static const double cardHeight = 108;
+  static const double cardSpacing = 12;
+  static const double cardPitch = cardWidth + cardSpacing;
   static const double _radius = 10;
 
   const ChannelCarouselCard({
@@ -49,8 +51,8 @@ class ChannelCarouselCard extends StatelessWidget {
     final muted = AppColorScheme.onSurface.withValues(alpha: 0.6);
 
     return SizedBox(
-      width: _width,
-      height: _height,
+      width: cardWidth,
+      height: cardHeight,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(

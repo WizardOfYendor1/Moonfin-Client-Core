@@ -17,6 +17,7 @@ class EpgProgramCell extends StatelessWidget {
   final String? timeLabel;
   final EpgGenre genre;
   final bool isLive;
+  final bool isPast;
   final double progress; // 0..1
   final bool hasTimer;
   final bool focused;
@@ -25,6 +26,7 @@ class EpgProgramCell extends StatelessWidget {
   final String? placeholderLabel;
   final bool loading;
   final bool failed;
+  final double textLeftPadding;
 
   const EpgProgramCell({
     super.key,
@@ -32,6 +34,7 @@ class EpgProgramCell extends StatelessWidget {
     required this.timeLabel,
     required this.genre,
     required this.isLive,
+    this.isPast = false,
     required this.progress,
     required this.hasTimer,
     required this.focused,
@@ -40,6 +43,7 @@ class EpgProgramCell extends StatelessWidget {
     this.placeholderLabel,
     this.loading = false,
     this.failed = false,
+    this.textLeftPadding = 0,
   });
 
   @override
@@ -62,8 +66,9 @@ class EpgProgramCell extends StatelessWidget {
           : AppColorScheme.surface.withValues(alpha: 0.5);
     }
 
-    final focusBorder =
-        focused ? Border.all(color: accent, width: apple ? 1.5 : 2) : null;
+    final focusBorder = focused
+        ? Border.all(color: accent, width: apple ? 1.5 : 2)
+        : null;
 
     // Loading and failed placeholders span the whole row while programs are
     // unresolved for this channel; both override the normal program layout.
@@ -89,13 +94,15 @@ class EpgProgramCell extends StatelessWidget {
         decoration: BoxDecoration(
           color: errorColor.withValues(alpha: 0.12),
           borderRadius: AppRadius.circular(radius),
-          border: focusBorder ?? Border.all(color: errorColor.withValues(alpha: 0.4)),
+          border:
+              focusBorder ??
+              Border.all(color: errorColor.withValues(alpha: 0.4)),
         ),
         child: Center(child: Icon(Icons.refresh, size: 16, color: errorColor)),
       );
     }
 
-    return Container(
+    final programCell = Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: bg,
@@ -112,7 +119,12 @@ class EpgProgramCell extends StatelessWidget {
               child: Container(width: 4, color: genre.color),
             ),
           Padding(
-            padding: EdgeInsets.fromLTRB(apple ? 10 : 12, 6, 8, 6),
+            padding: EdgeInsets.fromLTRB(
+              (apple ? 10 : 12) + textLeftPadding,
+              6,
+              8,
+              6,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -143,8 +155,8 @@ class EpgProgramCell extends StatelessWidget {
                           fontWeight: placeholderLabel != null
                               ? FontWeight.w400
                               : (focused || isLive
-                                  ? FontWeight.w600
-                                  : FontWeight.w400),
+                                    ? FontWeight.w600
+                                    : FontWeight.w400),
                           color: placeholderLabel != null
                               ? muted
                               : AppColorScheme.onSurface,
@@ -153,15 +165,20 @@ class EpgProgramCell extends StatelessWidget {
                     ),
                     if (hasTimer) ...[
                       const SizedBox(width: 6),
-                      const Icon(Icons.fiber_manual_record,
-                          size: 9, color: Color(0xFFE0685C)),
+                      const Icon(
+                        Icons.fiber_manual_record,
+                        size: 9,
+                        color: Color(0xFFE0685C),
+                      ),
                     ],
                   ],
                 ),
                 if (showMeta && timeLabel != null) ...[
                   const SizedBox(height: 3),
-                  Text(timeLabel!,
-                      style: textTheme.labelSmall?.copyWith(color: muted)),
+                  Text(
+                    timeLabel!,
+                    style: textTheme.labelSmall?.copyWith(color: muted),
+                  ),
                 ],
               ],
             ),
@@ -176,22 +193,30 @@ class EpgProgramCell extends StatelessWidget {
                 minHeight: 3,
                 backgroundColor: Colors.white.withValues(alpha: 0.12),
                 valueColor: AlwaysStoppedAnimation<Color>(
-                    apple ? accent : genre.color),
+                  apple ? accent : genre.color,
+                ),
               ),
             ),
         ],
       ),
     );
+
+    return isPast ? Opacity(opacity: 0.55, child: programCell) : programCell;
   }
 
   Widget _liveBadge(Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: AppRadius.circular(4),
-        ),
-        child: const Text('LIVE',
-            style: TextStyle(
-                fontSize: 8.5, fontWeight: FontWeight.w700, color: Colors.white)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: AppRadius.circular(4),
+    ),
+    child: const Text(
+      'LIVE',
+      style: TextStyle(
+        fontSize: 8.5,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      ),
+    ),
+  );
 }

@@ -18,6 +18,7 @@ class EpgHeroPreview extends StatelessWidget {
   final String? channelNumber;
   final bool isLive;
   final bool apple;
+  final bool compact;
 
   const EpgHeroPreview({
     super.key,
@@ -30,6 +31,7 @@ class EpgHeroPreview extends StatelessWidget {
     required this.channelNumber,
     required this.isLive,
     required this.apple,
+    this.compact = false,
   });
 
   @override
@@ -43,7 +45,7 @@ class EpgHeroPreview extends StatelessWidget {
     ].whereType<String>().join('  ·  ');
 
     final inner = Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, compact ? 8 : 16, 20, compact ? 8 : 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -59,19 +61,24 @@ class EpgHeroPreview extends StatelessWidget {
                   style: textTheme.titleLarge,
                 ),
                 if (meta.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodyMedium?.copyWith(color: muted)),
+                  SizedBox(height: compact ? 4 : 6),
+                  Text(
+                    meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodyMedium?.copyWith(color: muted),
+                  ),
                 ],
                 if (synopsis != null && synopsis!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(synopsis!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall?.copyWith(
-                          color: AppColorScheme.onSurface.withValues(alpha: 0.6))),
+                  SizedBox(height: compact ? 4 : 8),
+                  Text(
+                    synopsis!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: AppColorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -84,6 +91,8 @@ class EpgHeroPreview extends StatelessWidget {
       ),
     );
 
+    final content = compact ? SizedBox(height: 110, child: inner) : inner;
+
     return apple
         ? adaptiveGlass(
             context: context,
@@ -91,49 +100,55 @@ class EpgHeroPreview extends StatelessWidget {
             blur: 18,
             fallbackColor: AppColorScheme.surface.withValues(alpha: 0.4),
             tint: Colors.white.withValues(alpha: 0.06),
-            child: inner,
+            child: content,
           )
         : DecoratedBox(
             decoration: BoxDecoration(
               color: AppColorScheme.surface.withValues(alpha: 0.45),
               borderRadius: AppRadius.circular(16),
             ),
-            child: inner,
+            child: content,
           );
   }
 
   Widget _channelBlock(TextTheme textTheme, Color muted) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      SizedBox(
+        width: 46,
+        height: 46,
+        child: ClipRRect(
+          borderRadius: AppRadius.circular(apple ? 12 : 8),
+          child: (channelLogoUrl != null && channelLogoUrl!.isNotEmpty)
+              ? CachedNetworkImage(
+                  imageUrl: channelLogoUrl!,
+                  fit: BoxFit.contain,
+                  errorWidget: (context, url, error) => Icon(
+                    Icons.tv,
+                    color: AppColorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                )
+              : Icon(
+                  Icons.tv,
+                  color: AppColorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 46,
-            height: 46,
-            child: ClipRRect(
-              borderRadius: AppRadius.circular(apple ? 12 : 8),
-              child: (channelLogoUrl != null && channelLogoUrl!.isNotEmpty)
-                  ? CachedNetworkImage(
-                      imageUrl: channelLogoUrl!,
-                      fit: BoxFit.contain,
-                      errorWidget: (context, url, error) => Icon(Icons.tv,
-                          color: AppColorScheme.onSurface.withValues(alpha: 0.4)),
-                    )
-                  : Icon(Icons.tv,
-                      color: AppColorScheme.onSurface.withValues(alpha: 0.4)),
+          Text(channelName!, style: textTheme.titleSmall),
+          if (channelNumber != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              channelNumber!,
+              style: textTheme.labelMedium?.copyWith(color: muted),
             ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(channelName!, style: textTheme.titleSmall),
-              if (channelNumber != null) ...[
-                const SizedBox(height: 2),
-                Text(channelNumber!,
-                    style: textTheme.labelMedium?.copyWith(color: muted)),
-              ],
-            ],
-          ),
+          ],
         ],
-      );
+      ),
+    ],
+  );
 }

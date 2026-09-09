@@ -19,14 +19,15 @@ const Duration kCarouselPageRepeatInterval = Duration(milliseconds: 650);
 /// whose repeats stop arriving (a missed key-up) cannot page forever.
 const Duration kCarouselPageRepeatSafety = Duration(milliseconds: 900);
 
-const double _cardWidth = 168;
-const double _cardHeight = 108;
-const double _cardSpacing = 12;
-const double _cardExtent = _cardWidth + _cardSpacing;
+const double _cardWidth = ChannelCarouselCard.cardWidth;
+const double _cardHeight = ChannelCarouselCard.cardHeight;
+const double _cardSpacing = ChannelCarouselCard.cardSpacing;
+const double _cardExtent = ChannelCarouselCard.cardPitch;
 
 /// How many lineups the raw index space is seeded into. Larger than the
 /// controller's recentre threshold so drift can build in either direction.
 const int _seedLineups = 500;
+const int _totalLineups = _seedLineups * 2;
 
 const Duration _scrollDuration = Duration(milliseconds: 180);
 
@@ -334,15 +335,20 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
 
   /// A lineup that fits the viewport renders its real count, centred, with no
   /// scrolling; selection still wraps across the short list.
-  Widget _buildFittingStrip() {
+  Widget _buildFittingStrip(double viewportWidth) {
     final selected = _centredChannelIndex;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    final middle = _channelCount ~/ 2;
+    return Stack(
       children: [
         for (var i = 0; i < _channelCount; i++)
-          Padding(
-            padding: EdgeInsets.only(right: i == _channelCount - 1 ? 0 : _cardSpacing),
-            child: _cardFor(i, centered: i == selected),
+          Positioned(
+            left: (viewportWidth - _cardWidth) / 2 + (i - middle) * _cardExtent,
+            width: _cardWidth,
+            height: _cardHeight,
+            child: _cardFor(
+              channelIndexFor(selected + i - middle, _channelCount),
+              centered: i == middle,
+            ),
           ),
       ],
     );
@@ -356,7 +362,7 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.symmetric(horizontal: leading),
       itemExtent: _cardExtent,
-      itemCount: null,
+      itemCount: _channelCount * _totalLineups,
       itemBuilder: (context, index) {
         final channelIndex = channelIndexFor(index, _channelCount);
         return Padding(
@@ -382,8 +388,10 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
             _visibleCards = width.isFinite
                 ? math.max(1, (width / _cardExtent).floor())
                 : 1;
-            return _channelCount <= _visibleCards
-                ? _buildFittingStrip()
+            final fitsAroundCenter = _channelCount < _visibleCards ||
+                (_channelCount == _visibleCards && _channelCount.isOdd);
+            return fitsAroundCenter
+                ? _buildFittingStrip(width)
                 : _buildScrollingStrip(width);
           },
         ),

@@ -64,6 +64,35 @@ void main() {
     expect(cells.last.kind, GuideCellKind.filtered);
   });
 
+  test('a partially filtered hole keeps its real gap portions distinct', () {
+    final cells = buildRowCells(
+      visible: [_p('a', 19, 0, 20, 0)],
+      unfiltered: [_p('a', 19, 0, 20, 0), _p('hidden', 20, 30, 21, 0)],
+      windowStart: _ws,
+      windowEnd: _we,
+      loadState: GuideChannelLoadState.loaded,
+    );
+
+    expect(cells.map((cell) => (cell.start, cell.end, cell.kind)), [
+      (
+        _p('a', 19, 0, 20, 0).startDate,
+        _p('a', 19, 0, 20, 0).endDate,
+        GuideCellKind.program,
+      ),
+      (
+        DateTime(2026, 9, 8, 20),
+        DateTime(2026, 9, 8, 20, 30),
+        GuideCellKind.gap,
+      ),
+      (
+        DateTime(2026, 9, 8, 20, 30),
+        DateTime(2026, 9, 8, 21),
+        GuideCellKind.filtered,
+      ),
+      (DateTime(2026, 9, 8, 21), _we, GuideCellKind.gap),
+    ]);
+  });
+
   test('an unloaded channel is one loading cell spanning the window', () {
     final cells = buildRowCells(
       visible: const [],

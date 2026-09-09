@@ -104,6 +104,7 @@ enum GuideChannelLoadState { loaded, loading, failed }
 
 class LiveTvGuideViewModel extends ChangeNotifier {
   final MediaServerClient _client;
+  bool _disposed = false;
 
   static const _defaultGuideWindowHours = 3;
   // Programs only need the synopsis; channel logos come from the separate
@@ -130,6 +131,10 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   // Bumped by every targeted replacement and by every cache reset, so a reply
   // whose window or channel set has since been superseded can be dropped.
   int _programGeneration = 0;
+  bool _reloadOnEntry = false;
+  bool _atLivePosition = true;
+
+  bool get atLivePosition => _atLivePosition;
 
   /// True while more channels remain to lazily load in scroll order.
   bool get hasMorePrograms => _programsHighWater < _channels.length;
@@ -162,8 +167,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   /// still starts from the saved preference.
   static ChannelSortBy _savedSortBy() =>
       GetIt.instance.isRegistered<UserPreferences>()
-          ? GetIt.instance<UserPreferences>()
-              .get(UserPreferences.liveTvChannelSortBy)
+          ? GetIt.instance<UserPreferences>().get(
+              UserPreferences.liveTvChannelSortBy,
+            )
           : ChannelSortBy.number;
 
   ChannelSortBy _sortBy;
@@ -172,12 +178,11 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   void setSortBy(ChannelSortBy value) {
     if (_sortBy == value) return;
     _sortBy = value;
-    _channels = List<GuideChannel>.from(_channels)
-      ..sort(comparatorFor(value));
+    _channels = List<GuideChannel>.from(_channels)..sort(comparatorFor(value));
     // The lazy-load prefix follows list order, so walk it again from the top.
     // Already-fetched channels are skipped in _loadNextBatch.
     _programsHighWater = 0;
-    notifyListeners();
+    _notifyListeners();
     unawaited(loadMorePrograms());
   }
 
@@ -290,7 +295,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
 
   /// The currently-airing program and the next upcoming one for a channel,
   /// for the mobile Now/Next cards. Derived from the sorted program list.
-  ({GuideProgram? now, GuideProgram? next}) nowNextForChannel(String channelId) {
+  ({GuideProgram? now, GuideProgram? next}) nowNextForChannel(
+    String channelId,
+  ) {
     final programs = programsForChannel(channelId);
     final t = DateTime.now();
     GuideProgram? now;
@@ -306,15 +313,15 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   }
 
   bool _matchesFilter(GuideProgram p) => switch (_filter) {
-    GuideFilter.all => true,
-    GuideFilter.movies => p.isMovie,
-    GuideFilter.series => p.isSeries,
-    GuideFilter.sports => p.isSports,
-    GuideFilter.news => p.isNews,
-    GuideFilter.kids => p.isKids,
-    GuideFilter.premiere => p.isPremiere,
-    GuideFilter.favorites => true,
-  };
+        GuideFilter.all => true,
+        GuideFilter.movies => p.isMovie,
+        GuideFilter.series => p.isSeries,
+        GuideFilter.sports => p.isSports,
+        GuideFilter.news => p.isNews,
+        GuideFilter.kids => p.isKids,
+        GuideFilter.premiere => p.isPremiere,
+        GuideFilter.favorites => true,
+      };
 
   Future<void> toggleChannelFavorite(String channelId) async {
     final index = _channels.indexWhere((c) => c.id == channelId);
@@ -342,7 +349,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     final channels = List<GuideChannel>.from(_channels);
     channels[index] = updated;
     _channels = channels;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       if (next) {
@@ -354,7 +361,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
       final reverted = List<GuideChannel>.from(_channels);
       reverted[index] = current;
       _channels = reverted;
-      notifyListeners();
+      _notifyListeners();
       rethrow;
     }
   }
@@ -389,21 +396,29 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     await _reloadPrograms();
   }
 
-  Future<void> load({int? windowHours, List<String>? initialChannelIds}) async {
+  Future<void> load({
+    int? windowHours,
+    List<String>? initialChannelIds,
+    DateTime? windowStart,
+    bool livePosition = true,
+  }) async {
     if (windowHours != null) _guideWindowHours = windowHours;
     _state = GuideState.loading;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       await _fetchChannels();
+      if (_disposed) return;
 
-      _windowStart = DateTime(
-        _guideDate.year,
-        _guideDate.month,
-        _guideDate.day,
-        _now().hour,
-      );
+      _windowStart = windowStart ??
+          DateTime(
+            _guideDate.year,
+            _guideDate.month,
+            _guideDate.day,
+            _now().hour,
+          );
       _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+      _atLivePosition = livePosition;
 
       if (initialChannelIds == null) {
         await loadInitialPrograms();
@@ -413,18 +428,21 @@ class LiveTvGuideViewModel extends ChangeNotifier {
         _resetPrograms();
         await ensureProgramsForChannels(initialChannelIds);
       }
+      if (_disposed) return;
       _state = GuideState.ready;
+      _reloadOnEntry = false;
     } catch (e) {
+      if (_disposed) return;
       _errorMessage = e.toString();
       _state = GuideState.error;
     }
-    notifyListeners();
+    _notifyListeners();
   }
 
   void setFilter(GuideFilter value) {
     if (_filter == value) return;
     _filter = value;
-    notifyListeners();
+    _notifyListeners();
     // Favorites can sit anywhere in the lineup, past the lazily-loaded prefix,
     // so make sure their programs are fetched when that filter is selected.
     if (value == GuideFilter.favorites) {
@@ -438,6 +456,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     _guideDate = date;
     _windowStart = DateTime(date.year, date.month, date.day, _windowStart.hour);
     _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+    _atLivePosition = false;
     await _reloadPrograms();
   }
 
@@ -445,7 +464,50 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     _windowStart = _windowStart.add(Duration(hours: hours));
     _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
     _guideDate = _windowStart;
+    _atLivePosition = false;
     await _reloadPrograms();
+  }
+
+  /// Moves the time window without entering the guide-wide loading state.
+  /// Existing rows stay visible until every requested replacement is ready.
+  Future<void> setWindowStart(
+    DateTime start, {
+    bool livePosition = false,
+  }) async {
+    if (_disposed) return;
+    if (start == _windowStart) {
+      _atLivePosition = livePosition;
+      return;
+    }
+
+    final ids = _programsLoadedIds.toList();
+    final generation = ++_programGeneration;
+    _windowStart = start;
+    _windowEnd = start.add(Duration(hours: _guideWindowHours));
+    _guideDate = start;
+    _atLivePosition = livePosition;
+    _notifyListeners();
+    if (ids.isEmpty) return;
+
+    final replacements = <String, List<GuideProgram>>{};
+    for (var i = 0; i < ids.length; i += _programBatchSize) {
+      final chunk = ids.sublist(i, min(i + _programBatchSize, ids.length));
+      final response = await _fetchGuide(
+        channelIds: chunk,
+        from: _windowStart,
+        to: _windowEnd,
+      );
+      if (_disposed || generation != _programGeneration) return;
+      final parsed = _parsePrograms(response);
+      for (final id in chunk) {
+        replacements[id] = parsed[id] ?? <GuideProgram>[];
+      }
+    }
+
+    if (_disposed || generation != _programGeneration) return;
+    _programsByChannel.addAll(replacements);
+    _processedBoundaries.clear();
+    _notifyListeners();
   }
 
   Future<void> setWindowHours(int hours) async {
@@ -457,7 +519,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
 
   Future<void> _reloadPrograms() async {
     _state = GuideState.loading;
-    notifyListeners();
+    _notifyListeners();
 
     try {
       // Re-fetch as many channels as were already loaded (at least the first
@@ -467,35 +529,51 @@ class LiveTvGuideViewModel extends ChangeNotifier {
       while (_programsHighWater < target && hasMorePrograms) {
         await _loadNextBatch();
       }
+      if (_disposed) return;
       _state = GuideState.ready;
     } catch (e) {
+      if (_disposed) return;
       _errorMessage = e.toString();
       _state = GuideState.error;
     }
-    notifyListeners();
+    _notifyListeners();
   }
 
-  Future<void> goToNow() async {
+  Future<void> goToNow({DateTime? windowStart}) async {
     _guideDate = _now();
-    await load(windowHours: _guideWindowHours);
+    await load(
+      windowHours: _guideWindowHours,
+      windowStart: windowStart,
+      livePosition: true,
+    );
   }
 
   /// Call when the guide becomes visible. A window left open past 30 minutes
   /// stale forces a full reload; this is the one re-entry path where that is
   /// still correct, since background refresh elsewhere avoids it.
-  Future<void> reloadIfStale({int? windowHours}) async {
-    if (_windowStart.add(const Duration(minutes: 30)).isBefore(_now())) {
-      await load(windowHours: windowHours);
+  Future<void> reloadIfStale({int? windowHours, DateTime? windowStart}) async {
+    if (_reloadOnEntry ||
+        _windowStart.add(const Duration(minutes: 30)).isBefore(_now())) {
+      _guideDate = _now();
+      await load(
+        windowHours: windowHours,
+        windowStart: windowStart,
+        livePosition: true,
+      );
     }
   }
 
   /// Call when the guide is left after paging the window ahead or to another
   /// date, so the next entry starts live instead of wherever it wandered to.
-  void resetWindowOnExit() {
+  void resetWindowOnExit({DateTime? windowStart}) {
     final now = _now();
+    final nextStart =
+        windowStart ?? DateTime(now.year, now.month, now.day, now.hour);
+    if (_windowStart != nextStart) _reloadOnEntry = true;
     _guideDate = now;
-    _windowStart = DateTime(now.year, now.month, now.day, now.hour);
+    _windowStart = nextStart;
     _windowEnd = _windowStart.add(Duration(hours: _guideWindowHours));
+    _atLivePosition = true;
   }
 
   Future<void> _fetchChannels() async {
@@ -539,7 +617,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     } finally {
       _loadingMore = false;
     }
-    notifyListeners();
+    _notifyListeners();
   }
 
   Future<void> _loadNextBatch() async {
@@ -566,13 +644,11 @@ class LiveTvGuideViewModel extends ChangeNotifier {
         i,
         min(i + _programBatchSize, missing.length),
       );
-      final chunk = chunkIds
-          .map(channelForId)
-          .whereType<GuideChannel>()
-          .toList();
+      final chunk =
+          chunkIds.map(channelForId).whereType<GuideChannel>().toList();
       await _loadProgramsBatch(chunk);
     }
-    notifyListeners();
+    _notifyListeners();
   }
 
   /// Replaces the cached programs for [channelIds] over an explicit [from]-[to]
@@ -597,7 +673,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
       _programsByChannel[id] = parsed[id] ?? <GuideProgram>[];
     }
     _programsLoadedIds.addAll(ids);
-    notifyListeners();
+    _notifyListeners();
   }
 
   // --- Next-future-boundary refresh -----------------------------------------
@@ -613,6 +689,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
 
   Timer? _boundaryTimer;
   DateTime? _boundaryDueAt;
+  bool _boundaryRefreshInFlight = false;
 
   // Boundaries already handled, so one can never be selected twice.
   final Set<DateTime> _processedBoundaries = <DateTime>{};
@@ -630,6 +707,7 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   /// This view model is not a lifecycle observer: the surface that owns it must
   /// call this again on app resume, because timers do not fire while suspended.
   void scheduleBoundaryRefresh() {
+    if (_disposed) return;
     _boundaryTimer?.cancel();
     _boundaryTimer = null;
     final now = _now();
@@ -648,9 +726,21 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     _boundaryDueAt = null;
 
     final next = _nextBoundary(now);
-    // Empty schedule: no timer at all, the quarter-hour tick is the fallback.
-    if (next == null) return;
+    if (next == null) {
+      // A non-empty schedule with no future boundary is already stale. An
+      // actually empty schedule has nothing to refresh and falls back to the
+      // surface's quarter-hour tick.
+      if (_boundaries().isNotEmpty) unawaited(handleBoundaryElapsed());
+      return;
+    }
     _arm(next.difference(now), next);
+  }
+
+  /// Gives an empty or exhausted schedule its quarter-hour fallback refresh.
+  /// A real boundary or retry timer already in flight remains authoritative.
+  Future<void> refreshAtQuarterHour() async {
+    if (_disposed || _boundaryDueAt != null || _boundaryRefreshInFlight) return;
+    await handleBoundaryElapsed(forceRefresh: true);
   }
 
   /// Stops the boundary refresh; call when the surface is torn down.
@@ -662,11 +752,14 @@ class LiveTvGuideViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _programGeneration++;
     cancelBoundaryRefresh();
     super.dispose();
   }
 
   void _arm(Duration delay, DateTime dueAt) {
+    if (_disposed) return;
     _boundaryDueAt = dueAt;
     _boundaryTimer = Timer(delay, () => unawaited(handleBoundaryElapsed()));
   }
@@ -676,7 +769,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   /// Runs the boundary refresh: promote from cache where the schedule already
   /// covers the new time, request only where coverage must be extended.
   @visibleForTesting
-  Future<void> handleBoundaryElapsed() async {
+  Future<void> handleBoundaryElapsed({bool forceRefresh = false}) async {
+    if (_disposed || _boundaryRefreshInFlight) return;
+    _boundaryRefreshInFlight = true;
     _boundaryTimer?.cancel();
     _boundaryTimer = null;
     _boundaryDueAt = null;
@@ -686,9 +781,10 @@ class LiveTvGuideViewModel extends ChangeNotifier {
       if (!boundary.isAfter(now)) _processedBoundaries.add(boundary);
     }
 
-    if (!_coverageLapsed(now)) {
+    if (!forceRefresh && !_coverageLapsed(now)) {
       // The next program is already cached, so the cells promote in place.
-      notifyListeners();
+      _boundaryRefreshInFlight = false;
+      _notifyListeners();
       scheduleBoundaryRefresh();
       return;
     }
@@ -696,24 +792,31 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     final before = _coverageEnd();
     try {
       await _refreshLoadedChannels(now);
+      if (_disposed) {
+        _boundaryRefreshInFlight = false;
+        return;
+      }
     } catch (_) {
       // Keep the data we hold; a failed refresh must not blank the guide.
+      _boundaryRefreshInFlight = false;
       _armRetry(failureBackoff);
       return;
     }
 
     final after = _coverageEnd();
     if (after == null || (before != null && !after.isAfter(before))) {
+      _boundaryRefreshInFlight = false;
       _armRetry(noNewCoverageRetry);
       return;
     }
+    _boundaryRefreshInFlight = false;
     scheduleBoundaryRefresh();
   }
 
   /// Replaces every cached channel over a range that spans the guide viewport,
   /// in batches, so no surface's coverage can shrink to a rolling horizon.
   Future<void> _refreshLoadedChannels(DateTime now) async {
-    final ids = _programsByChannel.keys.toList();
+    final ids = _programsLoadedIds.toList();
     if (ids.isEmpty) return;
     final from = _windowStart.isBefore(now) ? _windowStart : now;
     final rolling = now.add(Duration(hours: _guideWindowHours));
@@ -755,9 +858,8 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   bool _coverageLapsed(DateTime now) {
     for (final programs in _programsByChannel.values) {
       if (programs.isEmpty) continue;
-      final end = programs
-          .map((p) => p.endDate)
-          .reduce((a, b) => a.isAfter(b) ? a : b);
+      final end =
+          programs.map((p) => p.endDate).reduce((a, b) => a.isAfter(b) ? a : b);
       if (!end.isAfter(now)) return true;
     }
     return false;
@@ -833,15 +935,17 @@ class LiveTvGuideViewModel extends ChangeNotifier {
       from: _windowStart,
       to: _windowEnd,
     );
+    if (_disposed) return;
 
     final parsed = _parsePrograms(response);
-    for (final entry in parsed.entries) {
-      final existing = _programsByChannel[entry.key];
+    for (final id in ids) {
+      final programs = parsed[id] ?? <GuideProgram>[];
+      final existing = _programsByChannel[id];
       if (existing == null) {
-        _programsByChannel[entry.key] = entry.value;
+        _programsByChannel[id] = programs;
       } else {
         existing
-          ..addAll(entry.value)
+          ..addAll(programs)
           ..sort((a, b) => a.startDate.compareTo(b.startDate));
       }
     }
@@ -849,5 +953,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     // Mark every requested channel as loaded, even those with no programs, so
     // their rows stop showing the placeholder.
     _programsLoadedIds.addAll(ids);
+  }
+
+  void _notifyListeners() {
+    if (!_disposed) notifyListeners();
   }
 }
