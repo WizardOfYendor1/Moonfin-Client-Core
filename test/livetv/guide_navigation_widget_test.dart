@@ -148,9 +148,8 @@ void main() {
 
     final playback = _MockPlaybackManager();
     when(() => playback.backend).thenReturn(null);
-    when(
-      () => playback.backendChangedStream,
-    ).thenAnswer((_) => const Stream<PlayerBackend>.empty());
+    when(() => playback.backendChangedStream)
+        .thenAnswer((_) => const Stream<PlayerBackend>.empty());
     GetIt.instance.registerSingleton<PlaybackManager>(playback);
 
     client = _MockMediaServerClient();
@@ -445,7 +444,11 @@ void main() {
 
     final focused = _focusedCell();
     expect(focused, isNotNull);
-    expect(focused!.row, 49, reason: 'the deferred DOWN fired after the dialog');
+    expect(
+      focused!.row,
+      49,
+      reason: 'the deferred DOWN fired after the dialog',
+    );
     expect(focused.index, _cellIndexForRow(49, anchorMinutes));
   });
 

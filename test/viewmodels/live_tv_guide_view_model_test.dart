@@ -12,26 +12,25 @@ class _MockLiveTvApi extends Mock implements LiveTvApi {}
 Map<String, dynamic> _channel(String id) => {'Id': id, 'Name': 'Ch $id'};
 
 Map<String, dynamic> _program(String id, String channelId, DateTime start) => {
-      'Id': id,
-      'ChannelId': channelId,
-      'Name': id,
-      'StartDate': start.toIso8601String(),
-      'EndDate': start.add(const Duration(minutes: 30)).toIso8601String(),
-    };
+  'Id': id,
+  'ChannelId': channelId,
+  'Name': id,
+  'StartDate': start.toIso8601String(),
+  'EndDate': start.add(const Duration(minutes: 30)).toIso8601String(),
+};
 
 Map<String, dynamic> _span(
   String id,
   String channelId,
   DateTime start,
   DateTime end,
-) =>
-    {
-      'Id': id,
-      'ChannelId': channelId,
-      'Name': id,
-      'StartDate': start.toIso8601String(),
-      'EndDate': end.toIso8601String(),
-    };
+) => {
+  'Id': id,
+  'ChannelId': channelId,
+  'Name': id,
+  'StartDate': start.toIso8601String(),
+  'EndDate': end.toIso8601String(),
+};
 
 void main() {
   late _MockClient client;
@@ -56,9 +55,7 @@ void main() {
     ).thenAnswer((_) async => {'Items': <dynamic>[]});
   });
 
-  test(
-      'load() fetches only the first batch; loadMorePrograms() paginates the rest',
-      () async {
+  test('load() fetches only the first batch; loadMorePrograms() paginates the rest', () async {
     // 120 channels → batches of 50 (never one giant all-channels request).
     final channels = List.generate(120, (i) => _channel('c$i'));
     when(
@@ -153,6 +150,60 @@ void main() {
     await superseded;
 
     expect(vm.programsForChannel('c1').map((p) => p.id), ['current']);
+  });
+
+  test('a stale lazy batch cannot merge into a reloaded window', () async {
+    when(
+      () => liveTv.getChannels(
+        sortBy: any(named: 'sortBy'),
+        sortOrder: any(named: 'sortOrder'),
+        fields: any(named: 'fields'),
+        enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+        userId: any(named: 'userId'),
+      ),
+    ).thenAnswer(
+      (_) async => {
+        'Items': [_channel('c1')],
+      },
+    );
+    final pending = <Completer<Map<String, dynamic>>>[];
+    when(
+      () => liveTv.getGuide(
+        startDate: any(named: 'startDate'),
+        endDate: any(named: 'endDate'),
+        channelIds: any(named: 'channelIds'),
+        fields: any(named: 'fields'),
+        enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+        enableImages: any(named: 'enableImages'),
+        enableUserData: any(named: 'enableUserData'),
+        userId: any(named: 'userId'),
+      ),
+    ).thenAnswer((_) {
+      final completer = Completer<Map<String, dynamic>>();
+      pending.add(completer);
+      return completer.future;
+    });
+
+    final vm = LiveTvGuideViewModel(client);
+    final early = DateTime(2026, 9, 9, 20);
+    final later = early.add(const Duration(hours: 3));
+    final superseded = vm.load(windowStart: early);
+    await pumpEventQueue();
+    final current = vm.load(windowStart: later);
+    await pumpEventQueue();
+
+    expect(pending, hasLength(2));
+    pending[1].complete({
+      'Items': [_program('current', 'c1', later)],
+    });
+    await current;
+    pending[0].complete({
+      'Items': [_program('stale', 'c1', early)],
+    });
+    await superseded;
+
+    expect(vm.programsForChannel('c1').map((p) => p.id), ['current']);
+    expect(vm.programsHighWater, 1);
   });
 
   test('targeted replacement leaves unrelated channels untouched', () async {

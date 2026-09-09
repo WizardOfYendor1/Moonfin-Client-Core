@@ -18,6 +18,7 @@ class ChannelCarouselOverlay extends StatefulWidget {
   final MediaServerClient client;
   final List<GuideChannel> channels;
   final String currentChannelId;
+  final int selectionRevision;
   final ValueChanged<String> onChannelSelected;
   final VoidCallback onDismiss;
   final VoidCallback onShowControls;
@@ -29,6 +30,7 @@ class ChannelCarouselOverlay extends StatefulWidget {
     required this.client,
     required this.channels,
     required this.currentChannelId,
+    this.selectionRevision = 0,
     required this.onChannelSelected,
     required this.onDismiss,
     required this.onShowControls,
@@ -59,6 +61,9 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   bool _dismissed = false;
   bool _loadingVisible = false;
   bool _loadAgain = false;
+  final FocusNode _overlayFocus = FocusNode(
+    debugLabel: 'ChannelCarouselOverlay',
+  );
 
   @override
   void initState() {
@@ -81,7 +86,27 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       if (mounted) setState(() {});
     });
     _scheduleQuarterRefresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _overlayFocus.canRequestFocus) {
+        _overlayFocus.requestFocus();
+      }
+    });
     unawaited(_load());
+  }
+
+  @override
+  void didUpdateWidget(covariant ChannelCarouselOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentChannelId == widget.currentChannelId &&
+        oldWidget.selectionRevision == widget.selectionRevision) {
+      return;
+    }
+    if (!_channels.any((channel) => channel.id == widget.currentChannelId)) {
+      return;
+    }
+    _centeredId = widget.currentChannelId;
+    _scheduleHeader();
+    _scheduleVisibleLoad();
   }
 
   @override
@@ -95,6 +120,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     _vm.removeListener(_onDataChanged);
     _vm.cancelBoundaryRefresh();
     _vm.dispose();
+    _overlayFocus.dispose();
     super.dispose();
   }
 
@@ -242,6 +268,10 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     _resetInactivity();
+    if (event.logicalKey.isBackKey) {
+      if (event is KeyDownEvent) _dismiss();
+      return KeyEventResult.handled;
+    }
     if (event.logicalKey.isDownKey) {
       if (event is KeyDownEvent) {
         _dismissed = true;
@@ -351,6 +381,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
 
   @override
   Widget build(BuildContext context) => Focus(
+    focusNode: _overlayFocus,
     onKeyEvent: _onKey,
     child: Align(
       alignment: Alignment.bottomCenter,

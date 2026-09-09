@@ -138,6 +138,7 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
     _ownsFocusNode = widget.focusNode == null;
     _seedFromChannels();
     _reportEmptyIfNeeded();
+    _requestInitialFocus();
   }
 
   @override
@@ -147,11 +148,16 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       if (_ownsFocusNode) _focusNode.dispose();
       _focusNode = widget.focusNode ?? FocusNode(debugLabel: 'ChannelCarousel');
       _ownsFocusNode = widget.focusNode == null;
+      _requestInitialFocus();
     }
     if (oldWidget.channels.length != widget.channels.length) {
       _endHold();
       _seedFromChannels(preferredChannelIndex: _centredChannelIndex);
       _reportEmptyIfNeeded();
+    } else if (oldWidget.initialIndex != widget.initialIndex &&
+        widget.initialIndex != _centredChannelIndex) {
+      _endHold();
+      _resetToInitialIndex();
     }
   }
 
@@ -171,19 +177,43 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       _scrollController = null;
       return;
     }
-    final start = (preferredChannelIndex ?? widget.initialIndex)
-        .clamp(0, _channelCount - 1);
+    final start = (preferredChannelIndex ?? widget.initialIndex).clamp(
+      0,
+      _channelCount - 1,
+    );
     _seedIndex = _channelCount * _seedLineups;
     _rawIndex = _seedIndex + start;
     _scrollController?.dispose();
-    _scrollController =
-        ScrollController(initialScrollOffset: _offsetFor(_rawIndex));
+    _scrollController = ScrollController(
+      initialScrollOffset: _offsetFor(_rawIndex),
+    );
+  }
+
+  void _resetToInitialIndex() {
+    if (_channelCount == 0) return;
+    final start = widget.initialIndex.clamp(0, _channelCount - 1);
+    _rawIndex = _seedIndex + start;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = _scrollController;
+      if (mounted && controller?.hasClients == true) {
+        controller!.jumpTo(_offsetFor(_rawIndex));
+      }
+    });
   }
 
   void _reportEmptyIfNeeded() {
     if (_channelCount != 0) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.onEmpty?.call();
+    });
+  }
+
+  void _requestInitialFocus() {
+    if (!widget.autofocus || _channelCount == 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _focusNode.canRequestFocus) {
+        _focusNode.requestFocus();
+      }
     });
   }
 
@@ -253,8 +283,10 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
     _moveBy(direction);
     _pageStartTimer = Timer(kCarouselPageStartDelay, () {
       _pageFromTimer();
-      _pageRepeatTimer =
-          Timer.periodic(kCarouselPageRepeatInterval, (_) => _pageFromTimer());
+      _pageRepeatTimer = Timer.periodic(
+        kCarouselPageRepeatInterval,
+        (_) => _pageFromTimer(),
+      );
     });
   }
 
@@ -271,8 +303,10 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
   /// Timer-driven paging. It must never touch [_refreshWatchdog].
   void _pageFromTimer() {
     if (!mounted || _holdDirection == 0) return;
-    final step =
-        pageStep(channelCount: _channelCount, visibleCards: _visibleCards);
+    final step = pageStep(
+      channelCount: _channelCount,
+      visibleCards: _visibleCards,
+    );
     _moveBy(_holdDirection * step);
   }
 
@@ -291,7 +325,10 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       // shifting the live position by the same amount is not visible.
       final shift = recentred - target;
       _rawIndex += shift;
-      _scrollController?.jumpTo(_offsetFor(_rawIndex));
+      final controller = _scrollController;
+      if (controller?.hasClients == true) {
+        controller!.jumpTo(_offsetFor(_rawIndex));
+      }
       target = recentred;
     }
 
@@ -388,7 +425,8 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
             _visibleCards = width.isFinite
                 ? math.max(1, (width / _cardExtent).floor())
                 : 1;
-            final fitsAroundCenter = _channelCount < _visibleCards ||
+            final fitsAroundCenter =
+                _channelCount < _visibleCards ||
                 (_channelCount == _visibleCards && _channelCount.isOdd);
             return fitsAroundCenter
                 ? _buildFittingStrip(width)

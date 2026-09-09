@@ -37,19 +37,26 @@ class _CarouselGuide extends LiveTvGuideViewModel {
   @override
   List<GuideProgram> unfilteredProgramsForChannel(String channelId) {
     final now = DateTime.now();
-    return [GuideProgram(
-      id: '$channelId-program', channelId: channelId,
-      name: 'Show $channelId$titleSuffix',
-      startDate: now.subtract(const Duration(minutes: 20)),
-      endDate: now.add(const Duration(minutes: 40)),
-      overview: 'Overview $channelId',
-      rawData: const {'ParentIndexNumber': 6, 'IndexNumber': 19},
-    )];
+    return [
+      GuideProgram(
+        id: '$channelId-program',
+        channelId: channelId,
+        name: 'Show $channelId$titleSuffix',
+        startDate: now.subtract(const Duration(minutes: 20)),
+        endDate: now.add(const Duration(minutes: 40)),
+        overview: 'Overview $channelId',
+        rawData: const {'ParentIndexNumber': 6, 'IndexNumber': 19},
+      ),
+    ];
   }
 
   @override
-  Future<void> load({Duration? window, List<String>? initialChannelIds,
-      DateTime? windowStart, bool livePosition = true}) async {
+  Future<void> load({
+    Duration? window,
+    List<String>? initialChannelIds,
+    DateTime? windowStart,
+    bool livePosition = true,
+  }) async {
     requests.add(initialChannelIds!);
     notifyListeners();
   }
@@ -60,7 +67,9 @@ class _CarouselGuide extends LiveTvGuideViewModel {
   }
 
   @override
-  void scheduleBoundaryRefresh() { schedules++; }
+  void scheduleBoundaryRefresh() {
+    schedules++;
+  }
 
   @override
   Future<void> refreshAtQuarterHour() async {}
@@ -78,17 +87,17 @@ class _CarouselGuide extends LiveTvGuideViewModel {
 const double _stripWidth = 900;
 
 List<ChannelCarouselEntry> _lineup(int count) => List.generate(
-      count,
-      (i) => ChannelCarouselEntry(
-        channelId: 'ch$i',
-        channelName: 'Channel $i',
-        channelNumber: '${i + 1}',
-        programTitle: 'Program $i',
-        timeLabel: '8:00 PM - 9:00 PM',
-        isLive: true,
-        progress: 0.5,
-      ),
-    );
+  count,
+  (i) => ChannelCarouselEntry(
+    channelId: 'ch$i',
+    channelName: 'Channel $i',
+    channelNumber: '${i + 1}',
+    programTitle: 'Program $i',
+    timeLabel: '8:00 PM - 9:00 PM',
+    isLive: true,
+    progress: 0.5,
+  ),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -111,32 +120,50 @@ void main() {
 
   tearDown(() => HardwareKeyboard.instance.clearState());
 
-  Future<_CarouselGuide> pumpOverlay(WidgetTester tester,
-      {VoidCallback? onDismiss, VoidCallback? onShowControls,
-      Duration inactivity = const Duration(seconds: 5)}) async {
+  Future<_CarouselGuide> pumpOverlay(
+    WidgetTester tester, {
+    VoidCallback? onDismiss,
+    VoidCallback? onShowControls,
+    Duration inactivity = const Duration(seconds: 5),
+  }) async {
     await tester.binding.setSurfaceSize(const Size(1000, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final client = _CarouselClient();
-    final channels = List.generate(20, (i) => GuideChannel(
-      id: 'ch$i', name: 'Channel $i', number: '${i + 1}', rawData: const {},
-    ));
+    final channels = List.generate(
+      20,
+      (i) => GuideChannel(
+        id: 'ch$i',
+        name: 'Channel $i',
+        number: '${i + 1}',
+        rawData: const {},
+      ),
+    );
     final vm = _CarouselGuide(client, channels);
-    await tester.pumpWidget(MaterialApp(
-      theme: AppTheme.buildTheme(ThemeRegistry.active),
-      home: Scaffold(body: ChannelCarouselOverlay(
-        client: client, channels: channels, currentChannelId: 'ch10',
-        onChannelSelected: (_) {}, onDismiss: onDismiss ?? () {},
-        onShowControls: onShowControls ?? () {}, inactivityDuration: inactivity,
-        viewModelFactory: (_) => vm,
-      )),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.buildTheme(ThemeRegistry.active),
+        home: Scaffold(
+          body: ChannelCarouselOverlay(
+            client: client,
+            channels: channels,
+            currentChannelId: 'ch10',
+            onChannelSelected: (_) {},
+            onDismiss: onDismiss ?? () {},
+            onShowControls: onShowControls ?? () {},
+            inactivityDuration: inactivity,
+            viewModelFactory: (_) => vm,
+          ),
+        ),
+      ),
+    );
     await tester.pump();
     await tester.pump();
     return vm;
   }
 
-  testWidgets('overlay header waits until 300 ms after scrolling ends',
-      (tester) async {
+  testWidgets('overlay header waits until 300 ms after scrolling ends', (
+    tester,
+  ) async {
     await pumpOverlay(tester);
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Show ch10 (S6:E19)'), findsOneWidget);
@@ -154,8 +181,44 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('overlay owns and disposes its guide and forwards resume',
-      (tester) async {
+  testWidgets('carousel takes focus from an already-focused host', (
+    tester,
+  ) async {
+    final hostFocus = FocusNode(debugLabel: 'host');
+    addTearDown(hostFocus.dispose);
+    late StateSetter setHostState;
+    var showCarousel = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setHostState = setState;
+            return Stack(
+              children: [
+                Focus(
+                  focusNode: hostFocus,
+                  autofocus: true,
+                  child: const SizedBox.expand(),
+                ),
+                if (showCarousel) ChannelCarousel(channels: _lineup(20)),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(hostFocus.hasFocus, isTrue);
+
+    setHostState(() => showCarousel = true);
+    await tester.pump();
+
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'ChannelCarousel');
+  });
+
+  testWidgets('overlay owns and disposes its guide and forwards resume', (
+    tester,
+  ) async {
     final vm = await pumpOverlay(tester);
     expect(vm.listening, isTrue);
     expect(vm.requests.first, contains('ch10'));
@@ -170,26 +233,92 @@ void main() {
     expect(vm.listening, isFalse);
   });
 
-  testWidgets('overlay debounces visible loads and follows data notifications',
-      (tester) async {
-    final vm = await pumpOverlay(tester);
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+  testWidgets(
+    'overlay debounces visible loads and follows data notifications',
+    (tester) async {
+      final vm = await pumpOverlay(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 299));
+      expect(vm.requests, hasLength(1));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(vm.requests, hasLength(2));
+      expect(vm.requests.last, contains('ch12'));
+      vm.changeProgram();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Show ch12 updated (S6:E19)'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('overlay follows a restored current channel after tune failure', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final client = _CarouselClient();
+    final channels = List.generate(
+      20,
+      (i) => GuideChannel(
+        id: 'ch$i',
+        name: 'Channel $i',
+        number: '${i + 1}',
+        rawData: const {},
+      ),
+    );
+    final vm = _CarouselGuide(client, channels);
+    late StateSetter setHostState;
+    const currentChannelId = 'ch10';
+    var selectionRevision = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.buildTheme(ThemeRegistry.active),
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setHostState = setState;
+            return ChannelCarouselOverlay(
+              client: client,
+              channels: channels,
+              currentChannelId: currentChannelId,
+              selectionRevision: selectionRevision,
+              onChannelSelected: (_) {},
+              onDismiss: () {},
+              onShowControls: () {},
+              viewModelFactory: (_) => vm,
+            );
+          },
+        ),
+      ),
+    );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 299));
-    expect(vm.requests, hasLength(1));
-    await tester.pump(const Duration(milliseconds: 1));
-    expect(vm.requests, hasLength(2));
-    expect(vm.requests.last, contains('ch12'));
-    vm.changeProgram();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Show ch12 updated (S6:E19)'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Show ch11 (S6:E19)'), findsOneWidget);
+
+    setHostState(() => selectionRevision++);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Show ch10 (S6:E19)'), findsOneWidget);
+    final selected = find.byWidgetPredicate(
+      (widget) => widget is ChannelCarouselCard && widget.centered,
+    );
+    expect(
+      tester.widget<ChannelCarouselCard>(selected).channelName,
+      'Channel 10',
+    );
   });
 
-  testWidgets('overlay inactivity resets on key down, repeat and key up',
-      (tester) async {
+  testWidgets('overlay inactivity resets on key down, repeat and key up', (
+    tester,
+  ) async {
     var dismissals = 0;
     await pumpOverlay(tester, onDismiss: () => dismissals++);
     await tester.pump(const Duration(seconds: 4));
@@ -207,23 +336,32 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('DOWN requests controls without taking the restoration callback',
-      (tester) async {
-    var dismissals = 0;
-    var controls = 0;
-    await pumpOverlay(tester, onDismiss: () => dismissals++,
-        onShowControls: () => controls++);
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pump();
-    expect(controls, 1);
-    expect(dismissals, 0);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+  testWidgets(
+    'DOWN requests controls without taking the restoration callback',
+    (tester) async {
+      var dismissals = 0;
+      var controls = 0;
+      await pumpOverlay(
+        tester,
+        onDismiss: () => dismissals++,
+        onShowControls: () => controls++,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(controls, 1);
+      expect(dismissals, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   /// Pumps the strip and returns the list of centred channel indices, in the
   /// order the widget reported them.
-  Future<List<int>> pumpCarousel(WidgetTester tester, int channelCount,
-      {int initialIndex = 0, double width = _stripWidth}) async {
+  Future<List<int>> pumpCarousel(
+    WidgetTester tester,
+    int channelCount, {
+    int initialIndex = 0,
+    double width = _stripWidth,
+  }) async {
     await tester.binding.setSurfaceSize(const Size(1000, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final centred = <int>[];
@@ -248,8 +386,42 @@ void main() {
     return centred;
   }
 
-  testWidgets('scrolling carousel has a finite range and wraps left at zero',
-      (tester) async {
+  testWidgets('changed initial index restores the centered channel', (
+    tester,
+  ) async {
+    await pumpCarousel(tester, 20, initialIndex: 7);
+    Finder selected() => find.byWidgetPredicate(
+      (widget) => widget is ChannelCarouselCard && widget.centered,
+    );
+    expect(
+      tester.widget<ChannelCarouselCard>(selected()).channelName,
+      'Channel 7',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.buildTheme(ThemeRegistry.active),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: _stripWidth,
+              child: ChannelCarousel(channels: _lineup(20), initialIndex: 3),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      tester.widget<ChannelCarouselCard>(selected()).channelName,
+      'Channel 3',
+    );
+  });
+
+  testWidgets('scrolling carousel has a finite range and wraps left at zero', (
+    tester,
+  ) async {
     final centered = await pumpCarousel(tester, 20);
     final list = tester.widget<ListView>(find.byType(ListView));
     final delegate = list.childrenDelegate as SliverChildBuilderDelegate;
@@ -261,8 +433,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(centered, [19]);
     final selected = find.byWidgetPredicate(
-        (widget) => widget is ChannelCarouselCard && widget.centered);
-    expect(tester.widget<ChannelCarouselCard>(selected).channelName, 'Channel 19');
+      (widget) => widget is ChannelCarouselCard && widget.centered,
+    );
+    expect(
+      tester.widget<ChannelCarouselCard>(selected).channelName,
+      'Channel 19',
+    );
     expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
   });
 
@@ -271,39 +447,52 @@ void main() {
         'selection and wrap to the viewport center', (tester) async {
       await pumpCarousel(tester, channelCount, initialIndex: channelCount - 1);
       Finder selected() => find.byWidgetPredicate(
-          (widget) => widget is ChannelCarouselCard && widget.centered);
+        (widget) => widget is ChannelCarouselCard && widget.centered,
+      );
       expect(find.byType(ChannelCarouselCard), findsNWidgets(channelCount));
-      expect(tester.widget<ChannelCarouselCard>(selected()).channelName,
-          'Channel ${channelCount - 1}');
+      expect(
+        tester.widget<ChannelCarouselCard>(selected()).channelName,
+        'Channel ${channelCount - 1}',
+      );
       expect(tester.getCenter(selected()).dx, closeTo(500, 0.01));
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pumpAndSettle();
       expect(find.byType(ChannelCarouselCard), findsNWidgets(channelCount));
-      expect(tester.widget<ChannelCarouselCard>(selected()).channelName,
-          'Channel 0');
+      expect(
+        tester.widget<ChannelCarouselCard>(selected()).channelName,
+        'Channel 0',
+      );
       expect(tester.getCenter(selected()).dx, closeTo(500, 0.01));
     });
   }
 
-  testWidgets('even exact-fit lineup scrolls while held paging advances by one',
-      (tester) async {
-    final centered = await pumpCarousel(tester, 4,
-        initialIndex: 3, width: ChannelCarouselCard.cardPitch * 4);
-    expect(find.byType(ListView), findsOneWidget);
-    final selected = find.byWidgetPredicate(
-        (widget) => widget is ChannelCarouselCard && widget.centered);
-    expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350));
-    expect(centered, [0, 1]);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pumpAndSettle();
-    expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
-  });
+  testWidgets(
+    'even exact-fit lineup scrolls while held paging advances by one',
+    (tester) async {
+      final centered = await pumpCarousel(
+        tester,
+        4,
+        initialIndex: 3,
+        width: ChannelCarouselCard.cardPitch * 4,
+      );
+      expect(find.byType(ListView), findsOneWidget);
+      final selected = find.byWidgetPredicate(
+        (widget) => widget is ChannelCarouselCard && widget.centered,
+      );
+      expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(centered, [0, 1]);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
+    },
+  );
 
-  testWidgets('a held key whose repeats keep arriving pages past 1000 ms',
-      (tester) async {
+  testWidgets('a held key whose repeats keep arriving pages past 1000 ms', (
+    tester,
+  ) async {
     final centred = await pumpCarousel(tester, 20);
 
     // Key-down pages one card, then the 350 ms timer starts the hold cadence.
@@ -355,8 +544,9 @@ void main() {
     expect(centred.length, pagesAtWatchdog);
   });
 
-  testWidgets('timer-generated pages do not keep the watchdog alive',
-      (tester) async {
+  testWidgets('timer-generated pages do not keep the watchdog alive', (
+    tester,
+  ) async {
     final centred = await pumpCarousel(tester, 20);
 
     // Key-down only: the hold's own timers are the sole source of paging.
@@ -392,5 +582,25 @@ void main() {
 
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('a fitted lineup recentres without an attached scroll position', (
+    tester,
+  ) async {
+    await pumpCarousel(tester, 2);
+
+    for (var i = 0; i < 400; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+    }
+
+    expect(tester.takeException(), isNull);
+    final selected = find.byWidgetPredicate(
+      (widget) => widget is ChannelCarouselCard && widget.centered,
+    );
+    expect(
+      tester.widget<ChannelCarouselCard>(selected).channelName,
+      'Channel 0',
+    );
   });
 }

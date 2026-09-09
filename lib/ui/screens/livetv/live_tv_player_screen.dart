@@ -32,11 +32,14 @@ import '../../widgets/playback/stream_info_dialog.dart';
 import '../../widgets/subtitle_preview.dart';
 import '../../widgets/track_selector_dialog.dart';
 import '../../widgets/live_tv/channel_carousel_overlay.dart';
+import 'channel_tune_observer.dart';
 import 'live_tv_guide_screen.dart';
 import '../../screensaver/screensaver_controller.dart';
 
 const _kGuideResizeDuration = Duration(milliseconds: 250);
-const _kChannelTuneTimeout = Duration(seconds: 10);
+// PlaybackManager permits a 15-second ready wait and can retry once through a
+// server transcode. Leave enough room for both attempts plus their handoff.
+const _kChannelTuneTimeout = Duration(seconds: 35);
 
 class LiveTvPlayerScreen extends StatefulWidget {
   final List<GuideChannel> channels;
@@ -88,6 +91,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   bool _isSwitching = false;
   bool _isGuidePickerOpen = false;
   bool _isCarouselOpen = false;
+  int _carouselSelectionRevision = 0;
   FocusNode? _carouselPriorFocus;
   bool _carouselPriorInfoVisible = true;
   int _carouselPriorControlIndex = 0;
@@ -626,34 +630,21 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       rawData: channel.rawData,
     );
     final allowDirect = _prefs.get(UserPreferences.liveTvDirectPlayEnabled);
-    final terminalFuture = _manager.bringupStateStream.firstWhere(
-      (state) =>
-          state.phase == PlaybackBringupPhase.ready ||
-          state.phase == PlaybackBringupPhase.failed,
-    );
-    Object? playError;
-    try {
-      await _manager.playItems(
+    final terminalState = await observeChannelTune(
+      channelId: channel.id,
+      states: _manager.bringupStateStream,
+      timeout: _kChannelTuneTimeout,
+      start: () => _manager.playItems(
         [item],
         enableDirectPlay: allowDirect,
         enableDirectStream: allowDirect,
-        // Keep transcoding available as a fallback so a failed direct-play of
-        // the upstream URL recovers to the server transcode instead of erroring.
+        // Keep transcoding available as a fallback so a failed direct-play
+        // of the upstream URL recovers to the server transcode instead of
+        // erroring.
         enableTranscoding: true,
-      );
-    } catch (error) {
-      playError = error;
-    }
-
-    PlaybackBringupState? terminal;
-    try {
-      terminal = await terminalFuture.timeout(_kChannelTuneTimeout);
-    } catch (_) {
-      // A completed playItems future without a terminal bring-up state is not
-      // enough to claim that playback reached the first frame.
-    }
-    final succeeded =
-        playError == null && terminal?.phase == PlaybackBringupPhase.ready;
+      ),
+    );
+    final succeeded = terminalState?.phase == PlaybackBringupPhase.ready;
     if (!succeeded) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -881,7 +872,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     setState(() {
       _isCarouselOpen = false;
       _infoVisible = showControls ? true : priorInfoVisible;
-      _focusedControlIndex = priorControlIndex;
+      _focusedControlIndex = showControls ? 0 : priorControlIndex;
     });
     _carouselPriorFocus = null;
     if (_infoVisible) {
@@ -913,11 +904,11 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       (channel) => channel.id == channelId,
     );
     if (selectedIndex < 0 || !_isCarouselOpen) return;
+    if (_isSwitching) return;
     if (selectedIndex == _currentIndex) {
       _dismissChannelCarousel();
       return;
     }
-    if (_isSwitching) return;
 
     final previousIndex = _currentIndex;
     final previousProgram = _currentProgram;
@@ -941,6 +932,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         _currentIndex = previousIndex;
         _currentProgram = previousProgram;
         _infoVisible = false;
+        _carouselSelectionRevision++;
       });
       final recovered = await _playCurrentChannel();
       if (!recovered && mounted) {
@@ -1778,6 +1770,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         client: _client,
         channels: widget.channels,
         currentChannelId: _currentChannel.id,
+        selectionRevision: _carouselSelectionRevision,
         onChannelSelected: _onCarouselChannelSelected,
         onDismiss: () => _dismissChannelCarousel(),
         onShowControls: _showControlsFromCarousel,
