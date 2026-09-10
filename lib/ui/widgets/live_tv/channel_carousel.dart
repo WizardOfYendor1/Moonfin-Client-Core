@@ -22,10 +22,8 @@ const Duration kCarouselHoldRepeatInterval = Duration(milliseconds: 110);
 /// whose repeats stop arriving (a missed key-up) cannot scroll forever.
 const Duration kCarouselHoldSafety = Duration(milliseconds: 900);
 
-const double _cardWidth = ChannelCarouselCard.cardWidth;
 const double _cardHeight = ChannelCarouselCard.cardHeight;
 const double _cardSpacing = ChannelCarouselCard.cardSpacing;
-const double _cardExtent = ChannelCarouselCard.cardPitch;
 
 /// How many lineups the raw index space is seeded into. Larger than the
 /// controller's recentre threshold so drift can build in either direction.
@@ -55,6 +53,10 @@ class ChannelCarouselEntry {
   final double progress;
   final bool hasTimer;
 
+  /// No programme yet because the channel's schedule is still unfetched, as
+  /// opposed to a channel whose schedule is loaded and simply has no entry.
+  final bool programLoading;
+
   const ChannelCarouselEntry({
     required this.channelId,
     required this.channelName,
@@ -69,6 +71,7 @@ class ChannelCarouselEntry {
     this.isLive = false,
     this.progress = 0,
     this.hasTimer = false,
+    this.programLoading = false,
   });
 
   @override
@@ -87,6 +90,7 @@ class ChannelCarouselEntry {
           other.isLive == isLive &&
           other.progress == progress &&
           other.hasTimer == hasTimer &&
+          other.programLoading == programLoading &&
           listEquals(other.tags, tags);
 
   @override
@@ -103,6 +107,7 @@ class ChannelCarouselEntry {
     isLive,
     progress,
     hasTimer,
+    programLoading,
     Object.hashAll(tags),
   );
 }
@@ -169,6 +174,11 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
 
   /// Last measured viewport capacity; 1 until the first layout.
   int _visibleCards = 1;
+
+  /// Strip geometry, derived from the viewport so a whole odd number of cards
+  /// always fits. The card's own constants stand in until the first layout.
+  double _cardExtent = ChannelCarouselCard.cardPitch;
+  double _cardWidth = ChannelCarouselCard.cardWidth;
 
   Timer? _pageStartTimer;
   Timer? _pageRepeatTimer;
@@ -407,8 +417,15 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
   final Map<int, Widget> _plainCards = {};
   final Map<int, Widget> _centredCards = {};
 
+  double? _cachedWidth;
+
   Widget _cardFor(int channelIndex, {required bool centered}) {
     _syncCardCache();
+    if (_cachedWidth != _cardWidth) {
+      _cachedWidth = _cardWidth;
+      _plainCards.clear();
+      _centredCards.clear();
+    }
     final cache = centered ? _centredCards : _plainCards;
     return cache[channelIndex] ??= _buildCard(channelIndex, centered);
   }
@@ -448,8 +465,26 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       isLive: entry.isLive,
       progress: entry.progress,
       hasTimer: entry.hasTimer,
+      programLoading: entry.programLoading,
       centered: centered,
+      width: _cardWidth,
     );
+  }
+
+  /// Adopts the pitch the viewport implies. A changed pitch invalidates the
+  /// scroll offset, so the strip is jumped back onto the centred card.
+  void _applyLayout(double viewportWidth) {
+    final layout = ChannelCarouselCard.layoutFor(viewportWidth);
+    _visibleCards = layout.count;
+    if (layout.pitch == _cardExtent) return;
+    _cardExtent = layout.pitch;
+    _cardWidth = layout.width;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = _scrollController;
+      if (mounted && controller?.hasClients == true) {
+        controller!.jumpTo(_offsetFor(_rawIndex));
+      }
+    });
   }
 
   /// A lineup that fits the viewport renders its real count, centred, with no
@@ -504,13 +539,10 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
-            _visibleCards = width.isFinite
-                ? math.max(1, (width / _cardExtent).floor())
-                : 1;
-            final fitsAroundCenter =
-                _channelCount < _visibleCards ||
-                (_channelCount == _visibleCards && _channelCount.isOdd);
-            return fitsAroundCenter
+            _applyLayout(width);
+            // The derived count is always odd, so an equal run sits
+            // symmetrically around the centred card.
+            return _channelCount <= _visibleCards
                 ? _buildFittingStrip(width)
                 : _buildScrollingStrip(width);
           },

@@ -55,6 +55,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   static const double _headerHeight = 104;
   late final LiveTvGuideViewModel _vm;
   late List<GuideChannel> _channels;
+
   /// Presentation entries, recomputed only when the guide data or the clock
   /// moves. Building them per frame made every debounced `setState` walk the
   /// whole lineup, reformatting times and image URLs it already had.
@@ -232,7 +233,14 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   static DateTime _tickAlignedNow() {
     final now = DateTime.now();
     final seconds = now.second - now.second % _clockTick.inSeconds;
-    return DateTime(now.year, now.month, now.day, now.hour, now.minute, seconds);
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+      seconds,
+    );
   }
 
   void _centered(int index) {
@@ -241,8 +249,24 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     _scheduleVisibleLoad();
   }
 
+  /// A hold repeats faster than [_debounce], so a sustained one would never
+  /// let the debounce fire and would scroll into permanently unloaded
+  /// territory. Landing on a channel with nothing cached forces a fetch
+  /// instead, at most this often.
+  static const _blindThrottle = Duration(milliseconds: 500);
+  DateTime? _lastBlindLoad;
+
   void _scheduleVisibleLoad() {
     _loadTimer?.cancel();
+    if (_ready && _vm.unfilteredProgramsForChannel(_centeredId).isEmpty) {
+      final now = DateTime.now();
+      final last = _lastBlindLoad;
+      if (last == null || now.difference(last) >= _blindThrottle) {
+        _lastBlindLoad = now;
+        unawaited(_loadVisible());
+        return;
+      }
+    }
     _loadTimer = Timer(_debounce, () => unawaited(_loadVisible()));
   }
 
@@ -394,6 +418,9 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       isLive: program != null,
       progress: program?.progressAt(now) ?? 0,
       hasTimer: program?.hasTimer == true || program?.hasSeriesTimer == true,
+      programLoading:
+          program == null &&
+          _vm.loadStateFor(channel.id) != GuideChannelLoadState.loaded,
     );
   }
 
@@ -411,10 +438,10 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        // Near-opaque surface rather than a white wash: the panel sits where
-        // the scrim gradient is still almost clear, so the overview has to be
-        // legible against bright video on its own.
-        color: AppColorScheme.surface.withValues(alpha: 0.88),
+        // The raised surface rather than the base one: the panel sits where
+        // the scrim gradient is still almost clear, so it stays near-opaque
+        // for the overview's sake while reading lighter than the strip.
+        color: AppColorScheme.surfaceVariant.withValues(alpha: 0.85),
         borderRadius: AppRadius.circular(12),
         border: Border.fromBorderSide(ThemeRegistry.active.borders.cardBorder),
       ),
@@ -483,10 +510,8 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final visible = math.max(
-              1,
-              (constraints.maxWidth / ChannelCarouselCard.cardPitch).floor(),
-            );
+            final visible = ChannelCarouselCard.layoutFor(constraints.maxWidth)
+                .count;
             if (_visibleCards != visible) {
               _visibleCards = visible;
               _scheduleVisibleLoad();

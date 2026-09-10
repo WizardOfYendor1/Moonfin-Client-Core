@@ -463,14 +463,11 @@ void main() {
   }
 
   testWidgets(
-    'even exact-fit lineup scrolls while a hold advances by one',
+    'a lineup past the visible run scrolls while a hold advances by one',
     (tester) async {
-      final centered = await pumpCarousel(
-        tester,
-        4,
-        initialIndex: 3,
-        width: ChannelCarouselCard.cardPitch * 4,
-      );
+      // The derived card count is always odd, so an even exact fit cannot
+      // arise; one channel more than fits is the case that must scroll.
+      final centered = await pumpCarousel(tester, 6, initialIndex: 5);
       expect(find.byType(ListView), findsOneWidget);
       final selected = find.byWidgetPredicate(
         (widget) => widget is ChannelCarouselCard && widget.centered,
