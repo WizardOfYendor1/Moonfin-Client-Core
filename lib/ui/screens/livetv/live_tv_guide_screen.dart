@@ -1132,7 +1132,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             _kWindowBarPrevious,
             icon: Icons.chevron_left,
             onPressed: () =>
-                _shiftGuideWindow(-_vm.guideWindow, focusGrid: false),
+                _shiftGuideWindow(-_vm.guideWindow,
+                    focusGrid: false, allowPast: true),
           ),
           const SizedBox(width: 4),
           _windowBarButton(
@@ -1565,19 +1566,27 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   }
 
   /// [focusGrid] is false when a control drove the shift, so pressing a
-  /// chevron does not yank focus down into the grid.
-  Future<void> _shiftGuideWindow(Duration amount, {bool focusGrid = true}) async {
+  /// chevron does not yank focus down into the grid. [allowPast] is true only
+  /// for the back chevron, the one way to browse earlier than the live window.
+  Future<void> _shiftGuideWindow(
+    Duration amount, {
+    bool focusGrid = true,
+    bool allowPast = false,
+  }) async {
     _cancelPendingVerticalMove();
     final oldStart = _vm.windowStart;
     final oldEnd = _vm.windowEnd;
     final target = oldStart.add(amount);
     final liveStart = guideLeftEdge(DateTime.now());
-    // Browsing backwards past now is allowed; the server returns what history
-    // it has and anything it does not becomes a gap cell.
-    if (target == oldStart) return;
+    // Only the back chevron may look at history; every other backward path
+    // exists to return toward live after paging ahead.
+    final clamped = !allowPast && amount.isNegative && target.isBefore(liveStart)
+        ? liveStart
+        : target;
+    if (clamped == oldStart) return;
 
     try {
-      await _vm.setWindowStart(target, livePosition: target == liveStart);
+      await _vm.setWindowStart(clamped, livePosition: clamped == liveStart);
     } catch (_) {
       return;
     }
