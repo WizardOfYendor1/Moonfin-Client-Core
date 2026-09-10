@@ -46,8 +46,17 @@ class ChannelCarouselOverlay extends StatefulWidget {
 class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     with WidgetsBindingObserver {
   static const _debounce = Duration(milliseconds: 300);
+
+  /// Roughly a third shorter than the original 150: tighter padding and
+  /// leading and a one-step-smaller title, with both overview lines kept.
+  static const double _headerHeight = 104;
   late final LiveTvGuideViewModel _vm;
   late List<GuideChannel> _channels;
+  /// Presentation entries, recomputed only when the guide data or the clock
+  /// moves. Building them per frame made every debounced `setState` walk the
+  /// whole lineup, reformatting times and image URLs it already had.
+  List<ChannelCarouselEntry> _entries = const [];
+  bool _entriesDirty = true;
   late String _centeredId;
   Timer? _headerTimer;
   Timer? _loadTimer;
@@ -84,7 +93,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     _resetInactivity();
     _vm.scheduleBoundaryRefresh();
     _clockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted) setState(() {});
+      if (mounted) setState(_invalidateEntries);
     });
     _scheduleQuarterRefresh();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -131,7 +140,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       _vm.scheduleBoundaryRefresh();
       _scheduleQuarterRefresh();
       _scheduleHeader();
-      setState(() {});
+      setState(_invalidateEntries);
     }
   }
 
@@ -152,6 +161,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
           !_channels.any((channel) => channel.id == _centeredId)) {
         _centeredId = _channels.first.id;
       }
+      _invalidateEntries();
     });
     if (_channels.isEmpty) {
       _dismiss();
@@ -177,8 +187,22 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
 
   void _onDataChanged() {
     if (!mounted) return;
-    setState(() {});
+    setState(_invalidateEntries);
     if (_ready) _scheduleHeader();
+  }
+
+  void _invalidateEntries() => _entriesDirty = true;
+
+  /// Rebuilt lazily from `build`, where localisations are available, with one
+  /// `now` for the whole lineup. The list identity is stable between data
+  /// changes, which is what lets the strip reuse its card widgets.
+  List<ChannelCarouselEntry> get _currentEntries {
+    if (_entriesDirty) {
+      _entriesDirty = false;
+      final now = DateTime.now();
+      _entries = [for (final channel in _channels) _entry(channel, now)];
+    }
+    return _entries;
   }
 
   void _centered(int index) {
@@ -284,8 +308,8 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     return KeyEventResult.ignored;
   }
 
-  GuideProgram? _currentProgram(String channelId) {
-    final now = DateTime.now();
+  GuideProgram? _currentProgram(String channelId, [DateTime? at]) {
+    final now = at ?? DateTime.now();
     for (final program in _vm.unfilteredProgramsForChannel(channelId)) {
       if (!now.isBefore(program.startDate) && now.isBefore(program.endDate)) {
         return program;
@@ -318,8 +342,8 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       '${TimeOfDay.fromDateTime(program.startDate).format(context)} - '
       '${TimeOfDay.fromDateTime(program.endDate).format(context)}';
 
-  ChannelCarouselEntry _entry(GuideChannel channel) {
-    final program = _currentProgram(channel.id);
+  ChannelCarouselEntry _entry(GuideChannel channel, DateTime now) {
+    final program = _currentProgram(channel.id, now);
     return ChannelCarouselEntry(
       channelId: channel.id,
       channelNumber: channel.number,
@@ -336,7 +360,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       timeLabel: program == null ? null : _timeRange(program),
       genre: program == null ? null : epgGenreFor(program),
       isLive: program != null,
-      progress: program?.progressAt(DateTime.now()) ?? 0,
+      progress: program?.progressAt(now) ?? 0,
       hasTimer: program?.hasTimer == true || program?.hasSeriesTimer == true,
     );
   }
@@ -353,7 +377,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     return Container(
       key: const ValueKey('carousel-program-header'),
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: AppRadius.circular(12),
@@ -368,11 +392,11 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             [
               if (program != null) _timeRange(program),
@@ -387,7 +411,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           if (program?.overview case final String overview) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               overview,
               maxLines: 2,
@@ -395,7 +419,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
               style: const TextStyle(
                 color: Colors.white60,
                 fontSize: 13,
-                height: 1.3,
+                height: 1.2,
               ),
             ),
           ],
@@ -432,13 +456,13 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(height: 150, child: _header()),
+                SizedBox(height: _headerHeight, child: _header()),
                 const SizedBox(height: 16),
                 if (_ready && _channels.isNotEmpty)
                   NotificationListener<ScrollNotification>(
                     onNotification: _onScroll,
                     child: ChannelCarousel(
-                      channels: _channels.map(_entry).toList(),
+                      channels: _currentEntries,
                       initialIndex: math.max(
                         0,
                         _channels.indexWhere(

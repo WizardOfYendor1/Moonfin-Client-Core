@@ -353,7 +353,25 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
   // Rendering
   // ---------------------------------------------------------------------
 
+  /// Card widgets are cached per channel so that paging rebuilds only the two
+  /// cards whose centred state actually flipped; the rest are handed back the
+  /// identical instance and their elements skip the rebuild entirely. The
+  /// cache is dropped whenever the host hands over a new entry list.
+  List<ChannelCarouselEntry>? _cachedFor;
+  final Map<int, Widget> _plainCards = {};
+  final Map<int, Widget> _centredCards = {};
+
   Widget _cardFor(int channelIndex, {required bool centered}) {
+    if (!identical(_cachedFor, widget.channels)) {
+      _cachedFor = widget.channels;
+      _plainCards.clear();
+      _centredCards.clear();
+    }
+    final cache = centered ? _centredCards : _plainCards;
+    return cache[channelIndex] ??= _buildCard(channelIndex, centered);
+  }
+
+  Widget _buildCard(int channelIndex, bool centered) {
     final entry = widget.channels[channelIndex];
     return ChannelCarouselCard(
       channelNumber: entry.channelNumber,

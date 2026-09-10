@@ -18,6 +18,11 @@ import '../../screens/livetv/epg/epg_genre.dart';
 class ChannelCarouselCard extends StatelessWidget {
   static const String _metaSeparator = ' · ';
 
+  /// Text metrics are identical across every card in a frame, so measuring is
+  /// memoised: a card build otherwise lays out up to seven [TextPainter]s.
+  static final Map<(String, TextStyle, TextScaler), double> _metrics = {};
+  static const int _metricsCap = 1024;
+
   final String? channelNumber;
   final String channelName;
   final String? logoUrl;
@@ -50,6 +55,7 @@ class ChannelCarouselCard extends StatelessWidget {
 
   static const double _logoSize = 28;
   static const double _headerGap = 6;
+  static const double _statusGap = 3;
 
   const ChannelCarouselCard({
     super.key,
@@ -84,8 +90,11 @@ class ChannelCarouselCard extends StatelessWidget {
     );
     final metaStyle = (textTheme.labelSmall ?? const TextStyle(fontSize: 10))
         .copyWith(color: muted);
-    final nameStyle = (textTheme.bodyMedium ?? const TextStyle()).copyWith(
+    // One step up from bodyMedium: the card is 168x108, so the channel name
+    // can afford the extra 2 dp without pushing the programme block.
+    final nameStyle = (textTheme.titleMedium ?? const TextStyle()).copyWith(
       fontWeight: FontWeight.w600,
+      color: AppColorScheme.onSurface,
     );
 
     return SizedBox(
@@ -167,16 +176,17 @@ class ChannelCarouselCard extends StatelessWidget {
               ),
             ),
             // Progress reads as a seekbar, not as card structure: range tokens
-            // rather than the genre colour, held clear of the genre bar by a
-            // visible gap.
+            // rather than the genre colour, inset from the genre bar and from
+            // both card edges so it never looks like a border.
             if (isLive && progress > 0)
               Positioned(
                 left: _genreBarWidth + AppSpacing.spaceSm,
-                right: 0,
-                bottom: 0,
+                right: AppSpacing.spaceSm,
+                bottom: AppSpacing.spaceSm,
                 child: LinearProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
                   minHeight: 4,
+                  borderRadius: AppRadius.circular(2),
                   backgroundColor: AppColorScheme.rangeTrack,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     AppColorScheme.rangeProgress,
@@ -191,6 +201,10 @@ class ChannelCarouselCard extends StatelessWidget {
 
   Widget _headerRow(TextStyle nameStyle, TextStyle numberStyle) => Row(
     children: [
+      if (isFavorite || hasTimer) ...[
+        _statusCluster(),
+        const SizedBox(width: _statusGap),
+      ],
       _logo(),
       const SizedBox(width: 8),
       Expanded(
@@ -216,23 +230,31 @@ class ChannelCarouselCard extends StatelessWidget {
           ],
         ),
       ),
-      if (isFavorite) ...[
-        const SizedBox(width: 4),
-        Icon(
-          Icons.favorite,
-          size: 12,
-          color: AppColorScheme.onSurface.withValues(alpha: 0.85),
-        ),
-      ],
-      if (hasTimer) ...[
-        const SizedBox(width: 4),
-        const Icon(
-          Icons.fiber_manual_record,
-          size: 9,
-          color: Color(0xFFE0685C),
-        ),
-      ],
     ],
+  );
+
+  /// Favourite and recording status, pinned to the card's top-left corner so
+  /// it reads as state rather than as part of the channel or programme text.
+  Widget _statusCluster() => SizedBox(
+    height: _logoSize,
+    child: Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isFavorite)
+              const Icon(Icons.favorite, size: 11, color: AppColors.red500),
+            if (isFavorite && hasTimer) const SizedBox(width: _statusGap),
+            if (hasTimer)
+              const Icon(
+                Icons.fiber_manual_record,
+                size: 9,
+                color: Color(0xFFE0685C),
+              ),
+          ],
+        ),
+      ],
+    ),
   );
 
   /// Metadata that fits the given width — time, then rating, then tags —
@@ -257,29 +279,34 @@ class ChannelCarouselCard extends StatelessWidget {
     return fitted;
   }
 
-  static double _lineHeight(TextStyle style, TextScaler scaler) {
-    final painter = TextPainter(
-      text: TextSpan(text: 'Ag', style: style),
-      textDirection: TextDirection.ltr,
-      textScaler: scaler,
-      maxLines: 1,
-    )..layout();
-    final height = painter.height;
-    painter.dispose();
-    return height.ceilToDouble();
-  }
-
-  static double _textWidth(String text, TextStyle style, TextScaler scaler) {
+  static double _measure(
+    String cacheKey,
+    String text,
+    TextStyle style,
+    TextScaler scaler,
+    double Function(TextPainter) pick,
+  ) {
+    final key = (cacheKey, style, scaler);
+    final cached = _metrics[key];
+    if (cached != null) return cached;
     final painter = TextPainter(
       text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
       textScaler: scaler,
       maxLines: 1,
     )..layout();
-    final width = painter.width;
+    final value = pick(painter);
     painter.dispose();
-    return width;
+    if (_metrics.length >= _metricsCap) _metrics.clear();
+    _metrics[key] = value;
+    return value;
   }
+
+  static double _lineHeight(TextStyle style, TextScaler scaler) =>
+      _measure('h', 'Ag', style, scaler, (p) => p.height.ceilToDouble());
+
+  static double _textWidth(String text, TextStyle style, TextScaler scaler) =>
+      _measure('w$text', text, style, scaler, (p) => p.width);
 
   Widget _logo() {
     if (logoUrl == null || logoUrl!.isEmpty) return _logoFallback(_logoSize);
