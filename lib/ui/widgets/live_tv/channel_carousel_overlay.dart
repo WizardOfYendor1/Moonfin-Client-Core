@@ -438,10 +438,9 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        // The raised surface rather than the base one: the panel sits where
-        // the scrim gradient is still almost clear, so it stays near-opaque
-        // for the overview's sake while reading lighter than the strip.
-        color: AppColorScheme.surfaceVariant.withValues(alpha: 0.85),
+        // Dark enough to keep the overview legible over bright video, but
+        // translucent enough to let the picture through behind it.
+        color: AppColorScheme.surface.withValues(alpha: 0.72),
         borderRadius: AppRadius.circular(12),
         border: Border.fromBorderSide(ThemeRegistry.active.borders.cardBorder),
       ),
