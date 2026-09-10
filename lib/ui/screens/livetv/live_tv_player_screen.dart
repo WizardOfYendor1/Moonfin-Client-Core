@@ -92,6 +92,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   bool _isGuidePickerOpen = false;
   bool _isCarouselOpen = false;
   int _carouselSelectionRevision = 0;
+
+  /// Guide data for the channel changer, warmed at tune time so the first UP
+  /// press opens onto real cards. TV-only, like the changer itself.
+  ChannelCarouselPrewarm? _carouselPrewarm;
   FocusNode? _carouselPriorFocus;
   bool _carouselPriorInfoVisible = true;
   int _carouselPriorControlIndex = 0;
@@ -197,6 +201,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   void dispose() {
     _screensaverPlayingSub?.cancel();
     _screensaverController.setPlaybackActive(false);
+    _carouselPrewarm?.dispose();
     _hideTimer?.cancel();
     _programRefreshTimer?.cancel();
     _backendSub?.cancel();
@@ -657,6 +662,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       return false;
     }
     unawaited(_fetchCurrentProgram());
+    _warmChannelCarousel();
     return true;
   }
 
@@ -847,6 +853,12 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     } else {
       _showInfo();
     }
+  }
+
+  void _warmChannelCarousel() {
+    if (!PlatformDetection.isTV || widget.channels.length < 2) return;
+    final prewarm = _carouselPrewarm ??= ChannelCarouselPrewarm(_client);
+    prewarm.tuned(widget.channels, _currentChannel.id);
   }
 
   void _showChannelCarousel() {
@@ -1776,6 +1788,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         onChannelSelected: _onCarouselChannelSelected,
         onDismiss: () => _dismissChannelCarousel(),
         onShowControls: _showControlsFromCarousel,
+        prewarm: _carouselPrewarm,
       ),
     );
   }

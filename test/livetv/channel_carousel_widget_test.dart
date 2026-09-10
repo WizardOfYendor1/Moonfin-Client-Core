@@ -328,6 +328,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 4999));
     expect(dismissals, 0);
     await tester.pump(const Duration(milliseconds: 1));
+    // The timeout starts the slide out; the host is told once it has run.
+    expect(dismissals, 0);
+    await tester.pump();
+    await tester.pump(kCarouselExitDuration * 2);
     expect(dismissals, 1);
     await tester.pumpWidget(const SizedBox.shrink());
   });

@@ -14,6 +14,115 @@ import '../../screens/livetv/guide/guide_window.dart';
 import 'channel_carousel.dart';
 import 'channel_carousel_card.dart';
 
+/// How long the strip takes to slide up into place.
+const Duration kCarouselEnterDuration = Duration(milliseconds: 180);
+
+/// The way out is a touch quicker than the way in, so dismissal never feels
+/// like it is holding the picture back.
+const Duration kCarouselExitDuration = Duration(milliseconds: 140);
+
+/// Viewport capacity assumed before the strip has been laid out once.
+const int _defaultVisibleCards = 5;
+
+/// The run of channels around [centeredId] the strip can show, wrapping at
+/// both ends. Shared so a warm fetch asks for exactly what an open one would.
+List<String> carouselNeighborhood(
+  List<GuideChannel> channels,
+  String centeredId,
+  int visibleCards,
+) {
+  if (channels.isEmpty) return const [];
+  final center = math.max(
+    0,
+    channels.indexWhere((channel) => channel.id == centeredId),
+  );
+  final radius = (visibleCards / 2).ceil() + 1;
+  return {
+    for (var offset = -radius; offset <= radius; offset++)
+      channels[(center + offset) % channels.length].id,
+  }.toList();
+}
+
+/// Keeps the channel changer's guide data loaded while the overlay is closed,
+/// so the first UP press opens onto real cards instead of skeletons.
+///
+/// Data only: presentation entries are still built from `build`, where the
+/// localisations `TimeOfDay.format` needs are available. Warming them here
+/// would mean formatting off a context the holder does not have, and the
+/// entries a closed overlay could produce are mostly placeholders that the
+/// neighbourhood fetch invalidates a moment later anyway.
+class ChannelCarouselPrewarm {
+  /// A tune is often one step of channel surfing, so the neighbourhood fetch
+  /// waits for the lineup to settle rather than firing once per step.
+  static const Duration settleDelay = Duration(seconds: 1);
+
+  final LiveTvGuideViewModel viewModel;
+
+  Timer? _timer;
+  Future<void>? _inFlight;
+  bool _disposed = false;
+
+  /// True while an overlay is mounted on this view model. It drives its own
+  /// neighbourhood loads then, and a warm fetch underneath could reset them.
+  bool _inUse = false;
+
+  ChannelCarouselPrewarm(
+    MediaServerClient client, {
+    LiveTvGuideViewModel Function(MediaServerClient)? viewModelFactory,
+  }) : viewModel =
+           viewModelFactory?.call(client) ?? LiveTvGuideViewModel(client);
+
+  /// True once the lineup and the tuned channel's neighbourhood are resident,
+  /// which is what lets the overlay mount already showing cards.
+  bool get isWarm => viewModel.state == GuideState.ready;
+
+  /// Called by the overlay around its own lifetime, so warming stands aside
+  /// while the open changer owns the fetching.
+  void adopt() => _inUse = true;
+
+  void release() => _inUse = false;
+
+  /// Called when a channel is tuned. Idempotent: an already-cached
+  /// neighbourhood costs nothing beyond the set arithmetic.
+  void tuned(List<GuideChannel> channels, String channelId) {
+    if (_disposed || channels.isEmpty) return;
+    _timer?.cancel();
+    _timer = Timer(settleDelay, () => unawaited(_warm(channels, channelId)));
+  }
+
+  Future<void> _warm(List<GuideChannel> channels, String channelId) async {
+    if (_disposed || _inUse || _inFlight != null) return;
+    final sorted = List.of(channels)
+      ..sort(LiveTvGuideViewModel.comparatorFor(viewModel.sortBy));
+    final ids = carouselNeighborhood(sorted, channelId, _defaultVisibleCards);
+    if (ids.isEmpty) return;
+    // A first warm fetches the lineup too; later ones only top up the
+    // programmes the shifted neighbourhood is missing.
+    final work = isWarm
+        ? viewModel.ensureProgramsForChannels(ids)
+        : viewModel.load(
+            initialChannelIds: ids,
+            windowStart: guideLeftEdge(DateTime.now()),
+            livePosition: true,
+          );
+    _inFlight = work;
+    try {
+      await work;
+    } catch (_) {
+      // A warm that fails simply leaves the overlay to load on open.
+    } finally {
+      _inFlight = null;
+    }
+  }
+
+  void dispose() {
+    _disposed = true;
+    _timer?.cancel();
+    viewModel.cancelBoundaryRefresh();
+    viewModel.dispose();
+  }
+}
+
 /// Owns the carousel's guide data and timers while video remains behind it.
 class ChannelCarouselOverlay extends StatefulWidget {
   final MediaServerClient client;
@@ -26,6 +135,10 @@ class ChannelCarouselOverlay extends StatefulWidget {
   final Duration inactivityDuration;
   final LiveTvGuideViewModel Function(MediaServerClient)? viewModelFactory;
 
+  /// Guide data warmed at tune time. When supplied the overlay adopts it and
+  /// does not dispose it; the host that warmed it owns its lifetime.
+  final ChannelCarouselPrewarm? prewarm;
+
   const ChannelCarouselOverlay({
     super.key,
     required this.client,
@@ -37,6 +150,7 @@ class ChannelCarouselOverlay extends StatefulWidget {
     required this.onShowControls,
     this.inactivityDuration = const Duration(minutes: 2),
     this.viewModelFactory,
+    this.prewarm,
   });
 
   @override
@@ -44,7 +158,7 @@ class ChannelCarouselOverlay extends StatefulWidget {
 }
 
 class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   static const _debounce = Duration(milliseconds: 300);
 
   /// How often live progress and the current programme are re-evaluated.
@@ -54,6 +168,11 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   /// leading and a one-step-smaller title, with both overview lines kept.
   static const double _headerHeight = 104;
   late final LiveTvGuideViewModel _vm;
+
+  /// False when the view model came from a prewarm holder, which owns it.
+  late final bool _ownsViewModel;
+  late final AnimationController _slide;
+  late final Animation<Offset> _offset;
   late List<GuideChannel> _channels;
 
   /// Presentation entries, recomputed only when the guide data or the clock
@@ -69,7 +188,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   Timer? _quarterTimer;
   GuideProgram? _headerProgram;
   GuideChannel? _headerChannel;
-  int _visibleCards = 5;
+  int _visibleCards = _defaultVisibleCards;
   bool _scrolling = false;
   bool _ready = false;
   bool _dismissed = false;
@@ -82,9 +201,26 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   @override
   void initState() {
     super.initState();
+    final warm = widget.prewarm;
+    _ownsViewModel = warm == null;
     _vm =
+        warm?.viewModel ??
         widget.viewModelFactory?.call(widget.client) ??
         LiveTvGuideViewModel(widget.client);
+    _slide = AnimationController(
+      vsync: this,
+      duration: kCarouselEnterDuration,
+      reverseDuration: kCarouselExitDuration,
+    );
+    _offset = Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _slide,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ),
+    );
+    _slide.addStatusListener(_onSlideStatus);
+    _slide.forward();
     _channels = List.of(widget.channels)
       ..sort(LiveTvGuideViewModel.comparatorFor(_vm.sortBy));
     _centeredId = widget.currentChannelId;
@@ -92,6 +228,10 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
         !_channels.any((channel) => channel.id == _centeredId)) {
       _centeredId = _channels.first.id;
     }
+    // Warm data is adopted by assignment only. Nothing here builds entries, so
+    // no localised formatting runs before the first build has a context.
+    if (warm?.isWarm == true) _adoptWarmChannels();
+    warm?.adopt();
     _vm.addListener(_onDataChanged);
     WidgetsBinding.instance.addObserver(this);
     _resetInactivity();
@@ -105,7 +245,32 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
         _overlayFocus.requestFocus();
       }
     });
-    unawaited(_load());
+    if (_ready) {
+      // Already warm: top up only what the neighbourhood is missing.
+      _scheduleHeader();
+      _scheduleVisibleLoad();
+    } else {
+      unawaited(_load());
+    }
+  }
+
+  /// Takes the lineup straight off the warmed view model so the first frame
+  /// renders real cards. Field assignment only, so it is safe in `initState`.
+  void _adoptWarmChannels() {
+    final playbackIds = widget.channels.map((channel) => channel.id).toSet();
+    final warmed = _vm.filteredChannels
+        .where((channel) => playbackIds.contains(channel.id))
+        .toList();
+    if (warmed.isEmpty) return;
+    _channels = warmed;
+    if (!_channels.any((channel) => channel.id == _centeredId)) {
+      _centeredId = _channels.first.id;
+    }
+    // Both lookups are context-free, so the header is on screen from the
+    // first frame instead of after the debounce.
+    _headerChannel = _vm.channelForId(_centeredId);
+    _headerProgram = _currentProgram(_centeredId);
+    _ready = true;
   }
 
   @override
@@ -139,7 +304,9 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     _quarterTimer?.cancel();
     _vm.removeListener(_onDataChanged);
     _vm.cancelBoundaryRefresh();
-    _vm.dispose();
+    widget.prewarm?.release();
+    if (_ownsViewModel) _vm.dispose();
+    _slide.dispose();
     _overlayFocus.dispose();
     super.dispose();
   }
@@ -182,18 +349,8 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     _scheduleVisibleLoad();
   }
 
-  List<String> _neighborhood() {
-    if (_channels.isEmpty) return const [];
-    final center = math.max(
-      0,
-      _channels.indexWhere((channel) => channel.id == _centeredId),
-    );
-    final radius = (_visibleCards / 2).ceil() + 1;
-    return {
-      for (var offset = -radius; offset <= radius; offset++)
-        _channels[(center + offset) % _channels.length].id,
-    }.toList();
-  }
+  List<String> _neighborhood() =>
+      carouselNeighborhood(_channels, _centeredId, _visibleCards);
 
   void _onDataChanged() {
     if (!mounted) return;
@@ -338,11 +495,23 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     if (!_dismissed) _hideTimer = Timer(widget.inactivityDuration, _dismiss);
   }
 
+  /// Reverses the entrance before handing back to the host. The overlay stays
+  /// mounted and focused throughout, so the back key-up that follows the
+  /// key-down it consumed is swallowed here rather than reaching the route;
+  /// the host's own suppression window then covers the unmounted case.
   void _dismiss() {
     if (_dismissed) return;
     _dismissed = true;
     _hideTimer?.cancel();
-    widget.onDismiss();
+    _slide.reverse();
+  }
+
+  /// The host is told only once the strip has left the screen, so the overlay
+  /// keeps focus — and keeps eating the trailing back key-up — until then.
+  void _onSlideStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && _dismissed && mounted) {
+      widget.onDismiss();
+    }
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -495,55 +664,62 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     onKeyEvent: _onKey,
     child: Align(
       alignment: Alignment.bottomCenter,
-      child: Container(
-        // 24 dp of bottom margin sits inside the 5% TV overscan allowance
-        // (27 dp of a 540 dp viewport) while dropping the whole overlay
-        // closer to the screen edge.
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.94)],
-          ),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final visible = ChannelCarouselCard.layoutFor(constraints.maxWidth)
-                .count;
-            if (_visibleCards != visible) {
-              _visibleCards = visible;
-              _scheduleVisibleLoad();
-            }
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: _headerHeight, child: _header()),
-                const SizedBox(height: 16),
-                if (_ready && _channels.isNotEmpty)
-                  NotificationListener<ScrollNotification>(
-                    onNotification: _onScroll,
-                    child: ChannelCarousel(
-                      channels: _currentEntries,
-                      selectionRevision: widget.selectionRevision,
-                      initialIndex: math.max(
-                        0,
-                        _channels.indexWhere(
-                          (channel) => channel.id == _centeredId,
-                        ),
-                      ),
-                      onChannelCentered: _centered,
-                      onChannelSelected: (entry) =>
-                          widget.onChannelSelected(entry.channelId),
-                      onBack: _dismiss,
-                      onKeyInteraction: _resetInactivity,
-                    ),
-                  )
-                else
-                  const SizedBox(height: ChannelCarouselCard.cardHeight),
+      child: SlideTransition(
+        position: _offset,
+        child: Container(
+          // 24 dp of bottom margin sits inside the 5% TV overscan allowance
+          // (27 dp of a 540 dp viewport) while dropping the whole overlay
+          // closer to the screen edge.
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.94),
               ],
-            );
-          },
+            ),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final visible = ChannelCarouselCard.layoutFor(
+                constraints.maxWidth,
+              ).count;
+              if (_visibleCards != visible) {
+                _visibleCards = visible;
+                _scheduleVisibleLoad();
+              }
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: _headerHeight, child: _header()),
+                  const SizedBox(height: 16),
+                  if (_ready && _channels.isNotEmpty)
+                    NotificationListener<ScrollNotification>(
+                      onNotification: _onScroll,
+                      child: ChannelCarousel(
+                        channels: _currentEntries,
+                        selectionRevision: widget.selectionRevision,
+                        initialIndex: math.max(
+                          0,
+                          _channels.indexWhere(
+                            (channel) => channel.id == _centeredId,
+                          ),
+                        ),
+                        onChannelCentered: _centered,
+                        onChannelSelected: (entry) =>
+                            widget.onChannelSelected(entry.channelId),
+                        onBack: _dismiss,
+                        onKeyInteraction: _resetInactivity,
+                      ),
+                    )
+                  else
+                    const SizedBox(height: ChannelCarousel.stripHeight),
+                ],
+              );
+            },
+          ),
         ),
       ),
     ),

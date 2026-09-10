@@ -25,6 +25,11 @@ const Duration kCarouselHoldSafety = Duration(milliseconds: 900);
 const double _cardHeight = ChannelCarouselCard.cardHeight;
 const double _cardSpacing = ChannelCarouselCard.cardSpacing;
 
+/// Ceiling on how much larger the centred card paints than its laid-out box.
+/// The scale is applied by a transform, so pitch, centring and the wraparound
+/// index maths are untouched; only the painted size changes.
+const double _maxCentredScale = 1.08;
+
 /// How many lineups the raw index space is seeded into. Larger than the
 /// controller's recentre threshold so drift can build in either direction.
 const int _seedLineups = 500;
@@ -160,6 +165,10 @@ class ChannelCarousel extends StatefulWidget {
   /// Gate for the host: an empty lineup must not open the carousel.
   static bool canOpen(int channelCount) => channelCount > 0;
 
+  /// Vertical space the strip needs: the card, plus headroom for the centred
+  /// card's scale-up, which the strip viewport would otherwise clip.
+  static const double stripHeight = _cardHeight * _maxCentredScale;
+
   @override
   State<ChannelCarousel> createState() => _ChannelCarouselState();
 }
@@ -179,6 +188,12 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
   /// always fits. The card's own constants stand in until the first layout.
   double _cardExtent = ChannelCarouselCard.cardPitch;
   double _cardWidth = ChannelCarouselCard.cardWidth;
+
+  /// Growth per side is `(scale - 1) * width / 2`, so capping the scale at
+  /// `1 + 1.5 * spacing / width` keeps it inside the gutter with a quarter of
+  /// the gutter still clear between the centred card and its neighbours.
+  double get _centredScale =>
+      math.min(_maxCentredScale, 1 + _cardSpacing * 1.5 / _cardWidth);
 
   Timer? _pageStartTimer;
   Timer? _pageRepeatTimer;
@@ -493,20 +508,36 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
     final selected = _centredChannelIndex;
     final middle = _channelCount ~/ 2;
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         for (var i = 0; i < _channelCount; i++)
           Positioned(
             left: (viewportWidth - _cardWidth) / 2 + (i - middle) * _cardExtent,
+            top: (ChannelCarousel.stripHeight - _cardHeight) / 2,
             width: _cardWidth,
             height: _cardHeight,
-            child: _cardFor(
-              channelIndexFor(selected + i - middle, _channelCount),
+            child: _scaled(
               centered: i == middle,
+              child: _cardFor(
+                channelIndexFor(selected + i - middle, _channelCount),
+                centered: i == middle,
+              ),
             ),
           ),
       ],
     );
   }
+
+  /// Paints the centred card larger without changing its laid-out extent. The
+  /// implicit animation runs at the hold cadence, so each step's growth lands
+  /// exactly as the next one begins.
+  Widget _scaled({required bool centered, required Widget child}) =>
+      AnimatedScale(
+        scale: centered ? _centredScale : 1,
+        duration: kCarouselHoldRepeatInterval,
+        curve: Curves.easeOut,
+        child: child,
+      );
 
   Widget _buildScrollingStrip(double viewportWidth) {
     final leading = math.max(0.0, (viewportWidth - _cardWidth) / 2);
@@ -519,9 +550,17 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       itemCount: _channelCount * _totalLineups,
       itemBuilder: (context, index) {
         final channelIndex = channelIndexFor(index, _channelCount);
+        final centered = index == _rawIndex;
         return Padding(
           padding: const EdgeInsets.only(right: _cardSpacing),
-          child: _cardFor(channelIndex, centered: index == _rawIndex),
+          // The strip is taller than the card to leave the centred card room
+          // to grow, so each card sits centred in its slot.
+          child: Center(
+            child: _scaled(
+              centered: centered,
+              child: _cardFor(channelIndex, centered: centered),
+            ),
+          ),
         );
       },
     );
@@ -535,7 +574,7 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       autofocus: widget.autofocus,
       onKeyEvent: _onKeyEvent,
       child: SizedBox(
-        height: _cardHeight,
+        height: ChannelCarousel.stripHeight,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
