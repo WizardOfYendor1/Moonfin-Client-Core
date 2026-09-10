@@ -1045,6 +1045,32 @@ class _ContentRowsState extends State<_ContentRows>
     if (chromePreviewActive && (chromeChanged || _activePreviewKey != null)) {
       _finishSharedPreview(releaseResources: true);
     }
+
+    if (_infoRevealed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _collapsePinnedInfoIfMediaBarOwnsHero();
+      });
+    }
+  }
+
+  /// The pinned info band belongs to the rows, so collapse it once focus has
+  /// left them and the media bar owns the hero again; otherwise a row item
+  /// revealed during start-up stays drawn over the bar's own slide.
+  void _collapsePinnedInfoIfMediaBarOwnsHero() {
+    if (!_infoRevealed) return;
+    if (!_showHomeRowInfoOverlay()) return;
+    if (!_isMediaBarIncluded() || _isBannerMode()) return;
+    if (_activeFocusedRowIndex != null || _isSidebarFocus) return;
+    if (_verticalNavInFlight) return;
+    if (OverlaySheetController.hasOpenSheet ||
+        SettingsPanel.isOpenNotifier.value) {
+      return;
+    }
+    if (_scrollController.hasClients &&
+        _scrollController.offset >= _pinnedInfoCollapseOffset()) {
+      return;
+    }
+    _infoRevealed = false;
   }
 
   void _onSettingsPanelOpenChanged() {
