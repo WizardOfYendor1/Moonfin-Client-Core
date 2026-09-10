@@ -107,22 +107,33 @@ class EpgChannelCell extends StatelessWidget {
   Widget _logo(double size, double radius) => SizedBox(
     width: size,
     height: size,
-    child: ClipRRect(
-      borderRadius: AppRadius.circular(radius * 0.6),
-      child: (logoUrl != null && logoUrl!.isNotEmpty)
-          ? CachedNetworkImage(
-              imageUrl: logoUrl!,
-              fit: BoxFit.contain,
-              errorWidget: (context, url, error) => _fallback(),
-            )
-          : _fallback(),
+    child: DecoratedBox(
+      // Logos are usually pale artwork on transparency, so only the tile behind
+      // the image carries a plate; the cell itself stays unfilled.
+      decoration: BoxDecoration(
+        color: AppColorScheme.onSurface.withValues(alpha: 0.55),
+        borderRadius: AppRadius.circular(radius * 0.6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: ClipRRect(
+          borderRadius: AppRadius.circular(radius * 0.5),
+          child: (logoUrl != null && logoUrl!.isNotEmpty)
+              ? CachedNetworkImage(
+                  imageUrl: logoUrl!,
+                  fit: BoxFit.contain,
+                  errorWidget: (context, url, error) => _fallback(),
+                )
+              : _fallback(),
+        ),
+      ),
     ),
   );
 
   Widget _fallback() => Icon(
     Icons.tv,
     size: 16,
-    color: AppColorScheme.onSurface.withValues(alpha: 0.4),
+    color: AppColorScheme.surface.withValues(alpha: 0.7),
   );
 
   Widget _numberChip(String number, Color accent) => Container(

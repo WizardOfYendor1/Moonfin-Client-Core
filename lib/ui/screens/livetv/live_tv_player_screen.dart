@@ -874,6 +874,9 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       _focusedControlIndex = showControls ? 0 : priorControlIndex;
     });
     _carouselPriorFocus = null;
+    // The overlay consumes the back key-down, but its key-up lands after the
+    // overlay has left the tree and Android turns that into a route pop.
+    _suppressBackNavigation();
     if (_infoVisible) {
       _scheduleHide();
     } else {
