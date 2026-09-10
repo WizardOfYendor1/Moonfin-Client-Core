@@ -601,6 +601,15 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     final suffix = season != null && episode != null
         ? ' (S$season:E$episode)'
         : '';
+    // Some sources repeat the programme name as the episode title; showing it
+    // twice reads as a glitch.
+    final episodeTitle = program?.episodeTitle;
+    final episodeName =
+        episodeTitle != null &&
+            episodeTitle.isNotEmpty &&
+            episodeTitle != program?.name
+        ? ' - $episodeTitle'
+        : '';
     // No panel of its own: the description and the strip read as one block
     // over the overlay scrim, which is what carries legibility here.
     return Container(
@@ -611,7 +620,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${program?.name ?? channel.name}$suffix',
+            '${program?.name ?? channel.name}$episodeName$suffix',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
