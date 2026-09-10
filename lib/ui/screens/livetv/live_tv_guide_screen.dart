@@ -1131,7 +1131,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           _windowBarButton(
             _kWindowBarPrevious,
             icon: Icons.chevron_left,
-            onPressed: () => _shiftGuideWindow(-_vm.guideWindow),
+            onPressed: () =>
+                _shiftGuideWindow(-_vm.guideWindow, focusGrid: false),
           ),
           const SizedBox(width: 4),
           _windowBarButton(
@@ -1143,7 +1144,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           _windowBarButton(
             _kWindowBarNext,
             icon: Icons.chevron_right,
-            onPressed: () => _shiftGuideWindow(_vm.guideWindow),
+            onPressed: () =>
+                _shiftGuideWindow(_vm.guideWindow, focusGrid: false),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1266,8 +1268,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           title: '',
           scrollController: _timeHeaderHorizontalScrollController,
           onScrollPastStart: () =>
-              _shiftGuideWindow(const Duration(minutes: -30)),
-          onScrollPastEnd: () => _shiftGuideWindow(const Duration(minutes: 30)),
+              _shiftGuideWindow(const Duration(minutes: -30), focusGrid: false),
+          onScrollPastEnd: () =>
+              _shiftGuideWindow(const Duration(minutes: 30), focusGrid: false),
           showControls: false,
           builder: (_, controller) => SizedBox(
             height: profile.timeHeaderHeight,
@@ -1561,7 +1564,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _pendingVerticalMove = null;
   }
 
-  Future<void> _shiftGuideWindow(Duration amount) async {
+  /// [focusGrid] is false when a control drove the shift, so pressing a
+  /// chevron does not yank focus down into the grid.
+  Future<void> _shiftGuideWindow(Duration amount, {bool focusGrid = true}) async {
     _cancelPendingVerticalMove();
     final oldStart = _vm.windowStart;
     final oldEnd = _vm.windowEnd;
@@ -1591,7 +1596,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       clearProgramId: cell.program == null,
     );
     _selection = updated;
-    _focusSelectedCell(updated, cells);
+    if (focusGrid) _focusSelectedCell(updated, cells);
   }
 
   /// Whole rows the grid shows at once, so a page key moves exactly one screen.
