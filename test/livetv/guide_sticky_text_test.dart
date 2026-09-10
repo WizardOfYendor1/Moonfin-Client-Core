@@ -21,7 +21,6 @@ void main() {
               width: 480,
               child: EpgProgramCell(
                 title: 'A readable title',
-                timeLabel: null,
                 genre: EpgGenre('Drama', Colors.blue),
                 isLive: false,
                 progress: 0,

@@ -302,7 +302,9 @@ void main() {
       );
       // Engages the Movies genre filter, which removes p2 and leaves a
       // filtered hole where it used to be.
-      await tester.tap(find.text(l10n.movies));
+      _nodeLabelled(tester, 'GuideFilter:1').requestFocus();
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
 
       expect(find.text(l10n.noProgramData), findsNothing);

@@ -105,6 +105,12 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _invalidateEntries();
+  }
+
+  @override
   void didUpdateWidget(covariant ChannelCarouselOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentChannelId == widget.currentChannelId &&
@@ -358,6 +364,8 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       isFavorite: channel.isFavorite,
       programTitle: program?.name,
       timeLabel: program == null ? null : _timeRange(program),
+      rating: program?.officialRating,
+      tags: program == null ? const [] : _categoryLabels(program),
       genre: program == null ? null : epgGenreFor(program),
       isLive: program != null,
       progress: program?.progressAt(now) ?? 0,
@@ -463,6 +471,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
                     onNotification: _onScroll,
                     child: ChannelCarousel(
                       channels: _currentEntries,
+                      selectionRevision: widget.selectionRevision,
                       initialIndex: math.max(
                         0,
                         _channels.indexWhere(

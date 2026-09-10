@@ -658,7 +658,11 @@ class LiveTvGuideViewModel extends ChangeNotifier {
       await _loadNextBatch();
     } finally {
       _loadingMore = false;
-      if (!_disposed && generation != _programGeneration && hasMorePrograms) {
+      // A reload owns the first batch until the guide is ready.
+      if (!_disposed &&
+          _state == GuideState.ready &&
+          generation != _programGeneration &&
+          hasMorePrograms) {
         unawaited(loadMorePrograms());
       }
     }

@@ -16,7 +16,9 @@ void main() {
     }
   });
 
-  test('derives positive time density and bounded fetch windows', () {
+  test('derives positive time density for the fixed fetch window', () {
+    expect(GuideLayoutProfile.guideWindow, const Duration(minutes: 150));
+
     for (final width in [120.0, 240.0, 480.0, 720.0, 960.0, 1920.0, 3840.0]) {
       final profile = GuideLayoutProfile.fromAvailableArea(
         availableWidth: width,
@@ -25,13 +27,6 @@ void main() {
       );
 
       expect(profile.pixelsPerMinute, greaterThan(0));
-      expect(
-        profile.guideWindowForWidth(width).inMinutes,
-        inInclusiveRange(
-          GuideLayoutProfile.minGuideWindow.inMinutes,
-          GuideLayoutProfile.maxGuideWindow.inMinutes,
-        ),
-      );
     }
   });
 
@@ -47,11 +42,6 @@ void main() {
       // Five half-hour ticks, and a rendered window that exactly fills the
       // grid: pixelsPerMinute * 150 is the guide area's width.
       expect(profile.targetSlots, 5);
-      expect(
-        profile.guideWindowForWidth(width),
-        const Duration(minutes: 150),
-        reason: 'width $width',
-      );
       expect(
         profile.pixelsPerMinute * 150,
         // The profile floors the guide area at one pixel, which only bites at

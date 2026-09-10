@@ -42,6 +42,8 @@ class ChannelCarouselEntry {
   final bool isFavorite;
   final String? programTitle;
   final String? timeLabel;
+  final String? rating;
+  final List<String> tags;
   final EpgGenre? genre;
   final bool isLive;
   final double progress;
@@ -55,6 +57,8 @@ class ChannelCarouselEntry {
     this.isFavorite = false,
     this.programTitle,
     this.timeLabel,
+    this.rating,
+    this.tags = const [],
     this.genre,
     this.isLive = false,
     this.progress = 0,
@@ -70,6 +74,9 @@ class ChannelCarousel extends StatefulWidget {
 
   /// Index into [channels] to open on.
   final int initialIndex;
+
+  /// Forces restoration even when the requested index has not changed.
+  final int selectionRevision;
 
   /// Fires whenever the centred channel changes, with its [channels] index.
   final ValueChanged<int>? onChannelCentered;
@@ -94,6 +101,7 @@ class ChannelCarousel extends StatefulWidget {
     super.key,
     required this.channels,
     this.initialIndex = 0,
+    this.selectionRevision = 0,
     this.onChannelCentered,
     this.onChannelSelected,
     this.onBack,
@@ -154,7 +162,8 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       _endHold();
       _seedFromChannels(preferredChannelIndex: _centredChannelIndex);
       _reportEmptyIfNeeded();
-    } else if (oldWidget.initialIndex != widget.initialIndex &&
+    } else if ((oldWidget.initialIndex != widget.initialIndex ||
+            oldWidget.selectionRevision != widget.selectionRevision) &&
         widget.initialIndex != _centredChannelIndex) {
       _endHold();
       _resetToInitialIndex();
@@ -380,6 +389,8 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
       isFavorite: entry.isFavorite,
       programTitle: entry.programTitle,
       timeLabel: entry.timeLabel,
+      rating: entry.rating,
+      tags: entry.tags,
       genre: entry.genre,
       isLive: entry.isLive,
       progress: entry.progress,

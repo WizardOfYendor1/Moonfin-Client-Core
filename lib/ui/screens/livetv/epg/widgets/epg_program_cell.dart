@@ -20,8 +20,6 @@ class EpgProgramCell extends StatelessWidget {
 
   final String title;
 
-  /// Retained for API compatibility only — the cell no longer renders it.
-  final String? timeLabel;
   final EpgGenre genre;
   final bool isLive;
   final bool isPast;
@@ -30,8 +28,6 @@ class EpgProgramCell extends StatelessWidget {
   final bool focused;
   final bool apple;
 
-  /// Retained for API compatibility only — nothing is gated on it now.
-  final bool showMeta;
   final String? placeholderLabel;
   final bool loading;
   final bool failed;
@@ -50,7 +46,6 @@ class EpgProgramCell extends StatelessWidget {
   const EpgProgramCell({
     super.key,
     required this.title,
-    required this.timeLabel,
     required this.genre,
     required this.isLive,
     this.isPast = false,
@@ -58,7 +53,6 @@ class EpgProgramCell extends StatelessWidget {
     required this.hasTimer,
     required this.focused,
     required this.apple,
-    this.showMeta = true,
     this.placeholderLabel,
     this.loading = false,
     this.failed = false,

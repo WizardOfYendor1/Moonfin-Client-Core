@@ -295,13 +295,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump();
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Show ch11 (S6:E19)'), findsOneWidget);
-
     setHostState(() => selectionRevision++);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

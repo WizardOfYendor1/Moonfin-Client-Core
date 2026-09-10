@@ -9,7 +9,6 @@ void main() {
       const MaterialApp(
         home: EpgProgramCell(
           title: 'Ended programme',
-          timeLabel: '7:00 - 8:00',
           genre: EpgGenre('Drama', Colors.blue),
           isLive: false,
           isPast: true,

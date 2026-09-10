@@ -76,19 +76,6 @@ int _pageRowDirection(LogicalKeyboardKey key) {
   return 0;
 }
 
-Duration _guideWindowForWidth(
-  double availableWidth, {
-  GuideLayoutProfile? profile,
-}) {
-  final layout =
-      profile ??
-      GuideLayoutProfile.fromAvailableArea(
-        availableWidth: availableWidth,
-        availableHeight: 540,
-      );
-  return layout.guideWindowForWidth(availableWidth);
-}
-
 class LiveTvGuideScreen extends StatefulWidget {
   final bool miniPlayerMode;
   final GuideChannel? currentChannel;
@@ -167,7 +154,6 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   bool _syncingScroll = false;
   bool _syncingHorizontalScroll = false;
-  Duration _lastComputedWindow = GuideLayoutProfile.guideWindow;
   bool _isShowingDatePicker = false;
   bool _isOpeningRecordings = false;
   int? _lastFocusedRowIndex;
@@ -241,7 +227,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       _layoutProfile = profile;
       unawaited(
         _vm.load(
-          window: _guideWindowForWidth(width, profile: profile),
+          window: GuideLayoutProfile.guideWindow,
           windowStart: guideLeftEdge(DateTime.now()),
           livePosition: true,
         ),
@@ -259,7 +245,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   Future<void> _resumeGuide(DateTime now) async {
     await _vm.reloadIfStale(
-      window: _lastComputedWindow,
+      window: GuideLayoutProfile.guideWindow,
       windowStart: guideLeftEdge(now),
     );
     if (!mounted) return;
@@ -678,15 +664,6 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
         );
         _layoutProfile = profile;
-        final window = _guideWindowForWidth(availableWidth, profile: profile);
-        if (window != _lastComputedWindow && _vm.state == GuideState.ready) {
-          _lastComputedWindow = window;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _cancelPendingVerticalMove();
-            _vm.setWindow(window);
-          });
-        }
         final landscape =
             widget.miniPlayerMode ||
             PlatformDetection.isTV ||
@@ -1336,7 +1313,6 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                   channels: channels,
                   guideWidth: guideWidth,
                   rowHeight: profile.rowHeight,
-                  pixelsPerMinute: profile.pixelsPerMinute,
                   verticalController: _programScrollController,
                   horizontalController: _guideHorizontalScrollController,
                   buildProgramRow: _buildProgramRow,
@@ -1706,6 +1682,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       onRightEdge: () =>
           unawaited(_shiftGuideWindow(const Duration(minutes: 30))),
       noProgramDataLabel: AppLocalizations.of(context).noProgramData,
+      filterLabel: _filterLabel,
       // Per A3: a gap or filtered hole tunes live, never opens the recording
       // dialog; loading is inert; failed has no retry producer yet.
       onProgramSelected: (cell) {
@@ -1805,7 +1782,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
     if (!mounted) return;
     await _vm.reloadIfStale(
-      window: _lastComputedWindow,
+      window: GuideLayoutProfile.guideWindow,
       windowStart: guideLeftEdge(DateTime.now()),
     );
     if (mounted) _vm.scheduleBoundaryRefresh();
@@ -1923,7 +1900,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                 dialogActionInProgress = true;
                 try {
                   await _vm.toggleProgramRecording(program);
-                  if (!pageContext.mounted) return;
+                  if (!pageContext.mounted || !dialogContext.mounted) return;
                   Navigator.of(dialogContext).pop();
                   ScaffoldMessenger.of(pageContext).showSnackBar(
                     SnackBar(
@@ -1957,7 +1934,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                 dialogActionInProgress = true;
                 try {
                   await _vm.toggleSeriesRecording(program);
-                  if (!pageContext.mounted) return;
+                  if (!pageContext.mounted || !dialogContext.mounted) return;
                   Navigator.of(dialogContext).pop();
                   ScaffoldMessenger.of(pageContext).showSnackBar(
                     SnackBar(
@@ -1994,7 +1971,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                     dialogActionInProgress = true;
                     try {
                       await _vm.toggleChannelFavorite(program.channelId);
-                      if (!pageContext.mounted) return;
+                      if (!pageContext.mounted || !dialogContext.mounted) return;
                       Navigator.of(dialogContext).pop();
                       ScaffoldMessenger.of(pageContext).showSnackBar(
                         SnackBar(
@@ -2048,11 +2025,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   }
 }
 
-class _GuideGridView extends StatefulWidget {
+class _GuideGridView extends StatelessWidget {
   final List<GuideChannel> channels;
   final double guideWidth;
   final double rowHeight;
-  final double pixelsPerMinute;
   final ScrollController verticalController;
   final ScrollController horizontalController;
   final Widget Function(String channelId, int rowIndex) buildProgramRow;
@@ -2061,36 +2037,30 @@ class _GuideGridView extends StatefulWidget {
     required this.channels,
     required this.guideWidth,
     required this.rowHeight,
-    required this.pixelsPerMinute,
     required this.verticalController,
     required this.horizontalController,
     required this.buildProgramRow,
   });
 
   @override
-  State<_GuideGridView> createState() => _GuideGridViewState();
-}
-
-class _GuideGridViewState extends State<_GuideGridView> {
-  @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      controller: widget.horizontalController,
+      controller: horizontalController,
       child: SizedBox(
-        width: widget.guideWidth,
+        width: guideWidth,
         child: ListView.builder(
-          controller: widget.verticalController,
-          itemCount: widget.channels.length,
-          itemExtent: widget.rowHeight,
+          controller: verticalController,
+          itemCount: channels.length,
+          itemExtent: rowHeight,
           itemBuilder: (context, index) {
             // Always the real row; an unloaded channel's `loading` cell carries
             // the loading treatment and stays focusable.
             return SizedBox(
-              key: ValueKey(widget.channels[index].id),
-              width: widget.guideWidth,
-              height: widget.rowHeight,
-              child: widget.buildProgramRow(widget.channels[index].id, index),
+              key: ValueKey(channels[index].id),
+              width: guideWidth,
+              height: rowHeight,
+              child: buildProgramRow(channels[index].id, index),
             );
           },
         ),
@@ -2275,6 +2245,7 @@ class _GuideProgramRow extends StatefulWidget {
 
   /// Label for a real schedule gap (A3); a genre-filtered hole never shows it.
   final String noProgramDataLabel;
+  final String Function(GuideFilter) filterLabel;
 
   const _GuideProgramRow({
     required this.cells,
@@ -2298,6 +2269,7 @@ class _GuideProgramRow extends StatefulWidget {
     required this.onProgramFocused,
     this.onHorizontalMove,
     required this.noProgramDataLabel,
+    required this.filterLabel,
   });
 
   @override
@@ -2318,6 +2290,7 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
   @override
   void didUpdateWidget(covariant _GuideProgramRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final focused = _focusNodes.indexWhere((node) => node.hasFocus);
     if (oldWidget.rowIndex != widget.rowIndex) {
       if (widget.rowStates[oldWidget.rowIndex] == this) {
         widget.rowStates.remove(oldWidget.rowIndex);
@@ -2328,14 +2301,13 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
       _syncFocusNodes();
     }
     if (_cellsDiffer(oldWidget.cells, widget.cells)) {
-      _reresolveFocus();
+      _reresolveFocus(focused);
     }
   }
 
   /// Re-binds focus to the selected programme after a data change, so a
   /// same-length refresh cannot leave focus on a different show.
-  void _reresolveFocus() {
-    final focused = _focusNodes.indexWhere((node) => node.hasFocus);
+  void _reresolveFocus(int focused) {
     if (focused < 0) return;
     final selection = widget.selection;
     if (selection == null || widget.cells.isEmpty) return;
@@ -2525,7 +2497,8 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
         listenable: widget.horizontalController,
         builder: (_, _) => EpgProgramCell(
           title: program?.name ?? '',
-          timeLabel: null,
+          rating: program?.officialRating,
+          tags: program?.categoryTags.map(widget.filterLabel).toList() ?? const [],
           // The geometry clips a cell to the window, so the programme's own
           // start is the only thing that says it began before the left edge.
           startsBeforeWindow:

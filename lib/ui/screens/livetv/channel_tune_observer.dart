@@ -13,8 +13,7 @@ Future<PlaybackBringupState?> observeChannelTune({
 }) async {
   final terminal = Completer<PlaybackBringupState>();
   int? sessionToken;
-  late final StreamSubscription<PlaybackBringupState> subscription;
-  subscription = states.listen((state) {
+  final subscription = states.listen((state) {
     if (state.itemId != channelId) return;
     final token = state.sessionToken;
     if (state.phase.isInProgress && token != null) {
@@ -36,7 +35,7 @@ Future<PlaybackBringupState?> observeChannelTune({
     await Future.wait<void>([
       start(),
       terminal.future.then<void>((state) => result = state),
-    ]).timeout(timeout);
+    ], eagerError: true).timeout(timeout);
   } catch (_) {
     return null;
   } finally {

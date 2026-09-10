@@ -644,17 +644,16 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         enableTranscoding: true,
       ),
     );
+    if (!mounted || _isStopping || _currentChannel.id != channel.id) return false;
     final succeeded = terminalState?.phase == PlaybackBringupPhase.ready;
     if (!succeeded) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context).failedToPlayChannel(channel.name),
-            ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).failedToPlayChannel(channel.name),
           ),
-        );
-      }
+        ),
+      );
       return false;
     }
     unawaited(_fetchCurrentProgram());
@@ -850,7 +849,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     }
   }
 
-  Future<void> _showChannelCarousel() async {
+  void _showChannelCarousel() {
     if (_isCarouselOpen || _isGuidePickerOpen || !PlatformDetection.isTV) {
       return;
     }
@@ -920,7 +919,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         _infoVisible = false;
       });
       final succeeded = await _playCurrentChannel();
-      if (!mounted) return;
+      if (!mounted || _isStopping) return;
       if (succeeded) {
         _dismissChannelCarousel();
         return;
@@ -1533,7 +1532,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     switch (event.logicalKey) {
       case LogicalKeyboardKey.arrowUp:
         if (PlatformDetection.isTV) {
-          unawaited(_showChannelCarousel());
+          _showChannelCarousel();
           return KeyEventResult.handled;
         }
         if (!_infoVisible) {

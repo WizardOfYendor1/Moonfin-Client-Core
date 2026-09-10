@@ -7,11 +7,6 @@ class GuideLayoutProfile {
   /// programme cell wide enough for its title to be readable.
   static const Duration guideWindow = Duration(minutes: 150);
 
-  /// Bounds for a span derived from a viewport, so an unexpected width can
-  /// never fetch a wildly different range from the one the grid draws.
-  static const Duration minGuideWindow = Duration(minutes: 120);
-  static const Duration maxGuideWindow = Duration(minutes: 180);
-
   final double rowHeight;
   final double channelColumnWidth;
   final double pixelsPerMinute;
@@ -45,20 +40,6 @@ class GuideLayoutProfile {
       pixelsPerMinute: guideWidth / guideWindow.inMinutes,
       timeHeaderHeight: 22 + (2 * heightProgress),
       targetSlots: guideWindow.inMinutes ~/ 30,
-    );
-  }
-
-  /// Derives the fetched window span from the same profile the grid renders,
-  /// so the window always fills the viewport exactly.
-  Duration guideWindowForWidth(double availableWidth) {
-    final guideWidth = availableWidth - channelColumnWidth;
-    if (guideWidth <= 0) return guideWindow;
-    final minutes = (guideWidth / pixelsPerMinute).round();
-    return Duration(
-      minutes: minutes.clamp(
-        minGuideWindow.inMinutes,
-        maxGuideWindow.inMinutes,
-      ),
     );
   }
 }
