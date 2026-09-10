@@ -7,6 +7,7 @@ import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../data/viewmodels/live_tv_guide_view_model.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../screens/livetv/epg/epg_genre.dart';
 import '../../screens/livetv/guide/guide_window.dart';
@@ -293,6 +294,26 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     return null;
   }
 
+  /// [GuideFilter] is localised here, at the UI edge, so the data layer stays
+  /// language-free.
+  String _filterLabel(GuideFilter filter) {
+    final l10n = AppLocalizations.of(context);
+    return switch (filter) {
+      GuideFilter.all => l10n.all,
+      GuideFilter.movies => l10n.movies,
+      GuideFilter.series => l10n.series,
+      GuideFilter.sports => l10n.sports,
+      GuideFilter.news => l10n.news,
+      GuideFilter.kids => l10n.kids,
+      GuideFilter.premiere => l10n.premiere,
+      GuideFilter.favorites => l10n.favorites,
+    };
+  }
+
+  List<String> _categoryLabels(GuideProgram program) => [
+    for (final tag in program.categoryTags) _filterLabel(tag),
+  ];
+
   String _timeRange(GuideProgram program) =>
       '${TimeOfDay.fromDateTime(program.startDate).format(context)} - '
       '${TimeOfDay.fromDateTime(program.endDate).format(context)}';
@@ -356,6 +377,10 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
             [
               if (program != null) _timeRange(program),
               [channel.number, channel.name].whereType<String>().join('  '),
+              if (program?.officialRating?.trim() case final String rating
+                  when rating.isNotEmpty)
+                rating,
+              if (program != null) ..._categoryLabels(program),
             ].join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

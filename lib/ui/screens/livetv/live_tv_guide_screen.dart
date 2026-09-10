@@ -1827,10 +1827,27 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     final isRecordingNow = hasTimer && !isEnded && !isFuture;
     final l10n = AppLocalizations.of(context);
     var dialogActionInProgress = false;
+    final defaultActionFocusNode = FocusNode(
+      debugLabel: 'GuideProgramDialogDefaultAction',
+    );
+    var defaultActionFocusRequested = false;
 
     showFocusRestoringDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog.adaptive(
+      builder: (dialogContext) {
+        if (!defaultActionFocusRequested) {
+          defaultActionFocusRequested = true;
+          // On TV a navigator observer hands a freshly pushed route's first
+          // focusable the focus from a post-frame callback registered at push
+          // time, which lands after `autofocus` resolves; re-assert from a
+          // later callback so the intended action keeps it.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (defaultActionFocusNode.context != null) {
+              defaultActionFocusNode.requestFocus();
+            }
+          });
+        }
+        return AlertDialog.adaptive(
         backgroundColor: AppColorScheme.surface,
         title: Text(program.name, style: const TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
@@ -1900,6 +1917,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           if (!isEnded)
             adaptiveDialogAction(
               autofocus: isRecordingNow,
+              focusNode: isRecordingNow ? defaultActionFocusNode : null,
               onPressed: () async {
                 if (dialogActionInProgress) return;
                 dialogActionInProgress = true;
@@ -2003,6 +2021,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           ),
           adaptiveDialogAction(
             autofocus: !isRecordingNow,
+            focusNode: isRecordingNow ? null : defaultActionFocusNode,
             onPressed: () {
               if (dialogActionInProgress) return;
               dialogActionInProgress = true;
@@ -2023,8 +2042,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             child: Text(l10n.close),
           ),
         ],
-      ),
-    );
+      );
+      },
+    ).whenComplete(defaultActionFocusNode.dispose);
   }
 }
 

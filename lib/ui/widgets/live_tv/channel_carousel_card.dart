@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
@@ -8,13 +10,29 @@ import '../../screens/livetv/epg/epg_genre.dart';
 /// owns scrolling, focus, and data — this only renders what it is given.
 /// [centered] marks the card pinned at the viewport centre, which gets an
 /// accent border and focus glow instead of the plain card border.
+///
+/// The programme block mirrors the guide cell: a top-aligned regular-weight
+/// title over a muted metadata line. The card is far taller than a guide row,
+/// so it spends the extra height on a second title line instead of dropping
+/// the metadata.
 class ChannelCarouselCard extends StatelessWidget {
+  static const String _metaSeparator = ' · ';
+
   final String? channelNumber;
   final String channelName;
   final String? logoUrl;
   final bool isFavorite;
   final String? programTitle;
+
+  /// Broadcast window (`8:00 PM - 9:00 PM`); first item of the metadata line.
   final String? timeLabel;
+
+  /// Official rating (`TV-14`), shown after the time.
+  final String? rating;
+
+  /// Localised category labels (`Sports`, `News`), shown after the rating.
+  final List<String> tags;
+
   final EpgGenre? genre;
   final bool isLive;
   final double progress; // 0..1, meaningful only when isLive
@@ -27,6 +45,12 @@ class ChannelCarouselCard extends StatelessWidget {
   static const double cardPitch = cardWidth + cardSpacing;
   static const double _radius = 10;
 
+  /// Full-bleed genre bar down the leading edge.
+  static const double _genreBarWidth = 4;
+
+  static const double _logoSize = 28;
+  static const double _headerGap = 6;
+
   const ChannelCarouselCard({
     super.key,
     required this.channelNumber,
@@ -35,6 +59,8 @@ class ChannelCarouselCard extends StatelessWidget {
     required this.isFavorite,
     required this.programTitle,
     required this.timeLabel,
+    this.rating,
+    this.tags = const [],
     required this.genre,
     required this.isLive,
     required this.progress,
@@ -49,6 +75,18 @@ class ChannelCarouselCard extends StatelessWidget {
     final accent = AppColorScheme.accent;
     final accentColor = genre?.color ?? accent;
     final muted = AppColorScheme.onSurface.withValues(alpha: 0.6);
+
+    // Regular weight throughout: the centred card already reads from its
+    // accent border and glow.
+    final titleStyle = (textTheme.bodySmall ?? const TextStyle()).copyWith(
+      fontWeight: FontWeight.w400,
+      color: AppColorScheme.onSurface,
+    );
+    final metaStyle = (textTheme.labelSmall ?? const TextStyle(fontSize: 10))
+        .copyWith(color: muted);
+    final nameStyle = (textTheme.bodyMedium ?? const TextStyle()).copyWith(
+      fontWeight: FontWeight.w600,
+    );
 
     return SizedBox(
       width: cardWidth,
@@ -71,86 +109,78 @@ class ChannelCarouselCard extends StatelessWidget {
               left: 0,
               top: 0,
               bottom: 0,
-              child: Container(width: 4, color: accentColor),
+              child: Container(width: _genreBarWidth, color: accentColor),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  final scaler = MediaQuery.textScalerOf(context);
+                  final titleLine = _lineHeight(titleStyle, scaler);
+                  final metaLine = _lineHeight(metaStyle, scaler);
+                  final headerHeight = math.max(
+                    _logoSize,
+                    _lineHeight(nameStyle, scaler),
+                  );
+                  final belowHeader = box.maxHeight.isFinite
+                      ? box.maxHeight - headerHeight - _headerGap
+                      : double.infinity;
+
+                  final metaItems = _fittingMeta(
+                    box.maxWidth,
+                    metaStyle,
+                    scaler,
+                  );
+                  final showMeta =
+                      metaItems.isNotEmpty &&
+                      belowHeader >= titleLine + metaLine;
+                  // The card has room to wrap and keep the metadata; only a
+                  // scaled-up text size takes the second line back.
+                  final wrapTitle =
+                      programTitle != null &&
+                      belowHeader >=
+                          2 * titleLine + (showMeta ? metaLine : 0.0);
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _logo(),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            if (channelNumber != null) ...[
-                              Text(
-                                channelNumber!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.labelSmall
-                                    ?.copyWith(color: muted),
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            Expanded(
-                              child: Text(
-                                channelName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ],
+                      _headerRow(nameStyle, metaStyle),
+                      const SizedBox(height: _headerGap),
+                      if (programTitle != null)
+                        Text(
+                          programTitle!,
+                          maxLines: wrapTitle ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: titleStyle,
                         ),
-                      ),
-                      if (isFavorite) ...[
-                        const SizedBox(width: 4),
-                        Icon(Icons.favorite,
-                            size: 12,
-                            color: AppColorScheme.onSurface
-                                .withValues(alpha: 0.85)),
-                      ],
-                      if (hasTimer) ...[
-                        const SizedBox(width: 4),
-                        const Icon(Icons.fiber_manual_record,
-                            size: 9, color: Color(0xFFE0685C)),
-                      ],
+                      if (showMeta)
+                        Text(
+                          metaItems.join(_metaSeparator),
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.clip,
+                          style: metaStyle,
+                        ),
                     ],
-                  ),
-                  const SizedBox(height: 6),
-                  if (programTitle != null)
-                    Text(
-                      programTitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodySmall,
-                    ),
-                  if (timeLabel != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      timeLabel!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.labelSmall?.copyWith(color: muted),
-                    ),
-                  ],
-                ],
+                  );
+                },
               ),
             ),
-            if (isLive)
+            // Progress reads as a seekbar, not as card structure: range tokens
+            // rather than the genre colour, held clear of the genre bar by a
+            // visible gap.
+            if (isLive && progress > 0)
               Positioned(
-                left: 4,
+                left: _genreBarWidth + AppSpacing.spaceSm,
                 right: 0,
                 bottom: 0,
                 child: LinearProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
-                  minHeight: 3,
-                  backgroundColor: Colors.white.withValues(alpha: 0.12),
-                  valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                  minHeight: 4,
+                  backgroundColor: AppColorScheme.rangeTrack,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColorScheme.rangeProgress,
+                  ),
                 ),
               ),
           ],
@@ -159,25 +189,119 @@ class ChannelCarouselCard extends StatelessWidget {
     );
   }
 
+  Widget _headerRow(TextStyle nameStyle, TextStyle numberStyle) => Row(
+    children: [
+      _logo(),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Row(
+          children: [
+            if (channelNumber != null) ...[
+              Text(
+                channelNumber!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: numberStyle,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Expanded(
+              child: Text(
+                channelName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: nameStyle,
+              ),
+            ),
+          ],
+        ),
+      ),
+      if (isFavorite) ...[
+        const SizedBox(width: 4),
+        Icon(
+          Icons.favorite,
+          size: 12,
+          color: AppColorScheme.onSurface.withValues(alpha: 0.85),
+        ),
+      ],
+      if (hasTimer) ...[
+        const SizedBox(width: 4),
+        const Icon(
+          Icons.fiber_manual_record,
+          size: 9,
+          color: Color(0xFFE0685C),
+        ),
+      ],
+    ],
+  );
+
+  /// Metadata that fits the given width — time, then rating, then tags —
+  /// dropping from the end once the line is full.
+  List<String> _fittingMeta(double width, TextStyle style, TextScaler scaler) {
+    final items = <String>[
+      for (final item in [timeLabel, rating, ...tags])
+        if (item != null && item.trim().isNotEmpty) item.trim(),
+    ];
+    if (items.isEmpty) return const [];
+    if (!width.isFinite) return items;
+
+    final fitted = <String>[];
+    var used = 0.0;
+    for (final item in items) {
+      final piece = fitted.isEmpty ? item : '$_metaSeparator$item';
+      final pieceWidth = _textWidth(piece, style, scaler);
+      if (used + pieceWidth > width) break;
+      used += pieceWidth;
+      fitted.add(item);
+    }
+    return fitted;
+  }
+
+  static double _lineHeight(TextStyle style, TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ag', style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height.ceilToDouble();
+  }
+
+  static double _textWidth(String text, TextStyle style, TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
+
   Widget _logo() {
-    const size = 28.0;
-    if (logoUrl == null || logoUrl!.isEmpty) return _logoFallback(size);
+    if (logoUrl == null || logoUrl!.isEmpty) return _logoFallback(_logoSize);
     return ClipRRect(
       borderRadius: AppRadius.circular(4),
       child: CachedNetworkImage(
         imageUrl: logoUrl!,
-        width: size,
-        height: size,
+        width: _logoSize,
+        height: _logoSize,
         fit: BoxFit.contain,
-        errorWidget: (context, url, error) => _logoFallback(size),
+        errorWidget: (context, url, error) => _logoFallback(_logoSize),
       ),
     );
   }
 
   Widget _logoFallback(double size) => SizedBox(
-        width: size,
-        height: size,
-        child: Icon(Icons.tv,
-            size: 16, color: AppColorScheme.onSurface.withValues(alpha: 0.4)),
-      );
+    width: size,
+    height: size,
+    child: Icon(
+      Icons.tv,
+      size: 16,
+      color: AppColorScheme.onSurface.withValues(alpha: 0.4),
+    ),
+  );
 }
