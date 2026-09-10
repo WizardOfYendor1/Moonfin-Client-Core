@@ -57,8 +57,10 @@ class ChannelCarouselCard extends StatelessWidget {
   static const double cardHeight = 108;
   static const double cardSpacing = 10;
 
-  /// Faint enough that a bright logo cannot compete with the card's text.
-  static const double _backdropOpacity = 0.16;
+  /// The logo owns the header's right edge; it grows to the header band's
+  /// height so it never reaches the programme text below it.
+  static const double _logoHeight = 30;
+  static const double _logoMaxWidth = 60;
   static const double cardPitch = cardWidth + cardSpacing;
 
   /// Band a derived card width has to land in before it is considered.
@@ -169,16 +171,19 @@ class ChannelCarouselCard extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: AppColorScheme.onSurface,
     );
-    // The number is how a viewer actually identifies a channel, so it carries
-    // the same weight as the call sign rather than reading as metadata.
-    final numberStyle = nameStyle.copyWith(fontWeight: FontWeight.w700);
+    // The number is how a viewer actually identifies a channel, so it leads
+    // the header: heavier than the call sign and a step larger again.
+    final numberStyle = (textTheme.titleLarge ?? const TextStyle()).copyWith(
+      fontWeight: FontWeight.w700,
+      color: AppColorScheme.onSurface,
+    );
 
     // The content box is known from the given width, so the fit decisions that
     // used to run inside a LayoutBuilder are made here instead: a relayout
     // boundary per card cost more than the arithmetic it guarded.
     final titleLine = _lineHeight(titleStyle, scaler);
     final metaLine = _lineHeight(metaStyle, scaler);
-    final headerHeight = _lineHeight(nameStyle, scaler);
+    final headerHeight = math.max(_logoHeight, _lineHeight(numberStyle, scaler));
     final belowHeader = _contentHeight - headerHeight - _headerGap;
     final metaItems = _fittingMeta(_contentWidth, metaStyle, scaler);
     final showMeta =
@@ -206,21 +211,6 @@ class ChannelCarouselCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // The logo fills the card behind the text, faded far enough back
-            // that it reads as channel identity rather than as content.
-            if (logoUrl != null && logoUrl!.isNotEmpty)
-              Positioned.fill(
-                child: Opacity(
-                  opacity: _backdropOpacity,
-                  child: CachedNetworkImage(
-                    imageUrl: logoUrl!,
-                    fit: BoxFit.cover,
-                    errorWidget: (context, url, error) =>
-                        const SizedBox.shrink(),
-                    placeholder: (context, url) => const SizedBox.shrink(),
-                  ),
-                ),
-              ),
             Positioned(
               left: 0,
               top: 0,
@@ -332,7 +322,25 @@ class ChannelCarouselCard extends StatelessWidget {
           color: Color(0xFFE0685C),
         ),
       ],
+      if (logoUrl != null && logoUrl!.isNotEmpty) ...[
+        const SizedBox(width: 8),
+        _logo(),
+      ],
     ],
+  );
+
+  /// Sized to the header band and right-aligned: `contain` keeps a wide
+  /// wordmark or a square icon intact rather than cropping either.
+  Widget _logo() => SizedBox(
+    height: _logoHeight,
+    width: _logoMaxWidth,
+    child: CachedNetworkImage(
+      imageUrl: logoUrl!,
+      fit: BoxFit.contain,
+      alignment: Alignment.centerRight,
+      errorWidget: (context, url, error) => const SizedBox.shrink(),
+      placeholder: (context, url) => const SizedBox.shrink(),
+    ),
   );
 
   /// Metadata that fits the given width — time, then rating, then tags —
