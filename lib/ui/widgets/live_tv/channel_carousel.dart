@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -9,15 +10,17 @@ import '../../screens/livetv/epg/epg_genre.dart';
 import 'channel_carousel_card.dart';
 import 'channel_carousel_controller.dart';
 
-/// First hold-repeat fires this long after key-down.
-const Duration kCarouselPageStartDelay = Duration(milliseconds: 350);
+/// First hold-repeat fires this long after key-down, so a deliberate single
+/// press moves exactly one channel.
+const Duration kCarouselHoldStartDelay = Duration(milliseconds: 350);
 
-/// Subsequent hold-repeats fire at this interval.
-const Duration kCarouselPageRepeatInterval = Duration(milliseconds: 650);
+/// Subsequent hold-repeats fire at this interval — roughly nine channels a
+/// second, which reads as fast continuous scrolling rather than stepping.
+const Duration kCarouselHoldRepeatInterval = Duration(milliseconds: 110);
 
 /// Watchdog window. Refreshed by each *incoming* key event only, so a hold
-/// whose repeats stop arriving (a missed key-up) cannot page forever.
-const Duration kCarouselPageRepeatSafety = Duration(milliseconds: 900);
+/// whose repeats stop arriving (a missed key-up) cannot scroll forever.
+const Duration kCarouselHoldSafety = Duration(milliseconds: 900);
 
 const double _cardWidth = ChannelCarouselCard.cardWidth;
 const double _cardHeight = ChannelCarouselCard.cardHeight;
@@ -29,7 +32,10 @@ const double _cardExtent = ChannelCarouselCard.cardPitch;
 const int _seedLineups = 500;
 const int _totalLineups = _seedLineups * 2;
 
-const Duration _scrollDuration = Duration(milliseconds: 180);
+/// One card's travel takes exactly one repeat interval, on a linear curve, so
+/// a repeat that lands mid-flight continues the same velocity instead of
+/// restarting the motion.
+const Duration _scrollDuration = kCarouselHoldRepeatInterval;
 
 /// One channel's already-resolved presentation data. The strip does no
 /// fetching and no formatting: the host precomputes every field.
@@ -64,6 +70,41 @@ class ChannelCarouselEntry {
     this.progress = 0,
     this.hasTimer = false,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChannelCarouselEntry &&
+          other.channelId == channelId &&
+          other.channelNumber == channelNumber &&
+          other.channelName == channelName &&
+          other.logoUrl == logoUrl &&
+          other.isFavorite == isFavorite &&
+          other.programTitle == programTitle &&
+          other.timeLabel == timeLabel &&
+          other.rating == rating &&
+          other.genre == genre &&
+          other.isLive == isLive &&
+          other.progress == progress &&
+          other.hasTimer == hasTimer &&
+          listEquals(other.tags, tags);
+
+  @override
+  int get hashCode => Object.hash(
+    channelId,
+    channelNumber,
+    channelName,
+    logoUrl,
+    isFavorite,
+    programTitle,
+    timeLabel,
+    rating,
+    genre,
+    isLive,
+    progress,
+    hasTimer,
+    Object.hashAll(tags),
+  );
 }
 
 /// Centre-locked horizontal channel strip: the selected card is pinned at the
@@ -281,7 +322,7 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
   /// what stops paging when repeats stop arriving and no key-up ever lands.
   void _refreshWatchdog() {
     _watchdogTimer?.cancel();
-    _watchdogTimer = Timer(kCarouselPageRepeatSafety, _endHold);
+    _watchdogTimer = Timer(kCarouselHoldSafety, _endHold);
   }
 
   /// One card per discrete press, then the hold timers take over.
@@ -290,11 +331,11 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
     _pageRepeatTimer?.cancel();
     _holdDirection = direction;
     _moveBy(direction);
-    _pageStartTimer = Timer(kCarouselPageStartDelay, () {
-      _pageFromTimer();
+    _pageStartTimer = Timer(kCarouselHoldStartDelay, () {
+      _stepFromTimer();
       _pageRepeatTimer = Timer.periodic(
-        kCarouselPageRepeatInterval,
-        (_) => _pageFromTimer(),
+        kCarouselHoldRepeatInterval,
+        (_) => _stepFromTimer(),
       );
     });
   }
@@ -309,14 +350,10 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
     _holdDirection = 0;
   }
 
-  /// Timer-driven paging. It must never touch [_refreshWatchdog].
-  void _pageFromTimer() {
+  /// Timer-driven movement. It must never touch [_refreshWatchdog].
+  void _stepFromTimer() {
     if (!mounted || _holdDirection == 0) return;
-    final step = pageStep(
-      channelCount: _channelCount,
-      visibleCards: _visibleCards,
-    );
-    _moveBy(_holdDirection * step);
+    _moveBy(_holdDirection * holdStep(_channelCount));
   }
 
   // ---------------------------------------------------------------------
@@ -354,7 +391,7 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
     controller.animateTo(
       _offsetFor(_rawIndex),
       duration: _scrollDuration,
-      curve: Curves.easeOut,
+      curve: Curves.linear,
     );
   }
 
@@ -371,13 +408,29 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
   final Map<int, Widget> _centredCards = {};
 
   Widget _cardFor(int channelIndex, {required bool centered}) {
-    if (!identical(_cachedFor, widget.channels)) {
-      _cachedFor = widget.channels;
-      _plainCards.clear();
-      _centredCards.clear();
-    }
+    _syncCardCache();
     final cache = centered ? _centredCards : _plainCards;
     return cache[channelIndex] ??= _buildCard(channelIndex, centered);
+  }
+
+  /// Drops only the entries that actually changed. One channel's programme
+  /// data arriving must not cost a rebuild of every other card.
+  void _syncCardCache() {
+    final channels = widget.channels;
+    final previous = _cachedFor;
+    if (identical(previous, channels)) return;
+    _cachedFor = channels;
+    if (previous == null || previous.length != channels.length) {
+      _plainCards.clear();
+      _centredCards.clear();
+      return;
+    }
+    for (var i = 0; i < channels.length; i++) {
+      if (previous[i] != channels[i]) {
+        _plainCards.remove(i);
+        _centredCards.remove(i);
+      }
+    }
   }
 
   Widget _buildCard(int channelIndex, bool centered) {

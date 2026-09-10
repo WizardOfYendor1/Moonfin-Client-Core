@@ -44,14 +44,20 @@ class ChannelCarouselCard extends StatelessWidget {
   final bool hasTimer;
   final bool centered;
 
-  static const double cardWidth = 168;
+  static const double cardWidth = 200;
   static const double cardHeight = 108;
-  static const double cardSpacing = 12;
+  static const double cardSpacing = 16;
   static const double cardPitch = cardWidth + cardSpacing;
   static const double _radius = 10;
 
   /// Full-bleed genre bar down the leading edge.
   static const double _genreBarWidth = 4;
+
+  static const EdgeInsets _contentPadding = EdgeInsets.fromLTRB(12, 8, 8, 8);
+  static const double _contentWidth =
+      cardWidth - 12 - 8; // _contentPadding horizontal
+  static const double _contentHeight =
+      cardHeight - 8 - 8; // _contentPadding vertical
 
   static const double _logoSize = 28;
   static const double _headerGap = 6;
@@ -81,21 +87,40 @@ class ChannelCarouselCard extends StatelessWidget {
     final accent = AppColorScheme.accent;
     final accentColor = genre?.color ?? accent;
     final muted = AppColorScheme.onSurface.withValues(alpha: 0.6);
+    final scaler = MediaQuery.textScalerOf(context);
 
     // Regular weight throughout: the centred card already reads from its
-    // accent border and glow.
-    final titleStyle = (textTheme.bodySmall ?? const TextStyle()).copyWith(
+    // accent border and glow. Title and metadata are one step up from
+    // bodySmall/labelSmall; the wider card absorbs the extra width and the
+    // 108 dp height still fits a wrapped title over the metadata line.
+    final titleStyle = (textTheme.bodyMedium ?? const TextStyle()).copyWith(
       fontWeight: FontWeight.w400,
       color: AppColorScheme.onSurface,
     );
-    final metaStyle = (textTheme.labelSmall ?? const TextStyle(fontSize: 10))
+    final metaStyle = (textTheme.labelMedium ?? const TextStyle(fontSize: 12))
         .copyWith(color: muted);
-    // One step up from bodyMedium: the card is 168x108, so the channel name
+    // One step up from bodyMedium: the card is 200x108, so the channel name
     // can afford the extra 2 dp without pushing the programme block.
     final nameStyle = (textTheme.titleMedium ?? const TextStyle()).copyWith(
       fontWeight: FontWeight.w600,
       color: AppColorScheme.onSurface,
     );
+
+    // The content box is a constant, so the fit decisions that used to run
+    // inside a LayoutBuilder are made here instead: a relayout boundary per
+    // card cost more than the arithmetic it guarded.
+    final titleLine = _lineHeight(titleStyle, scaler);
+    final metaLine = _lineHeight(metaStyle, scaler);
+    final headerHeight = math.max(_logoSize, _lineHeight(nameStyle, scaler));
+    final belowHeader = _contentHeight - headerHeight - _headerGap;
+    final metaItems = _fittingMeta(_contentWidth, metaStyle, scaler);
+    final showMeta =
+        metaItems.isNotEmpty && belowHeader >= titleLine + metaLine;
+    // The card has room to wrap and keep the metadata; only a scaled-up text
+    // size takes the second line back.
+    final wrapTitle =
+        programTitle != null &&
+        belowHeader >= 2 * titleLine + (showMeta ? metaLine : 0.0);
 
     return SizedBox(
       width: cardWidth,
@@ -121,58 +146,28 @@ class ChannelCarouselCard extends StatelessWidget {
               child: Container(width: _genreBarWidth, color: accentColor),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              child: LayoutBuilder(
-                builder: (context, box) {
-                  final scaler = MediaQuery.textScalerOf(context);
-                  final titleLine = _lineHeight(titleStyle, scaler);
-                  final metaLine = _lineHeight(metaStyle, scaler);
-                  final headerHeight = math.max(
-                    _logoSize,
-                    _lineHeight(nameStyle, scaler),
-                  );
-                  final belowHeader = box.maxHeight.isFinite
-                      ? box.maxHeight - headerHeight - _headerGap
-                      : double.infinity;
-
-                  final metaItems = _fittingMeta(
-                    box.maxWidth,
-                    metaStyle,
-                    scaler,
-                  );
-                  final showMeta =
-                      metaItems.isNotEmpty &&
-                      belowHeader >= titleLine + metaLine;
-                  // The card has room to wrap and keep the metadata; only a
-                  // scaled-up text size takes the second line back.
-                  final wrapTitle =
-                      programTitle != null &&
-                      belowHeader >=
-                          2 * titleLine + (showMeta ? metaLine : 0.0);
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _headerRow(nameStyle, metaStyle),
-                      const SizedBox(height: _headerGap),
-                      if (programTitle != null)
-                        Text(
-                          programTitle!,
-                          maxLines: wrapTitle ? 2 : 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: titleStyle,
-                        ),
-                      if (showMeta)
-                        Text(
-                          metaItems.join(_metaSeparator),
-                          maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.clip,
-                          style: metaStyle,
-                        ),
-                    ],
-                  );
-                },
+              padding: _contentPadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _headerRow(nameStyle, metaStyle),
+                  const SizedBox(height: _headerGap),
+                  if (programTitle != null)
+                    Text(
+                      programTitle!,
+                      maxLines: wrapTitle ? 2 : 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
+                    ),
+                  if (showMeta)
+                    Text(
+                      metaItems.join(_metaSeparator),
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.clip,
+                      style: metaStyle,
+                    ),
+                ],
               ),
             ),
             // Progress reads as a seekbar, not as card structure: range tokens

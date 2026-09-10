@@ -47,6 +47,9 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     with WidgetsBindingObserver {
   static const _debounce = Duration(milliseconds: 300);
 
+  /// How often live progress and the current programme are re-evaluated.
+  static const _clockTick = Duration(seconds: 15);
+
   /// Roughly a third shorter than the original 150: tighter padding and
   /// leading and a one-step-smaller title, with both overview lines kept.
   static const double _headerHeight = 104;
@@ -92,7 +95,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     WidgetsBinding.instance.addObserver(this);
     _resetInactivity();
     _vm.scheduleBoundaryRefresh();
-    _clockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _clockTimer = Timer.periodic(_clockTick, (_) {
       if (mounted) setState(_invalidateEntries);
     });
     _scheduleQuarterRefresh();
@@ -203,12 +206,33 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   /// `now` for the whole lineup. The list identity is stable between data
   /// changes, which is what lets the strip reuse its card widgets.
   List<ChannelCarouselEntry> get _currentEntries {
-    if (_entriesDirty) {
-      _entriesDirty = false;
-      final now = DateTime.now();
-      _entries = [for (final channel in _channels) _entry(channel, now)];
+    if (!_entriesDirty) return _entries;
+    _entriesDirty = false;
+    // Quantised to the clock tick that is meant to refresh the strip, so a
+    // rebuild between ticks produces entries equal to the ones it replaces.
+    final now = _tickAlignedNow();
+    var changed = _entries.length != _channels.length;
+    final next = <ChannelCarouselEntry>[];
+    for (var i = 0; i < _channels.length; i++) {
+      final fresh = _entry(_channels[i], now);
+      final previous = i < _entries.length ? _entries[i] : null;
+      if (previous != null && previous == fresh) {
+        next.add(previous);
+      } else {
+        changed = true;
+        next.add(fresh);
+      }
     }
+    // An unchanged lineup keeps its list identity, which is what lets the
+    // strip reuse every built card instead of rebuilding the visible run.
+    if (changed) _entries = next;
     return _entries;
+  }
+
+  static DateTime _tickAlignedNow() {
+    final now = DateTime.now();
+    final seconds = now.second - now.second % _clockTick.inSeconds;
+    return DateTime(now.year, now.month, now.day, now.hour, now.minute, seconds);
   }
 
   void _centered(int index) {
@@ -387,7 +411,10 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        // Near-opaque surface rather than a white wash: the panel sits where
+        // the scrim gradient is still almost clear, so the overview has to be
+        // legible against bright video on its own.
+        color: AppColorScheme.surface.withValues(alpha: 0.88),
         borderRadius: AppRadius.circular(12),
         border: Border.fromBorderSide(ThemeRegistry.active.borders.cardBorder),
       ),
@@ -443,7 +470,10 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     child: Align(
       alignment: Alignment.bottomCenter,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        // 24 dp of bottom margin sits inside the 5% TV overscan allowance
+        // (27 dp of a 540 dp viewport) while dropping the whole overlay
+        // closer to the screen edge.
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,

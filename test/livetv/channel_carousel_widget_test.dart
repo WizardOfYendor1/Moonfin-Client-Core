@@ -81,10 +81,12 @@ class _CarouselGuide extends LiveTvGuideViewModel {
   }
 }
 
-/// 900 dp of strip at a 180 dp card pitch is exactly five visible cards, which
-/// is what makes `pageStep` observable: 20 channels page by five, three page
-/// by one.
-const double _stripWidth = 900;
+/// Five card pitches of strip, so the fitting/scrolling threshold lands at
+/// five channels whatever the card geometry is. Derived rather than hard-coded
+/// because the strip takes its pitch straight from the card.
+const double _stripWidth = ChannelCarouselCard.cardPitch * 5;
+const double _surfaceWidth = _stripWidth + 100;
+const double _stripCentre = _surfaceWidth / 2;
 
 List<ChannelCarouselEntry> _lineup(int count) => List.generate(
   count,
@@ -356,7 +358,7 @@ void main() {
     int initialIndex = 0,
     double width = _stripWidth,
   }) async {
-    await tester.binding.setSurfaceSize(const Size(1000, 600));
+    await tester.binding.setSurfaceSize(const Size(_surfaceWidth, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final centred = <int>[];
     await tester.pumpWidget(
@@ -433,7 +435,7 @@ void main() {
       tester.widget<ChannelCarouselCard>(selected).channelName,
       'Channel 19',
     );
-    expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
+    expect(tester.getCenter(selected).dx, closeTo(_stripCentre, 0.01));
   });
 
   for (final channelCount in [1, 2, 3, 4, 5]) {
@@ -448,7 +450,7 @@ void main() {
         tester.widget<ChannelCarouselCard>(selected()).channelName,
         'Channel ${channelCount - 1}',
       );
-      expect(tester.getCenter(selected()).dx, closeTo(500, 0.01));
+      expect(tester.getCenter(selected()).dx, closeTo(_stripCentre, 0.01));
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pumpAndSettle();
       expect(find.byType(ChannelCarouselCard), findsNWidgets(channelCount));
@@ -456,12 +458,12 @@ void main() {
         tester.widget<ChannelCarouselCard>(selected()).channelName,
         'Channel 0',
       );
-      expect(tester.getCenter(selected()).dx, closeTo(500, 0.01));
+      expect(tester.getCenter(selected()).dx, closeTo(_stripCentre, 0.01));
     });
   }
 
   testWidgets(
-    'even exact-fit lineup scrolls while held paging advances by one',
+    'even exact-fit lineup scrolls while a hold advances by one',
     (tester) async {
       final centered = await pumpCarousel(
         tester,
@@ -473,23 +475,23 @@ void main() {
       final selected = find.byWidgetPredicate(
         (widget) => widget is ChannelCarouselCard && widget.centered,
       );
-      expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
+      expect(tester.getCenter(selected).dx, closeTo(_stripCentre, 0.01));
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
       expect(centered, [0, 1]);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
       await tester.pumpAndSettle();
-      expect(tester.getCenter(selected).dx, closeTo(500, 0.01));
+      expect(tester.getCenter(selected).dx, closeTo(_stripCentre, 0.01));
     },
   );
 
-  testWidgets('a held key whose repeats keep arriving pages past 1000 ms', (
+  testWidgets('a held key whose repeats keep arriving scrolls past 1000 ms', (
     tester,
   ) async {
     final centred = await pumpCarousel(tester, 20);
 
-    // Key-down pages one card, then the 350 ms timer starts the hold cadence.
+    // Key-down moves one card, then the 350 ms timer starts the hold cadence.
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
 
@@ -498,25 +500,26 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowRight);
     }
-    // Key-down at 0 ms and the first hold page at 350 ms.
-    final pagesBy900ms = centred.length;
-    expect(pagesBy900ms, 2);
+    // Key-down at 0 ms plus a move every 110 ms from 350 ms: a hold reads as
+    // fast continuous motion, not one jump every half second.
+    final movesBy900ms = centred.length;
+    expect(movesBy900ms, greaterThanOrEqualTo(6));
 
     for (var elapsed = 1000; elapsed <= 1200; elapsed += 100) {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowRight);
     }
 
-    // The second hold page falls at 350 + 650 = 1000 ms. A watchdog measured
-    // from key-down would have cancelled the hold at 900 ms and lost it.
-    expect(centred.length, greaterThan(pagesBy900ms));
+    // A watchdog measured from key-down would have cancelled the hold at
+    // 900 ms; incoming repeats keep it alive.
+    expect(centred.length, greaterThan(movesBy900ms));
 
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
   });
 
-  testWidgets('paging halts within ~900 ms of the last repeat when no key-up '
-      'arrives', (tester) async {
+  testWidgets('scrolling halts within ~900 ms of the last repeat when no '
+      'key-up arrives', (tester) async {
     final centred = await pumpCarousel(tester, 20);
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
@@ -527,51 +530,52 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowRight);
     }
+    final movesAtLastRepeat = centred.length;
 
-    // 400 ms + the 900 ms watchdog. The hold page at 1000 ms still lands; the
-    // one that would follow at 1650 ms must not.
+    // 400 ms + the 900 ms watchdog: the hold keeps running to 1300 ms and
+    // then stops, because only a real repeat can postpone the watchdog.
     await tester.pump(const Duration(milliseconds: 900));
-    final pagesAtWatchdog = centred.length;
-    expect(pagesAtWatchdog, 3);
+    final movesAtWatchdog = centred.length;
+    expect(movesAtWatchdog, greaterThan(movesAtLastRepeat));
 
     await tester.pump(const Duration(seconds: 2));
-    expect(centred.length, pagesAtWatchdog);
+    expect(centred.length, movesAtWatchdog);
   });
 
-  testWidgets('timer-generated pages do not keep the watchdog alive', (
+  testWidgets('timer-generated moves do not keep the watchdog alive', (
     tester,
   ) async {
     final centred = await pumpCarousel(tester, 20);
 
-    // Key-down only: the hold's own timers are the sole source of paging.
+    // Key-down only: the hold's own timers are the sole source of movement.
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(centred.length, 2, reason: 'key-down page plus the 350 ms page');
+    expect(centred.length, 2, reason: 'key-down move plus the 350 ms move');
 
-    // The 350 ms page cannot postpone the watchdog, so it fires at 900 ms and
-    // the 1000 ms page never happens.
+    // Timer-driven moves cannot postpone the watchdog, so it fires 900 ms
+    // after the key-down and every move after that is cancelled.
+    await tester.pump(const Duration(milliseconds: 490));
+    final movesAtWatchdog = centred.length;
     await tester.pump(const Duration(seconds: 2));
-    expect(centred.length, 2);
+    expect(centred.length, movesAtWatchdog);
 
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
   });
 
-  testWidgets('a 3-channel lineup with 5 visible cards advances one channel '
-      'per repeat', (tester) async {
+  testWidgets('a short lineup walks one channel at a time and wraps', (
+    tester,
+  ) async {
     final centred = await pumpCarousel(tester, 3);
 
+    // Key-down at 0 ms, first hold move at 350 ms, then one every 110 ms.
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump(const Duration(milliseconds: 110));
 
-    for (var elapsed = 100; elapsed <= 1200; elapsed += 100) {
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.arrowRight);
-    }
-
-    // Paging by the visible count would give (i + 5) % 3, which is not the
-    // next channel; paging by three would be motionless.
     expect(centred, [1, 2, 0]);
 
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);

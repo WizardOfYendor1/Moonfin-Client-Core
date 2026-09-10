@@ -2,18 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moonfin/ui/widgets/live_tv/channel_carousel_controller.dart';
 
 void main() {
-  test('a lineup that fits the viewport advances one channel per repeat', () {
-    // Paging by the visible count would give (i + 3) % 3 == i — motionless.
-    expect(pageStep(channelCount: 3, visibleCards: 5), 1);
-    expect(pageStep(channelCount: 5, visibleCards: 5), 1);
-  });
-
-  test('a larger lineup pages by the visible count', () {
-    expect(pageStep(channelCount: 48, visibleCards: 5), 5);
+  test('a hold advances one channel per repeat whatever the lineup size', () {
+    // Owner requirement: holding LEFT/RIGHT scrolls rapidly one channel at a
+    // time. Advancing by the visible count turned the whole viewport over per
+    // repeat, which is what read as lurching.
+    expect(holdStep(3), 1);
+    expect(holdStep(5), 1);
+    expect(holdStep(48), 1);
   });
 
   test('a single channel does not move', () {
-    expect(pageStep(channelCount: 1, visibleCards: 5), 0);
+    expect(holdStep(1), 0);
+    expect(holdStep(0), 0);
   });
 
   test('index mapping wraps in both directions', () {

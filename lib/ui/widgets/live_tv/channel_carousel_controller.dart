@@ -10,12 +10,11 @@ int channelIndexFor(int rawIndex, int channelCount) {
   return ((rawIndex % channelCount) + channelCount) % channelCount;
 }
 
-/// How many channels a held LEFT/RIGHT press advances per repeat.
-int pageStep({required int channelCount, required int visibleCards}) {
-  if (channelCount <= 1) return 0;
-  if (channelCount <= visibleCards) return 1;
-  return visibleCards;
-}
+/// How many channels a held LEFT/RIGHT press advances per repeat. A hold
+/// moves one channel at a time, rapidly, so the strip reads as continuous
+/// motion instead of turning over a screenful per repeat; a lineup of one
+/// stays inert.
+int holdStep(int channelCount) => channelCount <= 1 ? 0 : 1;
 
 /// Whether `rawIndex` has drifted far enough from `seedIndex` to recentre.
 bool needsRecentre(int rawIndex, int channelCount, int seedIndex) {
