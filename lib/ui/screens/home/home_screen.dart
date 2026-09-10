@@ -2238,8 +2238,12 @@ class _ContentRowsState extends State<_ContentRows>
       return;
     }
 
-    if (fromMouseHover &&
+    // The hero belongs to the media bar until the user deliberately moves
+    // down into the rows; a tile that takes focus on its own at startup must
+    // not paint the info band over it.
+    if ((fromMouseHover || !_verticalNavInFlight) &&
         _isMediaBarIncluded() &&
+        !_isBannerMode() &&
         _scrollController.hasClients &&
         _scrollController.offset < _pinnedInfoCollapseOffset()) {
       return;

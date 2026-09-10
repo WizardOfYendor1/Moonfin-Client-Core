@@ -200,15 +200,15 @@ class ChannelCarouselCard extends StatelessWidget {
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          // Light enough that a dark logo still reads against it, and lighter
-          // again when centred so focus is carried by the fill as well as the
-          // border.
-          color: centered
-              ? Color.alphaBlend(
-                  AppColorScheme.onSurface.withValues(alpha: 0.16),
-                  AppColorScheme.surfaceVariant,
-                ).withValues(alpha: 0.94)
-              : AppColorScheme.surfaceVariant.withValues(alpha: 0.82),
+          // A hint of the programme's genre over a dark base, so the card
+          // carries a little colour without competing with its own text. A
+          // programme with no genre falls back to plain dark grey.
+          color: Color.alphaBlend(
+            (genre?.color ?? AppColorScheme.surfaceVariant).withValues(
+              alpha: centered ? 0.22 : 0.14,
+            ),
+            AppColorScheme.surface,
+          ).withValues(alpha: centered ? 0.88 : 0.74),
           borderRadius: AppRadius.circular(_radius),
           border: Border.fromBorderSide(
             centered
