@@ -169,6 +169,9 @@ class ChannelCarouselCard extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: AppColorScheme.onSurface,
     );
+    // The number is how a viewer actually identifies a channel, so it carries
+    // the same weight as the call sign rather than reading as metadata.
+    final numberStyle = nameStyle.copyWith(fontWeight: FontWeight.w700);
 
     // The content box is known from the given width, so the fit decisions that
     // used to run inside a LayoutBuilder are made here instead: a relayout
@@ -229,7 +232,7 @@ class ChannelCarouselCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _headerRow(nameStyle, metaStyle),
+                  _headerRow(nameStyle, numberStyle),
                   const SizedBox(height: _headerGap),
                   if (programTitle != null)
                     Text(
