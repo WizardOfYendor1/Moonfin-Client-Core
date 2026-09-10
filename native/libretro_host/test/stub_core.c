@@ -775,6 +775,33 @@ static void read_input_off_thread(void) {
 }
 #endif
 
+// Reads one button through input_state_cb. Run on a thread the frontend never
+// polled on, so the host sees a read from somewhere other than its latch.
+#ifdef _WIN32
+static DWORD WINAPI off_thread_read(LPVOID arg) {
+  (void)arg;
+  input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+  return 0;
+}
+static void read_input_off_thread(void) {
+  HANDLE t = CreateThread(NULL, 0, off_thread_read, NULL, 0, NULL);
+  if (!t) return;
+  WaitForSingleObject(t, INFINITE);
+  CloseHandle(t);
+}
+#else
+static void *off_thread_read(void *arg) {
+  (void)arg;
+  input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+  return NULL;
+}
+static void read_input_off_thread(void) {
+  pthread_t t;
+  if (pthread_create(&t, NULL, off_thread_read, NULL) != 0) return;
+  pthread_join(t, NULL);
+}
+#endif
+
 void retro_run(void) {
   stash_step();
   // Joined before returning, so the read is strictly inside this retro_run
