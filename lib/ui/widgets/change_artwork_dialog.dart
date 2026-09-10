@@ -9,6 +9,7 @@ import 'package:server_core/server_core.dart';
 import '../../data/models/aggregated_item.dart';
 import '../../l10n/app_localizations.dart';
 import '../../util/focus/key_event_utils.dart';
+import '../../util/home_refresh_helper.dart';
 import '../../util/platform_detection.dart';
 import '../../auth/repositories/user_repository.dart';
 import '../../auth/repositories/session_repository.dart';
@@ -182,6 +183,9 @@ class _ChangeArtworkDialogState extends State<ChangeArtworkDialog> {
 
   @override
   void dispose() {
+    if (_hasChanged) {
+      refreshHomeRows();
+    }
     _clearAllFocusNode.dispose();
     _sourcesFocusNode.dispose();
     _languageFocusNode.dispose();

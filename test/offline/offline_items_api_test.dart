@@ -235,6 +235,8 @@ void main() {
     expect(season['Id'], 'sea1');
     expect(season['Type'], 'Season');
     expect(season['IndexNumber'], 1);
+    // The season card falls back to this, so a stub without it reads as empty.
+    expect(season['ChildCount'], 2);
   });
 
   test('getNextUp returns first unplayed after last played', () async {
@@ -331,6 +333,40 @@ void main() {
       isNot(anyElement(isIn(items(firstPage).map((i) => i['Id'])))),
     );
     expect(secondPage['TotalRecordCount'], 3);
+  });
+
+  test('getResumeItems splits video and audio by media type', () async {
+    for (final type in [
+      'Movie',
+      'Episode',
+      'Video',
+      'MusicVideo',
+      'Audio',
+      'AudioBook',
+    ]) {
+      await insert(
+        id: type,
+        type: type,
+        name: type,
+        positionTicks: 500,
+        metadata: {'RunTimeTicks': 1000},
+      );
+    }
+    await catalog.warm();
+
+    List<String> typesOf(Map<String, dynamic> envelope) =>
+        items(envelope).map((i) => i['Type'] as String).toList()..sort();
+
+    expect(typesOf(await api.getResumeItems(mediaTypes: 'Video')), [
+      'Episode',
+      'Movie',
+      'MusicVideo',
+      'Video',
+    ]);
+    expect(typesOf(await api.getResumeItems(mediaTypes: 'Audio')), [
+      'Audio',
+      'AudioBook',
+    ]);
   });
 
   test('getGenres aggregates distinct genres with counts', () async {

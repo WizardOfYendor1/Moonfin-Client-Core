@@ -159,4 +159,237 @@ void main() {
       expect(response.statusCode, HttpStatus.ok);
     });
   });
+
+  group('the pool idle timeout', () {
+    late HttpServer server;
+    late Set<int> connections;
+
+    setUp(() async {
+      connections = <int>{};
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((request) async {
+        // One remote port is one connection, so counting them counts reuse.
+        connections.add(request.connectionInfo!.remotePort);
+        request.response.statusCode = HttpStatus.noContent;
+        await request.response.close();
+      });
+    });
+
+    tearDown(() => server.close(force: true));
+
+    Future<void> twoRequests(Duration idleTimeout, Duration apart) async {
+      final dio = Dio(
+        BaseOptions(baseUrl: 'http://${server.address.address}:${server.port}'),
+      );
+      configureServerDio(dio, idleTimeout: idleTimeout);
+      addTearDown(() => dio.close(force: true));
+
+      await dio.get<void>('/one');
+      await Future<void>.delayed(apart);
+      await dio.get<void>('/two');
+    }
+
+    test('keeps a connection for a caller that comes straight back', () async {
+      await twoRequests(
+        const Duration(seconds: 10),
+        const Duration(milliseconds: 50),
+      );
+
+      expect(connections, hasLength(1));
+    });
+
+    test('drops it once the caller has been away for longer', () async {
+      await twoRequests(
+        const Duration(milliseconds: 100),
+        const Duration(milliseconds: 400),
+      );
+
+      expect(connections, hasLength(2));
+    });
+  });
+
+  // A slot frees when the headers land, but dart:io keeps the connection until
+  // the body has drained, so the pool has to be roomier than the slots.
+  group('a body still draining', () {
+    late HttpServer server;
+    const bodyDelay = Duration(milliseconds: 1500);
+
+    setUp(() async {
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((request) async {
+        // Headers straight away, body much later, which is the shape that
+        // leaves a connection busy long after its slot went back.
+        final socket = await request.response.detachSocket(writeHeaders: false);
+        socket.write(
+          'HTTP/1.1 200 OK\r\n'
+          'Content-Type: application/json\r\n'
+          'Content-Length: 8\r\n'
+          '\r\n',
+        );
+        await socket.flush();
+        await Future<void>.delayed(bodyDelay);
+        socket.write('{"ok":1}');
+        await socket.flush();
+        socket.destroy();
+      });
+    });
+
+    tearDown(() => server.close(force: true));
+
+    test('does not park the next request in the dart:io queue', () async {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'http://${server.address.address}:${server.port}',
+          // Short on purpose. Anything parked in the queue inside dart:io is
+          // billed to this, which is what made a busy screen read as a
+          // connection timeout.
+          connectTimeout: const Duration(milliseconds: 400),
+        ),
+      );
+      configureServerDio(dio);
+      addTearDown(() => dio.close(force: true));
+
+      final results = await Future.wait(
+        List.generate(
+          12,
+          (i) => dio
+              .get<dynamic>('/$i')
+              .then<Object?>((r) => r)
+              .catchError((Object e) => e),
+        ),
+      );
+
+      expect(results.whereType<DioException>(), isEmpty);
+    });
+  });
+
+  // dart:io hands out a pooled connection without checking it is still open,
+  // and one the peer already dropped only fails once TCP gives up.
+  group('a pooled connection that died', () {
+    final retries = <String>[];
+    var handled = 0;
+
+    setUp(() {
+      retries.clear();
+      handled = 0;
+      ServerLog.sink = (category, level, message, {error}) {
+        if (message.startsWith('Connection died')) retries.add(message);
+      };
+    });
+
+    tearDown(() => ServerLog.sink = null);
+
+    // Reads the request and drops the socket without writing anything back,
+    // which is what a connection the peer let go of looks like.
+    Future<HttpServer> serverKilling(int firstRequests) async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      server.listen((request) async {
+        handled++;
+        if (handled <= firstRequests) {
+          final socket = await request.response.detachSocket();
+          socket.destroy();
+          return;
+        }
+        request.response.write('{"ok":true}');
+        await request.response.close();
+      });
+      return server;
+    }
+
+    Dio dioFor(HttpServer server) {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'http://${server.address.address}:${server.port}',
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+      configureServerDio(dio);
+      return dio;
+    }
+
+    test('a GET is asked for again and the caller never sees it', () async {
+      final dio = dioFor(await serverKilling(1));
+      addTearDown(() => dio.close(force: true));
+
+      final response = await dio.get<dynamic>('/Users/Me');
+
+      expect(response.statusCode, HttpStatus.ok);
+      expect(handled, 2);
+      expect(retries, hasLength(1));
+    });
+
+    test('a POST is left alone so the server never runs it twice', () async {
+      final dio = dioFor(await serverKilling(1));
+      addTearDown(() => dio.close(force: true));
+
+      await expectLater(
+        dio.post<dynamic>('/Sessions/Capabilities/Full', data: {'a': 1}),
+        throwsA(isA<DioException>()),
+      );
+      expect(handled, 1);
+    });
+
+    test('a second death in a row gives up instead of looping', () async {
+      final dio = dioFor(await serverKilling(9));
+      addTearDown(() => dio.close(force: true));
+
+      await expectLater(
+        dio.get<dynamic>('/Users/Me'),
+        throwsA(isA<DioException>()),
+      );
+      expect(handled, 2);
+    });
+
+    test('a host that refuses is not asked twice', () async {
+      // Nothing answered, so there is no dead connection to shake off and a
+      // second attempt only doubles the wait in front of the offline banner.
+      final closed = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final port = closed.port;
+      await closed.close(force: true);
+
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'http://127.0.0.1:$port',
+          connectTimeout: const Duration(seconds: 5),
+        ),
+      );
+      configureServerDio(dio);
+      addTearDown(() => dio.close(force: true));
+
+      await expectLater(
+        dio.get<dynamic>('/Users/Me'),
+        throwsA(isA<DioException>()),
+      );
+      expect(retries, isEmpty);
+    });
+
+    test('a body that already started is never asked for again', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      server.listen((request) async {
+        handled++;
+        // Written by hand because detachSocket refuses once the headers have
+        // gone out, and this needs them out before the socket dies.
+        final socket = await request.response.detachSocket(writeHeaders: false);
+        socket.write(
+          'HTTP/1.1 200 OK\r\n'
+          'Content-Type: application/json\r\n'
+          'Content-Length: 4096\r\n'
+          '\r\n'
+          'only a little',
+        );
+        await socket.flush();
+        socket.destroy();
+      });
+
+      final dio = dioFor(server);
+      addTearDown(() => dio.close(force: true));
+
+      await expectLater(dio.get<dynamic>('/big'), throwsA(isA<DioException>()));
+      // Headers were out, so the server did work the retry must not repeat.
+      expect(handled, 1);
+    });
+  });
 }

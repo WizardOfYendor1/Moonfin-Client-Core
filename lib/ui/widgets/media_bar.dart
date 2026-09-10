@@ -383,7 +383,7 @@ class _MediaBarState extends State<MediaBar>
   /// view mount mid-session and black-screen the next item.
   bool get _shouldMountPersistentMedia3View =>
       _useMedia3TrailerEngine() &&
-      widget.prefs.get(UserPreferences.mediaBarTrailerPreview) &&
+      widget.prefs.resolveMediaBarTrailerPreview() &&
       !_mainPlaybackActive &&
       !PlayerRouteObserver.instance.isPlayerActive.value;
 
@@ -667,9 +667,7 @@ class _MediaBarState extends State<MediaBar>
       unawaited(_disposeTrailerPlayer());
     }
 
-    final trailerPreviewEnabled = widget.prefs.get(
-      UserPreferences.mediaBarTrailerPreview,
-    );
+    final trailerPreviewEnabled = widget.prefs.resolveMediaBarTrailerPreview();
 
     final hardwareDecodingEnabled = widget.prefs.get(
       UserPreferences.hardwareDecoding,
@@ -904,7 +902,7 @@ class _MediaBarState extends State<MediaBar>
       _cancelTrailerPreview();
       return;
     }
-    if (!widget.prefs.get(UserPreferences.mediaBarTrailerPreview)) {
+    if (!widget.prefs.resolveMediaBarTrailerPreview()) {
       return;
     }
     if (!_isHomeRouteActive) {
@@ -942,7 +940,7 @@ class _MediaBarState extends State<MediaBar>
     });
     _trailerRevealTimer = Timer(_previewRevealDelay, () async {
       if (!mounted || resolveId != _trailerResolveId) return;
-      if (!widget.prefs.get(UserPreferences.mediaBarTrailerPreview)) return;
+      if (!widget.prefs.resolveMediaBarTrailerPreview()) return;
       _trailerRevealArmed = true;
       await _tryRevealPreparedTrailer(item, resolveId);
     });

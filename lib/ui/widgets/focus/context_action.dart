@@ -9,6 +9,7 @@ import '../../../data/models/aggregated_item.dart';
 import '../../../data/repositories/item_mutation_repository.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../preference/user_preferences.dart';
+import '../../../util/home_refresh_helper.dart';
 import '../../../util/item_watch_state.dart';
 import '../../navigation/destinations.dart';
 import '../add_to_collection_dialog.dart';
@@ -198,6 +199,7 @@ List<ItemContextAction> contextActionsFor(
         onSelect: () async {
           try {
             await mutations.refreshMetadata(item.id);
+            refreshHomeRows(followUp: true);
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(l10n.adminMetadataRefreshRequested)),

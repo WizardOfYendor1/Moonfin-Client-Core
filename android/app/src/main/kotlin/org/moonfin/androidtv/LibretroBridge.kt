@@ -431,12 +431,12 @@ class LibretroBridge(
   }
 
   private fun buildAudioTrack(sampleRate: Int): AudioTrack {
-    // A small device buffer keeps input-to-sound lag low, while still holding
-    // several of the AUDIO_CHUNK_FRAMES writes the loop below issues.
     val bytesPerFrame = 2 * BYTES_PER_SAMPLE
+    // Take the device minimum and only raise it enough to hold the writes
+    // below. Anything above that minimum is latency the device never asked for.
     val bufferBytes = AudioTrack.getMinBufferSize(
       sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
-      .coerceAtLeast(4 * AUDIO_CHUNK_FRAMES * bytesPerFrame)
+      .coerceAtLeast(2 * AUDIO_CHUNK_FRAMES * bytesPerFrame)
     val builder = AudioTrack.Builder()
       .setAudioAttributes(
         AudioAttributes.Builder()
@@ -804,8 +804,9 @@ class LibretroBridge(
     private const val MAX_PORTS = 4
 
     // Frames pulled from the native ring per write. Stereo, so the short
-    // buffer is twice this.
-    private const val AUDIO_CHUNK_FRAMES = 512
+    // buffer is twice this. Kept near one device period so the blocking write
+    // applies back pressure several times per video frame.
+    private const val AUDIO_CHUNK_FRAMES = 256
     private const val BYTES_PER_SAMPLE = 2
     private const val RETRO_DEVICE_JOYPAD = 1L
 

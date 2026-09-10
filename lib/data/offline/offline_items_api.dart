@@ -562,15 +562,21 @@ class OfflineItemsApi implements ItemsApi {
   Future<Map<String, dynamic>> getResumeItems({
     String? parentId,
     List<String>? includeItemTypes,
+    String? mediaTypes,
     int? startIndex,
     int? limit,
     String? fields,
     String? enableImageTypes,
     int? imageTypeLimit,
   }) async {
-    final types = (includeItemTypes != null && includeItemTypes.isNotEmpty)
-        ? includeItemTypes
-        : const ['Movie', 'Episode', 'Video', 'MusicVideo', 'AudioBook'];
+    final List<String> types;
+    if (includeItemTypes != null && includeItemTypes.isNotEmpty) {
+      types = includeItemTypes;
+    } else if (mediaTypes == 'Audio') {
+      types = const ['Audio', 'AudioBook'];
+    } else {
+      types = const ['Movie', 'Episode', 'Video', 'MusicVideo'];
+    }
     final resumable =
         _catalog.entries
             .where((e) => types.contains(e.type) && _isResumable(e))
@@ -662,7 +668,10 @@ class OfflineItemsApi implements ItemsApi {
   }
 
   @override
-  Future<Map<String, dynamic>> getSeasons(String seriesId) async {
+  Future<Map<String, dynamic>> getSeasons(
+    String seriesId, {
+    String? fields,
+  }) async {
     final seasons = _catalog.entries
         .where((e) => e.type == 'Season' && e.row.seriesId == seriesId)
         .toList();
@@ -681,7 +690,12 @@ class OfflineItemsApi implements ItemsApi {
     for (final e in _catalog.entries) {
       if (e.type != 'Episode' || e.row.seriesId != seriesId) continue;
       final seasonId = e.row.seasonId;
-      if (seasonId == null || synthesized.containsKey(seasonId)) continue;
+      if (seasonId == null) continue;
+      final seen = synthesized[seasonId];
+      if (seen != null) {
+        seen['ChildCount'] = (seen['ChildCount'] as int) + 1;
+        continue;
+      }
       synthesized[seasonId] = {
         'Id': seasonId,
         'Name':
@@ -692,6 +706,7 @@ class OfflineItemsApi implements ItemsApi {
         'SeriesId': seriesId,
         'SeriesName': e.row.seriesName,
         'ServerId': e.row.serverId,
+        'ChildCount': 1,
         'ImageTags': const <String, dynamic>{},
         'UserData': const <String, dynamic>{},
       };
