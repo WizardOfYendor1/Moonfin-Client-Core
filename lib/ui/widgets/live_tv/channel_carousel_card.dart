@@ -122,7 +122,9 @@ class ChannelCarouselCard extends StatelessWidget {
     var best = 0;
     var bestDistance = double.infinity;
     var widest = 0;
-    for (var count = 1; count <= _maxCardCount; count += 2) {
+    // Even counts are allowed: the strip is centre-locked, so an even number
+    // of pitches puts a half card bleeding off each edge, symmetrically.
+    for (var count = 1; count <= _maxCardCount; count++) {
       final candidate = widthFor(count);
       if (candidate < _minLegibleWidth) break;
       widest = count;
@@ -152,11 +154,11 @@ class ChannelCarouselCard extends StatelessWidget {
     // accent border and glow. Title and metadata are one step up from
     // bodySmall/labelSmall; the 108 dp height still fits a wrapped title over
     // the metadata line.
-    final titleStyle = (textTheme.bodyMedium ?? const TextStyle()).copyWith(
+    final titleStyle = (textTheme.bodyLarge ?? const TextStyle()).copyWith(
       fontWeight: FontWeight.w400,
       color: AppColorScheme.onSurface,
     );
-    final metaStyle = (textTheme.labelMedium ?? const TextStyle(fontSize: 12))
+    final metaStyle = (textTheme.labelLarge ?? const TextStyle(fontSize: 14))
         .copyWith(color: muted);
     // One step up from bodyMedium: the header is logo-height anyway, so the
     // channel name can afford the extra 2 dp without pushing the programme
@@ -277,62 +279,42 @@ class ChannelCarouselCard extends StatelessWidget {
     ),
   );
 
+  /// Logo leads, the heart sits with the channel number it belongs to, and
+  /// the recording dot trails so nothing crowds the identity.
   Widget _headerRow(TextStyle nameStyle, TextStyle numberStyle) => Row(
     children: [
-      if (isFavorite || hasTimer) ...[
-        _statusCluster(),
-        const SizedBox(width: _statusGap),
-      ],
       _logo(),
       const SizedBox(width: 8),
+      if (isFavorite) ...[
+        const Icon(Icons.favorite, size: 13, color: AppColors.red500),
+        const SizedBox(width: 4),
+      ],
+      if (channelNumber != null) ...[
+        Text(
+          channelNumber!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: numberStyle,
+        ),
+        const SizedBox(width: 6),
+      ],
       Expanded(
-        child: Row(
-          children: [
-            if (channelNumber != null) ...[
-              Text(
-                channelNumber!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: numberStyle,
-              ),
-              const SizedBox(width: 4),
-            ],
-            Expanded(
-              child: Text(
-                channelName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: nameStyle,
-              ),
-            ),
-          ],
+        child: Text(
+          channelName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: nameStyle,
         ),
       ),
-    ],
-  );
-
-  /// Favourite and recording status, pinned to the card's top-left corner so
-  /// it reads as state rather than as part of the channel or programme text.
-  Widget _statusCluster() => SizedBox(
-    height: _logoSize,
-    child: Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isFavorite)
-              const Icon(Icons.favorite, size: 11, color: AppColors.red500),
-            if (isFavorite && hasTimer) const SizedBox(width: _statusGap),
-            if (hasTimer)
-              const Icon(
-                Icons.fiber_manual_record,
-                size: 9,
-                color: Color(0xFFE0685C),
-              ),
-          ],
+      if (hasTimer) ...[
+        const SizedBox(width: _statusGap),
+        const Icon(
+          Icons.fiber_manual_record,
+          size: 10,
+          color: Color(0xFFE0685C),
         ),
       ],
-    ),
+    ],
   );
 
   /// Metadata that fits the given width — time, then rating, then tags —

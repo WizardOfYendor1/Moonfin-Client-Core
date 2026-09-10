@@ -5,7 +5,7 @@ version: 2.5.1+30000149
 
 moonfin:
   android_tv_version: 2.5.1
-  android_tv_build_number: 2000028
+  android_tv_build_number: 2000029
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
