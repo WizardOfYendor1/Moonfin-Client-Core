@@ -60,7 +60,7 @@ class ChannelCarouselCard extends StatelessWidget {
   /// The logo owns the header's right edge; it grows to the header band's
   /// height so it never reaches the programme text below it.
   static const double _logoHeight = 30;
-  static const double _logoMaxWidth = 60;
+  static const double _logoMaxWidth = 44;
   static const double cardPitch = cardWidth + cardSpacing;
 
   /// Band a derived card width has to land in before it is considered.
@@ -200,7 +200,15 @@ class ChannelCarouselCard extends StatelessWidget {
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: AppColorScheme.surface.withValues(alpha: 0.55),
+          // Light enough that a dark logo still reads against it, and lighter
+          // again when centred so focus is carried by the fill as well as the
+          // border.
+          color: centered
+              ? Color.alphaBlend(
+                  AppColorScheme.onSurface.withValues(alpha: 0.16),
+                  AppColorScheme.surfaceVariant,
+                ).withValues(alpha: 0.94)
+              : AppColorScheme.surfaceVariant.withValues(alpha: 0.82),
           borderRadius: AppRadius.circular(_radius),
           border: Border.fromBorderSide(
             centered
