@@ -43,13 +43,13 @@ class RowDataSource {
       'ParentIndexNumber,IndexNumber,Status,ImageTags,BackdropImageTags,'
       'ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,'
       'ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,'
-      'ParentLogoItemId,ParentLogoImageTag,PrimaryImageTag,PrimaryImageAspectRatio';
+      'ParentLogoItemId,ParentLogoImageTag,PrimaryImageTag,PrimaryImageAspectRatio,People,Artists';
   static const _fallbackFields =
       'DateCreated,Type,UserData,OfficialRating,RunTimeTicks,ProductionYear,SeriesName,'
       'ParentIndexNumber,IndexNumber,ImageTags,BackdropImageTags,'
       'ParentBackdropItemId,ParentBackdropImageTags,ParentThumbItemId,'
       'ParentThumbImageTag,SeriesId,SeriesPrimaryImageTag,'
-      'ParentLogoItemId,ParentLogoImageTag';
+      'ParentLogoItemId,ParentLogoImageTag,People,Artists';
   static const _minimalFields =
       'Type,UserData,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags,'
       'ParentBackdropItemId,ParentBackdropImageTags,SeriesId';
@@ -153,7 +153,7 @@ class RowDataSource {
 
   Future<HomeRow> loadResume(String serverId, {int? startIndex}) async {
     final response = await _getResumeItemsWithFallback(
-      includeItemTypes: ['Movie', 'Episode'],
+      mediaTypes: 'Video',
       startIndex: startIndex,
       limit: _defaultLimit,
     );
@@ -168,7 +168,7 @@ class RowDataSource {
 
   Future<HomeRow> loadResumeAudio(String serverId) async {
     final response = await _getResumeItemsWithFallback(
-      includeItemTypes: ['Audio'],
+      mediaTypes: 'Audio',
       limit: _defaultLimit,
     );
     return _buildRow(
@@ -201,7 +201,7 @@ class RowDataSource {
 
   Future<HomeRow> loadResumeRelaxed(String serverId) async {
     final response = await getResumeItemsRelaxed(
-      includeItemTypes: const ['Movie', 'Episode'],
+      mediaTypes: 'Video',
       limit: _defaultLimit,
     );
     return _buildRow(
@@ -307,25 +307,17 @@ class RowDataSource {
       defaultLimit: _defaultLimit,
       maxLimit: _maxItems,
     );
-    List<String>? seriesType;
-    var recursive = false;
-    if (collectionType == 'tvshows') {
-      final prefSeriesType = GetIt.instance<UserPreferences>().get(
+    final includeItemTypes = recentlyReleasedItemTypesFor(
+      collectionType,
+      seriesType: () => GetIt.instance<UserPreferences>().get(
         UserPreferences.recentlyReleasedSeriesType,
-      );
-      seriesType = switch (prefSeriesType) {
-        RecentlyReleasedSeriesType.series => const ['Series'],
-        RecentlyReleasedSeriesType.season => const ['Season'],
-        RecentlyReleasedSeriesType.episode => const ['Episode'],
-      };
-      // Seasons and episodes sit below the library rather than directly in it.
-      recursive = prefSeriesType != RecentlyReleasedSeriesType.series;
-    }
+      ),
+    );
     final response = await _getRecentlyReleasedItemsWithFallback(
       parentId: parentId,
       limit: fetchLimit,
-      includeItemTypes: seriesType,
-      recursive: recursive,
+      includeItemTypes: includeItemTypes,
+      recursive: includeItemTypes != null,
     );
     final items = normalizeLatestMediaItems(
       _parseItems(response, serverId),
@@ -944,7 +936,7 @@ class RowDataSource {
   Future<HomeRow> loadLibraryResume(String parentId, String serverId) async {
     final response = await _getResumeItemsWithFallback(
       parentId: parentId,
-      includeItemTypes: ['Video'],
+      mediaTypes: 'Video',
       limit: _defaultLimit,
     );
     return _buildRow(
@@ -981,7 +973,7 @@ class RowDataSource {
     String sortBy = 'SortName',
     String sortOrder = 'Ascending',
   }) async {
-    final response = await _getItemsWithFallback(
+    var response = await _getItemsWithFallback(
       parentId: parentId,
       isFavorite: true,
       sortBy: sortBy,
@@ -990,6 +982,35 @@ class RowDataSource {
       limit: _defaultLimit,
       includeItemTypes: includeItemTypes,
     );
+    final favList = response['Items'] as List? ?? const [];
+    if (favList.isEmpty &&
+        includeItemTypes != null &&
+        (includeItemTypes.contains('Book') ||
+            includeItemTypes.contains('AudioBook'))) {
+      final fallbackResponse = await _getItemsWithFallback(
+        parentId: parentId,
+        isFavorite: true,
+        excludeItemTypes: const ['Folder', 'CollectionFolder', 'UserView'],
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        recursive: true,
+        limit: _defaultLimit,
+      );
+      final rawItems = (fallbackResponse['Items'] as List? ?? const [])
+          .whereType<Map>()
+          .where((m) {
+            final t = m['Type']?.toString();
+            return t != null && includeItemTypes.contains(t);
+          })
+          .toList();
+      if (rawItems.isNotEmpty) {
+        response = {
+          ...fallbackResponse,
+          'Items': rawItems,
+          'TotalRecordCount': rawItems.length,
+        };
+      }
+    }
     return _buildRow(
       id: 'favorites_$parentId',
       title: _l10n.favorites,
@@ -1025,7 +1046,7 @@ class RowDataSource {
     String serverId, {
     List<String>? includeItemTypes,
   }) async {
-    final response = await _getItemsWithFallback(
+    var response = await _getItemsWithFallback(
       parentId: parentId,
       sortBy: 'DatePlayed',
       sortOrder: 'Descending',
@@ -1034,6 +1055,35 @@ class RowDataSource {
       limit: _defaultLimit,
       includeItemTypes: includeItemTypes,
     );
+    final lastList = response['Items'] as List? ?? const [];
+    if (lastList.isEmpty &&
+        includeItemTypes != null &&
+        (includeItemTypes.contains('Book') ||
+            includeItemTypes.contains('AudioBook'))) {
+      final fallbackResponse = await _getItemsWithFallback(
+        parentId: parentId,
+        sortBy: 'DatePlayed',
+        sortOrder: 'Descending',
+        filters: ['IsPlayed'],
+        excludeItemTypes: const ['Folder', 'CollectionFolder', 'UserView'],
+        recursive: true,
+        limit: _defaultLimit,
+      );
+      final rawItems = (fallbackResponse['Items'] as List? ?? const [])
+          .whereType<Map>()
+          .where((m) {
+            final t = m['Type']?.toString();
+            return t != null && includeItemTypes.contains(t);
+          })
+          .toList();
+      if (rawItems.isNotEmpty) {
+        response = {
+          ...fallbackResponse,
+          'Items': rawItems,
+          'TotalRecordCount': rawItems.length,
+        };
+      }
+    }
     return _buildRow(
       id: 'lastPlayed_$parentId',
       title: _l10n.lastPlayed,
@@ -1053,7 +1103,7 @@ class RowDataSource {
   }) async {
     final isAlbumArtistBrowse =
         includeItemTypes.length == 1 && includeItemTypes.first == 'AlbumArtist';
-    final response = isAlbumArtistBrowse
+    var response = isAlbumArtistBrowse
         ? await _client.itemsApi.getAlbumArtists(
             parentId: parentId,
             userId: _client.userId,
@@ -1071,6 +1121,36 @@ class RowDataSource {
             recursive: true,
             limit: _defaultLimit,
           );
+
+    final itemsList = response['Items'] as List? ?? const [];
+    if (itemsList.isEmpty &&
+        !isAlbumArtistBrowse &&
+        (includeItemTypes.contains('Book') ||
+            includeItemTypes.contains('AudioBook'))) {
+      final fallbackResponse = await _getItemsWithFallback(
+        parentId: parentId,
+        excludeItemTypes: const ['Folder', 'CollectionFolder', 'UserView'],
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        recursive: true,
+        limit: _defaultLimit,
+      );
+      final rawItems = (fallbackResponse['Items'] as List? ?? const [])
+          .whereType<Map>()
+          .where((m) {
+            final t = m['Type']?.toString();
+            return t != null && includeItemTypes.contains(t);
+          })
+          .toList();
+      if (rawItems.isNotEmpty) {
+        response = {
+          ...fallbackResponse,
+          'Items': rawItems,
+          'TotalRecordCount': rawItems.length,
+        };
+      }
+    }
+
     return _buildRow(
       id: '${includeItemTypes.first.toLowerCase()}_$parentId',
       title: title,
@@ -1124,6 +1204,39 @@ class RowDataSource {
           serverId: serverId,
           rowType: HomeRowType.resume,
         );
+      } catch (_) {}
+    }
+    if (row.items.isEmpty) {
+      try {
+        final fallback2 = await _getItemsWithFallback(
+          parentId: parentId,
+          excludeItemTypes: const ['Folder', 'CollectionFolder', 'UserView'],
+          filters: ['IsResumable'],
+          sortBy: 'DatePlayed',
+          sortOrder: 'Descending',
+          recursive: true,
+          limit: _defaultLimit,
+        );
+        final rawItems = (fallback2['Items'] as List? ?? const [])
+            .whereType<Map>()
+            .where((m) {
+              final t = m['Type']?.toString();
+              return t != null && includeItemTypes.contains(t);
+            })
+            .toList();
+        if (rawItems.isNotEmpty) {
+          row = _buildRow(
+            id: 'bookResume_$parentId',
+            title: title,
+            response: {
+              ...fallback2,
+              'Items': rawItems,
+              'TotalRecordCount': rawItems.length,
+            },
+            serverId: serverId,
+            rowType: HomeRowType.resume,
+          );
+        }
       } catch (_) {}
     }
     return row;
@@ -1529,13 +1642,13 @@ class RowDataSource {
         }
       case HomeRowType.resume:
         response = await _getResumeItemsWithFallback(
-          includeItemTypes: const ['Movie', 'Episode'],
+          mediaTypes: 'Video',
           startIndex: currentOffset,
           limit: _defaultLimit,
         );
       case HomeRowType.resumeAudio:
         response = await _getResumeItemsWithFallback(
-          includeItemTypes: const ['Audio'],
+          mediaTypes: 'Audio',
           startIndex: currentOffset,
           limit: _defaultLimit,
         );
@@ -1645,6 +1758,7 @@ class RowDataSource {
   Future<Map<String, dynamic>> _getResumeItemsWithFallback({
     String? parentId,
     List<String>? includeItemTypes,
+    String? mediaTypes,
     int? startIndex,
     required int limit,
   }) async {
@@ -1653,6 +1767,7 @@ class RowDataSource {
           .getResumeItems(
             parentId: parentId,
             includeItemTypes: includeItemTypes,
+            mediaTypes: mediaTypes,
             startIndex: startIndex,
             limit: limit,
             fields: _fields,
@@ -1666,6 +1781,7 @@ class RowDataSource {
           .getResumeItems(
             parentId: parentId,
             includeItemTypes: includeItemTypes,
+            mediaTypes: mediaTypes,
             startIndex: startIndex,
             limit: limit,
             fields: _fallbackFields,
@@ -1680,6 +1796,7 @@ class RowDataSource {
       final response = await _client.itemsApi.getResumeItems(
         parentId: parentId,
         includeItemTypes: includeItemTypes,
+        mediaTypes: mediaTypes,
         startIndex: startIndex,
         limit: limit,
         fields: _fallbackFields,
@@ -1744,6 +1861,7 @@ class RowDataSource {
   Future<Map<String, dynamic>> getResumeItemsRelaxed({
     String? parentId,
     List<String>? includeItemTypes,
+    String? mediaTypes,
     required int limit,
   }) async {
     try {
@@ -1751,6 +1869,7 @@ class RowDataSource {
           .getResumeItems(
             parentId: parentId,
             includeItemTypes: includeItemTypes,
+            mediaTypes: mediaTypes,
             limit: limit,
             fields: _fields,
             enableImageTypes: _imageTypes,
@@ -1764,6 +1883,7 @@ class RowDataSource {
             .getResumeItems(
               parentId: parentId,
               includeItemTypes: includeItemTypes,
+              mediaTypes: mediaTypes,
               limit: limit,
               fields: _minimalFields,
               enableImageTypes: _imageTypes,
@@ -2033,7 +2153,10 @@ class RowDataSource {
           if (forceRefresh) {
             items = await customService.fetchCustomRow(config, forceRefresh: true);
           } else {
-            items = await customService.loadCustomRowFromCache(config);
+            items = await customService.loadCustomRowFromCache(
+              config,
+              maxAge: CustomExternalListsService.cacheMaxAge,
+            );
             if (items.isEmpty) {
               items = await customService.fetchCustomRow(config);
             }
@@ -3121,7 +3244,7 @@ class RowDataSource {
           includeItemTypes: const ['BoxSet'],
           recursive: true,
           limit: 50,
-          fields: '$_fields',
+          fields: _fields,
         );
         final collections = _parseItems(res, serverId);
         

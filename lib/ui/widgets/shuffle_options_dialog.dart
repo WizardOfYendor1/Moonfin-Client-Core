@@ -254,6 +254,10 @@ bool supportsShuffleLibraryForContentType(
     return false;
   }
 
+  if ({'', 'mixed', 'unknown'}.contains(collectionType)) {
+    return true;
+  }
+
   final isMovieLibrary = collectionType == 'movies';
   final isSeriesLibrary = collectionType == 'tvshows';
 

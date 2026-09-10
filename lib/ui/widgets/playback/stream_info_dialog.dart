@@ -12,6 +12,9 @@ Future<void> showStreamInfoDialog({
   required String title,
   required List<Map<String, dynamic>> streamInfoSections,
   double maxWidth = 560,
+
+  /// An optional button under the sections.
+  ({String label, VoidCallback onPressed})? action,
 }) async {
   final l10n = AppLocalizations.of(context);
 
@@ -26,6 +29,10 @@ Future<void> showStreamInfoDialog({
     color: Colors.white,
     fontSize: 13,
     fontWeight: FontWeight.w600,
+  );
+  final actionStyle = OutlinedButton.styleFrom(
+    foregroundColor: Colors.white,
+    side: ThemeRegistry.active.borders.chipBorder,
   );
 
   Widget infoRow(String label, String value, {bool highlight = false}) {
@@ -117,6 +124,24 @@ Future<void> showStreamInfoDialog({
                   );
                 })),
           ],
+          if (action != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.spaceLg,
+                AppSpacing.spaceMd,
+                AppSpacing.spaceLg,
+                0,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: action.onPressed,
+                  icon: const Icon(Icons.query_stats_rounded),
+                  label: Text(action.label),
+                  style: actionStyle,
+                ),
+              ),
+            ),
           const SizedBox(height: AppSpacing.spaceLg),
         ],
       ),

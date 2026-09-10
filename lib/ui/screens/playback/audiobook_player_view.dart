@@ -125,7 +125,7 @@ class _AudiobookPlayerViewState extends State<AudiobookPlayerView> {
       if (_state.isPlaying) _saveResume();
     });
 
-    if (PlatformDetection.useNativeVideoSurface) {
+    if (PlatformDetection.playerVolumeIsSystemManaged) {
       unawaited(_manager.backend?.setVolume(100.0));
     }
 

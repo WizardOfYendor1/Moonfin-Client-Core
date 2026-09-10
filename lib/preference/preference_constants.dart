@@ -189,6 +189,9 @@ enum PlaybackTimeSlot {
 
   /// Wall-clock time the item will finish at, e.g. `Ends at 21:45`.
   endsAt,
+
+  /// The current time
+  time,
 }
 
 enum DesktopScrollWheelAction {
@@ -201,6 +204,10 @@ enum DesktopScrollWheelAction {
 /// hardware, zero-blur sheen on TV boxes/web); `full` forces real blur;
 /// `reduced` forces the zero-blur sheen everywhere.
 enum GlassQualityMode { auto, full, reduced }
+
+/// How much this device is asked to spend on decoded images and inline video.
+/// [DevicePerformanceMode.auto] measures the device, the other two pin it.
+enum DevicePerformanceMode { auto, standard, reduced }
 
 /// Persisted settled quality of the adaptive glass renderer, mirroring the
 /// package's GlassQuality tiers. `unset` means no benchmark has settled yet,
@@ -755,6 +762,69 @@ extension HomeSectionTypeSeerrRow on HomeSectionType {
 
 enum ScreensaverMode { library, logo }
 
+enum ScreensaverBackdrop {
+  library,
+  black,
+  moonfin,
+  calm,
+  neonPulse,
+  aurora,
+}
+
+enum ScreensaverPosition {
+  topLeft,
+  topCenter,
+  topRight,
+  middleLeft,
+  middle,
+  middleRight,
+  bottomLeft,
+  bottomCenter,
+  bottomRight,
+}
+
+enum ScreensaverSize {
+  thumbnail,
+  small,
+  medium,
+  large,
+}
+
+enum ScreensaverComponent {
+  none,
+  moonfinLogo,
+  clock,
+  runner,
+}
+
+enum ScreensaverMovement {
+  staticCorner,
+  slow,
+  moderate,
+  fast,
+  ultra,
+}
+
+extension ScreensaverMovementX on ScreensaverMovement {
+  bool get isBouncing => this != ScreensaverMovement.staticCorner;
+
+  double get speedMultiplier => switch (this) {
+        ScreensaverMovement.staticCorner => 0.0,
+        ScreensaverMovement.slow => 0.45,
+        ScreensaverMovement.moderate => 0.70,
+        ScreensaverMovement.fast => 1.0,
+        ScreensaverMovement.ultra => 1.60,
+      };
+
+  LoadingAnimationSpeed get loadingSpeed => switch (this) {
+        ScreensaverMovement.staticCorner => LoadingAnimationSpeed.fast,
+        ScreensaverMovement.slow => LoadingAnimationSpeed.slow,
+        ScreensaverMovement.moderate => LoadingAnimationSpeed.moderate,
+        ScreensaverMovement.fast => LoadingAnimationSpeed.fast,
+        ScreensaverMovement.ultra => LoadingAnimationSpeed.ultra,
+      };
+}
+
 enum ScreensaverClockMode { off, staticCorner, bouncing }
 
 enum ScreensaverTimeout {
@@ -833,3 +903,41 @@ enum RecentlyReleasedSeriesType { series, season, episode }
 /// When a home row card shows its MOVIE or SERIES label. Only external rows
 /// carry a media type, so the rest are unaffected either way.
 enum MediaTypeBadgeBehavior { always, mixedRowsOnly, never }
+
+enum LoadingAnimationImage {
+  none,
+  moonfinLogo,
+  spinner,
+  runner,
+  moonPhases,
+  moonfinPhases,
+  neonfinPhases,
+}
+
+enum LoadingAnimationSize {
+  thumbnail,
+  small,
+  medium,
+  large,
+}
+
+enum LoadingAnimationPosition {
+  topLeft,
+  topCenter,
+  topRight,
+  middleLeft,
+  middle,
+  middleRight,
+  bottomLeft,
+  bottomCenter,
+  bottomRight,
+  bouncing,
+}
+
+enum LoadingAnimationSpeed {
+  slow,
+  moderate,
+  fast,
+  ultra,
+}
+

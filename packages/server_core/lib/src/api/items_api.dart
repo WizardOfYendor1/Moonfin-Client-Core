@@ -89,6 +89,7 @@ abstract class ItemsApi {
   Future<Map<String, dynamic>> getResumeItems({
     String? parentId,
     List<String>? includeItemTypes,
+    String? mediaTypes,
     int? startIndex,
     int? limit,
     String? fields,
@@ -118,7 +119,7 @@ abstract class ItemsApi {
     bool recursive = false,
   });
 
-  Future<Map<String, dynamic>> getSeasons(String seriesId);
+  Future<Map<String, dynamic>> getSeasons(String seriesId, {String? fields});
 
   Future<Map<String, dynamic>> getEpisodes(
     String seriesId, {

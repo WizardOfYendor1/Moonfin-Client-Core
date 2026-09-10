@@ -31,6 +31,7 @@ import '../../widgets/rating_display.dart';
 import '../../../data/services/theme_music_service.dart';
 import '../../../data/services/media_server_client_factory.dart';
 import '../../../data/services/plugin_sync_service.dart';
+import '../../../data/services/connectivity_service.dart';
 import '../../../data/utils/media_type_badges.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../playback/appletv_preview_player.dart';
@@ -61,6 +62,7 @@ import '../../widgets/library_row.dart';
 import '../../widgets/media_bar.dart';
 import '../../widgets/mediabar/banner_media_bar.dart';
 import '../../widgets/media_card.dart';
+import '../../widgets/mobile_bottom_nav_bar.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/responsive_layout.dart';
 import '../../widgets/seasonal_effects.dart';
@@ -120,6 +122,10 @@ class _HomeShellState extends State<_HomeShell>
   final _userPrefs = GetIt.instance<UserPreferences>();
   final _themeMusicService = GetIt.instance<ThemeMusicService>();
   final _pluginSyncService = GetIt.instance<PluginSyncService>();
+  final _connectivity = GetIt.instance.isRegistered<ConnectivityService>()
+      ? GetIt.instance<ConnectivityService>()
+      : null;
+  bool _lastCanReachServer = true;
   late final HomeViewModel _viewModel;
 
   final ValueNotifier<AggregatedItem?> _selectedItemNotifier = ValueNotifier(null);
@@ -197,6 +203,8 @@ class _HomeShellState extends State<_HomeShell>
 
     _pluginSyncService.addListener(_onPluginSyncChanged);
     _userPrefs.addListener(_onPrefsChanged);
+    _lastCanReachServer = _connectivity?.canReachServer ?? true;
+    _connectivity?.addListener(_onServerReachabilityChanged);
     _maybeRegisterThemeMusic();
     _viewModel.load(preserveExisting: _viewModel.rows.isNotEmpty);
   }
@@ -232,6 +240,7 @@ class _HomeShellState extends State<_HomeShell>
     _isScrolledToTopNotifier.dispose();
     _pluginSyncService.removeListener(_onPluginSyncChanged);
     _userPrefs.removeListener(_onPrefsChanged);
+    _connectivity?.removeListener(_onServerReachabilityChanged);
     if (_themeMusicRegistered) {
       _themeMusicService.unregisterDetailScreen(this);
       _themeMusicRegistered = false;
@@ -263,6 +272,17 @@ class _HomeShellState extends State<_HomeShell>
 
   void _onHomeRefreshRequested() {
     if (!mounted) return;
+    _viewModel.refresh(preserveExisting: true);
+  }
+
+  void _onServerReachabilityChanged() {
+    final canReach = _connectivity?.canReachServer ?? true;
+    final reloads = HomeViewModel.reloadsOnReachability(
+      canReachServer: canReach,
+      couldReachServer: _lastCanReachServer,
+    );
+    _lastCanReachServer = canReach;
+    if (!reloads || !mounted) return;
     _viewModel.refresh(preserveExisting: true);
   }
 
@@ -908,7 +928,18 @@ class _ContentRowsState extends State<_ContentRows>
             ? 45.0
             : (PlatformDetection.useMobileUi ? 60.0 : 80.0))
         : 0.0;
-    return (safeTop + navbarHeight + 8.0).clamp(0.0, viewportHeight * 0.85);
+    final desktopScale = _desktopUiScaleFactor();
+    final topPeekSpacing = PlatformDetection.isTV ? (32.0 * desktopScale) : 8.0;
+    return (safeTop + navbarHeight + topPeekSpacing).clamp(0.0, viewportHeight * 0.85);
+  }
+
+  /// Height of the navbar the rows scroll behind, or zero when it is not
+  /// along the bottom.
+  double _bottomNavbarInset() {
+    if (!NavigationLayout.allowBottomNavbar) return 0.0;
+    final position = widget.prefs.get(UserPreferences.navbarPosition);
+    if (position != NavbarPosition.bottom) return 0.0;
+    return MobileBottomNavBar.heightFor(context);
   }
 
   List<double> _rowTargetOffsetsForScroll({required bool fullScreenRows}) {
@@ -1014,6 +1045,32 @@ class _ContentRowsState extends State<_ContentRows>
     if (chromePreviewActive && (chromeChanged || _activePreviewKey != null)) {
       _finishSharedPreview(releaseResources: true);
     }
+
+    if (_infoRevealed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _collapsePinnedInfoIfMediaBarOwnsHero();
+      });
+    }
+  }
+
+  /// The pinned info band belongs to the rows, so collapse it once focus has
+  /// left them and the media bar owns the hero again; otherwise a row item
+  /// revealed during start-up stays drawn over the bar's own slide.
+  void _collapsePinnedInfoIfMediaBarOwnsHero() {
+    if (!_infoRevealed) return;
+    if (!_showHomeRowInfoOverlay()) return;
+    if (!_isMediaBarIncluded() || _isBannerMode()) return;
+    if (_activeFocusedRowIndex != null || _isSidebarFocus) return;
+    if (_verticalNavInFlight) return;
+    if (OverlaySheetController.hasOpenSheet ||
+        SettingsPanel.isOpenNotifier.value) {
+      return;
+    }
+    if (_scrollController.hasClients &&
+        _scrollController.offset >= _pinnedInfoCollapseOffset()) {
+      return;
+    }
+    _infoRevealed = false;
   }
 
   void _onSettingsPanelOpenChanged() {
@@ -2181,8 +2238,12 @@ class _ContentRowsState extends State<_ContentRows>
       return;
     }
 
-    if (fromMouseHover &&
+    // The hero belongs to the media bar until the user deliberately moves
+    // down into the rows; a tile that takes focus on its own at startup must
+    // not paint the info band over it.
+    if ((fromMouseHover || !_verticalNavInFlight) &&
         _isMediaBarIncluded() &&
+        !_isBannerMode() &&
         _scrollController.hasClients &&
         _scrollController.offset < _pinnedInfoCollapseOffset()) {
       return;
@@ -2301,11 +2362,15 @@ class _ContentRowsState extends State<_ContentRows>
     _suppressNextRowPreviewFromMediaBar = true;
     _forceRevealOnNextRowFocusFromMediaBar = true;
     final isBanner = _isBannerMode();
-    if (mounted && _mediaBarVisible && !isBanner) {
+    if (mounted &&
+        _mediaBarVisible &&
+        !isBanner &&
+        !_isAyaMode() &&
+        !_isBookshelfMode()) {
       _mediaBarVisible = false;
     }
     if (!isBanner && _scrollController.hasClients) {
-      final offsetAdjustment = _isBookshelfMode() ? (_overlayBottom + 8) : 0.0;
+      final offsetAdjustment = _desktopRowFocusTargetTop();
       final target = (_mediaBarHeight() - offsetAdjustment).clamp(
         0.0,
         _scrollController.position.maxScrollExtent,
@@ -2615,6 +2680,28 @@ class _ContentRowsState extends State<_ContentRows>
     final isRowsV2 = widget.prefs.get(UserPreferences.homeRowsStyle) == HomeRowsStyle.v2 &&
         !_isWideArtworkRow(row);
 
+    final fullScreenRows = _fullScreenRowsEnabled(widget.prefs);
+    if (fullScreenRows) {
+      final stackRender = context.findRenderObject();
+      final viewportHeight = (stackRender is RenderBox && stackRender.hasSize)
+          ? stackRender.size.height
+          : MediaQuery.sizeOf(context).height;
+      final desktopScale = widget.prefs
+          .get(UserPreferences.desktopUiScale)
+          .scaleFactor;
+      final ratingsEnabled =
+          widget.prefs.get(UserPreferences.enableAdditionalRatings) as bool? ??
+          false;
+      final extraHeight = ratingsEnabled ? (32.0 * desktopScale) : 0.0;
+      final rowHeight = _staticRowHeight(rowIndex) + extraHeight;
+
+      if (isRowsV2) {
+        final targetTop = (viewportHeight - rowHeight) / 2.0;
+        return targetTop.clamp(defaultTop, double.infinity);
+      }
+      return defaultTop;
+    }
+
     if (rowIndex == 0 && _rowTopOffsets.isNotEmpty) {
       if (_isMediaBarIncluded() && !_isBannerMode()) {
         return defaultTop;
@@ -2624,42 +2711,7 @@ class _ContentRowsState extends State<_ContentRows>
       }
     }
 
-    final stackRender = context.findRenderObject();
-    if (stackRender is! RenderBox || !stackRender.hasSize) {
-      return rowIndex == 0 && _rowTopOffsets.isNotEmpty ? _rowTopOffsets[0] : defaultTop;
-    }
-
-    final viewportHeight = stackRender.size.height;
-    final desktopScale = widget.prefs
-        .get(UserPreferences.desktopUiScale)
-        .scaleFactor;
-    final ratingsEnabled =
-        widget.prefs.get(UserPreferences.enableAdditionalRatings) as bool? ??
-        false;
-    final extraHeight = ratingsEnabled ? (32.0 * desktopScale) : 0.0;
-    final rowHeight = _staticRowHeight(rowIndex) + extraHeight;
-
-    if (rowIndex == 0 && _rowTopOffsets.isNotEmpty) {
-      final safeBottomMargin = 40.0 * desktopScale;
-      final preferredTop = viewportHeight - rowHeight - safeBottomMargin;
-      return preferredTop.clamp(defaultTop, _rowTopOffsets[0]);
-    }
-
-    final fullScreenRows = _fullScreenRowsEnabled(widget.prefs);
-    if (fullScreenRows) {
-      if (isRowsV2) {
-        final targetTop = (viewportHeight - rowHeight) / 2.0;
-        return targetTop.clamp(defaultTop, double.infinity);
-      }
-      return defaultTop;
-    } else {
-      final isMyMedia = row.rowType == HomeRowType.libraryTilesSmall ||
-          row.rowType == HomeRowType.libraryTiles;
-      if (isMyMedia) {
-        return defaultTop;
-      }
-      return 0.0;
-    }
+    return defaultTop;
   }
 
   Future<void> _scrollTvRowIntoOverlayBand(int rowIndex) async {
@@ -2681,9 +2733,7 @@ class _ContentRowsState extends State<_ContentRows>
   double? _restingOffsetForRow(int rowIndex) {
     if (!_scrollController.hasClients) return null;
     if (rowIndex < 0 || rowIndex >= _rowTopOffsets.length) return null;
-    final useTvBand =
-        _fullScreenRowsEnabled(widget.prefs) ||
-        (PlatformDetection.isTV && _isHomeRowsStyleV2());
+    final useTvBand = _fullScreenRowsEnabled(widget.prefs);
     final targetTop = useTvBand
         ? _tvTargetTopForRow(rowIndex)
         : _desktopRowFocusTargetTop();
@@ -2965,9 +3015,7 @@ class _ContentRowsState extends State<_ContentRows>
           _scrollController.hasClients &&
           rowIndex >= 0 &&
           rowIndex < _rowTopOffsets.length) {
-        final offsetAdjustment = _isBookshelfMode()
-            ? (_overlayBottom + 8)
-            : 0.0;
+        final offsetAdjustment = _desktopRowFocusTargetTop();
         final targetOffset = (_rowTopOffsets[rowIndex] - offsetAdjustment)
             .clamp(0.0, _scrollController.position.maxScrollExtent);
         if ((_scrollController.offset - targetOffset).abs() > 10) {
@@ -3031,9 +3079,7 @@ class _ContentRowsState extends State<_ContentRows>
             final fullScreenRows =
                 !PlatformDetection.useMobileUi &&
                 widget.prefs.get(UserPreferences.fullScreenRows);
-            final isRowsV2 = _isHomeRowsStyleV2();
-            if ((fullScreenRows || (PlatformDetection.isTV && isRowsV2)) &&
-                _scrollController.hasClients) {
+            if (fullScreenRows && _scrollController.hasClients) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (!mounted || !_scrollController.hasClients) {
                   if (!navComplete.isCompleted) navComplete.complete();
@@ -3056,26 +3102,6 @@ class _ContentRowsState extends State<_ContentRows>
               return;
             }
 
-            if (!PlatformDetection.isTV &&
-                _showHomeRowInfoOverlay() &&
-                _scrollController.hasClients &&
-                target < _rowTopOffsets.length) {
-              final targetOffset =
-                  (_rowTopOffsets[target] - _desktopRowFocusTargetTop()).clamp(
-                    0.0,
-                    _scrollController.position.maxScrollExtent,
-                  );
-              _scrollController
-                  .animateTo(
-                    targetOffset,
-                    duration: _focusHandoffDuration,
-                    curve: _focusHandoffCurve,
-                  )
-                  .whenComplete(() {
-                    if (!navComplete.isCompleted) navComplete.complete();
-                  });
-              return;
-            }
 
             if (_scrollController.hasClients) {
               final rowObj = _rowContainerKey(
@@ -3196,7 +3222,9 @@ class _ContentRowsState extends State<_ContentRows>
       if (!PlatformDetection.useMobileUi &&
           _mediaBarVisible &&
           !_verticalNavInFlight &&
-          !_isBannerMode()) {
+          !_isBannerMode() &&
+          !_isAyaMode() &&
+          !_isBookshelfMode()) {
         setState(() => _mediaBarVisible = false);
       }
     } else if (_activeFocusedRowIndex == rowIndex) {
@@ -3542,6 +3570,12 @@ class _ContentRowsState extends State<_ContentRows>
         : scaleFactor;
     return posterSize.portraitHeight.toDouble() * platformScale;
   }
+
+  /// Touch never leaves a card grown, so phones keep the tighter layout.
+  double _rowItemSpacing(double itemExtent, bool cardExpansion) =>
+      cardExpansion && !PlatformDetection.useMobileUi
+      ? MediaCard.focusGap(itemExtent)
+      : 12.0;
 
   double _rowContentHeight(
     HomeRow row,
@@ -4023,16 +4057,25 @@ class _ContentRowsState extends State<_ContentRows>
     final rowExtents = _rowExtents;
     final headerCount = (includeMediaBar ? 1 : 0) + 1;
 
-    // Ensure the last row can be scrolled so its top sits just below the info
-    // overlay; otherwise scroll targets clamp to maxScrollExtent and rows drift
-    // higher in the viewport as the user navigates downward.
-    final viewportHeight = MediaQuery.of(context).size.height;
-    final lastRowExtent = rowExtents.isEmpty ? 0.0 : rowExtents.last;
-    final neededBottomPadding =
-        (viewportHeight -
-                (overlayBottom + (_isHomeRowsStyleV2() ? 4.0 : 8.0)) -
-                lastRowExtent)
-            .clamp(_isHomeRowsStyleV2() ? 24.0 : 32.0, double.infinity);
+    final minBottomPadding = _isHomeRowsStyleV2() ? 24.0 : 32.0;
+    final double neededBottomPadding;
+    if (PlatformDetection.useMobileUi) {
+      // Touch moves the list rather than a row at a time, so the room kept
+      // below for that reads as blank space here. It only needs to clear the
+      // navbar the rows scroll behind.
+      neededBottomPadding = minBottomPadding + _bottomNavbarInset();
+    } else {
+      // Ensure the last row can be scrolled so its top sits just below the
+      // info overlay, otherwise scroll targets clamp to maxScrollExtent and
+      // rows drift higher in the viewport as the user navigates downward.
+      final viewportHeight = MediaQuery.of(context).size.height;
+      final lastRowExtent = rowExtents.isEmpty ? 0.0 : rowExtents.last;
+      neededBottomPadding =
+          (viewportHeight -
+                  (overlayBottom + (_isHomeRowsStyleV2() ? 4.0 : 8.0)) -
+                  lastRowExtent)
+              .clamp(minBottomPadding, double.infinity);
+    }
 
     _ensureInitialHomeFocus(rows);
 
@@ -4396,7 +4439,7 @@ class _ContentRowsState extends State<_ContentRows>
           controller: _rowHorizontalController(rowIndex),
           height: rowHeight,
           itemExtent: squarePosterSide,
-          itemSpacing: 12,
+          itemSpacing: _rowItemSpacing(squarePosterSide, cardExpansion),
           leadingPadding: _isHomeRowsStyleV2() ? _kHomeRowLabelInset : 0,
           clipBehavior: cardExpansion ? Clip.none : Clip.hardEdge,
           padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
@@ -4458,7 +4501,7 @@ class _ContentRowsState extends State<_ContentRows>
           controller: _rowHorizontalController(rowIndex),
           height: rowHeight,
           itemExtent: squarePosterSide,
-          itemSpacing: 12,
+          itemSpacing: _rowItemSpacing(squarePosterSide, cardExpansion),
           leadingPadding: _isHomeRowsStyleV2() ? _kHomeRowLabelInset : 0,
           clipBehavior: cardExpansion ? Clip.none : Clip.hardEdge,
           padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
@@ -4618,7 +4661,7 @@ class _ContentRowsState extends State<_ContentRows>
           controller: _rowHorizontalController(rowIndex),
           height: maxCardHeight + (10 * metadataScale),
           itemExtent: firstCardWidth,
-          itemSpacing: 12,
+          itemSpacing: _rowItemSpacing(firstCardWidth, cardExpansion),
           leadingPadding: isRowsV2 ? _kHomeRowLabelInset : 0,
           clipBehavior: (isRowsV2 || cardExpansion) ? Clip.none : Clip.hardEdge,
           padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),

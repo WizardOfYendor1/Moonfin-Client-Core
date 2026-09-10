@@ -9,7 +9,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:server_core/server_core.dart';
 
 import '../data/services/retro_artwork/retro_artwork_disk_cache_io.dart';
+import 'device_performance.dart';
 import 'game_artwork_cache.dart';
+import 'image_file_service.dart';
 import 'platform_detection.dart';
 
 final Set<String> _sweepingCacheKeys = <String>{};
@@ -18,18 +20,14 @@ final Map<String, DateTime> _lastSweepByCacheKey = <String, DateTime>{};
 // Point cached_network_image at a cache manager with a shorter stale period and
 // a higher object count than the library default. Files stay in the library's
 // default directory so an existing cache is never orphaned on update.
-Future<void> configureImageDiskCache() async {
+Future<void> configureImageDiskCache({
+  DevicePerformanceTier tier = DevicePerformanceTier.standard,
+}) async {
   try {
     final key = DefaultCacheManager.key;
     const stalePeriod = Duration(days: 14);
     const maxObjects = 600;
-    // Images fetch through the cache manager's own client rather than Dio, so
-    // this is the one place they can pick up the server User-Agent. Without it
-    // a proxy that filters on the agent blocks every image while API calls
-    // still succeed.
-    final fileService = HttpFileService(
-      httpClient: _ServerUserAgentHttpClient(IOClient(buildImageHttpClient())),
-    );
+    final fileService = buildImageFileService(tier: tier);
     Config config;
     if (PlatformDetection.isAppleTV) {
       final cacheDir = await getApplicationCacheDirectory();
@@ -325,10 +323,43 @@ Future<void> clearImageDiskCache() async {
 HttpClient buildImageHttpClient() => HttpClient()
   ..maxConnectionsPerHost = imageRequestSlots
   ..connectionTimeout = const Duration(seconds: 8)
-  ..idleTimeout = const Duration(seconds: 120);
+  // dart:io reuses a pooled connection without checking it is still open, so
+  // the longer one is held the better the odds the peer let go of it in the
+  // meantime. Two minutes covered a whole browse, and a stale one there stalls
+  // every image rather than one request.
+  ..idleTimeout = const Duration(seconds: 15);
 
 /// Artwork shares the link with the API calls, so it takes the smaller share.
 const imageRequestSlots = 4;
+
+/// What a device short on memory fetches at once. Halving the burst halves how
+/// many encoded images are in flight while their neighbours decode. Two rather
+/// than one, because a single slot puts every stalled fetch in front of the
+/// whole grid and trades the crash for a wait.
+const reducedImageRequestSlots = 2;
+
+int imageRequestSlotsFor(DevicePerformanceTier tier) => switch (tier) {
+  DevicePerformanceTier.standard => imageRequestSlots,
+  DevicePerformanceTier.reduced => reducedImageRequestSlots,
+};
+
+/// The service every artwork request goes through.
+///
+/// Images fetch through the cache manager's own client rather than Dio, so
+/// this is the one place they can pick up the server User-Agent. Without it a
+/// proxy that filters on the agent blocks every image while API calls still
+/// succeed.
+///
+/// It admits no more at once than [buildImageHttpClient] will connect. Letting
+/// more through leaves the rest in a queue inside dart:io that nothing times
+/// out, where the cache manager's own queue is drained every time a fetch
+/// finishes.
+BoundedImageFileService buildImageFileService({
+  DevicePerformanceTier tier = DevicePerformanceTier.standard,
+}) => BoundedImageFileService(
+  _ServerUserAgentHttpClient(IOClient(buildImageHttpClient())),
+  concurrentFetches: imageRequestSlotsFor(tier),
+);
 
 class _ServerUserAgentHttpClient extends http.BaseClient {
   _ServerUserAgentHttpClient(this._inner);
