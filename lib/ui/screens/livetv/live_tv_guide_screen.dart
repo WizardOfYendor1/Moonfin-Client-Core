@@ -1369,10 +1369,19 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       focusNode: _channelFocusNodeFor(index),
       onPressed: () => _watchChannel(channel.id),
       onKeyEvent: (_, event) {
-        if (index != 0 || !event.isActionable) {
-          return KeyEventResult.ignored;
+        if (!event.isActionable) return KeyEventResult.ignored;
+        final pageDirection = _pageRowDirection(event.logicalKey);
+        if (pageDirection != 0) {
+          _onNavigationKey();
+          _focusChannelRow(
+            (index + pageDirection * _rowsPerViewport()).clamp(
+              0,
+              _vm.filteredChannels.length - 1,
+            ),
+          );
+          return KeyEventResult.handled;
         }
-        if (event.logicalKey.isUpKey) {
+        if (index == 0 && event.logicalKey.isUpKey) {
           _focusWindowBarFromGrid();
           return KeyEventResult.handled;
         }

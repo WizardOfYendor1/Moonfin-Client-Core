@@ -513,6 +513,30 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pumpAndSettle();
     expect(_focusedLabel(), 'GuideChannel:0');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.mediaFastForward);
+    await _pumpFrames(tester);
+    expect(_focusedLabel(), startsWith('GuideChannel:'));
+    final pagedRow = int.parse(_focusedLabel()!.split(':').last);
+    expect(pagedRow, greaterThan(0));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.mediaRewind);
+    await _pumpFrames(tester);
+    expect(_focusedLabel(), 'GuideChannel:0');
+
+    final anchorMinutes = await establishAnchor(tester);
+    final offsets = _horizontalOffsets(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.mediaFastForward);
+    await _pumpFrames(tester);
+    expect(_focusedCell()!.row, pagedRow);
+    expect(_focusedCell()!.index, _cellIndexForRow(pagedRow, anchorMinutes));
+    expect(_horizontalOffsets(tester), offsets);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.mediaRewind);
+    await _pumpFrames(tester);
+    expect(_focusedCell()!.row, 0);
+    expect(_focusedCell()!.index, _cellIndexForRow(0, anchorMinutes));
+    expect(_horizontalOffsets(tester), offsets);
   });
 
   testWidgets('UP from row zero reaches the mini player in miniPlayerMode', (
