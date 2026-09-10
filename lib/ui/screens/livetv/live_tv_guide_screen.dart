@@ -39,6 +39,10 @@ import 'guide/guide_window.dart';
 const _kProgramPrefetchRows = 12;
 const _kGuideScrollLead = 24.0;
 
+/// How far back the guide will page; most EPG sources keep little history,
+/// so beyond this the grid would only ever show empty cells.
+const _kMaxGuideHistory = Duration(hours: 24);
+
 const _kMiniPlayerWidth = 300.0;
 const _kMiniPlayerHeight = 168.0;
 // A re-anchor waits this long after the last d-pad event, so the window
@@ -1578,11 +1582,13 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     final oldEnd = _vm.windowEnd;
     final target = oldStart.add(amount);
     final liveStart = guideLeftEdge(DateTime.now());
-    // Only the back chevron may look at history; every other backward path
-    // exists to return toward live after paging ahead.
-    final clamped = !allowPast && amount.isNegative && target.isBefore(liveStart)
-        ? liveStart
-        : target;
+    // Only the back chevron may look at history, and only as far as the
+    // server realistically keeps it; every other backward path exists to
+    // return toward live after paging ahead.
+    final backFloor = liveStart.subtract(_kMaxGuideHistory);
+    final floor = allowPast ? backFloor : liveStart;
+    final clamped =
+        amount.isNegative && target.isBefore(floor) ? floor : target;
     if (clamped == oldStart) return;
 
     try {
