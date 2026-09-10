@@ -56,6 +56,9 @@ class ChannelCarouselCard extends StatelessWidget {
   static const double cardWidth = 200;
   static const double cardHeight = 108;
   static const double cardSpacing = 10;
+
+  /// Faint enough that a bright logo cannot compete with the card's text.
+  static const double _backdropOpacity = 0.16;
   static const double cardPitch = cardWidth + cardSpacing;
 
   /// Band a derived card width has to land in before it is considered.
@@ -80,7 +83,6 @@ class ChannelCarouselCard extends StatelessWidget {
   static const double _contentHeight =
       cardHeight - 8 - 8; // _contentPadding vertical
 
-  static const double _logoSize = 28;
   static const double _headerGap = 6;
   static const double _statusGap = 3;
 
@@ -173,7 +175,7 @@ class ChannelCarouselCard extends StatelessWidget {
     // boundary per card cost more than the arithmetic it guarded.
     final titleLine = _lineHeight(titleStyle, scaler);
     final metaLine = _lineHeight(metaStyle, scaler);
-    final headerHeight = math.max(_logoSize, _lineHeight(nameStyle, scaler));
+    final headerHeight = _lineHeight(nameStyle, scaler);
     final belowHeader = _contentHeight - headerHeight - _headerGap;
     final metaItems = _fittingMeta(_contentWidth, metaStyle, scaler);
     final showMeta =
@@ -201,6 +203,21 @@ class ChannelCarouselCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
+            // The logo fills the card behind the text, faded far enough back
+            // that it reads as channel identity rather than as content.
+            if (logoUrl != null && logoUrl!.isNotEmpty)
+              Positioned.fill(
+                child: Opacity(
+                  opacity: _backdropOpacity,
+                  child: CachedNetworkImage(
+                    imageUrl: logoUrl!,
+                    fit: BoxFit.cover,
+                    errorWidget: (context, url, error) =>
+                        const SizedBox.shrink(),
+                    placeholder: (context, url) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
             Positioned(
               left: 0,
               top: 0,
@@ -283,8 +300,6 @@ class ChannelCarouselCard extends StatelessWidget {
   /// the recording dot trails so nothing crowds the identity.
   Widget _headerRow(TextStyle nameStyle, TextStyle numberStyle) => Row(
     children: [
-      _logo(),
-      const SizedBox(width: 8),
       if (isFavorite) ...[
         const Icon(Icons.favorite, size: 13, color: AppColors.red500),
         const SizedBox(width: 4),
@@ -368,27 +383,5 @@ class ChannelCarouselCard extends StatelessWidget {
   static double _textWidth(String text, TextStyle style, TextScaler scaler) =>
       _measure('w$text', text, style, scaler, (p) => p.width);
 
-  Widget _logo() {
-    if (logoUrl == null || logoUrl!.isEmpty) return _logoFallback(_logoSize);
-    return ClipRRect(
-      borderRadius: AppRadius.circular(4),
-      child: CachedNetworkImage(
-        imageUrl: logoUrl!,
-        width: _logoSize,
-        height: _logoSize,
-        fit: BoxFit.contain,
-        errorWidget: (context, url, error) => _logoFallback(_logoSize),
-      ),
-    );
-  }
 
-  Widget _logoFallback(double size) => SizedBox(
-    width: size,
-    height: size,
-    child: Icon(
-      Icons.tv,
-      size: 16,
-      color: AppColorScheme.onSurface.withValues(alpha: 0.4),
-    ),
-  );
 }

@@ -632,8 +632,8 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
           const SizedBox(height: 2),
           Text(
             [
+              // Channel number and call sign are on the focused card already.
               if (program != null) _timeRange(program),
-              [channel.number, channel.name].whereType<String>().join('  '),
               if (program?.officialRating?.trim() case final String rating
                   when rating.isNotEmpty)
                 rating,
