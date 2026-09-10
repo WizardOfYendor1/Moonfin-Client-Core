@@ -1570,9 +1570,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _cancelPendingVerticalMove();
     final oldStart = _vm.windowStart;
     final oldEnd = _vm.windowEnd;
-    var target = oldStart.add(amount);
+    final target = oldStart.add(amount);
     final liveStart = guideLeftEdge(DateTime.now());
-    if (amount.isNegative && target.isBefore(liveStart)) target = liveStart;
+    // Browsing backwards past now is allowed; the server returns what history
+    // it has and anything it does not becomes a gap cell.
     if (target == oldStart) return;
 
     try {
