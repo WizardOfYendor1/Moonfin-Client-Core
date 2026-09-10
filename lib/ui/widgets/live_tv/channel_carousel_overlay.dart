@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../data/viewmodels/live_tv_guide_view_model.dart';
@@ -602,17 +601,12 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     final suffix = season != null && episode != null
         ? ' (S$season:E$episode)'
         : '';
+    // No panel of its own: the description and the strip read as one block
+    // over the overlay scrim, which is what carries legibility here.
     return Container(
       key: const ValueKey('carousel-program-header'),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        // Dark enough to keep the overview legible over bright video, but
-        // translucent enough to let the picture through behind it.
-        color: AppColorScheme.surface.withValues(alpha: 0.72),
-        borderRadius: AppRadius.circular(12),
-        border: Border.fromBorderSide(ThemeRegistry.active.borders.cardBorder),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -672,11 +666,15 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
           // closer to the screen edge.
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
           decoration: BoxDecoration(
+            // Reaches most of its darkness by the time it is behind the
+            // description, which no longer carries a panel of its own.
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
+              stops: const [0.0, 0.28, 1.0],
               colors: [
                 Colors.transparent,
+                Colors.black.withValues(alpha: 0.82),
                 Colors.black.withValues(alpha: 0.94),
               ],
             ),
