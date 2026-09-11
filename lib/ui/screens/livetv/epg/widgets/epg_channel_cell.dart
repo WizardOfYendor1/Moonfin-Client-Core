@@ -2,9 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
-/// Channel identity cell for the guide rail: logo tile pinned left, with the
-/// accent number chip and the channel name right-justified against the cell's
-/// trailing edge. Pure presentation; the host owns focus + key handling and
+/// Channel identity cell for the guide rail: logo pinned left, with the accent
+/// number chip and the channel name right-justified against the cell's trailing
+/// edge. The cell itself carries a dim plate so pale logo artwork has something
+/// to sit against; the logo is drawn bare on top of it. Pure presentation; the host owns focus + key handling and
 /// passes [focused]. Idiom-aware surface (glass-tinted on Apple, accent tint on
 /// Material).
 class EpgChannelCell extends StatelessWidget {
@@ -16,6 +17,12 @@ class EpgChannelCell extends StatelessWidget {
 
   /// Marks the channel as a favourite with a red heart beside the number.
   final bool isFavorite;
+
+  /// The number is what a viewer navigates by, so it outsizes the call sign.
+  static const double _numberSize = 13;
+  static const double _logoSize = 30;
+  static const double _logoGap = 6;
+  static const double _restingPlateAlpha = 0.07;
 
   const EpgChannelCell({
     super.key,
@@ -38,10 +45,12 @@ class EpgChannelCell extends StatelessWidget {
           ? Colors.white.withValues(alpha: 0.16)
           : accent.withValues(alpha: 0.16);
     } else {
-      bg = apple ? Colors.white.withValues(alpha: 0.06) : Colors.transparent;
+      // Dim enough to read as the column's own surface rather than as a
+      // selection, but light enough to separate a white logo from the guide.
+      bg = Colors.white.withValues(alpha: _restingPlateAlpha);
     }
 
-    final nameStyle = textTheme.titleSmall?.copyWith(
+    final nameStyle = textTheme.bodySmall?.copyWith(
       fontWeight: focused ? FontWeight.w600 : FontWeight.w500,
       color: AppColorScheme.onSurface,
     );
@@ -51,8 +60,8 @@ class EpgChannelCell extends StatelessWidget {
 
     final body = Row(
       children: [
-        _logo(30, radius),
-        const SizedBox(width: 10),
+        _logo(_logoSize),
+        const SizedBox(width: _logoGap),
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -90,7 +99,7 @@ class EpgChannelCell extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: AppRadius.circular(radius),
@@ -104,40 +113,28 @@ class EpgChannelCell extends StatelessWidget {
     );
   }
 
-  Widget _logo(double size, double radius) => SizedBox(
+  /// Bare artwork: the contrast the logo needs comes from the cell's plate, so
+  /// a tile of its own would only box every logo in a lighter rectangle.
+  Widget _logo(double size) => SizedBox(
     width: size,
     height: size,
-    child: DecoratedBox(
-      // Logos are usually pale artwork on transparency, so only the tile behind
-      // the image carries a plate; the cell itself stays unfilled.
-      decoration: BoxDecoration(
-        color: AppColorScheme.onSurface.withValues(alpha: 0.55),
-        borderRadius: AppRadius.circular(radius * 0.6),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(2),
-        child: ClipRRect(
-          borderRadius: AppRadius.circular(radius * 0.5),
-          child: (logoUrl != null && logoUrl!.isNotEmpty)
-              ? CachedNetworkImage(
-                  imageUrl: logoUrl!,
-                  fit: BoxFit.contain,
-                  errorWidget: (context, url, error) => _fallback(),
-                )
-              : _fallback(),
-        ),
-      ),
-    ),
+    child: (logoUrl != null && logoUrl!.isNotEmpty)
+        ? CachedNetworkImage(
+            imageUrl: logoUrl!,
+            fit: BoxFit.contain,
+            errorWidget: (context, url, error) => _fallback(),
+          )
+        : _fallback(),
   );
 
   Widget _fallback() => Icon(
     Icons.tv,
     size: 16,
-    color: AppColorScheme.surface.withValues(alpha: 0.7),
+    color: AppColorScheme.onSurface.withValues(alpha: 0.5),
   );
 
   Widget _numberChip(String number, Color accent) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+    padding: const EdgeInsets.symmetric(horizontal: 6),
     decoration: BoxDecoration(
       color: focused
           ? accent
@@ -147,8 +144,8 @@ class EpgChannelCell extends StatelessWidget {
     child: Text(
       number,
       style: TextStyle(
-        fontSize: 9,
-        fontWeight: FontWeight.w600,
+        fontSize: _numberSize,
+        fontWeight: FontWeight.w700,
         color: focused
             ? const Color(0xFF062430)
             : AppColorScheme.onSurface.withValues(alpha: 0.85),
