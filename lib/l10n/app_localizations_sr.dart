@@ -46,7 +46,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get quickConnectInstruction =>
-      'Упишите овај кôд на веб-интерфејсу вашег сервера:';
+      'Унесите овај код на веб контролној табли вашег сервера:';
 
   @override
   String get waitingForAuthorization => 'Чека се овлашћење...';
@@ -71,7 +71,7 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
-  String get whosWatching => 'Ко гледа?';
+  String get whosWatching => 'ко гледа?';
 
   @override
   String get addUser => 'Додај корисника';
@@ -139,7 +139,7 @@ class AppLocalizationsSr extends AppLocalizations {
   String get ok => 'ОК';
 
   @override
-  String get settingsAppearanceTheme => 'Тема апликације';
+  String get settingsAppearanceTheme => 'Апп Тхеме';
 
   @override
   String get detailScreenStyle => 'Стил екрана са детаљима';
@@ -173,21 +173,21 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get recommendationSystemSubtitle =>
-      'Употребите алгоритам локалне библиотеке „Мунфин препоручује” (Moonfin Recommends) или мрежне метрике сличности ТМДБ-а (TMDb). Напомена: Мрежне препоруке изискују интеграцију са Сиром (Seerr).';
+      'Користите алгоритам локалне библиотеке Moonfin Recommends или онлајн TMDb метрике сличности. Напомена: онлајн препоруке захтевају Seerr интеграцију.';
 
   @override
-  String get recommendationSystemMoonfin => 'Мунфин (Moonfin) препоручује';
+  String get recommendationSystemMoonfin => 'Moonfin Recommends';
 
   @override
-  String get recommendationSystemTmdb => 'ТМДБ (TMDb) сличност';
+  String get recommendationSystemTmdb => 'TMDb сличност';
 
   @override
   String get recommendationsApplyParentalRatingCap =>
-      'Применити ограничење на основу старосне класификације?';
+      'Применити ограничење родитељске оцене?';
 
   @override
   String get recommendationsApplyParentalRatingCapSubtitle =>
-      'Лимитирај предлоге опције Мунфин препоручује (Moonfin Recommends) у складу са старосном класификацијом циљног медија';
+      'Ограничи предлоге функције Moonfin Recommends према родитељској оцени изабраног садржаја';
 
   @override
   String get interfaceStyle => 'Стил интерфејса';
@@ -200,10 +200,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String get interfaceStyleAutomatic => 'Аутоматски';
 
   @override
-  String get interfaceStyleApple => 'Епл (Apple)';
+  String get interfaceStyleApple => 'Apple';
 
   @override
-  String get interfaceStyleMaterial => 'Материјал (Material)';
+  String get interfaceStyleMaterial => 'Material';
 
   @override
   String get interfaceLayout => 'Изглед интерфејса';
@@ -242,7 +242,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get glassQualitySubtitle =>
-      'Аутоматски бира најоптималнији ефекат стакла за овај уређај. Режим „Потпуно” намеће аутентично замућење; „Редуковано” користи ресурсно мање захтеван приказ стакла чиме се штеди снага ГПЈ.';
+      'Аутоматски бира најбољи ефекат стакла за овај уређај. Пуни намеће право замућење, а Смањени користи лагано стакло које штеди GPU.';
 
   @override
   String get glassQualityAuto => 'Аутоматски';
@@ -302,39 +302,38 @@ class AppLocalizationsSr extends AppLocalizations {
       'Допусти да повезани контролер мења фокус и бира ставке';
 
   @override
-  String get themeMoonfin => 'Мунфин (Moonfin)';
+  String get themeMoonfin => 'Moonfin';
 
   @override
-  String get themeMoonfinSubtitle =>
-      'Аутентично, нетакнуто подразумевано издање Мунфина (Moonfin).';
+  String get themeMoonfinSubtitle => 'Оригинални, чист Moonfin изглед.';
 
   @override
-  String get themeNeonPulse => 'Неонски пулс';
+  String get themeNeonPulse => 'Неон Пулсе';
 
   @override
   String get themeNeonPulseSubtitle =>
-      'Синтвејв стилизација са пурпурним сјајем, тиркизним текстом и израженијим контрастом хрома';
+      'Синтхваве стил са магента сјајем, цијан текстом и јачим хромираним контрастом';
 
   @override
   String get themeGlass => 'Стакло';
 
   @override
   String get themeGlassSubtitle =>
-      'Естетика течног стакла коју одликују преливајућа градијентна позадина, замрзнуте површине и детаљи у Епл (Apple) плавој нијанси';
+      'Стил течног стакла са покретном градијентном позадином, матираним површинама и Apple-плавим акцентом';
 
   @override
   String get theme8BitHero => '8-битни херој';
 
   @override
   String get theme8BitHeroSubtitle =>
-      'Ретро пиксел-арт дизајн са изражајном палетом боја, блокастим ивицама, оштрим падајућим сенкама и пикселним фонтом';
+      'Ретро pixel-art стил са израженом палетом, блоковским ивицама, оштрим сенкама и пиксел фонтом';
 
   @override
   String get embyConnectSignInSubtitle =>
       'Пријавите се својим Emby Connect налогом';
 
   @override
-  String get emailOrUsername => 'Имејл или корисничко име';
+  String get emailOrUsername => 'Е-маил или корисничко име';
 
   @override
   String get selectAServer => 'Изаберите сервер';
@@ -381,7 +380,7 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
-  String get exitApp => 'Изаћи из Мунфина (Moonfin)?';
+  String get exitApp => 'Изаћи из Moonfin-а?';
 
   @override
   String get exitAppConfirmation => 'Да ли сте сигурни да желите да изађете?';
@@ -887,10 +886,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String get latestAudiobooks => 'Најновије аудио-књиге';
 
   @override
-  String get latestComics => 'Најновији стрипови';
+  String get latestComics => 'Latest Comics';
 
   @override
-  String get comics => 'Стрипови';
+  String get comics => 'Comics';
 
   @override
   String bookSeriesItemCount(int count) {
@@ -911,14 +910,14 @@ class AppLocalizationsSr extends AppLocalizations {
   String get bookFormatAudiobook => 'Аудио-књига';
 
   @override
-  String get bookFormatComic => 'Стрип';
+  String get bookFormatComic => 'Comic';
 
   @override
   String get noBooksFound => 'Нису пронађене књиге за овог аутора.';
 
   @override
   String get noBooksFoundDescription =>
-      'Ова библиотека још увек не садржи књиге, аудио-књиге нити стрипове.';
+      'This library does not contain any books, audiobooks, or comics yet.';
 
   @override
   String bookPercentRead(int percent) {
@@ -1256,8 +1255,8 @@ class AppLocalizationsSr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'још $count на чекању',
-      one: 'још 1 на чекању',
+      other: '$count more queued',
+      one: '1 more queued',
     );
     return '$_temp0';
   }
@@ -1427,50 +1426,49 @@ class AppLocalizationsSr extends AppLocalizations {
   String get noEpisodesLoaded => 'Нема учитаних епизода';
 
   @override
-  String get downloadScopeTitle => 'Шта треба преузети';
+  String get downloadScopeTitle => 'What to download';
 
   @override
-  String get downloadAllEpisodes => 'Све епизоде';
+  String get downloadAllEpisodes => 'All episodes';
 
   @override
-  String get downloadUnwatchedEpisodes => 'Све неодгледане епизоде';
+  String get downloadUnwatchedEpisodes => 'All unwatched episodes';
 
   @override
-  String get downloadAllMovies => 'Све филмове';
+  String get downloadAllMovies => 'All movies';
 
   @override
-  String get downloadUnwatchedMovies => 'Све неодгледане филмове';
+  String get downloadUnwatchedMovies => 'All unwatched movies';
 
   @override
-  String get downloadScopeLoading => 'Учитавам ставке...';
+  String get downloadScopeLoading => 'Loading items...';
 
   @override
-  String get downloadScopeLoadFailed =>
-      'Није могуће учитати ставке за преузимање';
+  String get downloadScopeLoadFailed => 'Could not load items to download';
 
   @override
   String downloadEstimateTotal(String size) {
-    return '~$size укупно';
+    return '~$size total';
   }
 
   @override
   String downloadBytesOfTotal(String received, String total) {
-    return '$received од $total';
+    return '$received of $total';
   }
 
   @override
   String downloadSpeed(String speed) {
-    return '$speed/с';
+    return '$speed/s';
   }
 
   @override
   String downloadSizeTotal(String size) {
-    return '$size укупно';
+    return '$size total';
   }
 
   @override
   String downloadEstimateUnknownCount(int count) {
-    return '$count непознато';
+    return '$count unknown';
   }
 
   @override
@@ -2276,7 +2274,7 @@ class AppLocalizationsSr extends AppLocalizations {
   String get localAccount => 'Локални';
 
   @override
-  String get savedMedia => 'Преузимања';
+  String get savedMedia => 'Сачувани медији';
 
   @override
   String get tvShows => 'ТВ емисије';
@@ -2870,14 +2868,7 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get trickplayFollowScrubPositionSubtitle =>
-      'Приказуј преглед слајдова дуж траке за премотавање приликом превлачења, уместо задржавања у центру';
-
-  @override
-  String get trickplayPauseWhileScrubbing => 'Pause While Scrubbing';
-
-  @override
-  String get trickplayPauseWhileScrubbingSubtitle =>
-      'Playback pauses while you seek and resumes when you press play. Turn this off to keep playing and jump straight to the new spot';
+      'Preview slides along the seekbar as you scrub, instead of staying centered';
 
   @override
   String get showDescriptionOnPause => 'Прикажи опис на паузи';
@@ -2894,32 +2885,32 @@ class AppLocalizationsSr extends AppLocalizations {
       'Прикажи дугме за закључавање које блокира унос додиром док се не притисне дуго';
 
   @override
-  String get playerSwipeGestures => 'Превлачења за јачину звука и осветљеност';
+  String get playerSwipeGestures => 'Volume and Brightness Swipes';
 
   @override
   String get playerSwipeGesturesDescription =>
-      'Превуците нагоре или надоле по плејеру да бисте променили осветљеност на левој и јачину звука на десној страни';
+      'Slide up or down on the player to change brightness on the left and volume on the right';
 
   @override
-  String get osdButtons => 'Дугмад плејера';
+  String get osdButtons => 'Player Buttons';
 
   @override
-  String get osdButtonsDescription => 'Одаберите коју дугмад плејер приказује';
+  String get osdButtonsDescription => 'Choose which buttons the player shows';
 
   @override
   String get osdButtonsSectionDescription =>
-      'Контроле репродукције су увек приказане. Све испод тога можете прилагодити по сопственом нахођењу, при чему сваки тип уређаја памти сопствену листу.';
+      'Playback controls are always shown. Everything below is up to you, and each kind of device keeps its own list.';
 
   @override
-  String get detailButtons => 'Аквиона дугмад';
+  String get detailButtons => 'Action Buttons';
 
   @override
   String get detailButtonsDescription =>
-      'Одаберите која дугмад ће се приказивати на екрану са детаљима';
+      'Choose which buttons the details screen shows';
 
   @override
   String get detailButtonsSectionDescription =>
-      'Репродукција је увек на првом месту, док су закључана дугмад увек приказана. Све остало можете организовати по сопственом нахођењу, а сваки тип уређаја задржава своју засебну листу.';
+      'Play is always first and the locked buttons are always shown. Everything else is up to you, and each kind of device keeps its own list.';
 
   @override
   String get moveUp => 'Move Up';

@@ -2841,13 +2841,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Vorschau bewegt sich beim Verschieben entlang der Suchleiste, anstatt zentriert zu bleiben.';
 
   @override
-  String get trickplayPauseWhileScrubbing => 'Pause While Scrubbing';
-
-  @override
-  String get trickplayPauseWhileScrubbingSubtitle =>
-      'Playback pauses while you seek and resumes when you press play. Turn this off to keep playing and jump straight to the new spot';
-
-  @override
   String get showDescriptionOnPause => 'Beschreibung bei Pause anzeigen';
 
   @override

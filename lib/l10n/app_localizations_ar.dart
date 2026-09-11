@@ -216,10 +216,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get interfaceLayoutAutomatic => 'أوتوماتيك';
 
   @override
-  String get interfaceLayoutTv => 'وضع التلفاز';
+  String get interfaceLayoutTv => 'TV';
 
   @override
-  String get interfaceLayoutDesktop => 'وضع سطح المكتب';
+  String get interfaceLayoutDesktop => 'Desktop';
 
   @override
   String get interfaceLayoutPhone => 'واجهة الهاتف';
@@ -235,10 +235,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'خلّي اللون الأسود أغمق والصور أوضح وأجمل. يُفضّل استخدامه على شاشات OLED.';
 
   @override
-  String get oledModeSubtle => 'خفيف';
+  String get oledModeSubtle => 'Subtle';
 
   @override
-  String get oledModeVivid => 'ديناميكي';
+  String get oledModeVivid => 'Vivid';
 
   @override
   String get glassQualitySubtitle =>
@@ -261,13 +261,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'يحدد إمكانيات جهازك تلقائيًا ويخفف الإعدادات إذا كانت الذاكرة محدودة، مع الاحتفاظ بعدد أقل من الصور وعرض المقاطع الدعائية كصور ثابتة. أعد تشغيل التطبيق لتطبيق التغييرات.';
 
   @override
-  String get performanceModeAuto => 'اوتوماتيكي';
+  String get performanceModeAuto => 'Auto';
 
   @override
-  String get performanceModeStandard => 'اعتيادي';
+  String get performanceModeStandard => 'Standard';
 
   @override
-  String get performanceModeReduced => 'منخفض';
+  String get performanceModeReduced => 'Reduced';
 
   @override
   String get trailerPreviewHeldBack =>
@@ -840,7 +840,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get latestAudiobooks => 'أحدث الكتب الصوتية';
 
   @override
-  String get latestComics => 'أحدث القصص المصورة';
+  String get latestComics => 'Latest Comics';
 
   @override
   String get comics => 'Comics';
@@ -874,7 +874,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noBooksFoundDescription =>
-      'لا تحتوي هذه المكتبة على أي كتب أو كتب صوتية أو قصص مصورة حتى الآن.';
+      'This library does not contain any books, audiobooks, or comics yet.';
 
   @override
   String bookPercentRead(int percent) {
@@ -1365,49 +1365,49 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noEpisodesLoaded => 'لم يتم تحميل أي حلقات';
 
   @override
-  String get downloadScopeTitle => 'ما الذي تريد تنزيله';
+  String get downloadScopeTitle => 'What to download';
 
   @override
-  String get downloadAllEpisodes => 'جميع الحلقات';
+  String get downloadAllEpisodes => 'All episodes';
 
   @override
-  String get downloadUnwatchedEpisodes => 'كل الحلقات غير المشاهدة';
+  String get downloadUnwatchedEpisodes => 'All unwatched episodes';
 
   @override
-  String get downloadAllMovies => 'كل الأفلام';
+  String get downloadAllMovies => 'All movies';
 
   @override
-  String get downloadUnwatchedMovies => 'كل الأفلام غير المشاهدة';
+  String get downloadUnwatchedMovies => 'All unwatched movies';
 
   @override
-  String get downloadScopeLoading => 'جاري تحميل المحتوى...';
+  String get downloadScopeLoading => 'Loading items...';
 
   @override
-  String get downloadScopeLoadFailed => 'تعذر تحميل الملفات للتنزيل';
+  String get downloadScopeLoadFailed => 'Could not load items to download';
 
   @override
   String downloadEstimateTotal(String size) {
-    return '~$size الإجمالي';
+    return '~$size total';
   }
 
   @override
   String downloadBytesOfTotal(String received, String total) {
-    return '$received من $total';
+    return '$received of $total';
   }
 
   @override
   String downloadSpeed(String speed) {
-    return '$speed/ث';
+    return '$speed/s';
   }
 
   @override
   String downloadSizeTotal(String size) {
-    return '$size الإجمالي';
+    return '$size total';
   }
 
   @override
   String downloadEstimateUnknownCount(int count) {
-    return '$count غير معروف';
+    return '$count unknown';
   }
 
   @override
@@ -1420,7 +1420,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String deleteLocalFilesMessage(String typeLabel) {
-    return 'هل تريد حذف الملفات المحلية لـ $typeLabel؟\n\nسيؤدي هذا إلى إخلاء مساحة التخزين. يمكنك إعادة التنزيل لاحقاً.';
+    return 'هل تريد حذف الملفات المحلية لـ $typeLabel؟\n\nسيؤدي هذا إلى تحرير مساحة التخزين. يمكنك إعادة التحميل لاحقا.';
   }
 
   @override
@@ -1797,7 +1797,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get hdrOutputFailed =>
-      'غير نشط — لم يتمكن من البدء، جاري استخدام المسار الافتراضي';
+      'Inactive — could not start, using the standard path';
 
   @override
   String get nativeHdrOutput => 'Native HDR output';
@@ -2497,7 +2497,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get seriesThumbnailsDescription =>
-      'للمسلسلات: استخدام بوستر المسلسل بدلاً من صورة الحلقة.';
+      'الحلقات فقط: استخدم الأعمال الفنية المتسلسلة التي تتطابق مع كل نوع صورة صف';
 
   @override
   String get homeRowInfoOverlay => 'تراكب معلومات الصف الرئيسي';
@@ -2766,13 +2766,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get trickplayFollowScrubPositionSubtitle =>
       'Preview slides along the seekbar as you scrub, instead of staying centered';
-
-  @override
-  String get trickplayPauseWhileScrubbing => 'Pause While Scrubbing';
-
-  @override
-  String get trickplayPauseWhileScrubbingSubtitle =>
-      'Playback pauses while you seek and resumes when you press play. Turn this off to keep playing and jump straight to the new spot';
 
   @override
   String get showDescriptionOnPause => 'إظهار الوصف عند الإيقاف المؤقت';
@@ -11676,7 +11669,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get downloadNotificationFailedTitle => 'فشل التنزيل';
+  String get downloadNotificationFailedTitle => 'Download failed';
 
   @override
   String downloadNotificationFailedBody(String name, String error) {
@@ -11684,7 +11677,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get serverMessagesNotificationTitle => 'رسالة من السيرفر';
+  String get serverMessagesNotificationTitle => 'Remote message';
 
   @override
   String get serverMessagesNotificationReceived => 'Message received';

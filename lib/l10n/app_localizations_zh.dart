@@ -808,10 +808,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get latestAudiobooks => '最新有声读物';
 
   @override
-  String get latestComics => '最新漫画';
+  String get latestComics => 'Latest Comics';
 
   @override
-  String get comics => '漫画';
+  String get comics => 'Comics';
 
   @override
   String bookSeriesItemCount(int count) {
@@ -831,13 +831,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bookFormatAudiobook => '有声读物';
 
   @override
-  String get bookFormatComic => '漫画';
+  String get bookFormatComic => 'Comic';
 
   @override
   String get noBooksFound => '未找到该作者的图书。';
 
   @override
-  String get noBooksFoundDescription => '此媒体库中暂无书籍、有声书或漫画。';
+  String get noBooksFoundDescription =>
+      'This library does not contain any books, audiobooks, or comics yet.';
 
   @override
   String bookPercentRead(int percent) {
@@ -2678,13 +2679,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get trickplayFollowScrubPositionSubtitle => '预览画面跟随滑块沿进度条移动，而非固定居中';
-
-  @override
-  String get trickplayPauseWhileScrubbing => 'Pause While Scrubbing';
-
-  @override
-  String get trickplayPauseWhileScrubbingSubtitle =>
-      'Playback pauses while you seek and resumes when you press play. Turn this off to keep playing and jump straight to the new spot';
 
   @override
   String get showDescriptionOnPause => '暂停时显示简介';
@@ -9076,29 +9070,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsPlaybackEngineMpvLegacy => 'mpv（旧版）';
 
   @override
-  String get settingsRedetectDisplay => '重新检测显示设备';
+  String get settingsRedetectDisplay => 'Re-detect display';
 
   @override
   String get settingsRedetectDisplayDescription =>
-      '重新查询电视支持的 HDR 格式。若电视 / 功放开机较晚，导致杜比视界或 HDR10 影片被转码，可使用此选项。';
+      'Ask the TV again what HDR formats it supports. Use this if Dolby Vision or HDR10 titles are being transcoded after the TV or receiver was powered on late.';
 
   @override
-  String get settingsDisplayIsSdr => '我的电视不支持 HDR';
+  String get settingsDisplayIsSdr => 'My TV is not HDR';
 
   @override
   String get settingsDisplayIsSdrDescription =>
-      '不再声明此显示设备支持 HDR。仅当检测持续误报 HDR，但电视实际无法播放 HDR 时启用。';
+      'Stop advertising HDR support for this display. Use this only if detection keeps reporting HDR your TV can\'t actually show.';
 
   @override
   String settingsDisplayRedetected(String formats) {
-    return '已重新检测显示设备：$formats';
+    return 'Display re-detected: $formats';
   }
 
   @override
-  String get settingsDisplayNoHdrDetected => '未检测到任何 HDR 格式';
+  String get settingsDisplayNoHdrDetected => 'No HDR formats detected';
 
   @override
-  String get settingsDisplayMarkedSdr => '已将显示设备标记为 SDR';
+  String get settingsDisplayMarkedSdr => 'Display saved as SDR';
 
   @override
   String get settingsDolbyVisionFallback => 'Dolby Vision 兼容播放';
@@ -10479,7 +10473,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String dateCreatedFormat(Object date) {
-    return '添加日期：$date';
+    return 'Date Added: $date';
   }
 
   @override
@@ -10733,7 +10727,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mixedPlaylistsSection => '混合播放列表';
 
   @override
-  String get currentTime => '当前时间';
+  String get currentTime => 'Current Time';
 
   @override
   String get playbackTimeDisplay => '进度条时间';
@@ -11016,147 +11010,151 @@ class AppLocalizationsZh extends AppLocalizations {
   String get serverMessagesShowButtonSubtitle => '在菜单添加按钮，用于查看服务器管理员推送消息';
 
   @override
-  String get autoDownloadNewEpisodes => '自动下载新剧集';
+  String get autoDownloadNewEpisodes => 'Auto-download new episodes';
 
   @override
-  String get autoDownloadStop => '停止自动下载';
+  String get autoDownloadStop => 'Stop auto-download';
 
   @override
   String autoDownloadKeepUnwatchedSubtitle(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '自动下载新剧集，最多保留$count集未观看内容',
-      one: '自动下载新剧集，最多保留1集未观看内容',
-      zero: '下载全部新剧集',
+      other: 'Downloads new episodes, up to $count unwatched at a time',
+      one: 'Downloads new episodes, up to 1 unwatched at a time',
+      zero: 'Downloads every new episode',
     );
     return '$_temp0';
   }
 
   @override
   String autoDownloadStopSubtitle(String quality) {
-    return '已开启 • $quality';
+    return 'On • $quality';
   }
 
   @override
   String get autoDownloadTranscodedForegroundNote =>
-      '转码画质仅在 Moonfin 运行时下载；原片画质可后台下载。';
+      'Transcoded qualities only download while Moonfin is open. Original quality also downloads in the background.';
 
   @override
   String get autoDownloadTranscodedRunningNote =>
-      '转码下载中断后无法续传，需要从头开始；原片画质支持断点续传。';
+      'Transcoded downloads can\'t resume after an interruption and start over from the beginning. Original quality can resume.';
 
   @override
-  String get autoDownloadForegroundOnly => '仅 Moonfin 运行时才会下载';
+  String get autoDownloadForegroundOnly =>
+      'Downloads only while Moonfin is open';
 
   @override
-  String get autoDownloadQualityTitle => '自动下载画质';
+  String get autoDownloadQualityTitle => 'Auto-download quality';
 
   @override
   String autoDownloadEnabledFor(String title) {
-    return '已为「$title」开启自动下载';
+    return 'Auto-download enabled for $title';
   }
 
   @override
   String autoDownloadStoppedFor(String title) {
-    return '已关闭「$title」的自动下载';
+    return 'Auto-download stopped for $title';
   }
 
   @override
-  String get autoDownloadSection => '自动下载';
+  String get autoDownloadSection => 'Automatic downloads';
 
   @override
-  String get autoDownloadEnable => '启用自动下载';
+  String get autoDownloadEnable => 'Enable automatic downloads';
 
   @override
-  String get autoDownloadEnableSubtitle => '自动下载你关注剧集的新集。已有剧集仍可手动下载。';
+  String get autoDownloadEnableSubtitle =>
+      'Downloads new episodes of the series you follow. Existing episodes can still be downloaded manually.';
 
   @override
-  String get autoDownloadKeepUnwatched => '保留未观看剧集';
+  String get autoDownloadKeepUnwatched => 'Keep unwatched episodes';
 
   @override
-  String get autoDownloadKeepAll => '全部';
+  String get autoDownloadKeepAll => 'All';
 
   @override
-  String get autoDownloadDelete => '删除已下载剧集';
+  String get autoDownloadDelete => 'Delete downloaded episodes';
 
   @override
-  String get autoDownloadDeleteSubtitle => '观看后何时自动删除已下载剧集';
+  String get autoDownloadDeleteSubtitle =>
+      'When to remove automatically downloaded episodes after you watch them';
 
   @override
-  String get autoDownloadDeleteNever => '永不删除';
+  String get autoDownloadDeleteNever => 'Never';
 
   @override
-  String get autoDownloadDeleteImmediately => '观看完毕立即删除';
+  String get autoDownloadDeleteImmediately => 'Right after watching';
 
   @override
-  String get autoDownloadDeleteAfterDay => '观看1天后删除';
+  String get autoDownloadDeleteAfterDay => '1 day after watching';
 
   @override
-  String get autoDownloadDeleteAfterWeek => '观看1周后删除';
+  String get autoDownloadDeleteAfterWeek => '1 week after watching';
 
   @override
-  String get autoDownloadBackgroundRefresh => '后台检查更新';
+  String get autoDownloadBackgroundRefresh => 'Check in the background';
 
   @override
   String get autoDownloadBackgroundRefreshSubtitle =>
-      '允许系统在 Moonfin 关闭时定期检查新剧集';
+      'Allow the system to check for new episodes periodically while Moonfin is closed';
 
   @override
   String get autoDownloadBackgroundRefreshDenied =>
-      'Moonfin 的后台应用刷新已被禁用，请前往 iOS 设置开启。';
+      'Background App Refresh is disabled for Moonfin. Enable it in iOS Settings.';
 
   @override
   String get autoDownloadBackgroundRestrictedAndroid =>
-      'Android 设置限制了 Moonfin 后台运行权限。';
+      'Background usage is restricted for Moonfin in Android Settings.';
 
   @override
-  String get autoDownloadCheckNow => '立即检查';
+  String get autoDownloadCheckNow => 'Check now';
 
   @override
-  String get autoDownloadChecking => '正在检查...';
+  String get autoDownloadChecking => 'Checking...';
 
   @override
-  String get autoDownloadNeverChecked => '尚未检查';
+  String get autoDownloadNeverChecked => 'Not checked yet';
 
   @override
   String autoDownloadLastCheck(String when, int queued) {
     String _temp0 = intl.Intl.pluralLogic(
       queued,
       locale: localeName,
-      other: '已排队$queued集',
-      one: '已排队1集',
-      zero: '暂无新内容',
+      other: '$queued episodes queued',
+      one: '1 episode queued',
+      zero: 'nothing new',
     );
-    return '上次检查：$when，$_temp0';
+    return 'Last check $when: $_temp0';
   }
 
   @override
   String autoDownloadLastCheckFailed(String when, String error) {
-    return '上次检查 $when 失败：$error';
+    return 'Last check $when failed: $error';
   }
 
   @override
-  String get autoDownloadFollowedSeries => '已关注剧集';
+  String get autoDownloadFollowedSeries => 'Followed series';
 
   @override
-  String get autoDownloadNoSubscriptions => '打开剧集页面，在下载菜单中选择「自动下载新剧集」';
+  String get autoDownloadNoSubscriptions =>
+      'Open a series and choose \"Auto-download new episodes\" from its download menu';
 
   @override
-  String get autoDownloadRemove => '取消关注';
+  String get autoDownloadRemove => 'Stop following';
 
   @override
-  String get autoDownloadStorageFull => '存储空间不足';
+  String get autoDownloadStorageFull => 'Not enough storage';
 
   @override
-  String get autoDownloadWaitingForWifi => '等待 WiFi 网络';
+  String get autoDownloadWaitingForWifi => 'Waiting for WiFi';
 
   @override
-  String get downloadNotificationRunning => '正在下载';
+  String get downloadNotificationRunning => 'Downloading';
 
   @override
   String downloadNotificationRunningBatch(int done, int total) {
-    return '正在下载 ($done/$total)';
+    return 'Downloading ($done/$total)';
   }
 
   @override
@@ -11170,7 +11168,7 @@ class AppLocalizationsZh extends AppLocalizations {
     String progress,
     String timeRemaining,
   ) {
-    return '$name — $progress · 剩余 $timeRemaining';
+    return '$name — $progress · $timeRemaining';
   }
 
   @override
@@ -11183,15 +11181,15 @@ class AppLocalizationsZh extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '批量下载完成',
-      one: '下载完成',
+      other: 'Downloads complete',
+      one: 'Download complete',
     );
     return '$_temp0';
   }
 
   @override
   String downloadNotificationSaved(String name) {
-    return '$name 已缓存至本地';
+    return '$name saved for offline';
   }
 
   @override
@@ -11199,8 +11197,8 @@ class AppLocalizationsZh extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count个内容已缓存至本地',
-      one: '1个内容已缓存至本地',
+      other: '$count items saved for offline',
+      one: '1 item saved for offline',
     );
     return '$_temp0';
   }
@@ -11210,46 +11208,48 @@ class AppLocalizationsZh extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count集',
-      one: '1集',
+      other: '$count episodes',
+      one: '1 episode',
     );
-    return '$series：$_temp0';
+    return '$series: $_temp0';
   }
 
   @override
-  String get downloadNotificationFailedTitle => '下载失败';
+  String get downloadNotificationFailedTitle => 'Download failed';
 
   @override
   String downloadNotificationFailedBody(String name, String error) {
-    return '$name：$error';
+    return '$name: $error';
   }
 
   @override
-  String get serverMessagesNotificationTitle => '服务器消息';
+  String get serverMessagesNotificationTitle => 'Remote message';
 
   @override
-  String get serverMessagesNotificationReceived => '收到消息';
+  String get serverMessagesNotificationReceived => 'Message received';
 
   @override
-  String get downloadStorageLimitReached => '已到达下载存储上限，请清理空间或调高限制。';
+  String get downloadStorageLimitReached =>
+      'Storage limit reached. Free up space or increase the limit.';
 
   @override
   String downloadNotEnoughStorage(String needed, String free) {
-    return '存储空间不足：需要 $needed，剩余 $free';
+    return 'Not enough storage: $needed needed, $free free';
   }
 
   @override
-  String get autoDownloadStorageFullTitle => '空间不足，无法下载新剧集';
+  String get autoDownloadStorageFullTitle =>
+      'Not enough storage for new episodes';
 
   @override
   String autoDownloadStorageFullBody(int count, String name, String size) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '共$count集等待可用空间。',
-      one: '$name 需要 $size存储空间。',
+      other: '$count episodes are waiting for space.',
+      one: '$name needs $size.',
     );
-    return '$_temp0请清理存储空间或调高下载上限。';
+    return '$_temp0 Free up space or raise the download limit.';
   }
 }
 

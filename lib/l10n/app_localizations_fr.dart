@@ -258,7 +258,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get performanceModeSubtitle =>
-      'La fonction « Auto » analyse cet appareil et limite l\'utilisation des modèles disposant d\'une mémoire insuffisante, ce qui réduit le nombre d\'images stockées en mémoire et convertit les bandes-annonces en images fixes. Cette modification prendra pleinement effet lors du prochain démarrage.';
+      'Auto measures this device and holds back on the ones short on memory, which keeps fewer images in memory and leaves trailers as still images. Takes full effect on the next launch.';
 
   @override
   String get performanceModeAuto => 'Auto';
@@ -267,11 +267,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get performanceModeStandard => 'Standard';
 
   @override
-  String get performanceModeReduced => 'Réduit';
+  String get performanceModeReduced => 'Reduced';
 
   @override
   String get trailerPreviewHeldBack =>
-      'Désactivé car le paramètre « Performances » est réglé sur « Réduit » pour cet appareil';
+      'Off because Performance is set to Reduced for this device';
 
   @override
   String get settingsAppearanceThemeSubtitle =>
@@ -292,14 +292,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Utilisez la méthode de saisie de votre appareil par défaut pour la saisie de texte';
 
   @override
-  String get controller => 'Contrôleur';
+  String get controller => 'Controller';
 
   @override
-  String get gamepadNavigation => 'Navigation à l\'aide d\'une manette';
+  String get gamepadNavigation => 'Gamepad navigation';
 
   @override
   String get gamepadNavigationDescription =>
-      'Permettre à une manette de jeu connectée de déplacer le curseur et de sélectionner des éléments';
+      'Let a connected game controller move focus and select items';
 
   @override
   String get themeMoonfin => 'Moonfin';
@@ -849,10 +849,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get latestAudiobooks => 'Livres audio récemment ajoutés';
 
   @override
-  String get latestComics => 'Dernières bandes dessinées';
+  String get latestComics => 'Latest Comics';
 
   @override
-  String get comics => 'Bandes dessinées';
+  String get comics => 'Comics';
 
   @override
   String bookSeriesItemCount(int count) {
@@ -872,7 +872,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get bookFormatAudiobook => 'Livre audio';
 
   @override
-  String get bookFormatComic => 'Bande dessinée';
+  String get bookFormatComic => 'Comic';
 
   @override
   String get noBooksFound => 'Aucun livre trouvé pour cet auteur.';
@@ -2784,13 +2784,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get trickplayFollowScrubPositionSubtitle =>
       'Preview slides along the seekbar as you scrub, instead of staying centered';
-
-  @override
-  String get trickplayPauseWhileScrubbing => 'Pause While Scrubbing';
-
-  @override
-  String get trickplayPauseWhileScrubbingSubtitle =>
-      'Playback pauses while you seek and resumes when you press play. Turn this off to keep playing and jump straight to the new spot';
 
   @override
   String get showDescriptionOnPause => 'Afficher la description en pause';

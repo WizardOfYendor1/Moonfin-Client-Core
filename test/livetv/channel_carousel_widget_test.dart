@@ -183,6 +183,24 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('the strip follows the description without a band of scrim', (
+    tester,
+  ) async {
+    await pumpOverlay(tester);
+    await tester.pump(const Duration(milliseconds: 300));
+    final description = tester.getRect(find.text('Overview ch10'));
+    final stripTop = tester.getRect(find.byType(ChannelCarousel)).top;
+    // The header reserves both overview lines so the strip holds still as the
+    // selection moves; this fixture's overview is one line, so the second one
+    // plus the deliberate gap is everything that may sit under it.
+    expect(
+      stripTop - description.bottom,
+      lessThanOrEqualTo(description.height + 12),
+    );
+    expect(stripTop, greaterThan(description.bottom));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('carousel takes focus from an already-focused host', (
     tester,
   ) async {

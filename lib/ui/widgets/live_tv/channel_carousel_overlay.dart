@@ -163,9 +163,29 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
   /// How often live progress and the current programme are re-evaluated.
   static const _clockTick = Duration(seconds: 15);
 
-  /// Roughly a third shorter than the original 150: tighter padding and
-  /// leading and a one-step-smaller title, with both overview lines kept.
-  static const double _headerHeight = 104;
+  /// The header reserves room for its four lines whether or not the centred
+  /// programme fills them, so the strip never shifts as the selection moves.
+  /// Measuring the lines rather than guessing a fixed height keeps that
+  /// promise without leaving a band of empty scrim above the cards.
+  static const EdgeInsets _headerPadding = EdgeInsets.fromLTRB(16, 6, 16, 0);
+  static const double _titleGap = 2;
+  static const double _overviewGap = 4;
+  static const int _overviewLines = 2;
+
+  static const TextStyle _titleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+  );
+  static const TextStyle _metaStyle = TextStyle(
+    color: Colors.white70,
+    fontSize: 13,
+  );
+  static const TextStyle _overviewStyle = TextStyle(
+    color: Colors.white60,
+    fontSize: 13,
+    height: 1.2,
+  );
   late final LiveTvGuideViewModel _vm;
 
   /// False when the view model came from a prewarm holder, which owns it.
@@ -592,6 +612,41 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     );
   }
 
+  /// Height the four header lines occupy. The header styles name no font, so
+  /// the theme's family decides the line boxes and belongs in the key: a pixel
+  /// theme lays out taller than the default one. Cached because laying out
+  /// three `TextPainter`s on every debounced rebuild would cost more than the
+  /// header does.
+  static final Map<(TextScaler, TextStyle, TextStyle, TextStyle), double>
+  _headerExtents = {};
+
+  static double _headerExtent(BuildContext context) {
+    final base = DefaultTextStyle.of(context).style;
+    final scaler = MediaQuery.textScalerOf(context);
+    final title = base.merge(_titleStyle);
+    final meta = base.merge(_metaStyle);
+    final overview = base.merge(_overviewStyle);
+    return _headerExtents[(scaler, title, meta, overview)] ??=
+        _headerPadding.vertical +
+        _lineHeight(title, scaler) +
+        _titleGap +
+        _lineHeight(meta, scaler) +
+        _overviewGap +
+        _overviewLines * _lineHeight(overview, scaler);
+  }
+
+  static double _lineHeight(TextStyle style, TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ag', style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final height = painter.height.ceilToDouble();
+    painter.dispose();
+    return height;
+  }
+
   Widget _header() {
     final channel = _headerChannel;
     final program = _headerProgram;
@@ -615,7 +670,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     return Container(
       key: const ValueKey('carousel-program-header'),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: _headerPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -623,13 +678,9 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
             '${program?.name ?? channel.name}$episodeName$suffix',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+            style: _titleStyle,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: _titleGap),
           Text(
             [
               // Channel number and call sign are on the focused card already.
@@ -641,19 +692,15 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
             ].join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            style: _metaStyle,
           ),
           if (program?.overview case final String overview) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: _overviewGap),
             Text(
               overview,
-              maxLines: 2,
+              maxLines: _overviewLines,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 13,
-                height: 1.2,
-              ),
+              style: _overviewStyle,
             ),
           ],
         ],
@@ -700,8 +747,11 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(height: _headerHeight, child: _header()),
-                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: _headerExtent(context),
+                    child: _header(),
+                  ),
+                  const SizedBox(height: 12),
                   if (_ready && _channels.isNotEmpty)
                     NotificationListener<ScrollNotification>(
                       onNotification: _onScroll,
