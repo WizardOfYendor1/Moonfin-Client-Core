@@ -2194,6 +2194,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get noChannelsFound => 'Inga kanaler hittades';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'BO';
 
   @override
@@ -2265,6 +2268,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get watch => 'Titta';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Stäng';

@@ -2198,6 +2198,9 @@ class AppLocalizationsTe extends AppLocalizations {
   String get noChannelsFound => 'ఛానెల్‌లు ఏవీ కనుగొనబడలేదు';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'ప్రత్యక్ష ప్రసారం';
 
   @override
@@ -2271,6 +2274,9 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get watch => 'చూడండి';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'మూసివేయండి';

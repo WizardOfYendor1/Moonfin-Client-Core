@@ -2200,6 +2200,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get noChannelsFound => 'Kanavia ei löytynyt';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'LIVE';
 
   @override
@@ -2270,6 +2273,9 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get watch => 'Katso';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Sulje';

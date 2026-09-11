@@ -2201,6 +2201,9 @@ class AppLocalizationsMl extends AppLocalizations {
   String get noChannelsFound => 'ചാനലുകളൊന്നും കണ്ടെത്തിയില്ല';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'തത്സമയം';
 
   @override
@@ -2273,6 +2276,9 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get watch => 'കാണുക';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'അടയ്ക്കുക';

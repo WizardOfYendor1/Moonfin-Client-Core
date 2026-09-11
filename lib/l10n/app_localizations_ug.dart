@@ -2190,6 +2190,9 @@ class AppLocalizationsUg extends AppLocalizations {
   String get noChannelsFound => 'ھېچقانداق قانال تېپىلمىدى';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'بىۋاسىتە';
 
   @override
@@ -2262,6 +2265,9 @@ class AppLocalizationsUg extends AppLocalizations {
 
   @override
   String get watch => 'كۆرۈش';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'تاقاش';

@@ -2191,6 +2191,9 @@ class AppLocalizationsPa extends AppLocalizations {
   String get noChannelsFound => 'ਕੋਈ ਚੈਨਲ ਨਹੀਂ ਮਿਲੇ';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'ਲਾਈਵ';
 
   @override
@@ -2262,6 +2265,9 @@ class AppLocalizationsPa extends AppLocalizations {
 
   @override
   String get watch => 'ਦੇਖੋ';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'ਬੰਦ ਕਰੋ';

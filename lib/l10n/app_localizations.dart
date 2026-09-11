@@ -3796,6 +3796,12 @@ abstract class AppLocalizations {
   /// **'No channels found'**
   String get noChannelsFound;
 
+  /// Guide cell label for a real EPG schedule gap, not a genre-filtered program
+  ///
+  /// In en, this message translates to:
+  /// **'No program data'**
+  String get noProgramData;
+
   /// Badge label shown on currently airing programs
   ///
   /// In en, this message translates to:
@@ -3921,6 +3927,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Watch'**
   String get watch;
+
+  /// Button label to tune a channel live when the selected program is not the one that will play (ended or upcoming)
+  ///
+  /// In en, this message translates to:
+  /// **'Watch channel live'**
+  String get watchChannelLive;
 
   /// Button label to close a dialog
   ///

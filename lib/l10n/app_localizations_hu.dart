@@ -2202,6 +2202,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get noChannelsFound => 'Nem található csatorna';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'ÉLŐ';
 
   @override
@@ -2274,6 +2277,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get watch => 'Megtekintés';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Bezárás';

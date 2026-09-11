@@ -2204,6 +2204,9 @@ class AppLocalizationsSw extends AppLocalizations {
   String get noChannelsFound => 'Hakuna vituo vilivyopatikana';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'MUBASHARA';
 
   @override
@@ -2276,6 +2279,9 @@ class AppLocalizationsSw extends AppLocalizations {
 
   @override
   String get watch => 'Tazama';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Funga';

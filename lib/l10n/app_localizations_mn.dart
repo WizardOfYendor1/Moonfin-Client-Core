@@ -2190,6 +2190,9 @@ class AppLocalizationsMn extends AppLocalizations {
   String get noChannelsFound => 'Суваг олдсонгүй';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'ШУУД';
 
   @override
@@ -2261,6 +2264,9 @@ class AppLocalizationsMn extends AppLocalizations {
 
   @override
   String get watch => 'Үзэх';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Хаах';

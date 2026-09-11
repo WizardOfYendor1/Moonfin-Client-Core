@@ -2202,6 +2202,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get noChannelsFound => 'Nu s-au găsit canale';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'TRĂI';
 
   @override
@@ -2273,6 +2276,9 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get watch => 'Vizionează';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Închide';

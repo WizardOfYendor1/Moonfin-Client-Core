@@ -2198,6 +2198,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get noChannelsFound => 'Nessun canale trovato';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'IN ONDA';
 
   @override
@@ -2269,6 +2272,9 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get watch => 'Guarda';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Chiudi';

@@ -2190,6 +2190,9 @@ class AppLocalizationsDa extends AppLocalizations {
   String get noChannelsFound => 'Ingen kanaler fundet';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'LEVENDE';
 
   @override
@@ -2261,6 +2264,9 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get watch => 'Se';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Luk';

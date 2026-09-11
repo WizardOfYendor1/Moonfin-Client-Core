@@ -2209,6 +2209,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get noChannelsFound => 'Nenašli sa žiadne kanály';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'NAŽIVO';
 
   @override
@@ -2280,6 +2283,9 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get watch => 'Sledovať';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Zavrieť';

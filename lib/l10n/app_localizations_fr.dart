@@ -2213,6 +2213,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noChannelsFound => 'Aucune chaîne trouvée';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'EN DIRECT';
 
   @override
@@ -2284,6 +2287,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get watch => 'Regarder';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Fermer';

@@ -2184,6 +2184,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get noChannelsFound => 'کانالی پیدا نشد';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'زنده';
 
   @override
@@ -2254,6 +2257,9 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get watch => 'تماشا';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'بستن';

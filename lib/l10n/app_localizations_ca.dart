@@ -2213,6 +2213,9 @@ class AppLocalizationsCa extends AppLocalizations {
   String get noChannelsFound => 'No s\'han trobat canals';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'En Viu';
 
   @override
@@ -2286,6 +2289,9 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get watch => 'Mira';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Tanca';
