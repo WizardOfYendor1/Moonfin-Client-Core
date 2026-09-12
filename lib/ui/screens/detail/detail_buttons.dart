@@ -5,6 +5,7 @@ import '../../../data/services/plugin_sync_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../preference/button_layout.dart';
 import '../../../preference/user_preferences.dart';
+import '../../../syncplay/syncplay_manager.dart';
 import '../../../util/platform_detection.dart';
 
 /// The details screen action buttons a user can arrange. Play is absent on
@@ -70,8 +71,20 @@ enum DetailButton {
     DetailButton.seerrReportIssue ||
     DetailButton.seerrManage =>
       GetIt.instance<PluginSyncService>().seerrAvailable,
+    DetailButton.watchWithGroup => _syncPlayAvailable,
     _ => true,
   };
+
+  static bool get _syncPlayAvailable {
+    try {
+      if (GetIt.instance.isRegistered<SyncPlayManager>()) {
+        return GetIt.instance<SyncPlayManager>().syncPlayEnabled;
+      }
+      return GetIt.instance<UserPreferences>().get(UserPreferences.syncPlayEnabled);
+    } catch (_) {
+      return false;
+    }
+  }
 
   IconData get icon => switch (this) {
     DetailButton.shuffle => Icons.shuffle_rounded,
@@ -86,7 +99,7 @@ enum DetailButton {
     DetailButton.favorite => Icons.favorite_border,
     DetailButton.personalRating => Icons.star_outline,
     DetailButton.playlist => Icons.playlist_add,
-    DetailButton.download => Icons.download,
+    DetailButton.download => Icons.download_for_offline,
     DetailButton.deleteFiles => Icons.delete_outline,
     DetailButton.goToSeries => Icons.tv,
     DetailButton.seerrRequest || DetailButton.seerrRequest4k => Icons.add,
@@ -108,9 +121,9 @@ enum DetailButton {
     DetailButton.watched => l10n.watched,
     DetailButton.favorite => l10n.favorite,
     DetailButton.personalRating => l10n.rate,
-    DetailButton.playlist => l10n.playlist,
+    DetailButton.playlist => l10n.addToPlaylist,
     DetailButton.download => l10n.download,
-    DetailButton.deleteFiles => l10n.deleteFiles,
+    DetailButton.deleteFiles => l10n.deleteDownloadedFiles,
     DetailButton.goToSeries => l10n.goToSeries,
     DetailButton.seerrRequest => l10n.request,
     DetailButton.seerrRequest4k => l10n.request4k,

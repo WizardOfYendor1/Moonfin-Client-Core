@@ -27,6 +27,7 @@ import '../../../util/platform_detection.dart';
 import '../../../util/settings_save_retry.dart';
 import '../../../util/focus/gamepad/android_gamepad_channel.dart';
 import '../../../util/focus/gamepad/gamepad_suppressor.dart';
+import '../../../util/system_ui.dart';
 import '../../screensaver/screensaver_controller.dart';
 import 'game_playback_ui.dart';
 import 'playback_takeover.dart';
@@ -157,7 +158,7 @@ class NativeGamePlayerScreen extends StatefulWidget {
 }
 
 class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen>
-    with GameAudioOwner, WidgetsBindingObserver {
+    with GameAudioOwner, WidgetsBindingObserver, ImmersiveSystemUi {
   final MediaServerClient _client = GetIt.instance<MediaServerClient>();
   late final NativeGamePlayer _player;
   late final CoreDownloadService _cores = CoreDownloadService(
@@ -2384,13 +2385,14 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen>
   // for the on-screen pad and most games. TV and desktop are left alone.
   void _enterImmersive() {
     GamePlaybackSystemUi.enter(
+      this,
       immersive: usesOnScreenControls,
       lockLandscape: usesOnScreenControls,
     );
   }
 
   Future<void> _restoreSystemUi() =>
-      GamePlaybackSystemUi.restore(immersive: usesOnScreenControls);
+      GamePlaybackSystemUi.restore(this, immersive: usesOnScreenControls);
 
   @override
   Widget build(BuildContext context) {

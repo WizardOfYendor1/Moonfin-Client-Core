@@ -30,6 +30,10 @@ class LibretroBridge(
   // Same shape: lets the input layer drop held buttons immediately before the
   // core starts running again. See the "resume" branch below.
   private val onBeforeResume: () -> Unit = {},
+  // Same shape again: retro_set_controller_port_device makes the host forget
+  // which ports it has seen a stick read on, and the input layer polls that
+  // answer rather than being told, so this asks it to poll now.
+  private val onControllerTypeChanged: () -> Unit = {},
 ) {
   private val control = MethodChannel(
     flutterEngine.dartExecutor.binaryMessenger, "moonfin/native_game_control")
@@ -436,7 +440,7 @@ class LibretroBridge(
     val bytesPerFrame = 2 * BYTES_PER_SAMPLE
     val bufferBytes = AudioTrack.getMinBufferSize(
       sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
-      .coerceAtLeast(4 * AUDIO_CHUNK_FRAMES * bytesPerFrame)
+      .coerceAtLeast(2 * AUDIO_CHUNK_FRAMES * bytesPerFrame)
     val builder = AudioTrack.Builder()
       .setAudioAttributes(
         AudioAttributes.Builder()
@@ -736,6 +740,7 @@ class LibretroBridge(
       // scheme switch); refresh the cache immediately rather than leaving it
       // stale until the next lazy read.
       refreshInputDescriptors()
+      onControllerTypeChanged()
       result.success(null)
     }
   }
@@ -759,18 +764,18 @@ class LibretroBridge(
     NativeInputDescriptorParser.parse(entries)
 
   /**
-   * Bitmask of ports the current game describes ANALOG controls for, from
-   * RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS (bit N = port N). Drives
-   * [NativePadInput]'s digital\analog rule: a port stops getting stick->D-pad
-   * conversion once its bit is set. Returns 0 (no analog descriptors) when no
-   * core is loaded, same guard as [refreshControllerTypes]/[refreshInputDescriptors].
+   * Bitmask of ports whose left stick is passed through as analog instead of
+   * being converted to d-pad bits (bit N = port N). A port qualifies only
+   * when the game describes an analog stick for it AND the core has actually
+   * read one. Returns 0 when no core is loaded, same guard as the
+   * neighbouring functions.
    */
-  fun analogDescriptorPorts(): Int {
+  fun analogStickPorts(): Int {
     if (!isActive || loadedCore == null) return 0
-    return nativeAnalogDescriptorPorts()
+    return nativeAnalogStickPorts()
   }
 
-  private external fun nativeAnalogDescriptorPorts(): Int
+  private external fun nativeAnalogStickPorts(): Int
 
   private external fun nativeLoad(
     core: String, corePath: String, romPath: String, systemDir: String,
@@ -804,8 +809,9 @@ class LibretroBridge(
     private const val MAX_PORTS = 4
 
     // Frames pulled from the native ring per write. Stereo, so the short
-    // buffer is twice this.
-    private const val AUDIO_CHUNK_FRAMES = 512
+    // buffer is twice this. Kept near one device period so the blocking write
+    // applies back pressure several times per video frame.
+    private const val AUDIO_CHUNK_FRAMES = 256
     private const val BYTES_PER_SAMPLE = 2
     private const val RETRO_DEVICE_JOYPAD = 1L
 

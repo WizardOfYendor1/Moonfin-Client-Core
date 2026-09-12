@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:http/http.dart' as http;
+
+import 'image_file_service.dart';
 
 /// Prefix for per-system game-artwork caches. Sharing the global media cache
 /// would let game browsing evict movie, TV, and music artwork.
@@ -43,6 +46,7 @@ BaseCacheManager gameArtworkCacheManagerForScope(String scope) {
         cacheKey,
         stalePeriod: const Duration(days: 14),
         maxNrOfCacheObjects: gameArtworkCacheMaxObjectsPerSystem,
+        fileService: BoundedImageFileService(http.Client()),
       ),
     ),
   );
@@ -84,5 +88,6 @@ final BaseCacheManager gameSystemArtworkCacheManager = CacheManager(
     gameSystemArtworkCacheKey,
     stalePeriod: const Duration(days: 14),
     maxNrOfCacheObjects: 300,
+    fileService: BoundedImageFileService(http.Client()),
   ),
 );

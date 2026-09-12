@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:ui';
 
+import '../../theme/focus_foreground.dart';
 import '../../widgets/bounded_network_image.dart';
 import '../../widgets/offline_aware_image.dart';
 import '../../widgets/identify_dialog.dart';
-import '../../widgets/focus/context_action.dart' show canIdentifyItemType;
+import 'detail_admin_actions.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +21,7 @@ import '../../../data/repositories/item_mutation_repository.dart';
 import '../../../data/repositories/mdblist_repository.dart';
 import '../../../data/repositories/tmdb_repository.dart';
 import '../../../data/services/background_service.dart';
+import '../../../data/services/auto_download_service.dart';
 import '../../../data/services/download_service.dart';
 import '../../../data/models/download_quality.dart';
 import '../../../data/database/offline_database.dart';
@@ -35,10 +38,16 @@ import '../../navigation/home_refresh_bus.dart';
 import '../../navigation/app_router.dart';
 import '../../navigation/playback_launcher.dart';
 import 'detail_buttons.dart';
+import 'nouveau/nouveau_detail_content.dart';
+import 'nouveau/hero/nouveau_action_buttons.dart';
 import 'modern/modern_detail_content.dart';
+import 'spotlight/spotlight_detail_content.dart';
+import '../../widgets/skeleton/skeleton_detail_screen.dart';
+import '../../widgets/skeleton/skeleton_shimmer.dart';
 import '../../../data/repositories/seerr_repository.dart';
 import '../../../data/services/seerr/seerr_api_models.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/quick_return_wrapper.dart';
 import '../../widgets/progress_snack_bar.dart';
 import '../../../util/remote_subtitle_labels.dart';
 import '../../../util/subtitle_appearance_schedule.dart';
@@ -49,6 +58,7 @@ import '../../../ui/mixins/focus_state_mixin.dart';
 import '../../../auth/repositories/user_repository.dart';
 import '../../../util/focus/key_event_utils.dart';
 import '../../../util/overview_text.dart';
+import '../../../util/seerr_credits.dart';
 import '../../navigation/destinations.dart';
 import '../../widgets/adaptive/adaptive_dialog.dart';
 import '../../widgets/adaptive/sf_symbol.dart';
@@ -56,6 +66,7 @@ import '../../widgets/settings/settings_panel.dart';
 import '../../widgets/add_to_playlist_dialog.dart';
 import '../../widgets/logo_view.dart';
 import '../../widgets/media_card.dart';
+import '../../widgets/marquee_text.dart';
 import '../../widgets/seerr/seerr_cancel_request_dialog.dart';
 import '../../widgets/seerr/seerr_collection_banner.dart';
 import '../../widgets/seerr/seerr_image_urls.dart';
@@ -83,7 +94,6 @@ import '../../widgets/focus/dpad_list_tile.dart';
 import '../../widgets/focus/focusable_button.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/overlay_sheet.dart';
-import '../../widgets/playback/player_loading_overlay.dart';
 import '../../../playback/hdr_stream_capability.dart';
 import '../../../playback/known_defects.dart';
 import '../../../syncplay/syncplay_manager.dart';
@@ -279,6 +289,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
   Timer? _focusedBackdropDebounce;
   String? _lastFocusedBackdropItemId;
   String? _lastDetailBackdropItemId;
+  final GlobalKey<NouveauDetailContentState> _nouveauContentKey =
+      GlobalKey<NouveauDetailContentState>();
   final Map<String, String> _focusedPrimaryBackdropUrlCache =
       <String, String>{};
   FocusNode? _initialContentFocusNode;
@@ -338,28 +350,46 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
   @override
   void didPopNext() {
     super.didPopNext();
-    final item = _viewModel.item;
-    if (item != null) {
-      _backgroundService.setBackground(item, context: BlurContext.details);
-      final nextUrl = _backgroundService.currentUrl;
-      // Keep the last good backdrop if the service has none to give (e.g. after
-      // returning from a child with no backdrop that cleared the shared service).
-      if (nextUrl != null && nextUrl != _backdropUrl.value) {
-        _backdropUrl.value = nextUrl;
+
+    unawaited(_viewModel.syncUserDataIfStale());
+
+    // Every style needs this cleared, not just Nouveau. The card focused on the
+    // way out never got its backdrop applied, and _onBackdropItemFocused turns
+    // away a repeat of the same id.
+    _lastFocusedBackdropItemId = null;
+
+    final nouveauState = _nouveauContentKey.currentState;
+    final nouveauHandled =
+        nouveauState?.restoreBackdropAfterResume() ?? false;
+
+    if (!nouveauHandled) {
+      final item = _viewModel.item;
+      if (item != null) {
+        _backgroundService.setBackground(item, context: BlurContext.details);
+        final nextUrl = _backgroundService.currentUrl;
+
+        // Keep the last good backdrop if the service has none to give (e.g. after
+        // returning from a child with no backdrop that cleared the shared service).
+        if (nextUrl != null && nextUrl != _backdropUrl.value) {
+          _backdropUrl.value = nextUrl;
+        }
       }
     }
+
     // A pushed child screen (e.g. a similar item) clears the shared play-button
     // notifier on its way out; reclaim it so focus restoration finds this screen.
     if (PlatformDetection.isTV && _initialContentFocusNode != null) {
       NavigationLayout.focusDetailsPlayButtonNotifier.value =
           _initialContentFocusNode;
     }
+
     _resumeThemeMusicIfEligible();
   }
 
   @override
   void didPushNext() {
     super.didPushNext();
+    _focusedBackdropDebounce?.cancel();
     // This screen stays mounted under the pushed route, so dispose does not run.
     // Stop the theme so it does not keep playing over the screen on top; the
     // paired didPopNext resumes it on return.
@@ -497,10 +527,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
         }
       }
 
-      _backgroundService.setBackground(
-        focusedItem,
-        context: BlurContext.details,
-      );
+      _backgroundService.setBackground(focusedItem, context: BlurContext.details);
       final nextUrl = _backgroundService.currentUrl;
       if (nextUrl != _backdropUrl.value) {
         _backdropUrl.value = nextUrl;
@@ -540,12 +567,53 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
         _viewModel.state == ItemDetailState.ready &&
         _showNavbar &&
         (!isAlbumOrPlaylist || _isCompact(context));
+    // Follows the scroll flag rather than the chrome. Albums and playlists
+    // switch the chrome off at every scroll position on TV and desktop, so
+    // gating on it leaves those pages with no way back at all.
+    final showBackButton =
+        _viewModel.state != ItemDetailState.ready || _showNavbar;
 
     Widget body = NavigationLayout(
-      showBackButton: true,
+      showBackButton: showBackButton,
       showNavigationChrome: showNavigationChrome,
       child: _buildBody(context),
     );
+
+    if (!PlatformDetection.isTV) {
+      final content = body;
+      body = ValueListenableBuilder<NavbarPosition?>(
+        valueListenable: NavigationLayout.positionNotifier,
+        builder: (context, position, child) {
+          void reveal() {
+            if (!_showNavbar && mounted) setState(() => _showNavbar = true);
+          }
+
+          return Stack(
+            children: [
+              Positioned.fill(child: child!),
+              if (!_showNavbar) ...[
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 90,
+                  child: _NavbarRevealZone(onReveal: reveal),
+                ),
+                if (position == NavbarPosition.left)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: 80,
+                    child: _NavbarRevealZone(onReveal: reveal),
+                  ),
+              ],
+            ],
+          );
+        },
+        child: content,
+      );
+    }
 
     body = PopScope(canPop: !wasCollapsedRecently, child: body);
     return RequestInitialFocus(
@@ -566,12 +634,11 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
       manager: manager,
       destination: Destinations.videoPlayer,
       startPlayback: (launchSession) async {
-        final forceTranscode =
-            await shouldForceTranscodeForDolbyVisionQueue(
-              context,
-              [item],
-              mediaSourceId: mediaSourceId,
-            );
+        final forceTranscode = await shouldForceTranscodeForDolbyVisionQueue(
+          context,
+          [item],
+          mediaSourceId: mediaSourceId,
+        );
         if (!context.mounted) return false;
         return _runWithDolbyVisionStartupFallbackPrompt(
           context,
@@ -593,8 +660,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
 
   Widget _buildBody(BuildContext context) {
     return switch (_viewModel.state) {
-      ItemDetailState.loading => const Center(
-        child: PlayerLoadingOverlay(logoSize: 120),
+      ItemDetailState.loading => DetailScreenSkeleton(
+        style: _prefs.get(UserPreferences.detailScreenStyle),
+        prefs: _prefs,
       ),
       ItemDetailState.error => Center(
         child: Column(
@@ -619,48 +687,103 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           ],
         ),
       ),
-      ItemDetailState.ready =>
-        _prefs.get(UserPreferences.detailScreenStyle) ==
-                DetailScreenStyle.modern
-            ? ModernDetailContent(
-                viewModel: _viewModel,
-                prefs: _prefs,
-                backdropUrl: _backdropUrl,
-                selectedMediaSourceId: _selectedMediaSourceId,
-                initialFocusNode: _ensureInitialFocusNode(),
-                onSelectedMediaSourceChanged: (id) {
-                  setState(() => _selectedMediaSourceId = id);
-                  _viewModel.load(mediaSourceId: id);
-                },
-                onBackdropItemFocused: _onBackdropItemFocused,
-                autoPlay: widget.autoPlay,
-                onPlayFromChapter: (position) => unawaited(
-                  _playFromChapter(
-                    context,
-                    _viewModel.item!,
-                    position,
-                    _selectedMediaSourceId,
-                  ),
-                ),
-                onToggleNavbar: (show) => setState(() => _showNavbar = show),
-                actionsExpanded: _actionsExpanded,
-                onActionsExpandedChanged: (val) =>
-                    setState(() => _actionsExpanded = val),
-                onCollapseBiography: () => setState(() {}),
-              )
-            : _DetailContent(
-                viewModel: _viewModel,
-                prefs: _prefs,
-                backdropUrl: _backdropUrl,
-                selectedMediaSourceId: _selectedMediaSourceId,
-                initialFocusNode: _ensureInitialFocusNode(),
-                onSelectedMediaSourceChanged: (id) {
-                  setState(() => _selectedMediaSourceId = id);
-                  _viewModel.load(mediaSourceId: id);
-                },
-                onBackdropItemFocused: _onBackdropItemFocused,
-                autoPlay: widget.autoPlay,
-              ),
+      ItemDetailState.ready => switch (
+      _prefs.get(UserPreferences.detailScreenStyle)
+      ) {
+        DetailScreenStyle.classic => _DetailContent(
+          viewModel: _viewModel,
+          prefs: _prefs,
+          backdropUrl: _backdropUrl,
+          selectedMediaSourceId: _selectedMediaSourceId,
+          initialFocusNode: _ensureInitialFocusNode(),
+          onSelectedMediaSourceChanged: (id) {
+            setState(() => _selectedMediaSourceId = id);
+            _viewModel.load(mediaSourceId: id);
+          },
+          onBackdropItemFocused: _onBackdropItemFocused,
+          autoPlay: widget.autoPlay,
+        ),
+
+        DetailScreenStyle.modern => ModernDetailContent(
+          viewModel: _viewModel,
+          prefs: _prefs,
+          backdropUrl: _backdropUrl,
+          selectedMediaSourceId: _selectedMediaSourceId,
+          initialFocusNode: _ensureInitialFocusNode(),
+          onSelectedMediaSourceChanged: (id) {
+            setState(() => _selectedMediaSourceId = id);
+            _viewModel.load(mediaSourceId: id);
+          },
+          onBackdropItemFocused: _onBackdropItemFocused,
+          autoPlay: widget.autoPlay,
+          onPlayFromChapter: (position) => unawaited(
+            _playFromChapter(
+              context,
+              _viewModel.item!,
+              position,
+              _selectedMediaSourceId,
+            ),
+          ),
+          onToggleNavbar: (show) => setState(() => _showNavbar = show),
+          actionsExpanded: _actionsExpanded,
+          onActionsExpandedChanged: (val) =>
+              setState(() => _actionsExpanded = val),
+          onCollapseBiography: () => setState(() {}),
+        ),
+
+        DetailScreenStyle.spotlight => SpotlightDetailContent(
+          viewModel: _viewModel,
+          prefs: _prefs,
+          backdropUrl: _backdropUrl,
+          selectedMediaSourceId: _selectedMediaSourceId,
+          initialFocusNode: _ensureInitialFocusNode(),
+          onSelectedMediaSourceChanged: (id) {
+            setState(() => _selectedMediaSourceId = id);
+            _viewModel.load(mediaSourceId: id);
+          },
+          onBackdropItemFocused: _onBackdropItemFocused,
+          autoPlay: widget.autoPlay,
+          onPlayFromChapter: (position) => unawaited(
+            _playFromChapter(
+              context,
+              _viewModel.item!,
+              position,
+              _selectedMediaSourceId,
+            ),
+          ),
+          onToggleNavbar: (show) => setState(() => _showNavbar = show),
+          actionsExpanded: _actionsExpanded,
+          onActionsExpandedChanged: (val) =>
+              setState(() => _actionsExpanded = val),
+          onCollapseBiography: () => setState(() {}),
+        ),
+
+        DetailScreenStyle.nouveau => NouveauDetailContent(
+          key: _nouveauContentKey,
+          viewModel: _viewModel,
+          prefs: _prefs,
+          backdropUrl: _backdropUrl,
+          selectedMediaSourceId: _selectedMediaSourceId,
+          initialFocusNode: _ensureInitialFocusNode(),
+          onSelectedMediaSourceChanged: (id) {
+            setState(() => _selectedMediaSourceId = id);
+            _viewModel.load(mediaSourceId: id);
+          },
+          onBackdropItemFocused: _onBackdropItemFocused,
+          autoPlay: widget.autoPlay,
+          onPlayFromChapter: (position) => unawaited(
+            _playFromChapter(
+              context,
+              _viewModel.item!,
+              position,
+              _selectedMediaSourceId,
+            ),
+          ),
+          actionsExpanded: _actionsExpanded,
+          onActionsExpandedChanged: (val) =>
+              setState(() => _actionsExpanded = val),
+        ),
+      },
     };
   }
 }
@@ -759,24 +882,11 @@ class _DetailContentState extends State<_DetailContent> {
       await repo.ensureInitialized();
       final personId = int.tryParse(tmdbId);
       if (personId != null) {
-        final credits = await repo.getPersonCombinedCredits(personId);
-        const excludedJobs = {'thanks', 'special thanks'};
-        final castWithPosters =
-            credits.cast.where((i) => i.posterPath != null).toList()
-              ..sort((a, b) => a.displayTitle.compareTo(b.displayTitle));
-        final crewWithPosters =
-            credits.crew
-                .where(
-                  (i) =>
-                      i.posterPath != null &&
-                      !excludedJobs.contains(i.job?.toLowerCase()),
-                )
-                .toList()
-              ..sort((a, b) => a.displayTitle.compareTo(b.displayTitle));
+        final credits = await loadSeerrPersonCredits(repo, personId);
         if (mounted) {
           setState(() {
-            _seerrAppearances = castWithPosters;
-            _seerrCrewCredits = crewWithPosters;
+            _seerrAppearances = credits.cast;
+            _seerrCrewCredits = credits.crew;
           });
         }
       }
@@ -1311,152 +1421,157 @@ class _DetailContentState extends State<_DetailContent> {
     final isAlbumOrPlaylist =
         item.type == 'MusicAlbum' || item.type == 'Playlist';
 
-    return Focus(
-      focusNode: _contentFocusNode,
-      onKeyEvent: (node, event) {
-        final primaryFocus = FocusManager.instance.primaryFocus;
-        if (!identical(primaryFocus, _contentFocusNode)) {
+    return QuickReturnWrapper(
+      scrollController: _scrollController,
+      topFocusNode: widget.initialFocusNode,
+      hideNavbar: true,
+      child: Focus(
+        focusNode: _contentFocusNode,
+        onKeyEvent: (node, event) {
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          if (!identical(primaryFocus, _contentFocusNode)) {
+            return KeyEventResult.ignored;
+          }
+          if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
+              event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            final navbarPos = prefs.get(UserPreferences.navbarPosition);
+            if (navbarPos == NavbarPosition.top) {
+              _scrollMainToTop();
+              NavigationLayout.focusNavbarNotifier.value?.call();
+              return KeyEventResult.handled;
+            }
+            final isAtTop =
+                !_scrollController.hasClients || _scrollController.offset <= 0;
+            if (isAtTop) {
+              NavigationLayout.focusNavbarNotifier.value?.call();
+              return KeyEventResult.handled;
+            }
+          }
           return KeyEventResult.ignored;
-        }
-        if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
-            event.logicalKey == LogicalKeyboardKey.arrowUp) {
-          final navbarPos = prefs.get(UserPreferences.navbarPosition);
-          if (navbarPos == NavbarPosition.top) {
-            _scrollMainToTop();
-            NavigationLayout.focusNavbarNotifier.value?.call();
-            return KeyEventResult.handled;
-          }
-          final isAtTop =
-              !_scrollController.hasClients || _scrollController.offset <= 0;
-          if (isAtTop) {
-            NavigationLayout.focusNavbarNotifier.value?.call();
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (isReadableBook)
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: Color(0xFF0F182A)),
-              ),
-            ),
-          if (backdropEnabled && !isReadableBook)
-            ValueListenableBuilder<String?>(
-              valueListenable: widget.backdropUrl,
-              builder: (context, url, _) =>
-                  _Backdrop(url: url, blurAmount: blurAmount),
-            ),
-          if (isReadableBook)
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x000F182A), Color(0x440A1324)],
-                  ),
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (isReadableBook)
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: Color(0xFF0F182A)),
                 ),
               ),
-            )
-          else
-            const RepaintBoundary(child: _GradientScrim()),
-          if (useSplitLayout)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildStaticPersonProfilePanel(context, item),
-                Expanded(
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    cacheExtent: 4000,
-                    slivers: [
-                      SliverPadding(
-                        padding: EdgeInsets.fromLTRB(
-                          48,
-                          MediaQuery.of(context).padding.top + 80.0,
-                          48,
-                          48 * _desktopUiScale(),
-                        ),
-                        sliver: SliverList(
-                          delegate: SliverChildListDelegate(
-                            _buildContentForType(context, item),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          else
-            CustomScrollView(
-              controller: _scrollController,
-              cacheExtent: 4000,
-              slivers: [
-                if (item.type != 'Person' &&
-                    item.type != 'MusicArtist' &&
-                    item.type != 'MusicAlbum' &&
-                    item.type != 'Playlist' &&
-                    !_isReadableBookItem(item))
-                  SliverToBoxAdapter(
-                    child: _HeaderSection(
-                      viewModel: widget.viewModel,
-                      prefs: widget.prefs,
-                      selectedMediaSource: selectedMediaSource,
-                      overviewFocusNode: headerOverviewFocusNode,
-                      onArrowUp: _tryFocusNavbar,
-                      onArrowDown: () {
-                        final type = item.type;
-                        final targetNode = switch (type) {
-                          'BoxSet' => _sectionFocusNode(
-                            'detailBoxSetActionButtons',
-                          ),
-                          _ =>
-                            widget.initialFocusNode ??
-                                _sectionFocusNode('detailActionButtons'),
-                        };
-                        _requestSectionFocus(targetNode);
-                      },
-                      onArrowLeft: () => _tryFocusSidebar(),
-                      onCollapseBiography: () => setState(() {}),
+            if (backdropEnabled && !isReadableBook)
+              ValueListenableBuilder<String?>(
+                valueListenable: widget.backdropUrl,
+                builder: (context, url, _) =>
+                    _Backdrop(url: url, blurAmount: blurAmount),
+              ),
+            if (isReadableBook)
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x000F182A), Color(0x440A1324)],
                     ),
                   ),
-                SliverPadding(
-                  padding: isReadableBook
-                      ? EdgeInsets.fromLTRB(
-                          _isCompact(context) ? 16 : 48,
-                          MediaQuery.of(context).padding.top +
-                              (_isCompact(context) ? 60 : 80),
-                          _isCompact(context) ? 16 : 48,
-                          0,
-                        )
-                      : EdgeInsets.fromLTRB(
-                          _isCompact(context) ? 16 : 48,
-                          0,
-                          _isCompact(context) ? 16 : 48,
-                          (MediaQuery.of(context).padding.bottom + 48.0) *
-                              _desktopUiScale(),
-                        ),
-                  sliver: isAlbumOrPlaylist
-                      ? SliverToBoxAdapter(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _buildContentForType(context, item),
-                          ),
-                        )
-                      : SliverList(
-                          delegate: SliverChildListDelegate(
-                            _buildContentForType(context, item),
-                          ),
-                        ),
                 ),
-              ],
-            ),
-        ],
+              )
+            else
+              const RepaintBoundary(child: _GradientScrim()),
+            if (useSplitLayout)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildStaticPersonProfilePanel(context, item),
+                  Expanded(
+                    child: CustomScrollView(
+                      controller: _scrollController,
+                      cacheExtent: 4000,
+                      slivers: [
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(
+                            48,
+                            MediaQuery.of(context).padding.top + 80.0,
+                            48,
+                            48 * _desktopUiScale(),
+                          ),
+                          sliver: SliverList(
+                            delegate: SliverChildListDelegate(
+                              _buildContentForType(context, item),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            else
+              CustomScrollView(
+                controller: _scrollController,
+                cacheExtent: 4000,
+                slivers: [
+                  if (item.type != 'Person' &&
+                      item.type != 'MusicArtist' &&
+                      item.type != 'MusicAlbum' &&
+                      item.type != 'Playlist' &&
+                      !_isReadableBookItem(item))
+                    SliverToBoxAdapter(
+                      child: _HeaderSection(
+                        viewModel: widget.viewModel,
+                        prefs: widget.prefs,
+                        selectedMediaSource: selectedMediaSource,
+                        overviewFocusNode: headerOverviewFocusNode,
+                        onArrowUp: _tryFocusNavbar,
+                        onArrowDown: () {
+                          final type = item.type;
+                          final targetNode = switch (type) {
+                            'BoxSet' => _sectionFocusNode(
+                              'detailBoxSetActionButtons',
+                            ),
+                            _ =>
+                              widget.initialFocusNode ??
+                                  _sectionFocusNode('detailActionButtons'),
+                          };
+                          _requestSectionFocus(targetNode);
+                        },
+                        onArrowLeft: () => _tryFocusSidebar(),
+                        onCollapseBiography: () => setState(() {}),
+                      ),
+                    ),
+                  SliverPadding(
+                    padding: isReadableBook
+                        ? EdgeInsets.fromLTRB(
+                            _isCompact(context) ? 16 : 48,
+                            MediaQuery.of(context).padding.top +
+                                (_isCompact(context) ? 60 : 80),
+                            _isCompact(context) ? 16 : 48,
+                            0,
+                          )
+                        : EdgeInsets.fromLTRB(
+                            _isCompact(context) ? 16 : 48,
+                            0,
+                            _isCompact(context) ? 16 : 48,
+                            (MediaQuery.of(context).padding.bottom + 48.0) *
+                                _desktopUiScale(),
+                          ),
+                    sliver: isAlbumOrPlaylist
+                        ? SliverToBoxAdapter(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: _buildContentForType(context, item),
+                            ),
+                          )
+                        : SliverList(
+                            delegate: SliverChildListDelegate(
+                              _buildContentForType(context, item),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1823,8 +1938,12 @@ class _DetailContentState extends State<_DetailContent> {
         .where((cat) => groupedFeatures[cat]?.isNotEmpty == true)
         .toList();
     final hasFeatures = presentCategories.isNotEmpty;
-    final firstFeatureNode = hasFeatures ? _featureFocusNodeFor(presentCategories.first) : null;
-    final lastFeatureNode = hasFeatures ? _featureFocusNodeFor(presentCategories.last) : null;
+    final firstFeatureNode = hasFeatures
+        ? _featureFocusNodeFor(presentCategories.first)
+        : null;
+    final lastFeatureNode = hasFeatures
+        ? _featureFocusNodeFor(presentCategories.last)
+        : null;
 
     final hasCast = viewModel.actors.isNotEmpty;
     final hasCollection = viewModel.parentCollectionItems.isNotEmpty;
@@ -1890,9 +2009,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.castMembers,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailCastRow(
@@ -1941,9 +2058,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.moreLikeThis,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailSimilarRow(
@@ -1981,12 +2096,12 @@ class _DetailContentState extends State<_DetailContent> {
     final seerr = viewModel.seerr;
     if (!viewModel.isSeerrOnly || seerr == null) return null;
     return (seasonNumber) => showSeerrRequestDialog(
-          context: context,
-          vm: seerr,
-          is4k: false,
-          qualityToggle: true,
-          season: seasonNumber > 0 ? seasonNumber : null,
-        );
+      context: context,
+      vm: seerr,
+      is4k: false,
+      qualityToggle: true,
+      season: seasonNumber > 0 ? seasonNumber : null,
+    );
   }
 
   /// The focusable pieces of the Seerr block, in the order they appear, so each
@@ -2016,13 +2131,12 @@ class _DetailContentState extends State<_DetailContent> {
 
     final l10n = AppLocalizations.of(context);
     final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
-      color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-          ? AppColorScheme.onSurface
-          : Colors.white,
+      color: AppColorScheme.onSurface,
       fontWeight: FontWeight.w700,
     );
-    final seerrLabel =
-        GetIt.instance<SeerrPreferences>().labelOrDefault(l10n.seerr);
+    final seerrLabel = GetIt.instance<SeerrPreferences>().labelOrDefault(
+      l10n.seerr,
+    );
     final collection = state.movie?.collection;
     final chain = _seerrSectionChain();
     final chipsNode = _sectionFocusNode('detailSeerrChips');
@@ -2118,7 +2232,9 @@ class _DetailContentState extends State<_DetailContent> {
         .where((cat) => groupedFeatures[cat]?.isNotEmpty == true)
         .toList();
     final hasFeatures = presentCategories.isNotEmpty;
-    final firstFeatureNode = hasFeatures ? _featureFocusNodeFor(presentCategories.first) : null;
+    final firstFeatureNode = hasFeatures
+        ? _featureFocusNodeFor(presentCategories.first)
+        : null;
 
     final hasNextUp = viewModel.nextUp != null;
     final seriesNextUpFocusNode = hasNextUp ? _seriesNextUpFocusNode : null;
@@ -2170,9 +2286,7 @@ class _DetailContentState extends State<_DetailContent> {
         Text(
           l10n.nextUp,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.bold,
             shadows: _textShadows,
             fontSize: _isCompact(context) ? 17 : null,
@@ -2217,9 +2331,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.seasons,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailSeasonsRow(
@@ -2251,9 +2363,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.castMembers,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailCastRow(
@@ -2283,9 +2393,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.moreLikeThis,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailSimilarRow(
@@ -2328,7 +2436,8 @@ class _DetailContentState extends State<_DetailContent> {
       ),
       ..._buildSeerrSections(
         context,
-        upTarget: similarFocusNode ??
+        upTarget:
+            similarFocusNode ??
             castFocusNode ??
             seasonsFocusNode ??
             metadataFocusNode ??
@@ -2390,8 +2499,12 @@ class _DetailContentState extends State<_DetailContent> {
         .where((cat) => groupedFeatures[cat]?.isNotEmpty == true)
         .toList();
     final hasFeatures = presentCategories.isNotEmpty;
-    final firstFeatureNode = hasFeatures ? _featureFocusNodeFor(presentCategories.first) : null;
-    final lastFeatureNode = hasFeatures ? _featureFocusNodeFor(presentCategories.last) : null;
+    final firstFeatureNode = hasFeatures
+        ? _featureFocusNodeFor(presentCategories.first)
+        : null;
+    final lastFeatureNode = hasFeatures
+        ? _featureFocusNodeFor(presentCategories.last)
+        : null;
 
     final hasSeasonEpisodes = viewModel.episodes.isNotEmpty;
     final hasCast = viewModel.actors.isNotEmpty;
@@ -2474,9 +2587,7 @@ class _DetailContentState extends State<_DetailContent> {
               Text(
                 l10n.nextEpisode,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                      ? AppColorScheme.onSurface
-                      : Colors.white,
+                  color: AppColorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   shadows: _textShadows,
                   fontSize: _isCompact(context) ? 17 : null,
@@ -2519,9 +2630,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.moreFromThisSeason,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => _EpisodesRow(
@@ -2549,9 +2658,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.castMembers,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailCastRow(
@@ -2580,9 +2687,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.moreLikeThis,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailSimilarRow(
@@ -2621,12 +2726,11 @@ class _DetailContentState extends State<_DetailContent> {
       manager: manager,
       destination: Destinations.videoPlayer,
       startPlayback: (launchSession) async {
-        final forceTranscode =
-            await shouldForceTranscodeForDolbyVisionQueue(
-              context,
-              [item],
-              mediaSourceId: mediaSourceId,
-            );
+        final forceTranscode = await shouldForceTranscodeForDolbyVisionQueue(
+          context,
+          [item],
+          mediaSourceId: mediaSourceId,
+        );
         if (!context.mounted) return false;
         return _runWithDolbyVisionStartupFallbackPrompt(
           context,
@@ -2722,10 +2826,7 @@ class _DetailContentState extends State<_DetailContent> {
             imageApi: viewModel.imageApi,
             prefs: prefs,
             onItemLongPress: _showItemContextMenu,
-            scrollController: _trackSectionScrollController(
-              focusNode,
-              ctrl,
-            ),
+            scrollController: _trackSectionScrollController(focusNode, ctrl),
             firstItemFocusNode: focusNode,
             onItemKeyEvent: _buildVerticalRowHandler(
               sourceFocusNode: focusNode,
@@ -3462,10 +3563,8 @@ class _DetailContentState extends State<_DetailContent> {
                 startPlayback: (launchSession) async {
                   await runPlaybackStart(
                     launchSession,
-                    () => manager.playItems(
-                      viewModel.tracks,
-                      startIndex: index,
-                    ),
+                    () =>
+                        manager.playItems(viewModel.tracks, startIndex: index),
                   );
                   return true;
                 },
@@ -3819,9 +3918,7 @@ class _DetailContentState extends State<_DetailContent> {
         HorizontalScrollSection(
           title: l10n.castMembers,
           titleStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
-                ? AppColorScheme.onSurface
-                : Colors.white,
+            color: AppColorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
           builder: (_, ctrl) => DetailCastRow(
@@ -3851,8 +3948,7 @@ class _DetailContentState extends State<_DetailContent> {
   }
 
   bool _hasMetadata(AggregatedItem item) {
-    return item.type == 'BoxSet' ||
-        viewModel.directors.isNotEmpty ||
+    return viewModel.directors.isNotEmpty ||
         viewModel.writers.isNotEmpty ||
         item.studios.isNotEmpty;
   }
@@ -3956,6 +4052,7 @@ class _HeaderSection extends StatelessWidget {
         useDesktopLayout && isMusicItem && viewModel.lyrics.isNotEmpty;
     final isCollection = item.type == 'BoxSet';
     final seerrStatus = seerrItemStatus(viewModel);
+    final isNeon = ThemeRegistry.active.id == ThemeRegistry.neonPulseId;
 
     final infoColumn = Column(
       crossAxisAlignment: isMobile
@@ -4031,7 +4128,9 @@ class _HeaderSection extends StatelessWidget {
           Text(
             item.name,
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              color: Colors.white,
+              color: isNeon
+                  ? AppColorScheme.accent
+                  : AppColorScheme.onBackground,
               fontWeight: FontWeight.bold,
               shadows: _textShadows,
               fontSize: isMobile ? 24 : null,
@@ -4072,9 +4171,9 @@ class _HeaderSection extends StatelessWidget {
           Text(
             item.tagline!,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
+              color: isNeon
                   ? AppColorScheme.accent
-                  : Colors.white.withValues(alpha: 0.7),
+                  : AppColorScheme.onSurface.withValues(alpha: 0.7),
               fontStyle: FontStyle.italic,
               shadows: _textShadows,
               fontSize: isMobile ? 13 : null,
@@ -4101,9 +4200,9 @@ class _HeaderSection extends StatelessWidget {
             onArrowLeft: onArrowLeft,
             onCollapse: onCollapseBiography,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: ThemeRegistry.active.id == ThemeRegistry.neonPulseId
+              color: isNeon
                   ? AppColorScheme.onSurface
-                  : Colors.white.withValues(alpha: 0.8),
+                  : AppColorScheme.onBackground,
               shadows: _textShadows,
               height: 1.4,
               fontSize: isMobile ? 13 : null,
@@ -4415,7 +4514,11 @@ String? _resolveSeriesLandscapeThumbnailUrl(
       thumbId.isNotEmpty &&
       thumbTag != null &&
       thumbTag.isNotEmpty) {
-    return imageApi.getThumbImageUrl(thumbId, maxWidth: maxWidth, tag: thumbTag);
+    return imageApi.getThumbImageUrl(
+      thumbId,
+      maxWidth: maxWidth,
+      tag: thumbTag,
+    );
   }
 
   final seriesId = item.seriesId ?? item.parentPrimaryImageItemId;
@@ -4457,7 +4560,8 @@ class _EpisodeThumbnail extends StatelessWidget {
         ? _resolveSeriesLandscapeThumbnailUrl(item, imageApi, maxWidth: maxW)
         : null;
 
-    final imageUrl = seriesThumbUrl ??
+    final imageUrl =
+        seriesThumbUrl ??
         (item.primaryImageTag != null
             ? imageApi.getPrimaryImageUrl(
                 item.id,
@@ -4631,7 +4735,7 @@ class DetailMetadataRow extends StatelessWidget {
             style: theme.textTheme.bodySmall?.copyWith(
               color: isNeon
                   ? AppColorScheme.onSurface.withValues(alpha: 0.6)
-                  : Colors.white.withValues(alpha: 0.5),
+                  : AppColorScheme.onBackground.withValues(alpha: 0.6),
               shadows: _textShadows,
             ),
           ),
@@ -4674,13 +4778,10 @@ class DetailMetadataRow extends StatelessWidget {
   }
 
   Widget _text(ThemeData theme, String value) {
-    final isNeon = ThemeRegistry.active.id == ThemeRegistry.neonPulseId;
     return Text(
       value,
       style: theme.textTheme.bodySmall?.copyWith(
-        color: isNeon
-            ? AppColorScheme.onSurface
-            : Colors.white.withValues(alpha: 0.9),
+        color: AppColorScheme.onSurface,
         fontWeight: FontWeight.w700,
         shadows: _textShadows,
       ),
@@ -4692,9 +4793,7 @@ class DetailMetadataRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: isNeon
-            ? AppColorScheme.accent.withValues(alpha: 0.15)
-            : Colors.white.withValues(alpha: 0.15),
+        color: AppColorScheme.accent.withValues(alpha: 0.15),
         border: isNeon
             ? Border.fromBorderSide(
                 ThemeRegistry.active.borders.chipBorder.copyWith(
@@ -4707,9 +4806,7 @@ class DetailMetadataRow extends StatelessWidget {
       child: Text(
         label,
         style: theme.textTheme.labelSmall?.copyWith(
-          color: isNeon
-              ? AppColorScheme.onSurface
-              : Colors.white.withValues(alpha: 0.9),
+          color: AppColorScheme.onSurface,
           shadows: _textShadows,
         ),
       ),
@@ -4753,9 +4850,7 @@ class DetailMetadataRow extends StatelessWidget {
       child: Text(
         label,
         style: theme.textTheme.labelSmall?.copyWith(
-          color: isNeon
-              ? AppColorScheme.onSurface
-              : Colors.white.withValues(alpha: 0.8),
+          color: AppColorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -4789,10 +4884,22 @@ class DetailActionButtons extends StatefulWidget {
   /// secondary icon buttons. Defaults to the classic square layout.
   final bool modernStyle;
 
+  /// Renders the "nouveau" detail style: a dedicated cinematic action layout
+  /// with Nouveau-specific overflow, progress, and directional focus behavior.
+  final bool nouveauStyle;
+
   /// In modern style, render the primary Play as a full-width pill (portrait).
   /// When false the pill is content-width and sits inline with the secondary
   /// circular buttons (landscape).
   final bool fullWidthPrimary;
+
+  /// Spotlight mode: the overflow button is an ellipsis that opens a popup
+  /// menu of the remaining actions instead of expanding them inline, and the
+  /// count split applies to every item type (the Series/Season two-column
+  /// heuristic is bypassed). Overflow also triggers strictly, so never more
+  /// than [maxVisibleButtonsOverride] minus the ellipsis slot stays inline,
+  /// even when the menu would hold a single action.
+  final bool overflowAsMenu;
 
   /// How wide the column hosting the row is. The two column layout measures
   /// its buttons against this to decide when they stop fitting on one line,
@@ -4805,6 +4912,7 @@ class DetailActionButtons extends StatefulWidget {
   final ValueChanged<bool>? onActionsExpandedChanged;
 
   const DetailActionButtons({
+    super.key,
     required this.viewModel,
     this.itemId,
     this.selectedMediaSourceId,
@@ -4817,7 +4925,9 @@ class DetailActionButtons extends StatefulWidget {
     this.maxVisibleButtonsOverride,
     this.onArrowRightAtEnd,
     this.modernStyle = false,
+    this.nouveauStyle = false,
     this.fullWidthPrimary = false,
+    this.overflowAsMenu = false,
     this.rowMaxWidth,
     this.actionRowRightFocusNode,
     this.extraFirstFocusNode,
@@ -5146,8 +5256,11 @@ class _BookAuthorDetailScreenState extends State<_BookAuthorDetailScreen> {
       ),
       body: SafeArea(
         child: _loading && data == null
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF32B9E8)),
+            ? _buildSkeleton(
+                context,
+                horizontalPadding,
+                crossAxisCount,
+                gridSpacing,
               )
             : data == null
             ? Center(
@@ -5232,6 +5345,105 @@ class _BookAuthorDetailScreenState extends State<_BookAuthorDetailScreen> {
                   ],
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildSkeleton(
+    BuildContext context,
+    double horizontalPadding,
+    int crossAxisCount,
+    double gridSpacing,
+  ) {
+    return SkeletonShimmer(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          8,
+          horizontalPadding,
+          24,
+        ),
+        physics: const NeverScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SkeletonBox(
+                  width: 84,
+                  height: 84,
+                  borderRadius: BorderRadius.circular(42),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      SkeletonBox(
+                        width: 200,
+                        height: 24,
+                        borderRadius: BorderRadius.all(Radius.circular(4)),
+                      ),
+                      SizedBox(height: 8),
+                      SkeletonBox(
+                        width: 110,
+                        height: 14,
+                        borderRadius: BorderRadius.all(Radius.circular(4)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const SkeletonBox(
+              width: 100,
+              height: 18,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 10),
+            const SkeletonBox(
+              width: double.infinity,
+              height: 13,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 6),
+            const SkeletonBox(
+              width: double.infinity,
+              height: 13,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 6),
+            const SkeletonBox(
+              width: 240,
+              height: 13,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 32),
+            const SkeletonBox(
+              width: 80,
+              height: 18,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: gridSpacing,
+                mainAxisSpacing: gridSpacing,
+                childAspectRatio: 2 / 3,
+              ),
+              itemCount: crossAxisCount * 2,
+              itemBuilder: (_, _) => const SkeletonBox(
+                width: double.infinity,
+                height: double.infinity,
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -5800,6 +6012,37 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     return button;
   }
 
+  NouveauAction _toNouveauAction(
+    _DetailActionButton button, {
+    FocusNode? focusNode,
+    VoidCallback? onFocused,
+    VoidCallback? onArrowUp,
+    VoidCallback? onArrowDown,
+    VoidCallback? onArrowLeft,
+    VoidCallback? onArrowRight,
+    double? progress,
+    String? trailingLabel,
+  }) {
+    return NouveauAction(
+      label: button.label,
+      icon: button.icon,
+      iconBuilder: button.iconBuilder,
+      onPressed: button.onPressed,
+      onLongPress: button.onLongPress,
+      onFocused: onFocused ?? button.onFocused,
+      onArrowUp: onArrowUp ?? button.onArrowUp,
+      onArrowDown: onArrowDown ?? button.onArrowDown,
+      onArrowLeft: onArrowLeft ?? button.onArrowLeft,
+      onArrowRight: onArrowRight ?? button.onArrowRight,
+      focusNode: focusNode ?? button.focusNode,
+      autofocus: button.autofocus,
+      isActive: button.isActive,
+      activeColor: button.activeColor,
+      progress: progress,
+      trailingLabel: trailingLabel,
+    );
+  }
+
   bool _tryFocusSidebar() {
     if (GetIt.instance<UserPreferences>().get(UserPreferences.navbarPosition) !=
         NavbarPosition.left) {
@@ -5876,22 +6119,25 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
   /// circles are actually capped to.
   static const _modernFocusedFloor = 200.0;
 
+  /// The narrowest the focused Play pill is drawn at, below
+  /// [_modernFocusedFloor] so a short label does not reserve the width of a
+  /// long one.
+  static const _modernPlayFocusedFloor = 140.0;
+
   /// The width the focused Play pill actually takes, which is its label plus
-  /// the icon, the gap and the padding around them. The circles are capped at
-  /// [_modernFocusedFloor] but the pill only has that as a floor, so a long
-  /// label makes it wider and the row has to be measured against the real
-  /// thing rather than the floor.
+  /// the icon, the gap and the padding around them. Bounded by the same cap
+  /// the pill is drawn within, so a label too long to fit is measured at the
+  /// width it ends up ellipsised to rather than the width it wanted.
   double _modernPlayFocusedWidth(String? label) {
     if (label == null) return _modernFocusedFloor;
     // Matching what _buildModernChild lays out around the label.
-    const iconWidth = 24.0;
-    const iconGap = 2.0;
-    const horizontalPadding = 24.0;
+    const iconWidth = 50.0; // height (54) - 4
+    const iconGap = 6.0;
+    const horizontalPadding = 22.0; // left (6) + right (16)
+    const borderWidth = 5.0; // showHighlight ? 2.5 * 2
     final painter = TextPainter(
       text: TextSpan(
         text: label,
-        // The second line of a two line label is a point smaller, so measuring
-        // both at the larger size can only leave room to spare.
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           fontWeight: FontWeight.bold,
           fontSize: 13,
@@ -5901,16 +6147,21 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
-    final measured = painter.width + iconWidth + iconGap + horizontalPadding;
+    final measured =
+        painter.width + iconWidth + iconGap + horizontalPadding + borderWidth;
     painter.dispose();
-    return measured < _modernFocusedFloor ? _modernFocusedFloor : measured;
+    return measured.clamp(_modernPlayFocusedFloor, _modernFocusedFloor);
   }
 
-  /// The widest a modern row of [buttonCount] buttons can get. Only one
-  /// button is focused at a time, so the worst case is everything at rest
-  /// except the one grown to its focused width, whichever of the two that
-  /// leaves wider. The sizes match what _buildModernChild lays out.
-  double _modernRowWorstWidth(
+  /// The widest a modern row of [buttonCount] buttons can get. One button
+  /// holds focus and every grown button stops at the same cap, so the widest
+  /// row is that cap plus the rest at rest, and Play rests wider than a
+  /// circle. Counting Play grown as well describes a row that cannot happen
+  /// and sends buttons to the overflow menu that had room to stay.
+  ///
+  /// Public for the width tests. Every production caller lives in this file.
+  @visibleForTesting
+  static double modernRowWorstWidth(
     int buttonCount,
     double spacing,
     double playFocused,
@@ -5922,11 +6173,10 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     final circles = buttonCount - 1;
     if (circles <= 0) return playFocused;
 
-    final playGrown = playFocused + circles * circleResting;
-    final circleGrown =
-        playResting + circleFocused + (circles - 1) * circleResting;
     return circles * spacing +
-        (playGrown > circleGrown ? playGrown : circleGrown);
+        circleFocused +
+        playResting +
+        (circles - 1) * circleResting;
   }
 
   void _focusUpTarget() {
@@ -6010,6 +6260,190 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     if (mounted && available != _availableOffline) {
       setState(() => _availableOffline = available);
     }
+  }
+
+  /// Spotlight overflow: opens the remaining actions as a popup menu. Each
+  /// row invokes the original button's handler after the menu closes, so no
+  /// action logic is duplicated. Focus returns to the ellipsis through the
+  /// dialog's focus-restore wrapper.
+  Future<void> _showOverflowMenu(
+    BuildContext context,
+    List<Widget> extraButtons,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final actions = <_DetailActionButton>[
+      for (final btn in extraButtons)
+        ?_actionForOverflow(context, btn),
+    ];
+    if (actions.isEmpty) return;
+    final selected = await showStyledPlayerDialog<VoidCallback>(
+      context,
+      title: l10n.spotlightMoreActions,
+      builder: (dialogContext) => ListView.builder(
+        shrinkWrap: true,
+        itemCount: actions.length,
+        itemBuilder: (rowContext, index) {
+          final action = actions[index];
+          return _SpotlightOverflowTile(
+            action: action,
+            autofocus: index == 0,
+            onTap: () => Navigator.pop(rowContext, action.onPressed),
+            onLongPress: action.onLongPress == null
+                ? null
+                : () => Navigator.pop(rowContext, action.onLongPress),
+          );
+        },
+      ),
+    );
+    if (selected != null) {
+      // Let the pop and focus restore settle first, since several actions
+      // immediately open a dialog of their own.
+      WidgetsBinding.instance.addPostFrameCallback((_) => selected());
+    }
+  }
+
+  _DetailActionButton? _actionForOverflow(
+    BuildContext context,
+    Widget button,
+  ) {
+    if (button is _DetailActionButton) {
+      return button;
+    }
+    if (button is _DownloadButton) {
+      return _buildDownloadDetailAction(context, button.item);
+    }
+    if (button is _DeleteDownloadButton) {
+      return _buildDeleteDetailAction(context, button.item);
+    }
+    return null;
+  }
+
+  _DetailActionButton _buildDownloadDetailAction(
+    BuildContext context,
+    AggregatedItem item,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final downloadService = GetIt.instance.isRegistered<DownloadService>()
+        ? GetIt.instance<DownloadService>()
+        : null;
+    final progress = downloadService?.activeDownloads[item.id];
+    final isMulti = _DownloadButtonState._isBatchType(item.type);
+    final isBatch = downloadService?.isBatchDownloading ?? false;
+
+    if (progress != null && !progress.isComplete && progress.error == null) {
+      final label = progress.isFinalizing
+          ? l10n.finalizingDownload
+          : progress.isQueued
+          ? l10n.queuedDownload
+          : progress.progress >= 0
+          ? '${(progress.progress * 100).toInt()}%'
+          : progress.bytesReceived > 0
+          ? '${(progress.bytesReceived / 1048576).toStringAsFixed(1)} MB'
+          : '…';
+      return _DetailActionButton(
+        label: label,
+        icon: Icons.close,
+        onPressed: () => downloadService?.cancelDownload(item.id),
+        isActive: true,
+        activeColor: AppColorScheme.accent,
+      );
+    }
+
+    if (isBatch && isMulti && downloadService != null) {
+      final done = downloadService.completedCount;
+      final total = downloadService.totalQueued;
+      var pct = '';
+      for (final p in downloadService.activeDownloads.values) {
+        if (!p.isComplete && p.error == null) {
+          if (p.progress >= 0) {
+            pct = '${(p.progress * 100).toInt()}%';
+          }
+          break;
+        }
+      }
+      return _DetailActionButton(
+        label: '${done + 1}/$total${pct.isNotEmpty ? ' · $pct' : ''}',
+        icon: Icons.close,
+        onPressed: () => downloadService.cancelAll(),
+        isActive: true,
+        activeColor: AppColorScheme.accent,
+      );
+    }
+
+    if (_availableOffline || (progress != null && progress.isComplete)) {
+      return _DetailActionButton(
+        label: l10n.downloaded,
+        icon: Icons.download_done,
+        isActive: true,
+        activeColor: const Color(0xFF4CAF50),
+        onPressed: () {
+          if (downloadService != null) {
+            _DownloadButton.showDownloadOptions(context, item, downloadService);
+          }
+        },
+      );
+    }
+
+    return _DetailActionButton(
+      label: l10n.download,
+      icon: Icons.download_for_offline,
+      onPressed: () {
+        if (downloadService != null) {
+          _DownloadButton.showDownloadOptions(context, item, downloadService);
+        }
+      },
+    );
+  }
+
+  _DetailActionButton _buildDeleteDetailAction(
+    BuildContext context,
+    AggregatedItem item,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    return _DetailActionButton(
+      label: l10n.deleteDownloadedFiles,
+      icon: Icons.delete_outline,
+      onPressed: () => _DeleteDownloadButton.confirmDelete(
+        context,
+        item,
+        onDeleted: () {
+          if (mounted) {
+            setState(() => _availableOffline = false);
+          }
+        },
+      ),
+      isActive: true,
+      activeColor: const Color(0xFFFF4757),
+    );
+  }
+
+  /// The count-based overflow decision, extracted pure so the Spotlight cap
+  /// (Play + 3 secondaries + ellipsis, strictly) is pinned by tests.
+  ///
+  /// [totalButtons] counts every button including the primary Play slot.
+  /// On the modern mobile layout the full-width primary sits on its own row,
+  /// so it neither occupies a visible slot nor counts toward the split. In
+  /// [overflowAsMenu] (Spotlight) mode overflow triggers as soon as one more
+  /// button exists than the visible slots hold, even when the ellipsis menu
+  /// would hold a single action. Otherwise a row exactly at the cap stays
+  /// inline.
+  @visibleForTesting
+  static ({int visibleCount, bool needsOverflow}) countSplit({
+    required int totalButtons,
+    required int maxVisible,
+    required bool isModernMobile,
+    required bool overflowAsMenu,
+    required bool countCapped,
+  }) {
+    final secondaryCount = isModernMobile ? totalButtons - 1 : totalButtons;
+    final visibleCount = isModernMobile ? maxVisible : maxVisible - 1;
+    final overflowThreshold = overflowAsMenu
+        ? (isModernMobile ? visibleCount - 1 : visibleCount)
+        : maxVisible;
+    return (
+      visibleCount: visibleCount,
+      needsOverflow: countCapped && secondaryCount > overflowThreshold,
+    );
   }
 
   int _calculateMaxVisibleButtons(BuildContext context) {
@@ -6158,7 +6592,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     final resolution = manager.currentResolution;
     if (queued?.id == item.id &&
         resolution != null &&
-        resolution.mediaStreams.isNotEmpty) {
+        resolution.mediaStreams.isNotEmpty &&
+        !manager.streamsOutdatedFor(item.id)) {
       return resolution.mediaStreams;
     }
     return mediaStreamsForItem(item, selectedSource);
@@ -6351,9 +6786,10 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     final subtitleStreams = mediaStreams
         .where((s) => s['Type'] == 'Subtitle')
         .toList();
-    final audioStreams = _streamsForTrackSelectors(item, selectedSource)
-        .where((s) => s['Type'] == 'Audio')
-        .toList();
+    final audioStreams = _streamsForTrackSelectors(
+      item,
+      selectedSource,
+    ).where((s) => s['Type'] == 'Audio').toList();
 
     final canShowDownloadActions =
         _isDownloadable(item.type) && userCanDownload();
@@ -6506,8 +6942,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           // A series keeps the button even when nothing was counted for it,
           // since a trailer in a season folder belongs to that season and
           // isn't counted against the series it came from.
-          : (item.type == 'Series' ||
-                    hasTrailer(item, viewModel.features)) &&
+          : (item.type == 'Series' || hasTrailer(item, viewModel.features)) &&
                 shows(DetailButton.trailer))
         DetailButton.trailer: _DetailActionButton(
           label: l10n.trailer,
@@ -6550,11 +6985,12 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         DetailButton.personalRating: _DetailActionButton(
           label: _personalRatingActionLabel(l10n, item),
           icon: switch (_personalRatingStyle()) {
-            PersonalRatingStyle.thumbs => _displayRatingLikes(item) == true
-                ? Icons.thumb_up
-                : _displayRatingLikes(item) == false
-                ? Icons.thumb_down
-                : Icons.thumb_up_outlined,
+            PersonalRatingStyle.thumbs =>
+              _displayRatingLikes(item) == true
+                  ? Icons.thumb_up
+                  : _displayRatingLikes(item) == false
+                  ? Icons.thumb_down
+                  : Icons.thumb_up_outlined,
             PersonalRatingStyle.stars => Icons.star_outline,
             PersonalRatingStyle.numeric => Icons.numbers,
           },
@@ -6573,7 +7009,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         ),
       if (!isBook && shows(DetailButton.playlist))
         DetailButton.playlist: _DetailActionButton(
-          label: l10n.playlist,
+          label: l10n.addToPlaylist,
           icon: Icons.playlist_add,
           onPressed: () => AddToPlaylistDialog.show(
             context,
@@ -6582,10 +7018,15 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           ),
         ),
       if (canShowDownloadActions && shows(DetailButton.download))
-        DetailButton.download: _DownloadButton(item: item, viewModel: viewModel),
-      if (canShowDownloadActions && shows(DetailButton.deleteFiles) && _availableOffline)
+        DetailButton.download: _DownloadButton(
+          item: item,
+          viewModel: viewModel,
+        ),
+      if (canShowDownloadActions &&
+          shows(DetailButton.deleteFiles) &&
+          _availableOffline)
         DetailButton.deleteFiles: _DeleteDownloadButton(item: item),
-      if (item.type == 'Episode' &&
+      if ((item.type == 'Episode' || item.type == 'Season') &&
           item.seriesId != null &&
           shows(DetailButton.goToSeries))
         DetailButton.goToSeries: _DetailActionButton(
@@ -6611,7 +7052,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         ),
       if (seerr != null && shows(DetailButton.seerrWatchlist))
         DetailButton.seerrWatchlist: _DetailActionButton(
-          label: onWatchlist ? l10n.onWatchlist : l10n.watchlist,
+          label: onWatchlist ? l10n.removeFromWatchlist : l10n.addToWatchlist,
           icon: onWatchlist ? Icons.bookmark : Icons.bookmark_border,
           onPressed: () => seerr.toggleWatchlist(),
           isActive: onWatchlist,
@@ -6623,8 +7064,14 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         DetailButton.seerrReportIssue: _DetailActionButton(
           label: l10n.reportIssue,
           icon: Icons.report_problem_outlined,
-          onPressed: () =>
-              showSeerrReportIssueDialog(context: context, vm: seerr),
+          onPressed: () => showSeerrReportIssueDialog(
+            context: context,
+            vm: seerr,
+            initialSeason: item.type == 'Episode'
+                ? item.parentIndexNumber
+                : (item.type == 'Season' ? item.indexNumber : null),
+            initialEpisode: item.type == 'Episode' ? item.indexNumber : null,
+          ),
         ),
       if (seerr != null &&
           seerr.canManageRequests &&
@@ -6636,11 +7083,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           onPressed: () =>
               showSeerrManageRequestsSheet(context: context, vm: seerr),
         ),
-      if ((GetIt.instance<UserRepository>().currentUser?.isAdministrator ??
-              false) &&
-          GetIt.instance<MediaServerClient>().serverType ==
-              ServerType.jellyfin &&
-          shows(DetailButton.admin))
+      if (_adminActionsFor(item).isNotEmpty && shows(DetailButton.admin))
         DetailButton.admin: _DetailActionButton(
           label: l10n.admin,
           icon: Icons.settings,
@@ -6717,8 +7160,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       primaryAction = requestSlot(false) ?? requestSlot(true) ?? cancelSlot();
       byButton.removeWhere(
         (button, _) =>
-            !button.availableInSeerrOnly ||
-            button == DetailButton.seerrRequest,
+            !button.availableInSeerrOnly || button == DetailButton.seerrRequest,
       );
     } else {
       primaryAction = playButton;
@@ -6730,10 +7172,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         DetailButton.values,
         (button) => button.id,
         prefs,
-      )) ...[
-        ?byButton[button],
-        ?cancelByButton[button],
-      ],
+      )) ...[?byButton[button], ?cancelByButton[button]],
     ];
 
     if (isNeon) {
@@ -6768,6 +7207,145 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       }).toList();
     }
 
+    if (widget.nouveauStyle) {
+      final orderedSecondaryButtons = <_DetailActionButton>[
+        for (final detailButton in detailButtonLayout.ordered(
+          DetailButton.values,
+          (button) => button.id,
+          prefs,
+        )) ...[
+          if (byButton[detailButton] case final btn?)
+            ?_actionForOverflow(context, btn),
+          if (cancelByButton[detailButton] case final btn?)
+            ?_actionForOverflow(context, btn),
+        ],
+      ];
+
+      // A null primary only means there is nothing to play, and the secondary
+      // actions still stand on their own. NouveauActionButtons shrinks itself
+      // when every slot is empty.
+      final primaryButton = primaryAction is _DetailActionButton
+          ? primaryAction
+          : null;
+
+      final primaryFocusNode =
+          widget.tvPlayFocusNode ?? _primaryFocusNode(0);
+
+      final runtime = item.runtime;
+      final playbackPosition =
+          item.playbackPosition ?? Duration.zero;
+
+      double? playbackProgress;
+      String? remainingLabel;
+
+      if (runtime != null &&
+          runtime.inMilliseconds > 0 &&
+          playbackPosition.inMilliseconds > 0 &&
+          playbackPosition < runtime) {
+        playbackProgress =
+            (playbackPosition.inMilliseconds /
+                runtime.inMilliseconds)
+                .clamp(0.0, 1.0);
+
+        final remaining = runtime - playbackPosition;
+
+        final remainingMinutes =
+        (remaining.inSeconds / 60).ceil();
+
+        if (remainingMinutes >= 60) {
+          final hours = remainingMinutes ~/ 60;
+          final minutes = remainingMinutes % 60;
+
+          final formatted = minutes > 0
+              ? '${hours}h ${minutes}m'
+              : '${hours}h';
+
+          remainingLabel = l10n.timeRemaining(formatted);
+        } else if (remainingMinutes > 0) {
+          remainingLabel =
+              l10n.timeRemaining('${remainingMinutes}m');
+        }
+      }
+
+      final nouveauPrimaryAction = primaryButton == null
+          ? null
+          : _toNouveauAction(
+              primaryButton,
+              focusNode: primaryFocusNode,
+              progress: playbackProgress,
+              trailingLabel: remainingLabel,
+              onArrowUp:
+                  NavigationLayout.focusNavbarNotifier.value != null ||
+                      widget.upTarget != null
+                  ? _focusUpTarget
+                  : null,
+              onArrowDown: widget.downTarget != null
+                  ? _focusDownTarget
+                  : null,
+              onArrowLeft: _focusSidebar,
+              onArrowRight: orderedSecondaryButtons.isNotEmpty
+                  ? () => _primaryFocusNode(1).requestFocus()
+                  : widget.onArrowRightAtEnd,
+            );
+
+      final secondaryActions = orderedSecondaryButtons.asMap().entries.map((
+        entry,
+      ) {
+        final index = entry.key;
+        final button = entry.value;
+        final focusIndex = index + 1;
+
+        return _toNouveauAction(
+          button,
+          focusNode: _primaryFocusNode(focusIndex),
+          onArrowUp:
+              NavigationLayout.focusNavbarNotifier.value != null ||
+                  widget.upTarget != null
+              ? _focusUpTarget
+              : null,
+          onArrowDown: widget.downTarget != null
+              ? _focusDownTarget
+              : null,
+          // With no primary button there is nothing to the left of the first
+          // secondary, so fall back to the sidebar the primary would have used.
+          onArrowLeft: index == 0
+              ? (primaryButton == null
+                    ? _focusSidebar
+                    : () => primaryFocusNode.requestFocus())
+              : () => _primaryFocusNode(focusIndex - 1).requestFocus(),
+          onArrowRight: index == orderedSecondaryButtons.length - 1
+              ? widget.onArrowRightAtEnd
+              : () => _primaryFocusNode(focusIndex + 1).requestFocus(),
+        );
+      }).toList();
+
+      final rowContent = NouveauActionButtons(
+        primaryAction: nouveauPrimaryAction,
+        secondaryActions: secondaryActions,
+      );
+
+      final downloads = seerrItemDownloads(viewModel);
+
+      final withDownloads = downloads == null
+          ? rowContent
+          : Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          rowContent,
+          SeerrItemDownloadBars(
+            state: downloads,
+          ),
+        ],
+      );
+
+      return Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        child: withDownloads,
+      );
+    }
+
     final compact =
         (widget.modernStyle && _isCompact(context)) ||
         !_useDesktopDetailLayout(context);
@@ -6788,7 +7366,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     final bool isModernMobile = widget.modernStyle && _isCompact(context);
     // Series/Season keep the two-column inline-Play layout on TV/desktop; on the
     // compact (mobile) layout every type uses the full-width primary + overflow.
-    final bool isTwoColumnLayout = !isModernMobile && isTvShow;
+    // The menu-overflow (Spotlight) mode uses the count split for every type.
+    final bool isTwoColumnLayout =
+        !widget.overflowAsMenu && !isModernMobile && isTvShow;
 
     // The buttons only fold into More once they stop fitting on one line.
     // Measuring the worst case, where whichever button is focused has grown
@@ -6802,7 +7382,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         .map((button) => button.label)
         .firstOrNull;
     final fitsOneLine = widget.modernStyle && rowBudget != null
-        ? _modernRowWorstWidth(
+        ? modernRowWorstWidth(
                 allButtons.length,
                 buttonSpacing,
                 _modernPlayFocusedWidth(playLabel),
@@ -6839,15 +7419,18 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     } else {
       // On mobile the full-width primary sits on its own row, so it does not
       // occupy a slot in the secondary row: exclude it from the count and split.
-      final int secondaryCount = isModernMobile
-          ? allButtons.length - 1
-          : allButtons.length;
-      final int visibleCount = isModernMobile ? maxVisible : maxVisible - 1;
-      needsOverflow =
-          (compact ||
-              PlatformDetection.isTV ||
-              widget.maxVisibleButtonsOverride != null) &&
-          secondaryCount > maxVisible;
+      final split = countSplit(
+        totalButtons: allButtons.length,
+        maxVisible: maxVisible,
+        isModernMobile: isModernMobile,
+        overflowAsMenu: widget.overflowAsMenu,
+        countCapped:
+            compact ||
+            PlatformDetection.isTV ||
+            widget.maxVisibleButtonsOverride != null,
+      );
+      final int visibleCount = split.visibleCount;
+      needsOverflow = split.needsOverflow;
       if (needsOverflow) {
         primaryButtons = allButtons.take(visibleCount).toList();
         extraButtons = allButtons.skip(visibleCount).toList();
@@ -7028,8 +7611,12 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       }).toList();
 
       final moreButton = _DetailActionButton(
-        label: _expanded ? l10n.less : l10n.more,
-        icon: _expanded ? Icons.expand_less : Icons.expand_more,
+        label: widget.overflowAsMenu
+            ? l10n.spotlightMoreActions
+            : (_expanded ? l10n.less : l10n.more),
+        icon: widget.overflowAsMenu
+            ? Icons.more_horiz
+            : (_expanded ? Icons.expand_less : Icons.expand_more),
         focusNode: widget.actionRowRightFocusNode ?? _overflowMoreFocusNode,
         onFocused: () => widget.onFocusExtra?.call(false),
         onArrowUp:
@@ -7053,7 +7640,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           );
         },
         onArrowRight: widget.onArrowRightAtEnd ?? () {},
-        onPressed: () => setState(() => _expanded = !_expanded),
+        onPressed: widget.overflowAsMenu
+            ? () => unawaited(_showOverflowMenu(context, extraButtons))
+            : () => setState(() => _expanded = !_expanded),
       );
 
       if (widget.modernStyle) {
@@ -7237,8 +7826,20 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     return '${m}m';
   }
 
+  Set<DetailAdminAction> _adminActionsFor(AggregatedItem item) =>
+      detailAdminActions(
+        serverType: GetIt.instance<MediaServerClient>().serverType,
+        isAdministrator:
+            GetIt.instance<UserRepository>().currentUser?.isAdministrator ??
+            false,
+        isTV: PlatformDetection.isTV,
+        itemType: item.type,
+        canDelete: item.canDelete,
+      );
+
   void _showAdminDialog(BuildContext context, AggregatedItem item) {
     final l10n = AppLocalizations.of(context);
+    final actions = _adminActionsFor(item);
     showDialog(
       context: context,
       builder: (dialogCtx) {
@@ -7254,7 +7855,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (canIdentifyItemType(item.type))
+              if (actions.contains(DetailAdminAction.identify))
                 Focus(
                   onKeyEvent: (_, event) {
                     if (isActivateKey(event)) {
@@ -7297,7 +7898,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                             horizontal: 16,
                           ),
                           decoration: BoxDecoration(
-                            color: hasFocus ? Colors.white12 : Colors.transparent,
+                            color: hasFocus
+                                ? Colors.white12
+                                : Colors.transparent,
                             borderRadius: AppRadius.circular(8),
                           ),
                           child: Row(
@@ -7315,7 +7918,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                     },
                   ),
                 ),
-              if (!PlatformDetection.isTV)
+              if (actions.contains(DetailAdminAction.editMetadata))
                 Focus(
                   onKeyEvent: (_, event) {
                     if (isActivateKey(event)) {
@@ -7362,60 +7965,61 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                     },
                   ),
                 ),
-              Focus(
-                onKeyEvent: (_, event) {
-                  if (isActivateKey(event)) {
-                    Navigator.of(dialogCtx).pop();
-                    ChangeArtworkDialog.show(context, item: item).then((
-                      changed,
-                    ) {
-                      if (changed == true) {
-                        viewModel.load();
-                      }
-                    });
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: Builder(
-                  builder: (buttonCtx) {
-                    final hasFocus = Focus.of(buttonCtx).hasFocus;
-                    return InkWell(
-                      onTap: () async {
-                        Navigator.of(dialogCtx).pop();
-                        final changed = await ChangeArtworkDialog.show(
-                          context,
-                          item: item,
-                        );
+              if (actions.contains(DetailAdminAction.changeArtwork))
+                Focus(
+                  onKeyEvent: (_, event) {
+                    if (isActivateKey(event)) {
+                      Navigator.of(dialogCtx).pop();
+                      ChangeArtworkDialog.show(context, item: item).then((
+                        changed,
+                      ) {
                         if (changed == true) {
                           viewModel.load();
                         }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: hasFocus ? Colors.white12 : Colors.transparent,
-                          borderRadius: AppRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.image, color: Colors.white70),
-                            const SizedBox(width: 12),
-                            Text(
-                              l10n.changeArtwork,
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                      });
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
                   },
+                  child: Builder(
+                    builder: (buttonCtx) {
+                      final hasFocus = Focus.of(buttonCtx).hasFocus;
+                      return InkWell(
+                        onTap: () async {
+                          Navigator.of(dialogCtx).pop();
+                          final changed = await ChangeArtworkDialog.show(
+                            context,
+                            item: item,
+                          );
+                          if (changed == true) {
+                            viewModel.load();
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: hasFocus ? Colors.white12 : Colors.transparent,
+                            borderRadius: AppRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.image, color: Colors.white70),
+                              const SizedBox(width: 12),
+                              Text(
+                                l10n.changeArtwork,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              if (item.canDelete)
+              if (actions.contains(DetailAdminAction.delete))
                 Focus(
                   onKeyEvent: (_, event) {
                     if (isActivateKey(event)) {
@@ -7439,7 +8043,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                             horizontal: 16,
                           ),
                           decoration: BoxDecoration(
-                            color: hasFocus ? Colors.white12 : Colors.transparent,
+                            color: hasFocus
+                                ? Colors.white12
+                                : Colors.transparent,
                             borderRadius: AppRadius.circular(8),
                           ),
                           child: Row(
@@ -7514,7 +8120,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     final manager = GetIt.instance<PlaybackManager>();
     return computeEffectiveAudioIndex(
       audioStreams: audioStreams,
-      preferredAudioLanguage: manager.lastExplicitAudioLanguage ??
+      preferredAudioLanguage:
+          manager.lastExplicitAudioLanguage ??
           prefs.get(UserPreferences.defaultAudioLanguage),
       fallbackAudioLanguage: prefs.get(UserPreferences.fallbackAudioLanguage),
       preferDefaultAudioTrack: prefs.get(
@@ -7735,7 +8342,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     );
   }
 
-  void _play(
+  Future<void> _play(
     BuildContext context,
     AggregatedItem item, {
     bool resume = false,
@@ -7769,6 +8376,18 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     }
   }
 
+  Future<void> playItem(
+      BuildContext context,
+      AggregatedItem item, {
+        bool resume = false,
+      }) {
+    return _play(
+      context,
+      item,
+      resume: resume,
+    );
+  }
+
   void _shuffle(BuildContext context, AggregatedItem item) async {
     if (_playLaunchInFlight) return;
     _playLaunchInFlight = true;
@@ -7800,7 +8419,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       case 'AlbumArtist':
         if (viewModel.tracks.isNotEmpty) return viewModel.tracks.length > 1;
         if (viewModel.albums.isNotEmpty) return true;
-        final childCount = item.rawData['ChildCount'] ?? item.rawData['SongCount'];
+        final childCount =
+            item.rawData['ChildCount'] ?? item.rawData['SongCount'];
         if (childCount is num) return childCount > 1;
         return true;
       case 'MusicAlbum':
@@ -8276,7 +8896,10 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           e.playbackPosition! > Duration.zero,
     );
     if (resumeIndex >= 0) {
-      return (resumeIndex, items[resumeIndex].playbackPosition ?? Duration.zero);
+      return (
+        resumeIndex,
+        items[resumeIndex].playbackPosition ?? Duration.zero,
+      );
     }
 
     final nextUnwatchedIndex = items.indexWhere((e) => !e.isPlayed);
@@ -8448,10 +9071,18 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                 ]);
             final directAllowed = !dvForceTranscode && !forceTranscode;
 
-            final epMediaStreams = _mediaStreamsForCurrentSelection(selectedEpisode);
-            final epAudioStreams = epMediaStreams.where((s) => s['Type'] == 'Audio').toList();
-            final epSubtitleStreams = epMediaStreams.where((s) => s['Type'] == 'Subtitle').toList();
-            final epAudioStreamIndex = _effectiveAudioStreamIndex(epAudioStreams);
+            final epMediaStreams = _mediaStreamsForCurrentSelection(
+              selectedEpisode,
+            );
+            final epAudioStreams = epMediaStreams
+                .where((s) => s['Type'] == 'Audio')
+                .toList();
+            final epSubtitleStreams = epMediaStreams
+                .where((s) => s['Type'] == 'Subtitle')
+                .toList();
+            final epAudioStreamIndex = _effectiveAudioStreamIndex(
+              epAudioStreams,
+            );
             final epSubtitleStreamIndex = _effectiveSubtitleStreamIndex(
               epSubtitleStreams,
               epAudioStreams,
@@ -8510,10 +9141,18 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                 ]);
             final directAllowed = !dvForceTranscode && !forceTranscode;
 
-            final epMediaStreams = _mediaStreamsForCurrentSelection(selectedEpisode);
-            final epAudioStreams = epMediaStreams.where((s) => s['Type'] == 'Audio').toList();
-            final epSubtitleStreams = epMediaStreams.where((s) => s['Type'] == 'Subtitle').toList();
-            final epAudioStreamIndex = _effectiveAudioStreamIndex(epAudioStreams);
+            final epMediaStreams = _mediaStreamsForCurrentSelection(
+              selectedEpisode,
+            );
+            final epAudioStreams = epMediaStreams
+                .where((s) => s['Type'] == 'Audio')
+                .toList();
+            final epSubtitleStreams = epMediaStreams
+                .where((s) => s['Type'] == 'Subtitle')
+                .toList();
+            final epAudioStreamIndex = _effectiveAudioStreamIndex(
+              epAudioStreams,
+            );
             final epSubtitleStreamIndex = _effectiveSubtitleStreamIndex(
               epSubtitleStreams,
               epAudioStreams,
@@ -8657,9 +9296,15 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
             final directAllowed = !dvForceTranscode && !forceTranscode;
 
             final epMediaStreams = _mediaStreamsForCurrentSelection(targetItem);
-            final epAudioStreams = epMediaStreams.where((s) => s['Type'] == 'Audio').toList();
-            final epSubtitleStreams = epMediaStreams.where((s) => s['Type'] == 'Subtitle').toList();
-            final epAudioStreamIndex = _effectiveAudioStreamIndex(epAudioStreams);
+            final epAudioStreams = epMediaStreams
+                .where((s) => s['Type'] == 'Audio')
+                .toList();
+            final epSubtitleStreams = epMediaStreams
+                .where((s) => s['Type'] == 'Subtitle')
+                .toList();
+            final epAudioStreamIndex = _effectiveAudioStreamIndex(
+              epAudioStreams,
+            );
             final epSubtitleStreamIndex = _effectiveSubtitleStreamIndex(
               epSubtitleStreams,
               epAudioStreams,
@@ -8716,7 +9361,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                 parentId: item.id,
                 includeItemTypes: const ['Audio'],
                 sortBy: 'ParentIndexNumber,IndexNumber,SortName',
-                fields: 'PrimaryImageAspectRatio,BasicSyncInfo,UserData,RunTimeTicks',
+                fields:
+                    'PrimaryImageAspectRatio,BasicSyncInfo,UserData,RunTimeTicks',
               );
               tracks = _mapRawItemsForServer(data['Items'], item.serverId);
             }
@@ -8746,10 +9392,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
             // beginning, matching standard music player behavior.
             await runPlaybackStart(
               launchSession,
-              () => manager.playItems(
-                tracks,
-                startIndex: albumStartIndex,
-              ),
+              () => manager.playItems(tracks, startIndex: albumStartIndex),
             );
             break;
 
@@ -8774,7 +9417,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
 
             // Start at the first unwatched item, or resume the one left partway
             // through, instead of always restarting from the top.
-            final (startIndex, startPosition) = _resolveQueueResumeStart(tracks);
+            final (startIndex, startPosition) = _resolveQueueResumeStart(
+              tracks,
+            );
 
             // Playlists can contain video, so honor the Dolby Vision
             // force-transcode check before allowing direct play/stream.
@@ -8803,49 +9448,51 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
               return childType == 'Audio' || childType == 'AudioBook';
             }
 
-            final data = await client.itemsApi.getItems(
-              parentId: item.id,
-              includeItemTypes: const ['Audio', 'AudioBook'],
-              sortBy: 'ParentIndexNumber,IndexNumber,SortName',
-              fields: audioChildFields,
-            );
-            // A container audiobook lists its chapters as child items. A
-            // single-file audiobook is a leaf: Jellyfin answers a ParentId query
-            // against a leaf by ignoring the filter and returning the top-level
-            // libraries (CollectionFolder/UserView), so keep only real tracks.
-            final rawChildren = (data['Items'] as List?) ?? const [];
-            final childItems = rawChildren.where(isAudioChild).toList();
-            if (childItems.isNotEmpty) {
-              final children = _mapRawItemsForServer(childItems, item.serverId);
-              int startIndex = 0;
-              Duration startPos = Duration.zero;
-              if (resume) {
-                final resumeIdx = children.indexWhere(
-                  (e) =>
-                      !e.isPlayed &&
-                      ((e.playbackPosition?.inMilliseconds ?? 0) > 0 ||
-                          (e.playedPercentage ?? 0) > 0),
-                );
-                if (resumeIdx >= 0) {
-                  startIndex = resumeIdx;
-                  startPos =
-                      children[resumeIdx].playbackPosition ?? Duration.zero;
-                } else {
-                  final nextUnplayed = children.indexWhere((e) => !e.isPlayed);
-                  if (nextUnplayed >= 0) {
-                    startIndex = nextUnplayed;
+            // A container audiobook lists its chapters as child items, so only
+            // a folder is worth asking about. A ParentId query against a leaf
+            // times the server out, and where it answers it ignores the filter
+            // and hands back the top level libraries, which the check drops.
+            if (item.isFolder) {
+              final data = await client.itemsApi.getItems(
+                parentId: item.id,
+                includeItemTypes: const ['Audio', 'AudioBook'],
+                sortBy: 'ParentIndexNumber,IndexNumber,SortName',
+                fields: audioChildFields,
+              );
+              final rawChildren = (data['Items'] as List?) ?? const [];
+              final childItems = rawChildren.where(isAudioChild).toList();
+              if (childItems.isNotEmpty) {
+                final children = _mapRawItemsForServer(childItems, item.serverId);
+                int startIndex = 0;
+                Duration startPos = Duration.zero;
+                if (resume) {
+                  final resumeIdx = children.indexWhere(
+                    (e) =>
+                        !e.isPlayed &&
+                        ((e.playbackPosition?.inMilliseconds ?? 0) > 0 ||
+                            (e.playedPercentage ?? 0) > 0),
+                  );
+                  if (resumeIdx >= 0) {
+                    startIndex = resumeIdx;
+                    startPos =
+                        children[resumeIdx].playbackPosition ?? Duration.zero;
+                  } else {
+                    final nextUnplayed = children.indexWhere((e) => !e.isPlayed);
+                    if (nextUnplayed >= 0) {
+                      startIndex = nextUnplayed;
+                    }
                   }
                 }
+                await runPlaybackStart(
+                  launchSession,
+                  () => manager.playItems(
+                    children,
+                    startIndex: startIndex,
+                    startPosition: startPos,
+                  ),
+                );
+                break;
               }
-              await runPlaybackStart(
-                launchSession,
-                () => manager.playItems(
-                  children,
-                  startIndex: startIndex,
-                  startPosition: startPos,
-                ),
-              );
-              break;
             }
 
             // Leaf audiobook: enqueue the sibling chapters from the parent
@@ -8868,8 +9515,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
                 final targetSibling = siblings[startIndex];
                 final startPos = resume
                     ? (targetSibling.playbackPosition ??
-                        item.playbackPosition ??
-                        Duration.zero)
+                          item.playbackPosition ??
+                          Duration.zero)
                     : Duration.zero;
                 await runPlaybackStart(
                   launchSession,
@@ -8940,9 +9587,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     AggregatedItem item,
   ) async {
     final manager = GetIt.instance<PlaybackManager>();
-    Future<
-      ({List<AggregatedItem> queue, bool isAudio, bool forceTranscode})?
-    >
+    Future<({List<AggregatedItem> queue, bool isAudio, bool forceTranscode})?>
     prepareQueue(PlaybackLaunchSession? session) async {
       // With a player route already up, the session is the lifecycle: the
       // rotation the player forces on a phone unmounts this context while
@@ -8978,19 +9623,18 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       PlaybackLaunchSession? launchSession,
       ({List<AggregatedItem> queue, bool isAudio, bool forceTranscode})
       prepared,
-    ) =>
-        _runWithDolbyVisionStartupFallbackPrompt(
-          context,
-          manager,
-          () => runPlaybackStart(
-            launchSession,
-            () => manager.playItems(
-              prepared.queue,
-              enableDirectPlay: !prepared.forceTranscode,
-              enableDirectStream: !prepared.forceTranscode,
-            ),
-          ),
-        );
+    ) => _runWithDolbyVisionStartupFallbackPrompt(
+      context,
+      manager,
+      () => runPlaybackStart(
+        launchSession,
+        () => manager.playItems(
+          prepared.queue,
+          enableDirectPlay: !prepared.forceTranscode,
+          enableDirectStream: !prepared.forceTranscode,
+        ),
+      ),
+    );
 
     final canOpenVideoBeforeQueueWork = switch (item.type) {
       'Series' || 'Season' || 'BoxSet' => true,
@@ -9017,8 +9661,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       destination: prepared.isAudio
           ? Destinations.audioPlayer
           : Destinations.videoPlayer,
-      startPlayback: (launchSession) =>
-          startPlayback(launchSession, prepared),
+      startPlayback: (launchSession) => startPlayback(launchSession, prepared),
     );
   }
 
@@ -9085,9 +9728,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     List<AggregatedItem> features,
   ) {
     final candidates = features
-        .where(
-          (feature) => isTrailerFeature(feature) && feature.id.isNotEmpty,
-        )
+        .where((feature) => isTrailerFeature(feature) && feature.id.isNotEmpty)
         .toList(growable: false);
     return _preferredLocalTrailer(candidates);
   }
@@ -9192,11 +9833,10 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         context,
         destination: Destinations.videoPlayer,
         startPlayback: (launchSession) async {
-          final forceTranscode =
-              await shouldForceTranscodeForDolbyVisionQueue(
-                context,
-                [localTrailer!],
-              );
+          final forceTranscode = await shouldForceTranscodeForDolbyVisionQueue(
+            context,
+            [localTrailer!],
+          );
           if (!context.mounted) return false;
           return _runWithDolbyVisionStartupFallbackPrompt(
             context,
@@ -9313,6 +9953,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     );
 
     if (found != null) {
+      // The playing session resolved before the download, so its stream list
+      // has to stop standing in for the item the reload is about to bring back.
+      GetIt.instance<PlaybackManager>().markStreamsOutdated(currentItem.id);
       await viewModel.load();
     }
     return found;
@@ -9333,7 +9976,8 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       results = await withProgressSnackBar(
         messenger,
         AppLocalizations.of(context).searchingSubtitles,
-        () => client.itemsApi.searchRemoteSubtitles(item.id, language: language),
+        () =>
+            client.itemsApi.searchRemoteSubtitles(item.id, language: language),
       );
     } catch (error) {
       if (!context.mounted) {
@@ -9806,7 +10450,9 @@ Future<_DolbyVisionPlayDecision?> _showDolbyVisionFallbackDecisionDialog(
   );
 }
 
-Future<bool> _anyItemHasCompletedDownload(Iterable<AggregatedItem> items) async {
+Future<bool> _anyItemHasCompletedDownload(
+  Iterable<AggregatedItem> items,
+) async {
   final repo = GetIt.instance<OfflineRepository>();
   for (final item in items) {
     final row = await repo.getItem(item.id);
@@ -10103,6 +10749,12 @@ class _DownloadButton extends StatefulWidget {
     this.suppressAutoScrollToTop = false,
   });
 
+  static void showDownloadOptions(
+    BuildContext context,
+    AggregatedItem item,
+    DownloadService service,
+  ) => _DownloadButtonState._showDownloadOptionsFor(context, item, service);
+
   @override
   State<_DownloadButton> createState() => _DownloadButtonState();
 }
@@ -10111,12 +10763,23 @@ class _DownloadButtonState extends State<_DownloadButton> {
   bool _isOffline = false;
   DownloadService? _downloadService;
 
-  String _originalQualitySubtitle(
+  static String _originalQualitySubtitle(
+    BuildContext context,
     AggregatedItem item, {
     required bool isMulti,
+    List<AggregatedItem> batchItems = const [],
   }) {
+    final l10n = AppLocalizations.of(context);
     if (isMulti) {
-      return AppLocalizations.of(context).originalFilesNoReencoding;
+      final sizeLabel = _batchSizeLabel(
+        context,
+        batchItems,
+        sourceSizeBytes,
+        l10n.downloadSizeTotal,
+      );
+      return sizeLabel == null
+          ? l10n.originalFilesNoReencoding
+          : '$sizeLabel • ${l10n.originalFilesNoReencoding}';
     }
 
     final mediaSource = item.mediaSources.isNotEmpty
@@ -10143,83 +10806,69 @@ class _DownloadButtonState extends State<_DownloadButton> {
     }
 
     if (details.isEmpty) {
-      return AppLocalizations.of(context).originalFileNoReencoding;
+      return l10n.originalFileNoReencoding;
     }
 
     return details.join(' • ');
   }
 
-  String _qualitySubtitle(
+  static String _qualitySubtitle(
+    BuildContext context,
     AggregatedItem item,
     DownloadQuality quality, {
     required bool supportsTranscoding,
     required bool isMulti,
-    String? multiEstimateSubtitle,
+    List<AggregatedItem> batchItems = const [],
   }) {
     if (!quality.isTranscoded || !supportsTranscoding) {
-      return _originalQualitySubtitle(item, isMulti: isMulti);
+      return _originalQualitySubtitle(
+        context,
+        item,
+        isMulti: isMulti,
+        batchItems: batchItems,
+      );
     }
 
-    if (isMulti) {
-      if (multiEstimateSubtitle != null) {
-        return '$multiEstimateSubtitle • ${quality.encodingInfo}';
-      }
-      return '${quality.estimatedSizePerHour} • ${quality.encodingInfo}';
-    }
-
-    final estimateBytes = estimateTranscodedSizeBytes(item, quality);
-    if (estimateBytes != null) {
-      return '~${formatBytes(estimateBytes)} • ${quality.encodingInfo}';
-    }
-
-    return '${quality.estimatedSizePerHour} • ${quality.encodingInfo}';
+    final estimate = isMulti
+        ? _batchSizeLabel(
+            context,
+            batchItems,
+            (batchItem) => estimateTranscodedSizeBytes(batchItem, quality),
+            AppLocalizations.of(context).downloadEstimateTotal,
+          )
+        : switch (estimateTranscodedSizeBytes(item, quality)) {
+            final bytes? => '~${formatBytes(bytes)}',
+            null => null,
+          };
+    return '${estimate ?? quality.estimatedSizePerHour} • ${quality.encodingInfo}';
   }
 
-  String? _multiTranscodedEstimateSubtitle(
-    List<AggregatedItem> episodes,
-    DownloadQuality quality,
+  /// Sums [bytesOf] over [items], skipping items whose size is unknown, and
+  /// formats the total with [label]. Notes how many items were skipped.
+  /// Null when no item had a size.
+  static String? _batchSizeLabel(
+    BuildContext context,
+    List<AggregatedItem> items,
+    int? Function(AggregatedItem item) bytesOf,
+    String Function(String size) label,
   ) {
-    if (episodes.isEmpty) {
-      return null;
-    }
-
     var totalBytes = 0;
-    var estimatedCount = 0;
-    for (final episode in episodes) {
-      final estimate = estimateTranscodedSizeBytes(episode, quality);
-      if (estimate != null && estimate > 0) {
-        totalBytes += estimate;
-        estimatedCount++;
+    var knownCount = 0;
+    for (final item in items) {
+      final bytes = bytesOf(item);
+      if (bytes != null && bytes > 0) {
+        totalBytes += bytes;
+        knownCount++;
       }
     }
+    if (knownCount == 0) return null;
 
-    if (estimatedCount == 0) {
-      return null;
-    }
-
-    final totalLabel = '~${formatBytes(totalBytes)} total';
-    if (estimatedCount == episodes.length) {
-      return totalLabel;
-    }
-
-    return '$totalLabel (${episodes.length - estimatedCount} unknown)';
-  }
-
-  Map<DownloadQuality, String> _multiTranscodedEstimateSubtitles(
-    List<AggregatedItem> episodes,
-    List<DownloadQuality> qualities,
-  ) {
-    final subtitles = <DownloadQuality, String>{};
-    for (final quality in qualities) {
-      if (!quality.isTranscoded) {
-        continue;
-      }
-      final subtitle = _multiTranscodedEstimateSubtitle(episodes, quality);
-      if (subtitle != null) {
-        subtitles[quality] = subtitle;
-      }
-    }
-    return subtitles;
+    final sizeLabel = label(formatBytes(totalBytes));
+    if (knownCount == items.length) return sizeLabel;
+    final unknown = AppLocalizations.of(
+      context,
+    ).downloadEstimateUnknownCount(items.length - knownCount);
+    return '$sizeLabel ($unknown)';
   }
 
   @override
@@ -10256,10 +10905,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
       listenable: downloadService,
       builder: (context, _) {
         final item = widget.item;
-        final isMulti =
-            item.type == 'Season' ||
-            item.type == 'Series' ||
-            item.type == 'BoxSet';
+        final isMulti = _isBatchType(item.type);
         final progress = downloadService.activeDownloads[item.id];
         final downloadError = progress?.error;
         final isBatch = downloadService.isBatchDownloading;
@@ -10339,7 +10985,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
             icon: Icons.download_done,
             isActive: true,
             activeColor: const Color(0xFF4CAF50),
-            onPressed: () => _showQualityPicker(context, downloadService),
+            onPressed: () => _showDownloadOptions(context, downloadService),
           );
         }
 
@@ -10355,42 +11001,390 @@ class _DownloadButtonState extends State<_DownloadButton> {
                   context,
                 ).showSnackBar(SnackBar(content: Text(downloadError)));
               }
-              _showQualityPicker(context, downloadService);
+              _showDownloadOptions(context, downloadService);
             },
           );
         }
 
         return wire(
           label: AppLocalizations.of(context).download,
-          icon: Icons.download,
-          onPressed: () => _showQualityPicker(context, downloadService),
+          icon: Icons.download_for_offline,
+          onPressed: () => _showDownloadOptions(context, downloadService),
         );
       },
     );
   }
 
-  void _showQualityPicker(BuildContext context, DownloadService service) {
-    final item = widget.item;
-    final isMulti =
-        item.type == 'Season' || item.type == 'Series' || item.type == 'BoxSet';
-    final supportsTranscoding = item.type == 'Movie' ||
-        item.type == 'Episode' ||
-        item.type == 'MusicVideo' ||
-        item.type == 'Video' ||
-        isMulti;
-    final estimationItems = item.type == 'BoxSet'
-        ? widget.viewModel.collectionItems
-        : widget.viewModel.episodes;
+  static bool _isBatchType(String? type) =>
+      type == 'Season' || type == 'Series' || type == 'BoxSet';
 
-    if (!isMulti && !supportsTranscoding) {
-      _startDownload(context, service, DownloadQuality.original);
+  /// One line of context under a sheet title.
+  static Widget _sheetNote(BuildContext sheetContext, String text) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        color: PlatformDetection.isTV
+            ? null
+            : Colors.white.withValues(alpha: 0.6),
+      ),
+    ),
+  );
+
+  static Widget _sheetTitle(BuildContext sheetContext, String text) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+    child: Text(
+      text,
+      style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
+
+  void _showDownloadOptions(BuildContext context, DownloadService service) {
+    _showDownloadOptionsFor(context, widget.item, service);
+  }
+
+  /// Entry point for the download button. Series, seasons and collections
+  /// first ask whether to download everything or only unwatched items; single
+  /// items go straight to the quality picker.
+  static void _showDownloadOptionsFor(
+    BuildContext context,
+    AggregatedItem item,
+    DownloadService service,
+  ) {
+    if (_isBatchType(item.type)) {
+      _showScopePicker(context, item, service);
+    } else {
+      _showQualityPicker(context, item, service);
+    }
+  }
+
+  /// Asks whether to download all items or only unwatched ones, then opens
+  /// the quality picker for the chosen list. The list is resolved once here
+  /// so the counts, the size estimates and the queued downloads all agree.
+  static Future<void> _showScopePicker(
+    BuildContext context,
+    AggregatedItem item,
+    DownloadService service,
+  ) async {
+    final isCollection = item.type == 'BoxSet';
+    final seriesId = item.seriesId;
+
+    // Always fetched through the service: the detail view model loads only
+    // overview fields, and the Original row needs media sources for sizes.
+    final Future<List<AggregatedItem>> fetch = switch (item.type) {
+      'Season' =>
+        seriesId == null
+            ? Future.error(StateError('Season ${item.id} has no SeriesId'))
+            : service.fetchEpisodes(seriesId, seasonId: item.id),
+      'Series' => service.fetchEpisodes(item.id),
+      _ => service.fetchBoxSetPlayableItems(item.id),
+    };
+    // Failure becomes null: the sheet subscribes a frame later, so a fast
+    // failure would otherwise surface as an unhandled async error.
+    final Future<List<AggregatedItem>?> itemsFuture = fetch
+        .then<List<AggregatedItem>?>(
+          (items) => items,
+          onError: (Object error) {
+            debugPrint('Download scope fetch failed for ${item.id}: $error');
+            return null;
+          },
+        );
+
+    final autoDownloads =
+        item.type == 'Series' &&
+            GetIt.instance.isRegistered<AutoDownloadService>()
+        ? GetIt.instance<AutoDownloadService>()
+        : null;
+
+    // Set by the auto-download row before it closes the sheet.
+    var autoChosen = false;
+    // Read before the sheet opens so the row knows from its first frame
+    // whether the series is followed. On the stream alone it would offer to
+    // follow one already followed, and a tap that early would follow it
+    // again and move its start date forward.
+    AutoDownloadSubscription? subscription = autoDownloads == null
+        ? null
+        : await autoDownloads.getSubscription(item.id);
+    if (!context.mounted) return;
+
+    final chosen =
+        await showFocusRestoringModalBottomSheet<List<AggregatedItem>>(
+          context: context,
+          isScrollControlled: PlatformDetection.isTV,
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          builder: (sheetContext) {
+            final l10n = AppLocalizations.of(sheetContext);
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sheetTitle(sheetContext, l10n.downloadScopeTitle),
+                  FutureBuilder<List<AggregatedItem>?>(
+                    future: itemsFuture,
+                    builder: (_, snapshot) {
+                      final loading =
+                          snapshot.connectionState != ConnectionState.done;
+                      final allItems =
+                          snapshot.data ?? const <AggregatedItem>[];
+                      if (!loading && allItems.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                          child: Text(
+                            snapshot.data == null
+                                ? l10n.downloadScopeLoadFailed
+                                : isCollection
+                                ? l10n.noItems
+                                : l10n.noEpisodesLoaded,
+                            style: TextStyle(
+                              color: PlatformDetection.isTV
+                                  ? null
+                                  : Colors.white70,
+                            ),
+                          ),
+                        );
+                      }
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _scopeRow(
+                            sheetContext,
+                            item: item,
+                            autofocus: true,
+                            icon: Icons.download_for_offline,
+                            label: isCollection
+                                ? l10n.downloadAllMovies
+                                : l10n.downloadAllEpisodes,
+                            items: allItems,
+                            loading: loading,
+                          ),
+                          _scopeRow(
+                            sheetContext,
+                            item: item,
+                            autofocus: false,
+                            icon: Icons.visibility_off_outlined,
+                            label: isCollection
+                                ? l10n.downloadUnwatchedMovies
+                                : l10n.downloadUnwatchedEpisodes,
+                            items: allItems.where((i) => !i.isPlayed).toList(),
+                            loading: loading,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  if (autoDownloads != null)
+                    _autoDownloadRow(
+                      sheetContext,
+                      item,
+                      autoDownloads,
+                      initial: subscription,
+                      onSubscription: (current) => subscription = current,
+                      onTap: () {
+                        autoChosen = true;
+                        Navigator.pop(sheetContext);
+                      },
+                    ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+    // Opened only after the scope sheet is gone, so the quality picker
+    // restores focus to the Download button rather than to a disposed row.
+    if (!context.mounted) return;
+    if (autoChosen) {
+      await _toggleAutoDownload(context, item, autoDownloads!, existing: subscription);
       return;
     }
+    if (chosen == null) return;
+    _showQualityPicker(context, item, service, items: chosen);
+  }
+
+  /// Follows or unfollows the series. Following asks for a quality first so
+  /// the subscription records one.
+  static Future<void> _toggleAutoDownload(
+    BuildContext context,
+    AggregatedItem item,
+    AutoDownloadService autoDownloads, {
+    required AutoDownloadSubscription? existing,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    if (existing != null) {
+      await autoDownloads.unsubscribe(item.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.autoDownloadStoppedFor(item.name))),
+      );
+      return;
+    }
+    final quality = await _pickQuality(
+      context,
+      item,
+      title: l10n.autoDownloadQualityTitle,
+      note: l10n.autoDownloadTranscodedForegroundNote,
+    );
+    if (quality == null || !context.mounted) return;
+    unawaited(autoDownloads.subscribe(item, quality: quality));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.autoDownloadEnabledFor(item.name))),
+    );
+  }
+
+  /// Third row of a series' scope sheet: subscribe to new episodes, or stop.
+  /// Reports the current subscription through [onSubscription] so the
+  /// caller knows which of the two [onTap] meant.
+  static Widget _autoDownloadRow(
+    BuildContext sheetContext,
+    AggregatedItem item,
+    AutoDownloadService autoDownloads, {
+    required AutoDownloadSubscription? initial,
+    required void Function(AutoDownloadSubscription?) onSubscription,
+    required VoidCallback onTap,
+  }) {
+    final l10n = AppLocalizations.of(sheetContext);
+    final isTV = PlatformDetection.isTV;
+    final keep = GetIt.instance<UserPreferences>().get(
+      UserPreferences.autoDownloadKeepUnwatched,
+    );
+    return StreamBuilder<AutoDownloadSubscription?>(
+      initialData: initial,
+      stream: autoDownloads.watchSubscription(item.id),
+      builder: (_, snapshot) {
+        final subscription = snapshot.data;
+        onSubscription(subscription);
+        final quality = subscription == null
+            ? null
+            : DownloadQuality.fromName(subscription.qualityPreset);
+        return DpadListTile(
+          autofocus: false,
+          leading: AdaptiveIcon(
+            subscription == null ? Icons.autorenew : Icons.stop_circle_outlined,
+            color: isTV ? null : Colors.white70,
+          ),
+          title: Text(
+            subscription == null
+                ? l10n.autoDownloadNewEpisodes
+                : l10n.autoDownloadStop,
+            style: isTV ? null : const TextStyle(color: Colors.white),
+          ),
+          subtitle: Text(
+            subscription == null
+                ? l10n.autoDownloadKeepUnwatchedSubtitle(keep)
+                : AutoDownloadService.isForegroundOnly(quality!)
+                ? '${l10n.autoDownloadStopSubtitle(quality.label)} • ${l10n.autoDownloadForegroundOnly}'
+                : l10n.autoDownloadStopSubtitle(quality.label),
+            style: isTV
+                ? null
+                : TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+          ),
+          onTap: onTap,
+        );
+      },
+    );
+  }
+
+  static Widget _scopeRow(
+    BuildContext sheetContext, {
+    required AggregatedItem item,
+    required bool autofocus,
+    required IconData icon,
+    required String label,
+    required List<AggregatedItem> items,
+    required bool loading,
+  }) {
+    final l10n = AppLocalizations.of(sheetContext);
+    final isTV = PlatformDetection.isTV;
+    final enabled = loading || items.isNotEmpty;
+    final subtitle = loading
+        ? l10n.downloadScopeLoading
+        : item.type == 'BoxSet'
+        ? l10n.itemCountLabel(items.length)
+        : l10n.episodeCount(items.length);
+    return DpadListTile(
+      autofocus: autofocus,
+      enabled: enabled,
+      leading: AdaptiveIcon(icon, color: isTV ? null : Colors.white70),
+      title: Text(
+        label,
+        style: isTV
+            ? null
+            : TextStyle(color: enabled ? Colors.white : Colors.white38),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: isTV
+            ? null
+            : TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+      ),
+      // Always tappable so the row can take focus on TV while loading; the
+      // guard keeps a press during the fetch from selecting an empty list.
+      onTap: () {
+        if (loading) return;
+        Navigator.pop(sheetContext, items);
+      },
+    );
+  }
+
+  /// Shows the quality picker and queues the download. For series, seasons
+  /// and collections [items] is the list resolved by the scope picker and
+  /// drives both the size estimate and what gets queued.
+  static Future<void> _showQualityPicker(
+    BuildContext context,
+    AggregatedItem item,
+    DownloadService service, {
+    List<AggregatedItem>? items,
+  }) async {
+    final isMulti = _isBatchType(item.type);
+    if (!isMulti && !_supportsTranscoding(item.type)) {
+      _startDownload(context, item, service, DownloadQuality.original);
+      return;
+    }
+    final quality = await _pickQuality(
+      context,
+      item,
+      title: isMulti
+          ? AppLocalizations.of(context).downloadAllQuality
+          : AppLocalizations.of(context).downloadQuality,
+      items: items ?? const [],
+    );
+    if (quality == null || !context.mounted) return;
+    _startDownload(context, item, service, quality, items: items);
+  }
+
+  static bool _supportsTranscoding(String? type) =>
+      type == 'Movie' ||
+      type == 'Episode' ||
+      type == 'MusicVideo' ||
+      type == 'Video';
+
+  /// Lets the user pick a quality for [widget.item]; size estimates cover
+  /// [items] for batches. Null when the sheet is dismissed.
+  /// [note] is shown once under the title, for callers where the choice has
+  /// a consequence worth stating.
+  static Future<DownloadQuality?> _pickQuality(
+    BuildContext context,
+    AggregatedItem item, {
+    required String title,
+    List<AggregatedItem> items = const [],
+    String? note,
+  }) {
+    final isMulti = _isBatchType(item.type);
+    final supportsTranscoding = isMulti || _supportsTranscoding(item.type);
+    final batchItems = items;
 
     final sourceWidth = isMulti
         ? (() {
             int? maxWidth;
-            for (final episode in estimationItems) {
+            for (final episode in batchItems) {
               final width = episode.sourceVideoWidth;
               if (width == null) continue;
               maxWidth = maxWidth == null || width > maxWidth
@@ -10405,12 +11399,21 @@ class _DownloadButtonState extends State<_DownloadButton> {
       if (sourceWidth == null) return true;
       return q.maxWidth! <= sourceWidth;
     }).toList();
-    final multiEstimateSubtitles = isMulti
-        ? _multiTranscodedEstimateSubtitles(estimationItems, availableQualities)
-        : const <DownloadQuality, String>{};
-
+    // Computed once: summing a whole series' sizes on every sheet rebuild
+    // (each focus move on TV) is wasted work.
+    final subtitles = {
+      for (final quality in availableQualities)
+        quality: _qualitySubtitle(
+          context,
+          item,
+          quality,
+          supportsTranscoding: supportsTranscoding,
+          isMulti: isMulti,
+          batchItems: batchItems,
+        ),
+    };
     if (PlatformDetection.isTV) {
-      showFocusRestoringModalBottomSheet(
+      return showFocusRestoringModalBottomSheet<DownloadQuality>(
         context: context,
         isScrollControlled: true,
         backgroundColor: const Color(0xFF1E1E1E),
@@ -10426,18 +11429,8 @@ class _DownloadButtonState extends State<_DownloadButton> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Text(
-                    isMulti
-                        ? AppLocalizations.of(sheetContext).downloadAllQuality
-                        : AppLocalizations.of(sheetContext).downloadQuality,
-                    style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                _sheetTitle(sheetContext, title),
+                if (note != null) _sheetNote(sheetContext, note),
                 Flexible(
                   child: ListView(
                     shrinkWrap: true,
@@ -10453,20 +11446,8 @@ class _DownloadButtonState extends State<_DownloadButton> {
                               : Icons.file_copy_outlined,
                         ),
                         title: Text(quality.label),
-                        subtitle: Text(
-                          _qualitySubtitle(
-                            item,
-                            quality,
-                            supportsTranscoding: supportsTranscoding,
-                            isMulti: isMulti,
-                            multiEstimateSubtitle:
-                                multiEstimateSubtitles[quality],
-                          ),
-                        ),
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          _startDownload(context, service, quality);
-                        },
+                        subtitle: Text(subtitles[quality]!),
+                        onTap: () => Navigator.pop(sheetContext, quality),
                       );
                     }).toList(),
                   ),
@@ -10476,10 +11457,9 @@ class _DownloadButtonState extends State<_DownloadButton> {
           ),
         ),
       );
-      return;
     }
 
-    showFocusRestoringModalBottomSheet(
+    return showFocusRestoringModalBottomSheet<DownloadQuality>(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       shape: const RoundedRectangleBorder(
@@ -10490,18 +11470,8 @@ class _DownloadButtonState extends State<_DownloadButton> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text(
-                isMulti
-                    ? AppLocalizations.of(context).downloadAllQuality
-                    : AppLocalizations.of(context).downloadQuality,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            _sheetTitle(context, title),
+            if (note != null) _sheetNote(context, note),
             ...availableQualities.map(
               (quality) => ListTile(
                 leading: AdaptiveIcon(
@@ -10515,19 +11485,10 @@ class _DownloadButtonState extends State<_DownloadButton> {
                   style: const TextStyle(color: Colors.white),
                 ),
                 subtitle: Text(
-                  _qualitySubtitle(
-                    item,
-                    quality,
-                    supportsTranscoding: supportsTranscoding,
-                    isMulti: isMulti,
-                    multiEstimateSubtitle: multiEstimateSubtitles[quality],
-                  ),
+                  subtitles[quality]!,
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _startDownload(context, service, quality);
-                },
+                onTap: () => Navigator.pop(context, quality),
               ),
             ),
             const SizedBox(height: 8),
@@ -10537,49 +11498,37 @@ class _DownloadButtonState extends State<_DownloadButton> {
     );
   }
 
-  void _startDownload(
+  /// Queues the download. [items] is the list chosen in the scope sheet for
+  /// series, seasons and collections; single items leave it null.
+  static void _startDownload(
     BuildContext context,
+    AggregatedItem item,
     DownloadService service,
-    DownloadQuality quality,
-  ) {
-    final item = widget.item;
-    switch (item.type) {
-      case 'Movie':
-      case 'Episode':
-      case 'Audio':
-      case 'AudioBook':
-      case 'Book':
-      case 'MusicVideo':
-      case 'Video':
-        service.downloadItem(item, quality: quality);
-      case 'MusicAlbum':
+    DownloadQuality quality, {
+    List<AggregatedItem>? items,
+  }) {
+    final l10n = AppLocalizations.of(context);
+    final String message;
+    if (items != null) {
+      if (items.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.noEpisodesLoaded)));
+        return;
+      }
+      service.downloadItems(items, quality: quality);
+      message = l10n.downloadingTitle(item.name, items.length);
+    } else {
+      if (item.type == 'MusicAlbum') {
         service.downloadAlbum(item.id, quality: quality);
-      case 'Season':
-        final episodes = widget.viewModel.episodes;
-        if (episodes.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context).noEpisodesLoaded),
-            ),
-          );
-          return;
-        }
-        service.downloadItems(episodes, quality: quality);
-      case 'Series':
-        service.downloadSeries(item.id, quality: quality);
-      case 'BoxSet':
-        service.downloadBoxSet(item.id, quality: quality);
+      } else {
+        service.downloadItem(item, quality: quality);
+      }
+      message = l10n.downloadingItem(item.name, quality.label);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(
-            context,
-          ).downloadingItem(item.name, quality.label),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 }
@@ -10604,6 +11553,16 @@ class _DeleteDownloadButton extends StatefulWidget {
     this.onArrowRight,
     this.suppressAutoScrollToTop = false,
   });
+
+  static Future<void> confirmDelete(
+    BuildContext context,
+    AggregatedItem item, {
+    VoidCallback? onDeleted,
+  }) => _DeleteDownloadButtonState._confirmDelete(
+    context,
+    item,
+    onDeleted: onDeleted,
+  );
 
   @override
   State<_DeleteDownloadButton> createState() => _DeleteDownloadButtonState();
@@ -10648,9 +11607,17 @@ class _DeleteDownloadButtonState extends State<_DeleteDownloadButton> {
     if (_checking || !_hasFiles) return const SizedBox.shrink();
 
     return _DetailActionButton(
-      label: AppLocalizations.of(context).deleteFiles,
+      label: AppLocalizations.of(context).deleteDownloadedFiles,
       icon: Icons.delete_outline,
-      onPressed: () => _confirmDelete(context),
+      onPressed: () => _confirmDelete(
+        context,
+        widget.item,
+        onDeleted: () {
+          if (mounted) {
+            setState(() => _hasFiles = false);
+          }
+        },
+      ),
       isActive: true,
       activeColor: const Color(0xFFFF4757),
       focusNode: widget.focusNode,
@@ -10663,8 +11630,11 @@ class _DeleteDownloadButtonState extends State<_DeleteDownloadButton> {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final item = widget.item;
+  static Future<void> _confirmDelete(
+    BuildContext context,
+    AggregatedItem item, {
+    VoidCallback? onDeleted,
+  }) async {
     final l10n = AppLocalizations.of(context);
     final typeLabel = switch (item.type) {
       'Series' => l10n.deleteSeriesFiles(item.seriesName ?? item.name),
@@ -10713,7 +11683,7 @@ class _DeleteDownloadButtonState extends State<_DeleteDownloadButton> {
           ),
         );
         if (success) {
-          setState(() => _hasFiles = false);
+          onDeleted?.call();
         }
       }
     }
@@ -10738,26 +11708,13 @@ class _PersonalRatingActionIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (style) {
-      PersonalRatingStyle.thumbs => likes == null
-          ? Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.thumb_up_outlined, color: color, size: size * 0.5),
-                  SizedBox(width: size * 0.08),
-                  Icon(
-                    Icons.thumb_down_outlined,
-                    color: color,
-                    size: size * 0.5,
-                  ),
-                ],
-              ),
-            )
-          : Icon(
-              likes! ? Icons.thumb_up : Icons.thumb_down,
-              color: color,
-              size: size * 0.72,
-            ),
+      PersonalRatingStyle.thumbs => Icon(
+        likes == null
+            ? Icons.thumb_up_outlined
+            : (likes! ? Icons.thumb_up : Icons.thumb_down),
+        color: color,
+        size: size * 0.85,
+      ),
       PersonalRatingStyle.stars => _StarFillIcon(
         fill: ((rating ?? 0).clamp(0, 10) / 10).toDouble(),
         size: size * 0.82,
@@ -10919,137 +11876,69 @@ class _DetailActionButtonState extends State<_DetailActionButton>
     required Color labelColor,
   }) {
     final isExpanded = showHighlight;
-    final hasNewline = widget.label.contains('\n');
     final double height = widget.isPrimary
-        ? (isMobile ? (hasNewline ? 56.0 : 50.0) : (hasNewline ? 64.0 : 54.0))
+        ? (isMobile ? 50.0 : 54.0)
         : (isMobile ? 48.0 : 52.0);
 
-    if (widget.isPrimary) {
-      final fg = showHighlight ? AppColorScheme.onButtonFocused : Colors.white;
+    // Portrait spans the primary Play full width (circular secondary actions
+    // wrap beneath); landscape keeps it content-width, inline with them.
+    final fullWidth =
+        widget.isPrimary &&
+        (context
+                .findAncestorWidgetOfExactType<DetailActionButtons>()
+                ?.fullWidthPrimary ??
+            false);
+
+    if (fullWidth) {
+      final fg = showHighlight
+          ? AppColorScheme.onButtonFocused
+          : AppColorScheme.onAccent;
       final heartColor = (widget.icon == Icons.favorite && widget.isActive)
           ? const Color(0xFFE50914)
           : fg;
-      // Portrait spans the primary Play full width (circular secondary actions
-      // wrap beneath); landscape keeps it content-width, inline with them.
-      final fullWidth =
-          context
-              .findAncestorWidgetOfExactType<DetailActionButtons>()
-              ?.fullWidthPrimary ??
-          false;
-
-      // When expanded (focused): use ConstrainedBox with a minWidth floor
-      // so the pill always has enough room for labels like "Resume S12:E24".
-      // Flexible in the parent Row lets the pill grow beyond the minimum.
-      final Widget pill;
-      final shouldExpand = isExpanded || fullWidth || isMobile;
-      if (shouldExpand) {
-        final pillInner = Container(
-          height: height,
-          width: fullWidth ? double.infinity : null,
-          padding: EdgeInsets.only(
-            left: fullWidth ? 10 : 10,
-            right: fullWidth ? 10 : 14,
+      final pillInner = Container(
+        height: height,
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: showHighlight
+              ? AppColorScheme.buttonFocused
+              : AppColorScheme.accent,
+          borderRadius: AppRadius.circular(height / 2),
+          border: Border.all(
+            color: showHighlight ? focusColor : Colors.transparent,
+            width: 3,
           ),
-          alignment: fullWidth ? Alignment.center : null,
-          decoration: BoxDecoration(
-            color: showHighlight
-                ? AppColorScheme.buttonFocused
-                : AppColorScheme.accent,
-            borderRadius: AppRadius.circular(height / 2),
-            border: Border.all(
-              color: showHighlight ? focusColor : Colors.transparent,
-              width: 3,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AdaptiveIcon(
+              widget.icon ?? Icons.play_arrow,
+              color: heartColor,
+              size: 24,
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AdaptiveIcon(
-                widget.icon ?? Icons.play_arrow,
-                color: heartColor,
-                size: 24,
-              ),
-              const SizedBox(width: 2),
-              widget.label.contains('\n')
-                  ? Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.label.split('\n')[0],
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: fg,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                height: 1.1,
-                              ),
-                        ),
-                        Text(
-                          widget.label.split('\n')[1],
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: fg.withValues(alpha: 0.8),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                height: 1.1,
-                              ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      widget.label,
-                      maxLines: 1,
-                      softWrap: false,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: fg,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        height: 1.1,
-                      ),
-                    ),
-            ],
-          ),
-        );
-        // Landscape: wrap with a minWidth so text always has room.
-        // Flexible in the parent Row allows growing beyond minWidth.
-        pill = fullWidth
-            ? pillInner
-            : ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 200),
-                child: pillInner,
-              );
-      } else {
-        // Collapsed: animate from/to a circle
-        pill = AnimatedSize(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          child: SizedBox.square(
-            dimension: height,
-            child: Container(
-              height: height,
-              width: height,
-              decoration: BoxDecoration(
-                color: AppColorScheme.accent,
-                borderRadius: AppRadius.circular(height / 2),
-                border: Border.all(color: Colors.transparent, width: 3),
-              ),
-              child: Center(
-                child: AdaptiveIcon(
-                  widget.icon ?? Icons.play_arrow,
-                  color: Colors.white,
-                  size: 24,
-                ),
+            const SizedBox(width: 8),
+            Text(
+              widget.label,
+              maxLines: 1,
+              softWrap: false,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: fg,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                height: 1.1,
               ),
             ),
-          ),
-        );
-      }
-      return fullWidth ? SizedBox(width: double.infinity, child: pill) : pill;
+          ],
+        ),
+      );
+      return SizedBox(width: double.infinity, child: pillInner);
     }
 
-    if (isMobile) {
+    if (isMobile && !widget.isPrimary) {
       // Vertical tile: circular icon with its label always shown underneath.
       final iconWidget = widget.iconBuilder != null
           ? widget.iconBuilder!(36, iconColor)
@@ -11109,6 +11998,55 @@ class _DetailActionButtonState extends State<_DetailActionButton>
 
     final double minWidth = height;
     final double maxWidth = isExpanded ? 200.0 : height;
+    final double maxLabelWidth =
+        (maxWidth -
+                (isExpanded ? 22.0 : 0.0) -
+                (showHighlight ? 5.0 : 3.0) -
+                (height - 4) -
+                6.0)
+            .clamp(0.0, maxWidth);
+
+    final containerColor = showHighlight
+        ? AppColorScheme.buttonFocused
+        : (widget.isPrimary
+              ? AppColorScheme.accent
+              : (widget.isActive
+                    ? (widget.activeColor ?? AppColorScheme.accent).withValues(
+                        alpha: 0.18,
+                      )
+                    : Colors.white.withValues(alpha: 0.06)));
+
+    final borderColor = showHighlight
+        ? focusColor
+        : (widget.isPrimary
+              ? Colors.transparent
+              : AppColorScheme.onSurface.withValues(alpha: 0.35));
+
+    final iconWidget = widget.isPrimary
+        ? AdaptiveIcon(
+            widget.icon ?? Icons.play_arrow,
+            color: (widget.icon == Icons.favorite && widget.isActive)
+                ? const Color(0xFFE50914)
+                : (showHighlight
+                      ? AppColorScheme.onButtonFocused
+                      : AppColorScheme.onAccent),
+            size: 24,
+          )
+        : (widget.iconBuilder != null
+              ? widget.iconBuilder!(36, iconColor)
+              : AdaptiveIcon(
+                  widget.icon!,
+                  color: (widget.icon == Icons.favorite && widget.isActive)
+                      ? const Color(0xFFE50914)
+                      : iconColor,
+                  size: 24,
+                ));
+
+    final effectiveLabelColor = widget.isPrimary
+        ? (showHighlight
+              ? AppColorScheme.onButtonFocused
+              : AppColorScheme.onAccent)
+        : labelColor;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -11121,58 +12059,50 @@ class _DetailActionButtonState extends State<_DetailActionButton>
       ),
       decoration: BoxDecoration(
         borderRadius: AppRadius.circular(height / 2),
-        color: showHighlight
-            ? AppColorScheme.buttonFocused
-            : (widget.isActive
-                  ? (widget.activeColor ?? AppColorScheme.accent).withValues(
-                      alpha: 0.18,
-                    )
-                  : Colors.white.withValues(alpha: 0.06)),
+        color: containerColor,
         border: Border.all(
-          color: showHighlight
-              ? focusColor
-              : AppColorScheme.onSurface.withValues(alpha: 0.35),
+          color: borderColor,
           width: showHighlight ? 2.5 : 1.5,
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: height - 4, // keep icon centered when collapsed
-              child: Center(
-                child: widget.iconBuilder != null
-                    ? widget.iconBuilder!(36, iconColor)
-                    : AdaptiveIcon(
-                        widget.icon!,
-                        color:
-                            (widget.icon == Icons.favorite && widget.isActive)
-                            ? const Color(0xFFE50914)
-                            : iconColor,
-                        size: 24,
-                      ),
+      child: ClipRRect(
+        borderRadius: AppRadius.circular(height / 2),
+        clipBehavior: Clip.hardEdge,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: height - 4, // keep icon centered when collapsed
+                child: Center(child: iconWidget),
               ),
-            ),
-            if (isExpanded && widget.label.isNotEmpty) ...[
-              const SizedBox(width: 6),
-              Text(
-                widget.label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: labelColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  height: 1.1,
+              if (isExpanded && widget.label.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxLabelWidth),
+                  child: MarqueeText(
+                    text: widget.label,
+                    style:
+                        Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: effectiveLabelColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          height: 1.1,
+                        ) ??
+                        TextStyle(
+                          color: effectiveLabelColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          height: 1.1,
+                        ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -11260,12 +12190,13 @@ class _DetailActionButtonState extends State<_DetailActionButton>
     final iconColor = showHighlight
         ? AppColorScheme.onButtonFocused
         : (widget.isActive
-              ? (widget.activeColor ?? (isNeon ? neonAccent : Colors.white))
-              : (isNeon ? neonAccent : Colors.white));
+              ? (widget.activeColor ??
+                    (isNeon ? neonAccent : AppColorScheme.onButtonNormal))
+              : (isNeon ? neonAccent : AppColorScheme.onButtonNormal));
     final showLabelInside = modern && (widget.isPrimary || !isMobile);
     final labelColor = (showHighlight && showLabelInside)
         ? AppColorScheme.onButtonFocused
-        : (isNeon ? neonAccent : Colors.white);
+        : (isNeon ? neonAccent : AppColorScheme.onButtonNormal);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -11438,6 +12369,167 @@ class _DetailActionButtonState extends State<_DetailActionButton>
   }
 }
 
+class _SpotlightOverflowTile extends StatefulWidget {
+  final _DetailActionButton action;
+  final bool autofocus;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  const _SpotlightOverflowTile({
+    required this.action,
+    this.autofocus = false,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  @override
+  State<_SpotlightOverflowTile> createState() => _SpotlightOverflowTileState();
+}
+
+class _SpotlightOverflowTileState extends State<_SpotlightOverflowTile> {
+  final _focusNode = FocusNode();
+  bool _isFocused = false;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (mounted) {
+        final hasFocus = _focusNode.hasFocus;
+        setState(() => _isFocused = hasFocus);
+        if (hasFocus) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Scrollable.ensureVisible(
+                context,
+                alignment: 0.5,
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final action = widget.action;
+    final isTv = PlatformDetection.isTV;
+    final showHighlight = _isFocused || _isHovered;
+
+    final focusBg = AppColorScheme.buttonFocused;
+    final focusedFg = readableOnFocusFill(focusBg);
+
+    final textColor = showHighlight
+        ? (isTv ? focusedFg : Colors.white)
+        : Colors.white;
+
+    final iconColor = showHighlight
+        ? (isTv ? focusedFg : AppColorScheme.accent)
+        : (action.isActive
+            ? (action.activeColor ?? AppColorScheme.accent)
+            : Colors.white.withValues(alpha: 0.85));
+
+    // The plain icon first. The builders draw for the button row, where the
+    // rating one pairs a thumb up and down and the star one part fills, and
+    // both come out a smudge at 22. The label carries the rating anyway.
+    final Widget? leadingWidget;
+    if (action.icon != null) {
+      leadingWidget = AdaptiveIcon(action.icon!, color: iconColor, size: 22);
+    } else if (action.iconBuilder != null) {
+      leadingWidget = action.iconBuilder!(22, iconColor);
+    } else {
+      leadingWidget = null;
+    }
+
+    final focusColor = Color(
+      GetIt.instance<UserPreferences>()
+          .get(UserPreferences.focusColor)
+          .colorValue,
+    );
+
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: widget.autofocus,
+      onKeyEvent: (_, event) {
+        if (!event.logicalKey.isSelectKey) return KeyEventResult.ignored;
+        if (event is KeyDownEvent) {
+          widget.onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 90),
+              curve: Curves.easeOut,
+              decoration: BoxDecoration(
+                color: showHighlight
+                    ? (isTv
+                        ? focusBg
+                        : AppColorScheme.accent.withValues(alpha: 0.16))
+                    : Colors.transparent,
+                borderRadius: AppRadius.circular(10),
+                border: Border.all(
+                  color: showHighlight
+                      ? (isTv
+                          ? focusColor
+                          : AppColorScheme.accent.withValues(alpha: 0.6))
+                      : Colors.white.withValues(alpha: 0.15),
+                  width: showHighlight ? 1.5 : 1.0,
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  if (leadingWidget != null) ...[
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Center(child: leadingWidget),
+                    ),
+                    const SizedBox(width: 14),
+                  ],
+                  Expanded(
+                    child: Text(
+                      action.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: action.isActive ? FontWeight.w600 : FontWeight.w500,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   final String title;
 
@@ -11449,7 +12541,7 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       title,
       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-        color: isNeon ? AppColorScheme.accent : Colors.white,
+        color: isNeon ? AppColorScheme.accent : AppColorScheme.onBackground,
         fontWeight: FontWeight.bold,
         shadows: _textShadows,
         fontSize: _isCompact(context) ? 17 : null,
@@ -11528,12 +12620,12 @@ class DetailCastRow extends StatelessWidget {
             onTap: personId == null
                 ? null
                 : () => context.push(
-                      // A person who only exists in Seerr has a TMDB id, which
-                      // the library wouldn't know what to do with.
-                      serverId == 'seerr'
-                          ? Destinations.seerrPerson(personId)
-                          : Destinations.item(personId, serverId: serverId),
-                    ),
+                    // A person who only exists in Seerr has a TMDB id, which
+                    // the library wouldn't know what to do with.
+                    serverId == 'seerr'
+                        ? Destinations.seerrPerson(personId)
+                        : Destinations.item(personId, serverId: serverId),
+                  ),
           );
         },
       ),
@@ -11654,7 +12746,9 @@ class _CastPersonCardState extends State<_CastPersonCard> with FocusStateMixin {
                   Text(
                     widget.name,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: isNeon ? AppColorScheme.accent : Colors.white,
+                      color: isNeon
+                          ? AppColorScheme.accent
+                          : AppColorScheme.onSurface,
                       fontWeight: FontWeight.w600,
                       fontSize: widget.isMobile ? 11 : null,
                     ),
@@ -11668,7 +12762,7 @@ class _CastPersonCardState extends State<_CastPersonCard> with FocusStateMixin {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: isNeon
                             ? AppColorScheme.onSurface
-                            : Colors.white.withValues(alpha: 0.6),
+                            : AppColorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: widget.isMobile ? 10 : 11,
                       ),
                       textAlign: TextAlign.center,
@@ -11715,7 +12809,12 @@ class DetailSimilarRow extends StatelessWidget {
     final cardExpansion = prefs.get(UserPreferences.cardFocusExpansion);
     final isMobile = _isCompact(context);
     final desktopScale = _desktopUiScale(prefs: prefs);
-    final cardWidth = customCardWidth ?? (isMobile ? 120.0 : 150.0 * desktopScale);
+    final cardWidth =
+        customCardWidth ?? (isMobile ? 120.0 : 150.0 * desktopScale);
+    final baseGap = isMobile ? 8.0 : 12 * desktopScale;
+    final separatorWidth = cardExpansion && !isMobile
+        ? MediaCard.focusGap(cardWidth, minimum: baseGap)
+        : baseGap;
 
     return SizedBox(
       height: customHeight ?? (isMobile ? 228 : 282 * desktopScale),
@@ -11725,8 +12824,7 @@ class DetailSimilarRow extends StatelessWidget {
         clipBehavior: Clip.none,
         padding: const EdgeInsets.fromLTRB(6, 10, 6, 4),
         itemCount: items.length,
-        separatorBuilder: (_, _) =>
-            SizedBox(width: isMobile ? 8 : 12 * desktopScale),
+        separatorBuilder: (_, _) => SizedBox(width: separatorWidth),
         itemBuilder: (context, index) {
           final item = items[index];
           final ar = MediaCard.aspectRatioForType(item.type);
@@ -11740,9 +12838,9 @@ class DetailSimilarRow extends StatelessWidget {
                     tag: item.primaryImageTag,
                   )
                 : (item.rawData['PosterPath'] != null &&
-                        (item.rawData['PosterPath'] as String).isNotEmpty
-                    ? 'https://image.tmdb.org/t/p/w342${item.rawData['PosterPath']}'
-                    : null),
+                          (item.rawData['PosterPath'] as String).isNotEmpty
+                      ? 'https://image.tmdb.org/t/p/w342${item.rawData['PosterPath']}'
+                      : null),
             width: cardWidth,
             aspectRatio: ar,
             focusColor: isNeon
@@ -11764,7 +12862,8 @@ class DetailSimilarRow extends StatelessWidget {
                 : () => onItemLongPress!(item),
             onTap: () {
               if (item.serverId == 'seerr') {
-                final mediaType = item.seerrMediaType ??
+                final mediaType =
+                    item.seerrMediaType ??
                     (item.type == 'Series' ? 'tv' : 'movie');
                 context.push(
                   Destinations.seerrMedia(item.id, mediaType: mediaType),
@@ -11916,7 +13015,8 @@ class DetailChaptersRow extends StatelessWidget {
               ? (chapter['Name'] as String)
               : AppLocalizations.of(context).chapterNumber(index + 1);
           final imageTag = chapter['ImageTag'] as String?;
-          final chapterImageUrl = seriesThumbUrl ??
+          final chapterImageUrl =
+              seriesThumbUrl ??
               imageApi.getChapterImageUrl(
                 item.id,
                 index: index,
@@ -12725,7 +13825,7 @@ class _OverviewText extends StatelessWidget {
           Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: isNeon
                 ? AppColorScheme.onSurface
-                : Colors.white.withValues(alpha: 0.9),
+                : AppColorScheme.onBackground,
             shadows: _textShadows,
             height: 1.5,
           ),
@@ -12775,7 +13875,8 @@ Widget? _seerrRequestButton(
       status.isNotEmpty && status != 'ended' && status != 'canceled';
   final quality = seerr.state.quality(is4k: is4k);
   // The same set the request sheet reads to decide which seasons it may offer.
-  final hasUnrequestedSeasons = seerr.state.isTv &&
+  final hasUnrequestedSeasons =
+      seerr.state.isTv &&
       seerrSeasonNumbersOf(
         seerr.state.tv?.seasons ?? const [],
         seerr.state.numberOfSeasons ?? 0,
@@ -12826,11 +13927,8 @@ Widget? _seerrCancelButton(
     isPrimary: isPrimary,
     focusNode: focusNode,
     autofocus: autofocus,
-    onPressed: () => showSeerrCancelRequestDialog(
-      context: context,
-      vm: seerr,
-      is4k: is4k,
-    ),
+    onPressed: () =>
+        showSeerrCancelRequestDialog(context: context, vm: seerr, is4k: is4k),
   );
 }
 
@@ -12885,8 +13983,11 @@ class DetailSeasonsRow extends StatelessWidget {
             SizedBox(width: isMobile ? 8 : 12 * desktopScale),
         itemBuilder: (context, index) {
           final season = seasons[index];
+          final showAvailabilityBadges =
+              prefs.get(UserPreferences.showSeerrAvailabilityBadges);
           final seerrStatus = seerrSeasonStatus?[season.indexNumber];
-          final hasSeerrDot = SeerrMediaStatus.hasDot(seerrStatus);
+          final hasSeerrDot =
+              showAvailabilityBadges && SeerrMediaStatus.hasDot(seerrStatus);
           return MediaCard(
             title: season.name,
             subtitle: _progressText(season),
@@ -12922,8 +14023,8 @@ class DetailSeasonsRow extends StatelessWidget {
             onTap: onSeasonTap != null
                 ? () => onSeasonTap!(season.indexNumber ?? 0)
                 : () => context.push(
-                      Destinations.item(season.id, serverId: season.serverId),
-                    ),
+                    Destinations.item(season.id, serverId: season.serverId),
+                  ),
             onLongPress: onItemLongPress != null
                 ? () => onItemLongPress!(season)
                 : null,
@@ -13125,8 +14226,7 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
     final prefs = GetIt.instance<UserPreferences>();
     final focusColor = Color(prefs.get(UserPreferences.focusColor).colorValue);
     final maxH = widget.isMobile ? 250 : (250 * desktopScale).round();
-    final seriesThumbUrl =
-        prefs.get(UserPreferences.detailUseSeriesThumbnails)
+    final seriesThumbUrl = prefs.get(UserPreferences.detailUseSeriesThumbnails)
         ? _resolveSeriesLandscapeThumbnailUrl(
             ep,
             widget.imageApi,
@@ -13134,7 +14234,8 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
           )
         : null;
 
-    final epImageUrl = seriesThumbUrl ??
+    final epImageUrl =
+        seriesThumbUrl ??
         (ep.primaryImageTag != null
             ? widget.imageApi.getPrimaryImageUrl(
                 ep.id,
@@ -13171,9 +14272,7 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
           onSecondaryTap: _handleLongPress,
           child: Container(
             width: widget.isMobile ? 180.0 : 220.0 * desktopScale,
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.circular(8),
-            ),
+            decoration: BoxDecoration(borderRadius: AppRadius.circular(8)),
             clipBehavior: Clip.antiAlias,
             child: Stack(
               fit: StackFit.passthrough,
@@ -13209,7 +14308,9 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
                               ),
                             ),
                           if ((ep.playedPercentage ?? 0) > 0)
-                            _EpisodeProgressBar(percentage: ep.playedPercentage!),
+                            _EpisodeProgressBar(
+                              percentage: ep.playedPercentage!,
+                            ),
                           if (ep.isPlayed && (ep.playedPercentage ?? 0) == 0)
                             const Positioned(
                               top: 6,
@@ -13232,11 +14333,9 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
                               'E$epNum',
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
-                                    color: isNeon
-                                        ? AppColorScheme.onSurface.withValues(
-                                            alpha: 0.85,
-                                          )
-                                        : Colors.white.withValues(alpha: 0.5),
+                                    color: AppColorScheme.onSurface.withValues(
+                                      alpha: 0.85,
+                                    ),
                                     fontWeight: FontWeight.w600,
                                   ),
                             ),
@@ -13248,7 +14347,7 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
                                   ?.copyWith(
                                     color: isNeon
                                         ? AppColorScheme.accent
-                                        : Colors.white,
+                                        : AppColorScheme.onSurface,
                                     fontWeight: FontWeight.w600,
                                   ),
                               maxLines: 1,
@@ -13261,11 +14360,9 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
                               runtimeText,
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
-                                    color: isNeon
-                                        ? AppColorScheme.onSurface.withValues(
-                                            alpha: 0.8,
-                                          )
-                                        : Colors.white.withValues(alpha: 0.5),
+                                    color: AppColorScheme.onSurface.withValues(
+                                      alpha: 0.8,
+                                    ),
                                   ),
                             ),
                           ],
@@ -13282,16 +14379,20 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
                           borderRadius: AppRadius.circular(8),
                           border: showFocusBorder
                               ? Border.fromBorderSide(
-                                  ThemeRegistry.active.borders.focusBorder.copyWith(
-                                    color: isNeon ? AppColorScheme.accent : focusColor,
-                                    width: 1.5,
-                                  ),
+                                  ThemeRegistry.active.borders.focusBorder
+                                      .copyWith(
+                                        color: isNeon
+                                            ? AppColorScheme.accent
+                                            : focusColor,
+                                        width: 1.5,
+                                      ),
                                 )
                               : Border.fromBorderSide(
-                                  ThemeRegistry.active.borders.focusBorder.copyWith(
-                                    color: AppColorScheme.onSurface,
-                                    width: 2.5,
-                                  ),
+                                  ThemeRegistry.active.borders.focusBorder
+                                      .copyWith(
+                                        color: AppColorScheme.onSurface,
+                                        width: 2.5,
+                                      ),
                                 ),
                         ),
                       ),
@@ -13358,8 +14459,7 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
     final focusColor = Color(prefs.get(UserPreferences.focusColor).colorValue);
     final cardExpansion = prefs.get(UserPreferences.cardFocusExpansion);
     final maxH = isMobile ? 240 : (240 * desktopScale).round();
-    final seriesThumbUrl =
-        prefs.get(UserPreferences.detailUseSeriesThumbnails)
+    final seriesThumbUrl = prefs.get(UserPreferences.detailUseSeriesThumbnails)
         ? _resolveSeriesLandscapeThumbnailUrl(
             episode,
             widget.imageApi,
@@ -13368,7 +14468,8 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
         : null;
 
     final epThumbTag = episode.primaryImageTag;
-    final epImageUrl = seriesThumbUrl ??
+    final epImageUrl =
+        seriesThumbUrl ??
         (epThumbTag != null
             ? widget.imageApi.getPrimaryImageUrl(
                 episode.id,
@@ -13423,7 +14524,8 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
                               OfflineAwareImage(
                                 imageUrl: epImageUrl,
                                 fit: BoxFit.cover,
-                                errorWidget: (_, _, _) => const SizedBox.shrink(),
+                                errorWidget: (_, _, _) =>
+                                    const SizedBox.shrink(),
                               ),
                             if ((episode.playedPercentage ?? 0) > 0)
                               _EpisodeProgressBar(
@@ -13444,7 +14546,7 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
                                   ?.copyWith(
                                     color: isNeon
                                         ? AppColorScheme.accent
-                                        : Colors.white,
+                                        : AppColorScheme.onSurface,
                                     fontWeight: FontWeight.w600,
                                   ),
                               maxLines: 1,
@@ -13458,7 +14560,9 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
                                     ?.copyWith(
                                       color: isNeon
                                           ? AppColorScheme.onSurface
-                                          : Colors.white.withValues(alpha: 0.7),
+                                          : AppColorScheme.onSurface.withValues(
+                                              alpha: 0.7,
+                                            ),
                                     ),
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
@@ -13484,7 +14588,9 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
                             borderRadius: AppRadius.circular(8),
                             border: Border.fromBorderSide(
                               ThemeRegistry.active.borders.focusBorder.copyWith(
-                                color: isNeon ? AppColorScheme.accent : focusColor,
+                                color: isNeon
+                                    ? AppColorScheme.accent
+                                    : focusColor,
                                 width: 1.5,
                               ),
                             ),
@@ -13500,6 +14606,21 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
       ),
     );
   }
+}
+
+/// Numbers the episode without spelling out the word, which is what made long
+/// titles unreadable on a phone. An episode with no title of its own still
+/// gets the spelled out label, since a bare number says nothing on its own.
+///
+/// Public for the title tests. Every production caller lives in this file.
+@visibleForTesting
+String episodeCardTitle(BuildContext context, String name, int? number) {
+  if (name.isEmpty) {
+    return number == null
+        ? ''
+        : AppLocalizations.of(context).episodeLabel(number);
+  }
+  return number == null ? name : 'E$number: $name';
 }
 
 class DetailEpisodeCard extends StatefulWidget {
@@ -13574,8 +14695,7 @@ class DetailEpisodeCardState extends State<DetailEpisodeCard>
     final cardExpansion = prefs.get(UserPreferences.cardFocusExpansion);
     final isMobile = _isCompact(context);
     final maxH = isMobile ? 220 : (220 * desktopScale).round();
-    final seriesThumbUrl =
-        prefs.get(UserPreferences.detailUseSeriesThumbnails)
+    final seriesThumbUrl = prefs.get(UserPreferences.detailUseSeriesThumbnails)
         ? _resolveSeriesLandscapeThumbnailUrl(
             episode,
             widget.imageApi,
@@ -13584,7 +14704,8 @@ class DetailEpisodeCardState extends State<DetailEpisodeCard>
         : null;
 
     final epThumbTag = episode.primaryImageTag;
-    final epImageUrl = seriesThumbUrl ??
+    final epImageUrl =
+        seriesThumbUrl ??
         (epThumbTag != null
             ? widget.imageApi.getPrimaryImageUrl(
                 episode.id,
@@ -13690,18 +14811,12 @@ class DetailEpisodeCardState extends State<DetailEpisodeCard>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                [
-                                  if (epNum != null)
-                                    AppLocalizations.of(
-                                      context,
-                                    ).episodeLabel(epNum),
-                                  episode.name,
-                                ].join(' - '),
+                                episodeCardTitle(context, episode.name, epNum),
                                 style: Theme.of(context).textTheme.titleSmall
                                     ?.copyWith(
                                       color: isNeon
                                           ? AppColorScheme.accent
-                                          : Colors.white,
+                                          : AppColorScheme.onSurface,
                                       fontWeight: FontWeight.w600,
                                     ),
                                 maxLines: 1,
@@ -13713,11 +14828,8 @@ class DetailEpisodeCardState extends State<DetailEpisodeCard>
                                   runtimeText,
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color: isNeon
-                                            ? AppColorScheme.onSurface.withValues(
-                                                alpha: 0.8,
-                                              )
-                                            : Colors.white.withValues(alpha: 0.5),
+                                        color: AppColorScheme.onSurface
+                                            .withValues(alpha: 0.8),
                                       ),
                                 ),
                               ],
@@ -13729,7 +14841,8 @@ class DetailEpisodeCardState extends State<DetailEpisodeCard>
                                       ?.copyWith(
                                         color: isNeon
                                             ? AppColorScheme.onSurface
-                                            : Colors.white.withValues(alpha: 0.7),
+                                            : AppColorScheme.onSurface
+                                                  .withValues(alpha: 0.7),
                                       ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -13750,20 +14863,23 @@ class DetailEpisodeCardState extends State<DetailEpisodeCard>
                             borderRadius: AppRadius.circular(8),
                             border: showFocusBorder
                                 ? Border.fromBorderSide(
-                                    ThemeRegistry.active.borders.focusBorder.copyWith(
-                                      color: isNeon ? AppColorScheme.accent : focusColor,
-                                      width: 1.5,
-                                    ),
+                                    ThemeRegistry.active.borders.focusBorder
+                                        .copyWith(
+                                          color: isNeon
+                                              ? AppColorScheme.accent
+                                              : focusColor,
+                                          width: 1.5,
+                                        ),
                                   )
                                 : Border.fromBorderSide(
-                                    ThemeRegistry.active.borders.focusBorder.copyWith(
-                                      color: isNeon
-                                          ? const Color(0xFF00FFFF)
-                                          : AppColorScheme.accent.withValues(
-                                              alpha: 0.7,
-                                            ),
-                                      width: 1.5,
-                                    ),
+                                    ThemeRegistry.active.borders.focusBorder
+                                        .copyWith(
+                                          color: isNeon
+                                              ? const Color(0xFF00FFFF)
+                                              : AppColorScheme.accent
+                                                    .withValues(alpha: 0.7),
+                                          width: 1.5,
+                                        ),
                                   ),
                           ),
                         ),
@@ -14480,6 +15596,10 @@ class SeerrAppearancesRow extends StatelessWidget {
     final rowHeight = isMobile ? 240.0 : cardHeight + (56 * metadataScale);
     final focusColor = Color(prefs.get(UserPreferences.focusColor).colorValue);
     final suppressFocusGlow = ThemeRegistry.active.borders.focusGlow.isNotEmpty;
+    final baseGap = isMobile ? 8.0 : 12 * desktopScale;
+    final separatorWidth = cardExpansion && !isMobile
+        ? MediaCard.focusGap(cardWidth, minimum: baseGap)
+        : baseGap;
 
     return SizedBox(
       height: rowHeight,
@@ -14488,8 +15608,7 @@ class SeerrAppearancesRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
         itemCount: items.length,
-        separatorBuilder: (_, _) =>
-            SizedBox(width: isMobile ? 8 : 12 * desktopScale),
+        separatorBuilder: (_, _) => SizedBox(width: separatorWidth),
         itemBuilder: (context, index) {
           final item = items[index];
 
@@ -14960,7 +16079,7 @@ class _AlbumActions extends StatelessWidget {
       if (onDownloadAll != null)
         _DetailActionButton(
           label: l10n.download,
-          icon: Icons.download,
+          icon: Icons.download_for_offline,
           onArrowDown: onPlayDown,
           onPressed: onDownloadAll!,
         ),
@@ -15404,7 +16523,9 @@ class _TrackTileState extends State<TrackTile> with FocusStateMixin {
                 ? widget.track.artists.join(', ')
                 : widget.track.albumArtist ?? '';
             if (widget.showAlbum) {
-              final albumText = widget.track.album ?? widget.track.rawData['Album'] as String?;
+              final albumText =
+                  widget.track.album ??
+                  widget.track.rawData['Album'] as String?;
               if (albumText != null && albumText.isNotEmpty) {
                 if (artistText.isNotEmpty) {
                   return '$albumText • $artistText';
@@ -16052,3 +17173,20 @@ class _PersonDisplaySettingsDialogState
 }
 
 typedef PersonDisplaySettingsDialog = _PersonDisplaySettingsDialog;
+
+/// An invisible edge strip that brings the hidden navbar back when the
+/// pointer reaches it. Mouse only, so it stays out of the way on touch.
+class _NavbarRevealZone extends StatelessWidget {
+  const _NavbarRevealZone({required this.onReveal});
+
+  final VoidCallback onReveal;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      opaque: false,
+      onEnter: (_) => onReveal(),
+      onHover: (_) => onReveal(),
+    );
+  }
+}

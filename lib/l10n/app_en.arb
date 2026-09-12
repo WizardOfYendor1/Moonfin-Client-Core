@@ -192,7 +192,7 @@
   "@detailScreenStyle": {
     "description": "Label for the media detail screen layout style setting"
   },
-  "detailScreenStyleSubtitle": "Classic is the original centered moonfin layout. Modern is a responsive cinematic layout.",
+  "detailScreenStyleSubtitle": "Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards. Nouveau is a full-screen layout with sections stacked down the page.",
   "@detailScreenStyleSubtitle": {
     "description": "Explanation under the detail screen style setting"
   },
@@ -203,6 +203,179 @@
   "detailScreenStyleModern": "Modern",
   "@detailScreenStyleModern": {
     "description": "Detail screen style option: the responsive cinematic layout"
+  },
+  "detailScreenStyleSpotlight": "Spotlight",
+  "@detailScreenStyleSpotlight": {
+    "description": "Detail screen style option: the hero-first layout with summary cards that open grid modals"
+  },
+  "spotlightMoreActions": "More Actions",
+  "@spotlightMoreActions": {
+    "description": "Tooltip/semantics of the spotlight ellipsis button and the title of the overflow actions menu it opens"
+  },
+  "spotlightCastCrewStudios": "Cast, Crew, and Studios",
+  "@spotlightCastCrewStudios": {
+    "description": "Title of the spotlight summary card that opens the people and studios modal"
+  },
+  "spotlightChaptersExtras": "Chapters and Extras",
+  "@spotlightChaptersExtras": {
+    "description": "Title of the spotlight summary card that opens the chapters and special features modal"
+  },
+  "spotlightSimilarRecommendations": "Similar and Recommendations",
+  "@spotlightSimilarRecommendations": {
+    "description": "Title of the spotlight summary card that opens the similar titles and recommendations modal"
+  },
+  "spotlightSeasonsEpisodes": "Seasons and Episodes",
+  "@spotlightSeasonsEpisodes": {
+    "description": "Title of the spotlight summary card that opens the seasons grid modal for a series"
+  },
+  "spotlightMoreEpisodes": "More Episodes",
+  "@spotlightMoreEpisodes": {
+    "description": "Title of the spotlight summary card listing the other episodes of the season"
+  },
+  "spotlightFilmography": "Filmography",
+  "@spotlightFilmography": {
+    "description": "Title of the spotlight summary card that opens a person's filmography modal"
+  },
+  "spotlightCollectionsCard": "Collections",
+  "@spotlightCollectionsCard": {
+    "description": "Title of the spotlight summary card that opens the parent collections modal"
+  },
+  "spotlightPlaylistOrder": "Playlist Order",
+  "@spotlightPlaylistOrder": {
+    "description": "Title of the spotlight summary card that opens the ordered box set playlist modal"
+  },
+  "spotlightMoviesAndShows": "Movies & Shows",
+  "@spotlightMoviesAndShows": {
+    "description": "Subtitle of the spotlight similar and recommendations card"
+  },
+  "spotlightSimilarSeerr": "Similar (Seerr)",
+  "@spotlightSimilarSeerr": {
+    "description": "Header of the Seerr similar-titles section when it appears beside the library's own similar section"
+  },
+  "spotlightRecommendationsSeerr": "Recommendations (Seerr)",
+  "@spotlightRecommendationsSeerr": {
+    "description": "Header of the Seerr recommendations section when it appears in the Spotlight recommendations modal"
+  },
+  "spotlightPeopleCount": "{count, plural, =1{1 person} other{{count} people}}",
+  "@spotlightPeopleCount": {
+    "description": "Count fragment on spotlight summary cards: people",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightStudiosCount": "{count, plural, =1{1 studio} other{{count} studios}}",
+  "@spotlightStudiosCount": {
+    "description": "Count fragment on spotlight summary cards: studios",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightChaptersCount": "{count, plural, =1{1 chapter} other{{count} chapters}}",
+  "@spotlightChaptersCount": {
+    "description": "Count fragment on spotlight summary cards: chapters",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightExtrasCount": "{count, plural, =1{1 extra} other{{count} extras}}",
+  "@spotlightExtrasCount": {
+    "description": "Count fragment on spotlight summary cards: extras/special features",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightSeasonsCount": "{count, plural, =1{1 season} other{{count} seasons}}",
+  "@spotlightSeasonsCount": {
+    "description": "Count fragment on spotlight summary cards: seasons",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightEpisodesCount": "{count, plural, =1{1 episode} other{{count} episodes}}",
+  "@spotlightEpisodesCount": {
+    "description": "Count fragment on spotlight summary cards: episodes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightMoviesCount": "{count, plural, =1{1 movie} other{{count} movies}}",
+  "@spotlightMoviesCount": {
+    "description": "Count fragment on spotlight summary cards: movies",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightShowsCount": "{count, plural, =1{1 show} other{{count} shows}}",
+  "@spotlightShowsCount": {
+    "description": "Count fragment on spotlight summary cards: series/shows",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightTracksCount": "{count, plural, =1{1 track} other{{count} tracks}}",
+  "@spotlightTracksCount": {
+    "description": "Count fragment on spotlight summary cards: audio tracks",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightItemsCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@spotlightItemsCount": {
+    "description": "Count fragment on spotlight summary cards: generic items",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightAlbumsCount": "{count, plural, =1{1 album} other{{count} albums}}",
+  "@spotlightAlbumsCount": {
+    "description": "Count fragment on spotlight summary cards: albums",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightCollectionsCount": "{count, plural, =1{1 collection} other{{count} collections}}",
+  "@spotlightCollectionsCount": {
+    "description": "Count fragment on spotlight summary cards: collections",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightTitlesCount": "{count, plural, =1{1 title} other{{count} titles}}",
+  "@spotlightTitlesCount": {
+    "description": "Count fragment on the spotlight similar card: titles across the library and Seerr sections",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "detailScreenStyleNouveau": "Nouveau",
+  "@detailScreenStyleNouveau": {
+    "description": "Detail screen style option: nouveau full-screen layout with integrated sections"
   },
   "expandedTabs": "Expanded Tabs",
   "@expandedTabs": {
@@ -224,13 +397,17 @@
   "@recommendationSystem": {
     "description": "Label for the Recommendation System setting"
   },
-  "recommendationSystemSubtitle": "Use the Moonfin Recommends local-library algorithm or the online TMDb's Similarity Metrics. Note: Online recommendations require Seerr integration.",
+  "recommendationSystemSubtitle": "Use the Moonfin Recommends local-library algorithm, Jellyfin Recommends server engine, or the online TMDb's Similarity Metrics. Note: Online recommendations require Seerr integration.",
   "@recommendationSystemSubtitle": {
     "description": "Explanation under the recommendation system setting"
   },
   "recommendationSystemMoonfin": "Moonfin Recommends",
   "@recommendationSystemMoonfin": {
     "description": "Recommendation system option: Moonfin Recommends"
+  },
+  "recommendationSystemJellyfin": "Jellyfin Recommends",
+  "@recommendationSystemJellyfin": {
+    "description": "Recommendation system option: Jellyfin Recommends"
   },
   "recommendationSystemTmdb": "TMDb Similarity",
   "@recommendationSystemTmdb": {
@@ -323,6 +500,30 @@
   "glassQualityReduced": "Reduced",
   "@glassQualityReduced": {
     "description": "Glass quality option: lightweight zero-blur glass"
+  },
+  "performanceMode": "Performance",
+  "@performanceMode": {
+    "description": "Label for the device performance setting"
+  },
+  "performanceModeSubtitle": "Auto measures this device and holds back on the ones short on memory, which keeps fewer images in memory and leaves trailers as still images. Takes full effect on the next launch.",
+  "@performanceModeSubtitle": {
+    "description": "Explanation under the device performance setting"
+  },
+  "performanceModeAuto": "Auto",
+  "@performanceModeAuto": {
+    "description": "Performance option: measure the device"
+  },
+  "performanceModeStandard": "Standard",
+  "@performanceModeStandard": {
+    "description": "Performance option: never hold back"
+  },
+  "performanceModeReduced": "Reduced",
+  "@performanceModeReduced": {
+    "description": "Performance option: always hold back"
+  },
+  "trailerPreviewHeldBack": "Off because Performance is set to Reduced for this device",
+  "@trailerPreviewHeldBack": {
+    "description": "Shown under the trailer preview switch when the device tier suppresses trailers"
   },
   "settingsAppearanceThemeSubtitle": "Apply a fully custom theme and switch between an Apple or Material inspired user interface.",
   "@settingsAppearanceThemeSubtitle": {
@@ -527,7 +728,7 @@
   },
   "series": "Series",
   "@series": {
-    "description": "Live TV series recordings button label"
+    "description": "Section header for TV series"
   },
   "noItemsFound": "No items found",
   "@noItemsFound": {
@@ -650,7 +851,7 @@
   },
   "type": "Type",
   "@type": {
-    "description": "Section header for type filter"
+    "description": "Stream info label for subtitle type"
   },
   "sortBy": "Sort By",
   "@sortBy": {
@@ -662,11 +863,11 @@
   },
   "imageType": "Image Type",
   "@imageType": {
-    "description": "Section header for image type selection"
+    "description": "Setting for image type"
   },
   "posterSize": "Poster Size",
   "@posterSize": {
-    "description": "Section header for poster size selection"
+    "description": "Setting for poster size"
   },
   "small": "Small",
   "@small": {
@@ -682,7 +883,7 @@
   },
   "extraLarge": "Extra Large",
   "@extraLarge": {
-    "description": "Poster size option"
+    "description": "Size option: extra large"
   },
   "scrollDirection": "Scroll Direction",
   "@scrollDirection": {
@@ -1052,7 +1253,7 @@
   },
   "unread": "Unread",
   "@unread": {
-    "description": "Filter label for unread items"
+    "description": "Status label for an unread book"
   },
   "unwatched": "Unwatched",
   "@unwatched": {
@@ -1064,7 +1265,7 @@
   },
   "allLibraries": "All Libraries",
   "@allLibraries": {
-    "description": "Filter option for all libraries"
+    "description": "Label when all libraries are selected"
   },
   "books": "Books",
   "@books": {
@@ -1077,6 +1278,14 @@
   "latestAudiobooks": "Latest Audiobooks",
   "@latestAudiobooks": {
     "description": "Row title for recently added audiobooks in the book library"
+  },
+  "latestComics": "Latest Comics",
+  "@latestComics": {
+    "description": "Row title for recently added comics in the book library"
+  },
+  "comics": "Comics",
+  "@comics": {
+    "description": "Label for comic media format or section"
   },
   "bookSeriesItemCount": "{count, plural, =1{1 book} other{{count} books}}",
   "@bookSeriesItemCount": {
@@ -1094,6 +1303,18 @@
   "bookFormatAudiobook": "Audiobook",
   "@bookFormatAudiobook": {
     "description": "Semantic label for the audiobook format badge on library cards"
+  },
+  "bookFormatComic": "Comic",
+  "@bookFormatComic": {
+    "description": "Semantic label for the comic format badge on library cards"
+  },
+  "noBooksFound": "No Books Found",
+  "@noBooksFound": {
+    "description": "Title shown when a books library has no items"
+  },
+  "noBooksFoundDescription": "This library does not contain any books, audiobooks, or comics yet.",
+  "@noBooksFoundDescription": {
+    "description": "Description shown when a books library has no items"
   },
   "bookPercentRead": "{percent}% read",
   "@bookPercentRead": {
@@ -1176,7 +1397,7 @@
   },
   "firstPublished": "First published {year}",
   "@firstPublished": {
-    "description": "Label showing first publication year",
+    "description": "Publication year for a book",
     "placeholders": {
       "year": {
         "type": "int"
@@ -1239,6 +1460,7 @@
     "description": "Placeholder text for an empty item list screen"
   },
   "failedToLoad": "Failed to load",
+
   "@failedToLoad": {
     "description": "Error message when item detail fails to load"
   },
@@ -1268,7 +1490,7 @@
   },
   "nextUp": "Next Up",
   "@nextUp": {
-    "description": "Section header for the next episode to watch"
+    "description": "Home section: next up"
   },
   "seasons": "Seasons",
   "@seasons": {
@@ -1289,10 +1511,6 @@
   "musicVideos": "Music Videos",
   "@musicVideos": {
     "description": "Section header for music videos filmography row"
-  },
-  "series": "Series",
-  "@series": {
-    "description": "Section header for TV series"
   },
   "other": "Other",
   "@other": {
@@ -1346,15 +1564,6 @@
   "unableToLoadAuthorDetails": "Unable to load author details right now.",
   "@unableToLoadAuthorDetails": {
     "description": "Error message when author details fail to load"
-  },
-  "firstPublished": "First published {year}",
-  "@firstPublished": {
-    "description": "Publication year for a book",
-    "placeholders": {
-      "year": {
-        "type": "int"
-      }
-    }
   },
   "published": "Published {year}",
   "@published": {
@@ -1510,10 +1719,6 @@
   "@finished": {
     "description": "Status label for a finished book"
   },
-  "unread": "Unread",
-  "@unread": {
-    "description": "Status label for an unread book"
-  },
   "favorited": "Favorited",
   "@favorited": {
     "description": "Status label for a favorited item"
@@ -1535,6 +1740,15 @@
     "description": "Status label shown while a finished download is being moved to its final location and validated"
   },
   "queuedDownload": "Queued",
+  "queuedMoreCount": "{count, plural, =1{1 more queued} other{{count} more queued}}",
+  "@queuedMoreCount": {
+    "description": "Row under the active downloads list standing in for queued items not shown individually",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@queuedDownload": {
     "description": "Status label for a download waiting in the queue for a free download slot"
   },
@@ -1770,6 +1984,82 @@
   "noEpisodesLoaded": "No episodes loaded",
   "@noEpisodesLoaded": {
     "description": "Message when no episodes are available for download"
+  },
+  "downloadScopeTitle": "What to download",
+  "@downloadScopeTitle": {
+    "description": "Title of the sheet asking whether to download all or only unwatched items"
+  },
+  "downloadAllEpisodes": "All episodes",
+  "@downloadAllEpisodes": {
+    "description": "Download scope option: every episode of a series or season"
+  },
+  "downloadUnwatchedEpisodes": "All unwatched episodes",
+  "@downloadUnwatchedEpisodes": {
+    "description": "Download scope option: only episodes not yet marked as watched"
+  },
+  "downloadAllMovies": "All movies",
+  "@downloadAllMovies": {
+    "description": "Download scope option: every movie in a collection"
+  },
+  "downloadUnwatchedMovies": "All unwatched movies",
+  "@downloadUnwatchedMovies": {
+    "description": "Download scope option: only collection movies not yet marked as watched"
+  },
+  "downloadScopeLoading": "Loading items...",
+  "@downloadScopeLoading": {
+    "description": "Subtitle shown in the download scope sheet while the item list is being fetched"
+  },
+  "downloadScopeLoadFailed": "Could not load items to download",
+  "@downloadScopeLoadFailed": {
+    "description": "Snackbar shown when the item list for a batch download could not be fetched"
+  },
+  "downloadEstimateTotal": "~{size} total",
+  "@downloadEstimateTotal": {
+    "description": "Estimated total download size for a batch, e.g. '~1.2 GB total'",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadBytesOfTotal": "{received} of {total}",
+  "@downloadBytesOfTotal": {
+    "description": "Transfer status of a running download, e.g. '1.2 GB of 4.6 GB'",
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadSpeed": "{speed}/s",
+  "@downloadSpeed": {
+    "description": "Transfer rate of a running download, e.g. '25.3 MB/s'",
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadSizeTotal": "{size} total",
+  "@downloadSizeTotal": {
+    "description": "Exact total file size of a batch of original files, e.g. '12.4 GB total'",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadEstimateUnknownCount": "{count} unknown",
+  "@downloadEstimateUnknownCount": {
+    "description": "Appended to a batch size estimate when some items had no runtime to estimate from",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "downloadingItem": "Downloading {name} ({quality})...",
   "@downloadingItem": {
@@ -2262,11 +2552,223 @@
   },
   "unknown": "Unknown",
   "@unknown": {
-    "description": "Label for unknown or missing values"
+    "description": "Fallback label for unknown items"
   },
   "playbackInformation": "Playback Information",
   "@playbackInformation": {
     "description": "Title for stream info sheet"
+  },
+  "showMpvStats": "Show mpv Statistics (Shift+I)",
+  "@showMpvStats": {
+    "description": "Button in the stream info sheet that shows mpv's own statistics overlay; Shift+I is the keyboard shortcut"
+  },
+  "hideMpvStats": "Hide mpv Statistics (Shift+I)",
+  "@hideMpvStats": {
+    "description": "Button in the stream info sheet that hides mpv's own statistics overlay; Shift+I is the keyboard shortcut"
+  },
+  "keyboardShortcutsTitle": "Keyboard shortcuts",
+  "@keyboardShortcutsTitle": {
+    "description": "Title of the screen and dialog that list every keyboard shortcut"
+  },
+  "keyboardShortcutsSubtitle": "Keys for the app, video player and reader",
+  "@keyboardShortcutsSubtitle": {
+    "description": "Subtitle of the About tile that opens the keyboard shortcut list"
+  },
+  "keyboardShortcutsPlayerHint": "Press ? or F1 while a video plays to see this list without leaving the player.",
+  "@keyboardShortcutsPlayerHint": {
+    "description": "Footnote on the keyboard shortcuts settings screen"
+  },
+  "keyboardShortcutsSectionApp": "Everywhere",
+  "@keyboardShortcutsSectionApp": {
+    "description": "Keyboard shortcut section for keys that work on every screen"
+  },
+  "keyboardShortcutsSectionAppScope": "On any screen",
+  "@keyboardShortcutsSectionAppScope": {
+    "description": "Under the Everywhere section title: when those keys apply"
+  },
+  "keyboardShortcutsSectionPlayer": "Video player",
+  "@keyboardShortcutsSectionPlayer": {
+    "description": "Keyboard shortcut section for the video player"
+  },
+  "keyboardShortcutsSectionPlayerScope": "While a video is open, playing or paused",
+  "@keyboardShortcutsSectionPlayerScope": {
+    "description": "Under the Video player section title: when those keys apply"
+  },
+  "keyboardShortcutsSectionReader": "Book and comic reader",
+  "@keyboardShortcutsSectionReader": {
+    "description": "Keyboard shortcut section for the ebook and comic reader"
+  },
+  "keyboardShortcutsSectionReaderScope": "While reading a book or comic",
+  "@keyboardShortcutsSectionReaderScope": {
+    "description": "Under the reader section title: when those keys apply"
+  },
+  "keyNameArrowKeys": "Arrow keys",
+  "@keyNameArrowKeys": {
+    "description": "Key cap label standing for the four arrow keys"
+  },
+  "keyNameSpace": "Space",
+  "@keyNameSpace": {
+    "description": "Key cap label for the space bar"
+  },
+  "keyNameEnter": "Enter",
+  "@keyNameEnter": {
+    "description": "Key cap label for the Enter key"
+  },
+  "keyNameEsc": "Esc",
+  "@keyNameEsc": {
+    "description": "Key cap label for the Escape key"
+  },
+  "keyNameBackspace": "Backspace",
+  "@keyNameBackspace": {
+    "description": "Key cap label for the Backspace key"
+  },
+  "keyNamePageUp": "Page Up",
+  "@keyNamePageUp": {
+    "description": "Key cap label for the Page Up key"
+  },
+  "keyNamePageDown": "Page Down",
+  "@keyNamePageDown": {
+    "description": "Key cap label for the Page Down key"
+  },
+  "keyNameHome": "Home",
+  "@keyNameHome": {
+    "description": "Key cap label for the Home key"
+  },
+  "keyNameEnd": "End",
+  "@keyNameEnd": {
+    "description": "Key cap label for the End key"
+  },
+  "keyNameShift": "Shift",
+  "@keyNameShift": {
+    "description": "Key cap label for the Shift modifier"
+  },
+  "keyNameCtrl": "Ctrl",
+  "@keyNameCtrl": {
+    "description": "Key cap label for the Control modifier"
+  },
+  "keyNameAlt": "Alt",
+  "@keyNameAlt": {
+    "description": "Key cap label for the Alt modifier"
+  },
+  "keyNameScrollWheel": "Scroll wheel",
+  "@keyNameScrollWheel": {
+    "description": "Key cap label standing for the mouse scroll wheel"
+  },
+  "shortcutMoveFocus": "Move between items",
+  "@shortcutMoveFocus": {
+    "description": "What the arrow keys do outside the player"
+  },
+  "shortcutActivate": "Open the selected item",
+  "@shortcutActivate": {
+    "description": "What Enter does outside the player"
+  },
+  "shortcutGoBack": "Go back",
+  "@shortcutGoBack": {
+    "description": "What Esc and Backspace do outside the player"
+  },
+  "shortcutToggleFullscreen": "Fullscreen on or off",
+  "@shortcutToggleFullscreen": {
+    "description": "F11 and Alt+Enter anywhere, F in the player"
+  },
+  "shortcutQuit": "Quit Moonfin",
+  "@shortcutQuit": {
+    "description": "What Ctrl+Q does on desktop"
+  },
+  "shortcutPlayPause": "Play or pause",
+  "@shortcutPlayPause": {
+    "description": "Player shortcut action"
+  },
+  "shortcutShowControlsOrPlayPause": "Show controls, or play/pause if shown",
+  "@shortcutShowControlsOrPlayPause": {
+    "description": "What Enter does in the player"
+  },
+  "shortcutSeekBack": "Seek back (hold for bigger jumps)",
+  "@shortcutSeekBack": {
+    "description": "Player shortcut action. The step is the skip back length from settings"
+  },
+  "shortcutSeekForward": "Seek forward (hold for bigger jumps)",
+  "@shortcutSeekForward": {
+    "description": "Player shortcut action. The step is the skip forward length from settings"
+  },
+  "shortcutVolumeUp": "Volume up",
+  "@shortcutVolumeUp": {
+    "description": "Player shortcut action"
+  },
+  "shortcutVolumeDown": "Volume down",
+  "@shortcutVolumeDown": {
+    "description": "Player shortcut action"
+  },
+  "shortcutMute": "Mute or unmute",
+  "@shortcutMute": {
+    "description": "Player shortcut action"
+  },
+  "shortcutToggleSubtitles": "Subtitles on or off",
+  "@shortcutToggleSubtitles": {
+    "description": "Player shortcut action"
+  },
+  "shortcutSlower": "Slow down",
+  "@shortcutSlower": {
+    "description": "Player shortcut action"
+  },
+  "shortcutFaster": "Speed up",
+  "@shortcutFaster": {
+    "description": "Player shortcut action"
+  },
+  "shortcutPlaybackInfo": "Show playback information",
+  "@shortcutPlaybackInfo": {
+    "description": "Player shortcut action"
+  },
+  "shortcutMpvStats": "mpv statistics on or off",
+  "@shortcutMpvStats": {
+    "description": "Player shortcut action, Windows only"
+  },
+  "shortcutLeaveFullscreenOrStop": "Exit fullscreen, or stop if not fullscreen",
+  "@shortcutLeaveFullscreenOrStop": {
+    "description": "What Esc does in the player"
+  },
+  "shortcutStopPlayback": "Stop playback",
+  "@shortcutStopPlayback": {
+    "description": "Player shortcut action"
+  },
+  "shortcutNextItem": "Next item",
+  "@shortcutNextItem": {
+    "description": "Player shortcut action for the next-track media key"
+  },
+  "shortcutPreviousItem": "Previous item",
+  "@shortcutPreviousItem": {
+    "description": "Player shortcut action for the previous-track media key"
+  },
+  "shortcutShowShortcuts": "Show this list",
+  "@shortcutShowShortcuts": {
+    "description": "What ? and F1 do in the player"
+  },
+  "shortcutNextPage": "Next page",
+  "@shortcutNextPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutPreviousPage": "Previous page",
+  "@shortcutPreviousPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutScrollPage": "Scroll the page (ebooks)",
+  "@shortcutScrollPage": {
+    "description": "What the up and down arrows do in the ebook reader"
+  },
+  "shortcutFirstPage": "First page, or start of chapter",
+  "@shortcutFirstPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutLastPage": "Last page, or end of chapter",
+  "@shortcutLastPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutZoom": "Zoom in or out (comics)",
+  "@shortcutZoom": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutResetZoom": "Reset zoom (comics)",
+  "@shortcutResetZoom": {
+    "description": "Reader shortcut action"
   },
   "playback": "Playback",
   "@playback": {
@@ -2282,7 +2784,7 @@
   },
   "directStream": "Direct Stream",
   "@directStream": {
-    "description": "Play method label"
+    "description": "Audio option: direct stream"
   },
   "transcoding": "Transcoding",
   "@transcoding": {
@@ -2316,6 +2818,47 @@
   "@hdr": {
     "description": "Stream info label for HDR type"
   },
+  "hdrOutput": "HDR output",
+  "@hdrOutput": {
+    "description": "Stream info label for whether HDR is reaching the display untouched"
+  },
+  "hdrOutputActive": "Active — {format}",
+  "@hdrOutputActive": {
+    "description": "Stream info value when HDR passthrough is running, e.g. 'Active — HDR10 (PQ, BT.2020)'",
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "hdrOutputActiveTonemapped": "Active — tone-mapped to SDR for this display",
+  "@hdrOutputActiveTonemapped": {
+    "description": "Stream info value when native output is engaged but the window sits on a display without HDR, so the renderer is tone-mapping"
+  },
+  "hdrOutputDisplayNotHdr": "Inactive — display is not in HDR mode",
+  "@hdrOutputDisplayNotHdr": {
+    "description": "Stream info value when the display has not been switched into HDR"
+  },
+  "hdrOutputContentSdr": "Inactive — content is SDR",
+  "@hdrOutputContentSdr": {
+    "description": "Stream info value when the title itself is not HDR"
+  },
+  "hdrOutputDisabled": "Inactive — turned off in settings",
+  "@hdrOutputDisabled": {
+    "description": "Stream info value when the native HDR output preference is off"
+  },
+  "hdrOutputFailed": "Inactive — could not start, using the standard path",
+  "@hdrOutputFailed": {
+    "description": "Stream info value when the native HDR window could not be created"
+  },
+  "nativeHdrOutput": "Native HDR output",
+  "@nativeHdrOutput": {
+    "description": "Settings label for sending HDR to the display untouched"
+  },
+  "nativeHdrOutputDescription": "Sends HDR video to the display untouched instead of converting it to SDR. Used only when the display is already in HDR mode and the title is HDR.",
+  "@nativeHdrOutputDescription": {
+    "description": "Settings description for native HDR output"
+  },
   "codec": "Codec",
   "@codec": {
     "description": "Stream info label for codec"
@@ -2343,10 +2886,6 @@
   "format": "Format",
   "@format": {
     "description": "Stream info label for subtitle format"
-  },
-  "type": "Type",
-  "@type": {
-    "description": "Stream info label for subtitle type"
   },
   "external": "External",
   "@external": {
@@ -2864,8 +3403,9 @@
   },
   "seerr": "Seerr",
   "@seerr": {
-    "description": "Title for the Seerr results section"
+    "description": "Seerr brand name"
   },
+
   "seerrAccountType": "Seerr Account Type",
   "@seerrAccountType": {
     "description": "Header for selecting Seerr authentication account type"
@@ -2879,7 +3419,7 @@
     "description": "Auth option label for Seerr sign in using local Seerr credentials"
   },
 
-  "savedMedia": "Saved Media",
+  "savedMedia": "Downloads",
   "@savedMedia": {
     "description": "Header title for saved/downloaded media screen"
   },
@@ -3080,11 +3620,11 @@
   },
   "storageLimit": "Storage Limit",
   "@storageLimit": {
-    "description": "Section title for storage limit setting"
+    "description": "Setting for storage limit"
   },
   "noLimit": "No limit",
   "@noLimit": {
-    "description": "Label when no storage limit is set"
+    "description": "Option: no limit"
   },
   "deleteAllDownloads": "Delete All Downloads",
   "@deleteAllDownloads": {
@@ -3334,6 +3874,138 @@
   "@seasonalEffectsDescription": {
     "description": "Description for seasonal effects settings"
   },
+  "loadingAnimation": "Loading Animation",
+  "@loadingAnimation": {
+    "description": "Setting title for custom loading animation"
+  },
+  "loadingAnimationDescription": "Customize the loading animations used throughout Moonfin",
+  "@loadingAnimationDescription": {
+    "description": "Description for loading animation customization settings"
+  },
+  "loadingAnimationConfiguration": "Loading Animation Configuration",
+  "@loadingAnimationConfiguration": {
+    "description": "Subtitle header for loading animation settings"
+  },
+  "loadingAnimationImage": "Image",
+  "@loadingAnimationImage": {
+    "description": "Title for loading animation image selection"
+  },
+  "loadingAnimationImageMoonfinLogo": "Moonfin Logo",
+  "@loadingAnimationImageMoonfinLogo": {
+    "description": "Loading animation image option: Moonfin Logo"
+  },
+  "loadingAnimationImageSpinner": "Spinner",
+  "@loadingAnimationImageSpinner": {
+    "description": "Loading animation image option: Spinner"
+  },
+  "loadingAnimationImageRunner": "Runner",
+  "@loadingAnimationImageRunner": {
+    "description": "Loading animation image option: Runner"
+  },
+  "loadingAnimationImageMoonPhases": "Moon Phases",
+  "@loadingAnimationImageMoonPhases": {
+    "description": "Loading animation image option: Moon Phases"
+  },
+  "loadingAnimationImageMoonfinPhases": "Moonfin Phases",
+  "@loadingAnimationImageMoonfinPhases": {
+    "description": "Loading animation image option: Moonfin Phases in brand gradient"
+  },
+  "loadingAnimationImageNeonfinPhases": "Neonfin Phases",
+  "@loadingAnimationImageNeonfinPhases": {
+    "description": "Loading animation image option: Neonfin Phases in neon colors"
+  },
+  "loadingAnimationSize": "Animation Size",
+  "@loadingAnimationSize": {
+    "description": "Title for loading animation size selection"
+  },
+  "loadingAnimationSizeThumbnail": "Thumbnail",
+  "@loadingAnimationSizeThumbnail": {
+    "description": "Loading animation size option: Thumbnail"
+  },
+  "loadingAnimationSizeSmall": "Small",
+  "@loadingAnimationSizeSmall": {
+    "description": "Loading animation size option: Small"
+  },
+  "loadingAnimationSizeMedium": "Medium",
+  "@loadingAnimationSizeMedium": {
+    "description": "Loading animation size option: Medium"
+  },
+  "loadingAnimationSizeLarge": "Large",
+  "@loadingAnimationSizeLarge": {
+    "description": "Loading animation size option: Large"
+  },
+  "loadingAnimationPosition": "Animation Position",
+  "@loadingAnimationPosition": {
+    "description": "Title for loading animation position selection"
+  },
+  "loadingAnimationPositionTopLeft": "Top-Left",
+  "@loadingAnimationPositionTopLeft": {
+    "description": "Loading animation position: Top-Left"
+  },
+  "loadingAnimationPositionTopCenter": "Top-Center",
+  "@loadingAnimationPositionTopCenter": {
+    "description": "Loading animation position: Top-Center"
+  },
+  "loadingAnimationPositionTopRight": "Top-Right",
+  "@loadingAnimationPositionTopRight": {
+    "description": "Loading animation position: Top-Right"
+  },
+  "loadingAnimationPositionMiddleLeft": "Middle-Left",
+  "@loadingAnimationPositionMiddleLeft": {
+    "description": "Loading animation position: Middle-Left"
+  },
+  "loadingAnimationPositionMiddle": "Middle",
+  "@loadingAnimationPositionMiddle": {
+    "description": "Loading animation position: Middle"
+  },
+  "loadingAnimationPositionMiddleRight": "Middle-Right",
+  "@loadingAnimationPositionMiddleRight": {
+    "description": "Loading animation position: Middle-Right"
+  },
+  "loadingAnimationPositionBottomLeft": "Bottom-Left",
+  "@loadingAnimationPositionBottomLeft": {
+    "description": "Loading animation position: Bottom-Left"
+  },
+  "loadingAnimationPositionBottomCenter": "Bottom-Center",
+  "@loadingAnimationPositionBottomCenter": {
+    "description": "Loading animation position: Bottom-Center"
+  },
+  "loadingAnimationPositionBottomRight": "Bottom-Right",
+  "@loadingAnimationPositionBottomRight": {
+    "description": "Loading animation position: Bottom-Right"
+  },
+  "loadingAnimationPositionBouncing": "Bouncing",
+  "@loadingAnimationPositionBouncing": {
+    "description": "Loading animation position: Bouncing DVD screensaver style"
+  },
+  "loadingAnimationSpeed": "Animation Speed",
+  "@loadingAnimationSpeed": {
+    "description": "Title for loading animation speed selection"
+  },
+  "loadingAnimationSpeedSlow": "Slow",
+  "@loadingAnimationSpeedSlow": {
+    "description": "Loading animation speed option: Slow"
+  },
+  "loadingAnimationSpeedModerate": "Moderate",
+  "@loadingAnimationSpeedModerate": {
+    "description": "Loading animation speed option: Moderate"
+  },
+  "loadingAnimationSpeedFast": "Fast",
+  "@loadingAnimationSpeedFast": {
+    "description": "Loading animation speed option: Fast"
+  },
+  "loadingAnimationSpeedUltra": "Ultra",
+  "@loadingAnimationSpeedUltra": {
+    "description": "Loading animation speed option: Ultra"
+  },
+  "showLoadingAnimationText": "Show Text?",
+  "@showLoadingAnimationText": {
+    "description": "Setting toggle for showing loading animation text"
+  },
+  "loadingAnimationPreview": "Preview",
+  "@loadingAnimationPreview": {
+    "description": "Label for loading animation preview window"
+  },
   "snow": "Snow",
   "@snow": {
     "description": "Seasonal effect: snow"
@@ -3524,6 +4196,14 @@
   "@trickplayFollowScrubPositionSubtitle": {
     "description": "Description for the trickplay follow-scrub-position setting"
   },
+  "trickplayPauseWhileScrubbing": "Pause While Scrubbing",
+  "@trickplayPauseWhileScrubbing": {
+    "description": "Setting for whether seeking pauses playback so the trickplay preview holds still"
+  },
+  "trickplayPauseWhileScrubbingSubtitle": "Playback pauses while you seek and resumes when you press play. Turn this off to keep playing and jump straight to the new spot",
+  "@trickplayPauseWhileScrubbingSubtitle": {
+    "description": "Description for the trickplay pause-while-scrubbing setting"
+  },
   "showDescriptionOnPause": "Show Description on Pause",
   "@showDescriptionOnPause": {
     "description": "Setting for showing description on pause"
@@ -3595,10 +4275,6 @@
   "audioBehavior": "Audio Behavior",
   "@audioBehavior": {
     "description": "Setting for audio behavior"
-  },
-  "directStream": "Direct Stream",
-  "@directStream": {
-    "description": "Audio option: direct stream"
   },
   "downmixToStereo": "Downmix to Stereo",
   "@downmixToStereo": {
@@ -4515,6 +5191,14 @@
   "@showFavoritesButton": {
     "description": "Setting for showing favorites button"
   },
+  "showLiveTvButton": "Show Live TV Button",
+  "@showLiveTvButton": {
+    "description": "Setting for showing live TV button"
+  },
+  "showDownloadsButton": "Show Downloads Button",
+  "@showDownloadsButton": {
+    "description": "Setting for showing downloads button"
+  },
   "showLibrariesInToolbar": "Show Libraries in Toolbar",
   "@showLibrariesInToolbar": {
     "description": "Setting for showing libraries in toolbar"
@@ -4582,18 +5266,6 @@
   "libraryDisplay": "Library Display",
   "@libraryDisplay": {
     "description": "Section title for library display settings"
-  },
-  "posterSize": "Poster Size",
-  "@posterSize": {
-    "description": "Setting for poster size"
-  },
-  "extraLarge": "Extra Large",
-  "@extraLarge": {
-    "description": "Size option: extra large"
-  },
-  "imageType": "Image Type",
-  "@imageType": {
-    "description": "Setting for image type"
   },
   "posterLabel": "Poster",
   "@posterLabel": {
@@ -4678,10 +5350,6 @@
   "sourceLibraries": "Source Libraries",
   "@sourceLibraries": {
     "description": "Setting for source libraries"
-  },
-  "unknown": "Unknown",
-  "@unknown": {
-    "description": "Fallback label for unknown items"
   },
   "sourceCollections": "Source Collections",
   "@sourceCollections": {
@@ -4800,10 +5468,6 @@
   "@itemCount": {
     "description": "Setting for item count"
   },
-  "allLibraries": "All libraries",
-  "@allLibraries": {
-    "description": "Label when all libraries are selected"
-  },
   "noneSelected": "None selected",
   "@noneSelected": {
     "description": "Label when nothing is selected"
@@ -4911,10 +5575,6 @@
   "activeRecordings": "Active Recordings",
   "@activeRecordings": {
     "description": "Home section: active recordings"
-  },
-  "nextUp": "Next Up",
-  "@nextUp": {
-    "description": "Home section: next up"
   },
   "playlists": "Playlists",
   "@playlists": {
@@ -5149,6 +5809,70 @@
   "@clockModeBouncing": {
     "description": "Screensaver clock mode: bounces around the screen"
   },
+  "screensaverGeneralSettings": "General Settings",
+  "@screensaverGeneralSettings": {
+    "description": "Section header for screensaver general settings"
+  },
+  "screensaverVisualComponents": "Visual Components",
+  "@screensaverVisualComponents": {
+    "description": "Section header for screensaver visual components"
+  },
+  "screensaverLibraryContent": "Library Content",
+  "@screensaverLibraryContent": {
+    "description": "Section header for screensaver library content"
+  },
+  "screensaverBackdrop": "Backdrop",
+  "@screensaverBackdrop": {
+    "description": "Setting for screensaver backdrop"
+  },
+  "screensaverBackdropBlack": "Black",
+  "@screensaverBackdropBlack": {
+    "description": "Screensaver backdrop: Black"
+  },
+  "screensaverBackdropMoonfin": "Moonfin",
+  "@screensaverBackdropMoonfin": {
+    "description": "Screensaver backdrop: Moonfin"
+  },
+  "screensaverBackdropCalm": "Calm",
+  "@screensaverBackdropCalm": {
+    "description": "Screensaver backdrop: Calm"
+  },
+  "screensaverBackdropNeonPulse": "Neon Pulse",
+  "@screensaverBackdropNeonPulse": {
+    "description": "Screensaver backdrop: Neon Pulse"
+  },
+  "screensaverBackdropAurora": "Aurora",
+  "@screensaverBackdropAurora": {
+    "description": "Screensaver backdrop: Aurora"
+  },
+  "screensaverAdditionalComponent": "Additional Component",
+  "@screensaverAdditionalComponent": {
+    "description": "Setting for screensaver additional component"
+  },
+  "screensaverComponentMoonfinLogo": "Moonfin Logo",
+  "@screensaverComponentMoonfinLogo": {
+    "description": "Screensaver component: Moonfin Logo"
+  },
+  "screensaverComponentRunner": "Runner",
+  "@screensaverComponentRunner": {
+    "description": "Screensaver component: Runner"
+  },
+  "screensaverComponentMovement": "Component Movement",
+  "@screensaverComponentMovement": {
+    "description": "Setting for screensaver component movement"
+  },
+  "screensaverComponentPosition": "Component Position",
+  "@screensaverComponentPosition": {
+    "description": "Setting for screensaver component position"
+  },
+  "screensaverComponentSize": "Component Size",
+  "@screensaverComponentSize": {
+    "description": "Setting for screensaver component size"
+  },
+  "screensaverSourceLibrariesDefault": "All (Default)",
+  "@screensaverSourceLibrariesDefault": {
+    "description": "Subtitle when no source libraries are explicitly filtered in screensaver"
+  },
   "rottenTomatoesCritics": "Rotten Tomatoes (Critics)",
   "@rottenTomatoesCritics": {
     "description": "Rating source: Rotten Tomatoes Critics"
@@ -5373,6 +6097,22 @@
   "@hideAdultContent": {
     "description": "Description for NSFW filter"
   },
+  "showMissingCollectionItems": "Show Missing Collection Items",
+  "@showMissingCollectionItems": {
+    "description": "Setting title to show missing items from Seerr on Collection pages"
+  },
+  "showMissingCollectionItemsDesc": "Include missing items on Collection pages",
+  "@showMissingCollectionItemsDesc": {
+    "description": "Setting subtitle explaining that missing items will be included on Collection pages"
+  },
+  "showSeerrAvailabilityBadges": "Show Seerr Availability Badges",
+  "@showSeerrAvailabilityBadges": {
+    "description": "Setting title for showing Seerr availability badges on media details pages"
+  },
+  "showSeerrAvailabilityBadgesDescription": "Show season availability badges on media details pages",
+  "@showSeerrAvailabilityBadgesDescription": {
+    "description": "Setting description for showing Seerr availability badges on media details pages"
+  },
   "seerrNotificationsSection": "Notifications",
   "@seerrNotificationsSection": {
     "description": "Header for the Seerr notifications settings section"
@@ -5577,14 +6317,6 @@
   "@mdbListTmdbRatingSources": {
     "description": "Ratings settings subtitle"
   },
-  "storageLimit": "Storage Limit",
-  "@storageLimit": {
-    "description": "Setting for storage limit"
-  },
-  "noLimit": "No limit",
-  "@noLimit": {
-    "description": "Option: no limit"
-  },
   "gbValue": "{value} GB",
   "@gbValue": {
     "description": "Gigabyte value display",
@@ -5614,11 +6346,6 @@
   "@browse": {
     "description": "Button to browse files"
   },
-  "seerr": "Seerr",
-  "@seerr": {
-    "description": "Seerr brand name"
-  },
-
   "noResults": "No results",
   "@noResults": {
     "description": "Shown when a search or browse returns no items"
@@ -6225,8 +6952,6 @@
   "path": "Path",
   "paused": "Paused",
   "permissions": "Permissions",
-  "play": "Play",
-  "pause": "Pause",
   "processing": "Processing",
   "profile": "Profile",
   "provider": "Provider",
@@ -6310,7 +7035,6 @@
     }
   },
 
-  "allLibraries": "All Libraries",
   "analyticsMediaDistribution": "Media Distribution",
   "analyticsVideoCodecs": "Video Codecs",
   "analyticsAudioCodecs": "Audio Codecs",
@@ -6370,8 +7094,6 @@
   "completion": "Completion",
   "direct": "Direct",
   "adminDisconnect": "Disconnect",
-
-  "failedToLoad": "Failed to load",
 
   "adminClearDates": "Clear dates",
   "adminActivitySeverityAll": "All severities",
@@ -6684,7 +7406,6 @@
   "adminFullAccessWarning": "Administrators have complete access to the server. Grant with caution.",
   "administrator": "Administrator",
   "adminHiddenUser": "Hidden user",
-  "disabled": "Disabled",
   "adminAllowMediaPlayback": "Allow media playback",
   "adminAllowAudioTranscoding": "Allow audio transcoding",
   "adminAllowVideoTranscoding": "Allow video transcoding",
@@ -7157,7 +7878,6 @@
   "adminMaxResumeSubtitle": "Content is considered fully played after this percentage",
   "adminMinResumeDuration": "Minimum resume duration (seconds)",
   "adminMinResumeDurationSubtitle": "Items shorter than this are not resumable",
-  "audiobooks": "Audiobooks",
   "adminMinAudiobookResume": "Minimum audiobook resume percentage",
   "adminMaxAudiobookResume": "Maximum audiobook resume percentage",
 
@@ -8139,7 +8859,7 @@
   "offlineNoInternet": "You are offline. Only downloaded content is available.",
   "offlineFileNotAvailable": "File not available",
   "offlineSwitchServer": "Switch Server",
-  "offlineSavedMedia": "Saved Media",
+  "offlineSavedMedia": "Downloads",
   "offlineBannerTitle": "You're offline",
   "offlineBannerSubtitle": "Showing your downloads",
   "offlineBannerAction": "Downloads",
@@ -8430,6 +9150,7 @@
   "settingsShowShuffleButtonInNavigation": "Show the shuffle button in the navigation bar",
   "settingsShowGenresButtonInNavigation": "Show the genres button in the navigation bar",
   "settingsShowFavoritesButtonInNavigation": "Show the favorites button in the navigation bar",
+  "settingsShowLiveTvButtonInNavigation": "Show the Live TV button in the navigation bar when the server has a Live TV library",
   "settingsShowLibrariesButtonInNavigation": "Show the libraries button in the navigation bar",
   "settingsShowSeerrButtonInNavigation": "Show the Seerr button in the navigation bar",
   "settingsAlwaysExpandNavbarLabels": "Always show text labels in the top navigation bar",
@@ -8580,7 +9301,6 @@
   "@settingsTimer": {
     "description": "Option label to show only countdown timer on media segment countdown overlay"
   },
-  "settingsBoth": "Both",
   "@settingsBoth": {
     "description": "Option label to show both progress bar and countdown timer on media segment countdown overlay"
   },
@@ -8603,6 +9323,16 @@
   "settingsPlaybackEngineAndroidTvDescription": "Choose the default playback engine on Android TV devices. Changes apply to the next playback session.",
   "settingsPlaybackEngineMedia3Recommended": "Media3 (recommended)",
   "settingsPlaybackEngineMpvLegacy": "mpv (legacy)",
+  "settingsRedetectDisplay": "Re-detect display",
+  "settingsRedetectDisplayDescription": "Ask the TV again what HDR formats it supports. Use this if Dolby Vision or HDR10 titles are being transcoded after the TV or receiver was powered on late.",
+  "settingsDisplayIsSdr": "My TV is not HDR",
+  "settingsDisplayIsSdrDescription": "Stop advertising HDR support for this display. Use this only if detection keeps reporting HDR your TV can't actually show.",
+  "settingsDisplayRedetected": "Display re-detected: {formats}",
+  "@settingsDisplayRedetected": {
+    "placeholders": { "formats": { "type": "String" } }
+  },
+  "settingsDisplayNoHdrDetected": "No HDR formats detected",
+  "settingsDisplayMarkedSdr": "Display saved as SDR",
   "settingsDolbyVisionFallback": "Dolby Vision Fallback",
   "settingsDolbyVisionFallbackDescription": "Behavior for Dolby Vision titles on devices without Dolby Vision decoding.",
   "settingsAskEachTime": "Ask each time",
@@ -8865,6 +9595,8 @@
   "homeRowTogglesDescription": "Enable the following toggles to display the rows in Home Sections.",
   "rowsType": "Row Type",
   "rowsTypeDescription": "Classic keeps per-row image type and info overlay. Modern uses portrait-to-backdrop rows.",
+  "modernCardsOnMyMediaRow": "Modern cards on My Media row",
+  "modernCardsOnMyMediaRowDescription": "Display customizable posters that expand on focus. Disable to always show landscape thumbnail.",
   "sortOrder": "Sort Order",
   "ascending": "Ascending",
   "descending": "Descending",
@@ -9006,7 +9738,6 @@
   "openIosRoutePicker": "Open iOS route picker",
   "airPlayRoutePickerUnavailable": "AirPlay route picker is unavailable on this device.",
   "videos": "Videos",
-  "trailers": "Trailers",
   "programs": "Programs",
   "songs": "Songs",
   "photoAlbums": "Photo Albums",
@@ -9247,6 +9978,7 @@
   "audiobookTimeline": "Timeline",
   "audiobookTimelineEmpty": "Timeline is empty",
   "audiobookFocusedTimeline": "Focused Timeline",
+  "audiobookFullTimeline": "Full Timeline",
   "audiobookExportBookmarks": "Export Bookmarks",
   "audiobookExportNotes": "Export Notes",
   "audiobookExportAll": "Export All",
@@ -9374,12 +10106,16 @@
   "@libraryWriteAccessReactiveBody": {
     "description": "Reactive error warning message when artwork update fails"
   },
-  "externalLists": "External Home Row Lists",
+  "externalLists": "External Lists",
   "replay": "Replay",
   "fileInformation": "File Information",
   "fileSizeFormat": "Size: {size}  •  Format: {format}",
   "@fileSizeFormat": {
     "placeholders": { "size": {}, "format": {} }
+  },
+  "dateCreatedFormat": "Date Added: {date}",
+  "@dateCreatedFormat": {
+    "placeholders": { "date": {} }
   },
   "showAllAudioTracks": "Show All ({count}) Audio Tracks",
   "@showAllAudioTracks": {
@@ -9406,6 +10142,47 @@
   "transcodeVideoBitrateExceedsLimit": "Video bitrate exceeds streaming limit.",
   "transcodeAudioBitrateExceedsLimit": "Audio bitrate exceeds streaming limit.",
   "transcodeAudioChannelsNotSupported": "Number of audio channels is not supported.",
+  "transcodeAudioCodecWithCodec": "Audio codec ({codec}) is not supported directly.",
+  "@transcodeAudioCodecWithCodec": {
+    "placeholders": { "codec": { "type": "String" } }
+  },
+  "transcodeAudioCodecHintPassthrough": "Tip: If your audio receiver or soundbar supports {codec}, enable Audio Passthrough in Audio settings.",
+  "@transcodeAudioCodecHintPassthrough": {
+    "placeholders": { "codec": { "type": "String" } }
+  },
+  "transcodeAudioChannelsExceeded": "Audio channel count ({channels}ch) exceeds the player limit.",
+  "@transcodeAudioChannelsExceeded": {
+    "placeholders": { "channels": { "type": "int" } }
+  },
+  "transcodeAudioChannelsHint": "Tip: Adjust 'Max Audio Channels' or multichannel downmixing in Audio settings.",
+  "transcodeSubtitleBurnInAssDisabled": "ASS/SSA subtitles require transcoding because direct play is turned off.",
+  "transcodeSubtitleBurnInAssHint": "Tip: Enable 'ASS/SSA Direct Play' in Playback settings to play directly without transcoding.",
+  "transcodeSubtitleBurnInPgsDisabled": "PGS subtitles require transcoding because direct play is turned off.",
+  "transcodeSubtitleBurnInPgsHint": "Tip: Enable 'PGS Direct Play' in Playback settings to play directly without transcoding.",
+  "transcodeSubtitleNotSupportedWithCodec": "Subtitle format ({codec}) is not supported directly and must be burned in.",
+  "@transcodeSubtitleNotSupportedWithCodec": {
+    "placeholders": { "codec": { "type": "String" } }
+  },
+  "transcodeBitrateExceededWithValues": "File bitrate ({fileBitrate}) exceeds the configured streaming limit ({maxBitrate}).",
+  "@transcodeBitrateExceededWithValues": {
+    "placeholders": { "fileBitrate": { "type": "String" }, "maxBitrate": { "type": "String" } }
+  },
+  "transcodeBitrateHint": "Tip: Increase 'Maximum Bitrate' in Playback settings to allow direct streaming.",
+  "transcodeResolutionHint": "Tip: Increase 'Maximum Resolution' in Playback settings to allow direct streaming.",
+  "transcodeVideoRangeNotSupported": "Video dynamic range (e.g. Dolby Vision / HDR) is not supported by this display.",
+  "transcodeDolbyVisionProfile7ElDisabled": "Dolby Vision Profile 7 enhancement layer direct play is disabled.",
+  "transcodeDolbyVisionProfile7ElHint": "Tip: Enable 'Dolby Vision Profile 7 Direct Play' in Playback settings if your display supports it.",
+  "transcodeDolbyVisionFallbackPreferenceTranscode": "Transcoding is preferred for Dolby Vision fallback per user settings.",
+  "transcodeDolbyVisionFallbackHint": "Tip: Set 'Dolby Vision Fallback' to 'Play as HDR10' in Playback settings to avoid transcoding.",
+  "transcodeDisplayReportsNoHdr": "Connected display does not report support for HDR or Dolby Vision.",
+  "transcodeDisplayLacksHdr10ForFallback": "Connected display lacks HDR10 support needed for Dolby Vision fallback.",
+  "transcodeAudioSampleRateNotSupported": "Audio sample rate is not supported.",
+  "transcodeAudioBitDepthNotSupported": "Audio bit depth is not supported.",
+  "transcodeRefFramesNotSupported": "Video reference frames exceed player limits.",
+  "transcodeAnamorphicVideoNotSupported": "Anamorphic video is not supported.",
+  "transcodeInterlacedVideoNotSupported": "Interlaced video is not supported.",
+  "transcodeSecondaryAudioNotSupported": "Secondary audio stream requires transcoding.",
+  "transcodeDirectPlayError": "Direct play is not supported for this media format.",
   "sortAlphabetical": "Alphabetical",
   "sortReleaseAscending": "Release Order (Ascending)",
   "sortReleaseDescending": "Release Order (Descending)",
@@ -9479,7 +10256,6 @@
   "@adminLibChapterImageResolutionMatchSource": {
     "description": "Chapter image resolution option that matches the source resolution"
   },
-  "externalLists": "External Lists",
   "imdbTop250Movies": "IMDb Top 250 Movies",
   "imdbTop250TvShows": "IMDb Top 250 TV Shows",
   "imdbMostPopularMovies": "IMDb Most Popular Movies",
@@ -9601,6 +10377,10 @@
   "mixedPlaylistsSection": "Mixed Playlists",
   "@mixedPlaylistsSection": {
     "description": "Section header above mixed playlists when Group by Type is enabled"
+  },
+  "currentTime": "Current Time",
+  "@currentTime": {
+    "description": "The current time as it appears on a clock"
   },
   "playbackTimeDisplay": "Progress Bar Time",
   "@playbackTimeDisplay": {
@@ -9920,6 +10700,22 @@
   "@setupDetailModernHint": {
     "description": "What the modern detail screen style gives you"
   },
+  "setupStyleSpotlight": "Spotlight",
+  "@setupStyleSpotlight": {
+    "description": "Name of the hero-first detail layout, offered in the setup wizard"
+  },
+  "setupDetailSpotlightHint": "Hero-first, with pop-up cards for cast and extras.",
+  "@setupDetailSpotlightHint": {
+    "description": "What the spotlight detail screen style gives you"
+  },
+  "setupStyleNouveau": "Nouveau",
+  "@setupStyleNouveau": {
+    "description": "Name of the full-screen stacked detail layout, offered in the setup wizard"
+  },
+  "setupDetailNouveauHint": "Full-screen, with sections stacked instead of tabs.",
+  "@setupDetailNouveauHint": {
+    "description": "What the nouveau detail screen style gives you"
+  },
   "setupPickALook": "Pick a look",
   "@setupPickALook": {
     "description": "Label above the theme swatches on the final setup screen"
@@ -9971,5 +10767,403 @@
   "serverMessagesShowButtonSubtitle": "Adds a button to the menu for messages sent by your server admin",
   "@serverMessagesShowButtonSubtitle": {
     "description": "Explains the setting that shows or hides the messages button"
+  },
+  "autoDownloadNewEpisodes": "Auto-download new episodes",
+  "@autoDownloadNewEpisodes": {
+    "description": "Row in the download sheet of a series that subscribes it to automatic downloads"
+  },
+  "autoDownloadStop": "Stop auto-download",
+  "@autoDownloadStop": {
+    "description": "Row in the download sheet of a series that is already subscribed; tapping removes the subscription"
+  },
+  "autoDownloadKeepUnwatchedSubtitle": "{count, plural, =0{Downloads every new episode} =1{Downloads new episodes, up to 1 unwatched at a time} other{Downloads new episodes, up to {count} unwatched at a time}}",
+  "@autoDownloadKeepUnwatchedSubtitle": {
+    "description": "Subtitle under the auto-download row explaining the keep-unwatched rule",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "autoDownloadStopSubtitle": "On • {quality}",
+  "@autoDownloadStopSubtitle": {
+    "description": "Subtitle under the stop auto-download row showing the subscription's quality",
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "autoDownloadTranscodedForegroundNote": "Transcoded qualities only download while Moonfin is open. Original quality also downloads in the background.",
+  "@autoDownloadTranscodedForegroundNote": {
+    "description": "Shown under transcoded options when choosing the quality of an auto-download subscription"
+  },
+  "autoDownloadTranscodedRunningNote": "Transcoded downloads can't resume after an interruption and start over from the beginning. Original quality can resume.",
+  "@autoDownloadTranscodedRunningNote": {
+    "description": "Shown under a running transcoded download that a subscription queued"
+  },
+  "autoDownloadForegroundOnly": "Downloads only while Moonfin is open",
+  "@autoDownloadForegroundOnly": {
+    "description": "Short note next to a followed series in a transcoded quality"
+  },
+  "autoDownloadQualityTitle": "Auto-download quality",
+  "@autoDownloadQualityTitle": {
+    "description": "Title of the quality sheet when it is opened to create an auto-download subscription"
+  },
+  "autoDownloadEnabledFor": "Auto-download enabled for {title}",
+  "@autoDownloadEnabledFor": {
+    "description": "Snackbar after subscribing a series",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "autoDownloadStoppedFor": "Auto-download stopped for {title}",
+  "@autoDownloadStoppedFor": {
+    "description": "Snackbar after unsubscribing a series",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "autoDownloadSection": "Automatic downloads",
+  "@autoDownloadSection": {
+    "description": "Settings section header for auto-download subscriptions"
+  },
+  "autoDownloadEnable": "Enable automatic downloads",
+  "@autoDownloadEnable": {
+    "description": "Master switch for auto-download subscriptions"
+  },
+  "autoDownloadEnableSubtitle": "Downloads new episodes of the series you follow. Existing episodes can still be downloaded manually.",
+  "@autoDownloadEnableSubtitle": {
+    "description": "Explains the master switch"
+  },
+  "autoDownloadKeepUnwatched": "Keep unwatched episodes",
+  "@autoDownloadKeepUnwatched": {
+    "description": "Setting that caps how many unwatched episodes per series stay downloaded"
+  },
+  "autoDownloadKeepAll": "All",
+  "@autoDownloadKeepAll": {
+    "description": "Option meaning no cap on kept unwatched episodes"
+  },
+  "autoDownloadDelete": "Delete downloaded episodes",
+  "@autoDownloadDelete": {
+    "description": "Setting that picks how soon an auto-downloaded episode is removed after it was watched"
+  },
+  "autoDownloadDeleteSubtitle": "When to remove automatically downloaded episodes after you watch them",
+  "@autoDownloadDeleteSubtitle": {
+    "description": "Explains the delete-after-watching setting"
+  },
+  "autoDownloadDeleteNever": "Never",
+  "@autoDownloadDeleteNever": {
+    "description": "Delete-after-watching option: keep episodes"
+  },
+  "autoDownloadDeleteImmediately": "Right after watching",
+  "@autoDownloadDeleteImmediately": {
+    "description": "Delete-after-watching option: remove at the next check once played"
+  },
+  "autoDownloadDeleteAfterDay": "1 day after watching",
+  "@autoDownloadDeleteAfterDay": {
+    "description": "Delete-after-watching option"
+  },
+  "autoDownloadDeleteAfterWeek": "1 week after watching",
+  "@autoDownloadDeleteAfterWeek": {
+    "description": "Delete-after-watching option"
+  },
+  "autoDownloadBackgroundRefresh": "Check in the background",
+  "@autoDownloadBackgroundRefresh": {
+    "description": "Setting that lets the system wake the app to check for new episodes"
+  },
+  "autoDownloadBackgroundRefreshSubtitle": "Allow the system to check for new episodes periodically while Moonfin is closed",
+  "@autoDownloadBackgroundRefreshSubtitle": {
+    "description": "Explains the background refresh setting"
+  },
+  "autoDownloadBackgroundRefreshDenied": "Background App Refresh is disabled for Moonfin. Enable it in iOS Settings.",
+  "@autoDownloadBackgroundRefreshDenied": {
+    "description": "Shown when iOS forbids background refresh for the app"
+  },
+  "autoDownloadBackgroundRestrictedAndroid": "Background usage is restricted for Moonfin in Android Settings.",
+  "@autoDownloadBackgroundRestrictedAndroid": {
+    "description": "Shown when Android restricts the app from running in the background"
+  },
+  "autoDownloadCheckNow": "Check now",
+  "@autoDownloadCheckNow": {
+    "description": "Button that runs a subscription check immediately"
+  },
+  "autoDownloadChecking": "Checking...",
+  "@autoDownloadChecking": {
+    "description": "Subtitle while a subscription check is running"
+  },
+  "autoDownloadNeverChecked": "Not checked yet",
+  "@autoDownloadNeverChecked": {
+    "description": "Subtitle when no subscription check has run"
+  },
+  "autoDownloadLastCheck": "Last check {when}: {queued, plural, =0{nothing new} =1{1 episode queued} other{{queued} episodes queued}}",
+  "@autoDownloadLastCheck": {
+    "description": "Subtitle summarising the last subscription check",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      },
+      "queued": {
+        "type": "int"
+      }
+    }
+  },
+  "autoDownloadLastCheckFailed": "Last check {when} failed: {error}",
+  "@autoDownloadLastCheckFailed": {
+    "description": "Subtitle when the last subscription check hit an error",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "autoDownloadFollowedSeries": "Followed series",
+  "@autoDownloadFollowedSeries": {
+    "description": "Settings section header listing the series with auto-download on"
+  },
+  "autoDownloadNoSubscriptions": "Open a series and choose \"Auto-download new episodes\" from its download menu",
+  "@autoDownloadNoSubscriptions": {
+    "description": "Shown in settings when no series is followed"
+  },
+  "autoDownloadRemove": "Stop following",
+  "@autoDownloadRemove": {
+    "description": "Tooltip on the button that removes a followed series"
+  },
+  "autoDownloadStorageFull": "Not enough storage",
+  "@autoDownloadStorageFull": {
+    "description": "Appended to the last-check summary when the storage limit stopped queueing"
+  },
+  "autoDownloadWaitingForWifi": "Waiting for WiFi",
+  "@autoDownloadWaitingForWifi": {
+    "description": "Last-check summary when Wi-Fi only is on and the device was on mobile data"
+  },
+  "downloadNotificationRunning": "Downloading",
+  "@downloadNotificationRunning": {
+    "description": "System notification title while a download transfers"
+  },
+  "downloadNotificationRunningBatch": "Downloading ({done}/{total})",
+  "@downloadNotificationRunningBatch": {
+    "description": "System notification title while a batch transfers; done is the 1-based position of the current item",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadNotificationProgress": "{name} — {percent}%",
+  "@downloadNotificationProgress": {
+    "description": "System notification body with the item label (for example Series S1E1) and its percentage",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadNotificationTransfer": "{name} — {progress} · {timeRemaining}",
+  "@downloadNotificationTransfer": {
+    "description": "System notification body for a transfer the native engine reports on. The engine fills in progress (a percentage such as 42%) and timeRemaining (mm:ss) itself.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "progress": {
+        "type": "String"
+      },
+      "timeRemaining": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadNotificationStarting": "{name}...",
+  "@downloadNotificationStarting": {
+    "description": "System notification body before the size of a download is known",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadNotificationCompleteTitle": "{count, plural, =1{Download complete} other{Downloads complete}}",
+  "@downloadNotificationCompleteTitle": {
+    "description": "System notification title once a download or a batch has finished",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadNotificationSaved": "{name} saved for offline",
+  "@downloadNotificationSaved": {
+    "description": "System notification body for one finished download; name is the item label (for example Series S1E1)",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadNotificationSavedCount": "{count, plural, =1{1 item saved for offline} other{{count} items saved for offline}}",
+  "@downloadNotificationSavedCount": {
+    "description": "System notification body for a finished batch of mixed items",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadNotificationSeriesEpisodes": "{series}: {count, plural, =1{1 episode} other{{count} episodes}}",
+  "@downloadNotificationSeriesEpisodes": {
+    "description": "System notification body for a finished batch that all belongs to one series",
+    "placeholders": {
+      "series": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadNotificationFailedTitle": "Download failed",
+  "@downloadNotificationFailedTitle": {
+    "description": "System notification title for a failed download"
+  },
+  "downloadNotificationFailedBody": "{name}: {error}",
+  "@downloadNotificationFailedBody": {
+    "description": "System notification body for a failed download",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "serverMessagesNotificationTitle": "Remote message",
+  "@serverMessagesNotificationTitle": {
+    "description": "System notification title for a message sent by the server when it carries no header"
+  },
+  "serverMessagesNotificationReceived": "Message received",
+  "@serverMessagesNotificationReceived": {
+    "description": "System notification body for a server message with empty text"
+  },
+  "downloadStorageLimitReached": "Storage limit reached. Free up space or increase the limit.",
+  "@downloadStorageLimitReached": {
+    "description": "Error shown when a download would exceed the storage limit set in the download settings"
+  },
+  "downloadNotEnoughStorage": "Not enough storage: {needed} needed, {free} free",
+  "@downloadNotEnoughStorage": {
+    "description": "Error shown when a download would not fit on the device; needed and free are formatted sizes",
+    "placeholders": {
+      "needed": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "autoDownloadStorageFullTitle": "Not enough storage for new episodes",
+  "@autoDownloadStorageFullTitle": {
+    "description": "System notification title when the automatic check has to hold new episodes back"
+  },
+  "autoDownloadStorageFullBody": "{count, plural, =1{{name} needs {size}.} other{{count} episodes are waiting for space.}} Free up space or raise the download limit.",
+  "@autoDownloadStorageFullBody": {
+    "description": "System notification body when the automatic check has to hold new episodes back; name is the label of the first one (for example Series S1E1) and size its formatted size",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAnimationSpeed": "Animation Speed",
+  "@settingsAnimationSpeed": {
+    "description": "Section header in General Style settings for configuring motion and transition speeds"
+  },
+  "pageTransitions": "Page Transitions",
+  "@pageTransitions": {
+    "description": "Setting title for adjusting the speed of page navigation transitions"
+  },
+  "pageTransitionsSubtitle": "Adjusts fade time when navigating between pages",
+  "@pageTransitionsSubtitle": {
+    "description": "Description for the page transitions animation speed setting"
+  },
+  "navigationSpeed": "Navigation Speed",
+  "@navigationSpeed": {
+    "description": "Setting title for adjusting the speed of focus movement and row scrolling"
+  },
+  "navigationSpeedSubtitle": "Adjusts how quickly the focus indicator moves between items and rows",
+  "@navigationSpeedSubtitle": {
+    "description": "Description for the navigation animation speed setting"
+  },
+  "modernCardsTransitionSpeed": "Modern Cards Transition Speed",
+  "@modernCardsTransitionSpeed": {
+    "description": "Setting title for adjusting animation speed of modern card expansions"
+  },
+  "modernCardsTransitionSpeedSubtitle": "Adjusts animation speed when expanding focused modern cards",
+  "@modernCardsTransitionSpeedSubtitle": {
+    "description": "Description for modern cards transition speed setting"
+  },
+  "delayCardExpansionOnRapidScroll": "Delay Card Expansion on Rapid Scroll",
+  "@delayCardExpansionOnRapidScroll": {
+    "description": "Setting title for debouncing modern card expansion during rapid D-pad scrolling"
+  },
+  "delayCardExpansionOnRapidScrollSubtitle": "Waits for focus movement to pause before expanding modern cards",
+  "@delayCardExpansionOnRapidScrollSubtitle": {
+    "description": "Description for debouncing modern card expansion setting"
+  },
+  "animationSpeedExtraSlow": "Extra Slow",
+  "@animationSpeedExtraSlow": {
+    "description": "Option label for extra slow animation speed"
+  },
+  "animationSpeedSlow": "Slow",
+  "@animationSpeedSlow": {
+    "description": "Option label for slow animation speed"
+  },
+  "animationSpeedMedium": "Medium",
+  "@animationSpeedMedium": {
+    "description": "Option label for medium/normal animation speed"
+  },
+  "animationSpeedFast": "Fast",
+  "@animationSpeedFast": {
+    "description": "Option label for fast animation speed"
+  },
+  "animationSpeedOff": "Off",
+  "@animationSpeedOff": {
+    "description": "Option label for turning animations off / instant transitions"
+  },
+  "pageTransitionFadeNone": "No Fade",
+  "@pageTransitionFadeNone": {
+    "description": "Option label for instant page transition with no fade"
+  },
+  "pageTransitionFadeShort": "Short Fade",
+  "@pageTransitionFadeShort": {
+    "description": "Option label for short fade page transition"
+  },
+  "pageTransitionFadeMedium": "Medium Fade",
+  "@pageTransitionFadeMedium": {
+    "description": "Option label for medium fade page transition"
+  },
+  "pageTransitionFadeLong": "Long Fade",
+  "@pageTransitionFadeLong": {
+    "description": "Option label for long fade page transition"
   }
 }

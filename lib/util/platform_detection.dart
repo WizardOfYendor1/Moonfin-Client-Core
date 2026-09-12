@@ -11,15 +11,6 @@ class PlatformDetection {
 
   static const double _mobileFormFactorBreakpoint = 600;
 
-  /// True when compiled for Tizen (Samsung TV). Set via
-  /// `--dart-define=MOONFIN_TIZEN=true` in build-tizen.sh. Tizen is Linux-based
-  /// and reports as [TargetPlatform.linux] to the framework, so this
-  /// compile-time flag is the source of truth and must take precedence over the
-  /// OS-derived getters below (otherwise Tizen would take the desktop/libmpv
-  /// path). It const-folds to `false` on every other build, so the `!isTizen`
-  /// guards below add no runtime cost elsewhere.
-  static const bool isTizen = bool.fromEnvironment('MOONFIN_TIZEN');
-
   static const bool isAppleTV = bool.fromEnvironment('MOONFIN_TVOS');
 
   /// True for the dedicated Android TV flavor produced by the Android TV
@@ -29,21 +20,20 @@ class PlatformDetection {
   static const bool isForcedTv = bool.fromEnvironment('MOONFIN_FORCE_TV');
 
   static bool get isAndroid =>
-      !kIsWeb && !isTizen && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   static bool get isIOS =>
       !kIsWeb &&
-      !isTizen &&
       !isAppleTV &&
       defaultTargetPlatform == TargetPlatform.iOS;
   static int get iosMajorVersion => isIOS ? osMajorVersion() : 0;
   static int? _osMajorCache;
   static int get osMajor => _osMajorCache ??= osMajorVersion();
   static bool get isMacOS =>
-      !kIsWeb && !isTizen && defaultTargetPlatform == TargetPlatform.macOS;
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
   static bool get isWindows =>
-      !kIsWeb && !isTizen && defaultTargetPlatform == TargetPlatform.windows;
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
   static bool get isLinux =>
-      !kIsWeb && !isTizen && defaultTargetPlatform == TargetPlatform.linux;
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
   static bool get isWeb => kIsWeb;
 
   static String get linuxSessionType => '';
@@ -62,7 +52,7 @@ class PlatformDetection {
   static bool get isApple => isIOS || isMacOS;
 
   static bool get isTV {
-    if (isTizen || isAppleTV || isForcedTv) {
+    if (isAppleTV || isForcedTv) {
       return true;
     }
     return switch (_interfaceLayout) {
@@ -90,11 +80,20 @@ class PlatformDetection {
   static final Set<String> _displayHdrTypes = <String>{};
   static final Map<String, dynamic> _mediaCodecCapabilities =
       <String, dynamic>{};
+  static final Map<String, dynamic> _deviceMemory = <String, dynamic>{};
   static final Map<String, dynamic> _audioCapabilities = <String, dynamic>{};
+  static bool _hasDisplayHdrCapabilities = false;
   static bool _hasDolbyVisionCodecCapabilities = false;
   static bool _supportsDoViProfile5 = false;
   static bool _supportsDoViProfile7 = false;
   static bool _supportsDoViProfile8 = false;
+
+  /// Whether the display has ever answered the HDR probe. Without this a
+  /// panel that reported no HDR is indistinguishable from one that was
+  /// never asked.
+  static bool get hasDisplayHdrCapabilities => _hasDisplayHdrCapabilities;
+  static List<String> get displayHdrTypesSnapshot =>
+      List<String>.unmodifiable(_displayHdrTypes);
 
   static bool get supportsAnyHdr => _displayHdrTypes.isNotEmpty;
   static bool get supportsDolbyVision =>
@@ -215,6 +214,7 @@ class PlatformDetection {
   static String? get deviceSocModel => _capabilityString('deviceSocModel');
 
   static void setDisplayHdrTypes(Iterable<String>? values) {
+    _hasDisplayHdrCapabilities = values != null;
     _displayHdrTypes
       ..clear()
       ..addAll(
@@ -248,6 +248,17 @@ class PlatformDetection {
 
   static void setAudioCapabilities(Map<String, dynamic>? values) {
     _audioCapabilities
+      ..clear()
+      ..addAll(values ?? const <String, dynamic>{});
+  }
+
+  /// What the device reports about its own RAM. Empty until the probe answers,
+  /// and empty is read as "nothing known", never as "small".
+  static Map<String, dynamic> get deviceMemory =>
+      Map<String, dynamic>.unmodifiable(_deviceMemory);
+
+  static void setDeviceMemory(Map<String, dynamic>? values) {
+    _deviceMemory
       ..clear()
       ..addAll(values ?? const <String, dynamic>{});
   }
@@ -352,6 +363,26 @@ class PlatformDetection {
   static bool get supportsOfflineDownloads => !isTV || isAndroid || isForcedTv;
 
   static bool get useNativeVideoSurface => isAndroid && isTV;
+
+  /// Volume is driven by the remote through AudioTrack, so the player's own
+  /// mixer should stay wide open rather than restoring a saved level.
+  ///
+  /// The same expression as [useNativeVideoSurface] today, but a different
+  /// question - keep them apart.
+  static bool get playerVolumeIsSystemManaged => isAndroid && isTV;
+
+  /// Whether this platform can give mpv its own window for HDR output.
+  ///
+  /// Deliberately separate from [useNativeVideoSurface] rather than widening
+  /// it with an `isWindows` term: that getter is gated on [isTV], which is
+  /// user-overridable on desktop through [canOverrideInterfaceLayout], so any
+  /// Windows user picking the TV layout would activate this by accident.
+  ///
+  /// This only says the platform is capable. Whether the window is actually
+  /// used is decided per session from the content, the display's HDR state and
+  /// [UserPreferences.nativeHdrOutput] - see `HdrOutputController`. That
+  /// preference is the off switch; there is deliberately no compile-time one.
+  static bool get supportsNativeHdrWindow => isWindows;
 
   /// Apple platforms use the shared AVPlayer-based preview/theme channels
   /// (`moonfin/appletv_preview`, `moonfin/appletv_theme_music`) instead of a

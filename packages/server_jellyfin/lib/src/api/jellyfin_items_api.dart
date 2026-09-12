@@ -192,10 +192,15 @@ class JellyfinItemsApi implements ItemsApi {
   Future<Map<String, dynamic>> getSimilarItems(
     String itemId, {
     int? limit,
+    String? bypass,
   }) async {
+    final params = <String, dynamic>{
+      'Limit': ?limit,
+      'bypass': ?bypass,
+    };
     final response = await _dio.get(
       '/Items/$itemId/Similar',
-      queryParameters: {'Limit': ?limit},
+      queryParameters: params,
     );
     return response.data as Map<String, dynamic>;
   }
@@ -235,6 +240,7 @@ class JellyfinItemsApi implements ItemsApi {
   Future<Map<String, dynamic>> getResumeItems({
     String? parentId,
     List<String>? includeItemTypes,
+    String? mediaTypes,
     int? startIndex,
     int? limit,
     String? fields,
@@ -247,6 +253,8 @@ class JellyfinItemsApi implements ItemsApi {
         'ParentId': ?parentId,
         if (includeItemTypes != null)
           'IncludeItemTypes': includeItemTypes.join(','),
+        if (mediaTypes != null)
+          'MediaTypes': mediaTypes,
         'StartIndex': ?startIndex,
         'Limit': ?limit,
         'Fields': ?fields,
@@ -316,8 +324,14 @@ class JellyfinItemsApi implements ItemsApi {
   }
 
   @override
-  Future<Map<String, dynamic>> getSeasons(String seriesId) async {
-    final response = await _dio.get('/Shows/$seriesId/Seasons');
+  Future<Map<String, dynamic>> getSeasons(
+    String seriesId, {
+    String? fields,
+  }) async {
+    final response = await _dio.get(
+      '/Shows/$seriesId/Seasons',
+      queryParameters: {'Fields': ?fields, 'UserId': _getUserId()},
+    );
     return response.data as Map<String, dynamic>;
   }
 

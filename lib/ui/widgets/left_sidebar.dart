@@ -21,6 +21,7 @@ import '../../l10n/app_localizations.dart';
 import '../../util/clock_format.dart';
 import '../../util/focus/dpad_keys.dart';
 import '../../util/game_library.dart';
+import '../../util/live_tv_library.dart';
 import '../../util/overlay_color_palette.dart';
 import '../../util/platform_detection.dart';
 import '../navigation/destinations.dart';
@@ -28,6 +29,7 @@ import '../navigation/home_refresh_bus.dart';
 import '../navigation/route_lifecycle_observer.dart';
 import 'navigation_layout.dart';
 import 'settings/settings_panel.dart';
+import '../screens/downloads/downloads_panel.dart';
 import '../screens/syncplay/syncplay_screen.dart';
 import '../screens/settings/settings_side_panel.dart';
 import 'seerr_icons.dart';
@@ -148,6 +150,7 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
         NavigationLayout.focusNavbarAvatarNotifier.value;
     NavigationLayout.focusNavbarNotifier.value = _focusNavbarCallback;
     NavigationLayout.focusNavbarAvatarNotifier.value = _focusAvatarCallback;
+    NavigationLayout.chromeFocusRoots.add(_sidebarFocus);
     _updateClock();
     _clockTimer = Timer.periodic(
       const Duration(seconds: 30),
@@ -213,6 +216,7 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
       NavigationLayout.focusNavbarAvatarNotifier.value =
           _previousFocusAvatarCallback;
     }
+    NavigationLayout.chromeFocusRoots.remove(_sidebarFocus);
     FocusManager.instance.removeListener(_trackPreviousFocus);
     if (PlatformDetection.isTV || (PlatformDetection.isDesktop || (PlatformDetection.isWeb && !PlatformDetection.useMobileUi))) {
       _sidebarFocus.removeListener(_onSidebarFocusNodeChanged);
@@ -327,6 +331,13 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
     }
     return true;
   }
+
+  bool get _showLiveTvButton =>
+      _prefs.get(UserPreferences.showLiveTvButton) &&
+      _libraries.any(isLiveTvLibrary);
+
+  List<AggregatedLibrary> get _navLibraries =>
+      librariesForNav(_libraries, _showLiveTvButton);
 
   Color _overlayColor() {
     return OverlayColorPalette.resolveColor(
@@ -836,6 +847,8 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
     final showShuffle = _prefs.get(UserPreferences.showShuffleButton);
     final showGenres = _prefs.get(UserPreferences.showGenresButton);
     final showFavorites = _prefs.get(UserPreferences.showFavoritesButton);
+    final showLiveTv = _showLiveTvButton;
+    final navLibraries = _navLibraries;
     final showLibraries = _prefs.get(UserPreferences.showLibrariesInToolbar);
     final showFolders = _prefs.get(UserPreferences.enableFolderView);
     final showSyncPlay =
@@ -960,6 +973,23 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                       context.navigateTopLevel(Destinations.allFavorites);
                     },
                   ),
+                if (showLiveTv)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-livetv'),
+                    icon: Icons.live_tv_rounded,
+                    label: l10n.liveTv,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      if (_isActive(Destinations.liveTvGuide)) {
+                        _exitSidebarToContent();
+                        return;
+                      }
+                      _markNavigationAwayFromSidebar();
+                      context.navigateTopLevel(Destinations.liveTvGuide);
+                    },
+                  ),
                 if (showFolders)
                   _SidebarItem(
                     key: const ValueKey('sidebar-folders'),
@@ -1014,7 +1044,7 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                       context.navigateTopLevel(Destinations.seerrDiscover);
                     },
                   ),
-                if (showLibraries && _libraries.isNotEmpty) ...[
+                if (showLibraries && navLibraries.isNotEmpty) ...[
                   _SidebarItem(
                     key: const ValueKey('sidebar-libraries'),
                     baseColor: nextMainSidebarColor(),
@@ -1052,7 +1082,7 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                     curve: Curves.easeInOut,
                     child: _librariesExpanded
                         ? Column(
-                            children: _libraries
+                            children: navLibraries
                                 .map(
                                   (lib) => _SidebarLibraryItem(
                                     key: ObjectKey(lib.id),
@@ -1098,13 +1128,28 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                         : const SizedBox.shrink(),
                   ),
                 ],
+                if (_prefs.get(UserPreferences.showDownloadsButton) &&
+                    PlatformDetection.supportsOfflineDownloads &&
+                    !PlatformDetection.isWeb)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-downloads'),
+                    icon: Icons.download_for_offline,
+                    label: l10n.savedMedia,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      showDownloadsDialog(context);
+                    },
+                  ),
                 // The slot is taken here rather than inside the builder, so the
                 // settings row keeps its colour whether or not there are any
                 // messages to show.
-                _serverMessagesSidebarItem(
-                  navColor: nextMainSidebarColor(),
-                  label: l10n.serverMessages,
-                ),
+                if (_prefs.get(UserPreferences.showServerMessagesButton))
+                  _serverMessagesSidebarItem(
+                    navColor: nextMainSidebarColor(),
+                    label: l10n.serverMessages,
+                  ),
                 _SidebarItem(
                   key: const ValueKey('sidebar-settings'),
                   icon: Icons.settings_rounded,

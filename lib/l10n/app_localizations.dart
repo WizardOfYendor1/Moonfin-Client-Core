@@ -469,7 +469,7 @@ abstract class AppLocalizations {
   /// Explanation under the detail screen style setting
   ///
   /// In en, this message translates to:
-  /// **'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout.'**
+  /// **'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards. Nouveau is a full-screen layout with sections stacked down the page.'**
   String get detailScreenStyleSubtitle;
 
   /// Detail screen style option: the classic centered layout
@@ -483,6 +483,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Modern'**
   String get detailScreenStyleModern;
+
+  /// Detail screen style option: the hero-first layout with summary cards that open grid modals
+  ///
+  /// In en, this message translates to:
+  /// **'Spotlight'**
+  String get detailScreenStyleSpotlight;
+
+  /// Tooltip/semantics of the spotlight ellipsis button and the title of the overflow actions menu it opens
+  ///
+  /// In en, this message translates to:
+  /// **'More Actions'**
+  String get spotlightMoreActions;
+
+  /// Title of the spotlight summary card that opens the people and studios modal
+  ///
+  /// In en, this message translates to:
+  /// **'Cast, Crew, and Studios'**
+  String get spotlightCastCrewStudios;
+
+  /// Title of the spotlight summary card that opens the chapters and special features modal
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters and Extras'**
+  String get spotlightChaptersExtras;
+
+  /// Title of the spotlight summary card that opens the similar titles and recommendations modal
+  ///
+  /// In en, this message translates to:
+  /// **'Similar and Recommendations'**
+  String get spotlightSimilarRecommendations;
+
+  /// Title of the spotlight summary card that opens the seasons grid modal for a series
+  ///
+  /// In en, this message translates to:
+  /// **'Seasons and Episodes'**
+  String get spotlightSeasonsEpisodes;
+
+  /// Title of the spotlight summary card listing the other episodes of the season
+  ///
+  /// In en, this message translates to:
+  /// **'More Episodes'**
+  String get spotlightMoreEpisodes;
+
+  /// Title of the spotlight summary card that opens a person's filmography modal
+  ///
+  /// In en, this message translates to:
+  /// **'Filmography'**
+  String get spotlightFilmography;
+
+  /// Title of the spotlight summary card that opens the parent collections modal
+  ///
+  /// In en, this message translates to:
+  /// **'Collections'**
+  String get spotlightCollectionsCard;
+
+  /// Title of the spotlight summary card that opens the ordered box set playlist modal
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist Order'**
+  String get spotlightPlaylistOrder;
+
+  /// Subtitle of the spotlight similar and recommendations card
+  ///
+  /// In en, this message translates to:
+  /// **'Movies & Shows'**
+  String get spotlightMoviesAndShows;
+
+  /// Header of the Seerr similar-titles section when it appears beside the library's own similar section
+  ///
+  /// In en, this message translates to:
+  /// **'Similar (Seerr)'**
+  String get spotlightSimilarSeerr;
+
+  /// Header of the Seerr recommendations section when it appears in the Spotlight recommendations modal
+  ///
+  /// In en, this message translates to:
+  /// **'Recommendations (Seerr)'**
+  String get spotlightRecommendationsSeerr;
+
+  /// Count fragment on spotlight summary cards: people
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 person} other{{count} people}}'**
+  String spotlightPeopleCount(int count);
+
+  /// Count fragment on spotlight summary cards: studios
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 studio} other{{count} studios}}'**
+  String spotlightStudiosCount(int count);
+
+  /// Count fragment on spotlight summary cards: chapters
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 chapter} other{{count} chapters}}'**
+  String spotlightChaptersCount(int count);
+
+  /// Count fragment on spotlight summary cards: extras/special features
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 extra} other{{count} extras}}'**
+  String spotlightExtrasCount(int count);
+
+  /// Count fragment on spotlight summary cards: seasons
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 season} other{{count} seasons}}'**
+  String spotlightSeasonsCount(int count);
+
+  /// Count fragment on spotlight summary cards: episodes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 episode} other{{count} episodes}}'**
+  String spotlightEpisodesCount(int count);
+
+  /// Count fragment on spotlight summary cards: movies
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 movie} other{{count} movies}}'**
+  String spotlightMoviesCount(int count);
+
+  /// Count fragment on spotlight summary cards: series/shows
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 show} other{{count} shows}}'**
+  String spotlightShowsCount(int count);
+
+  /// Count fragment on spotlight summary cards: audio tracks
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 track} other{{count} tracks}}'**
+  String spotlightTracksCount(int count);
+
+  /// Count fragment on spotlight summary cards: generic items
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item} other{{count} items}}'**
+  String spotlightItemsCount(int count);
+
+  /// Count fragment on spotlight summary cards: albums
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 album} other{{count} albums}}'**
+  String spotlightAlbumsCount(int count);
+
+  /// Count fragment on spotlight summary cards: collections
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 collection} other{{count} collections}}'**
+  String spotlightCollectionsCount(int count);
+
+  /// Count fragment on the spotlight similar card: titles across the library and Seerr sections
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 title} other{{count} titles}}'**
+  String spotlightTitlesCount(int count);
+
+  /// Detail screen style option: nouveau full-screen layout with integrated sections
+  ///
+  /// In en, this message translates to:
+  /// **'Nouveau'**
+  String get detailScreenStyleNouveau;
 
   /// Label for the detail screen expanded tabs setting
   ///
@@ -517,7 +679,7 @@ abstract class AppLocalizations {
   /// Explanation under the recommendation system setting
   ///
   /// In en, this message translates to:
-  /// **'Use the Moonfin Recommends local-library algorithm or the online TMDb\'s Similarity Metrics. Note: Online recommendations require Seerr integration.'**
+  /// **'Use the Moonfin Recommends local-library algorithm, Jellyfin Recommends server engine, or the online TMDb\'s Similarity Metrics. Note: Online recommendations require Seerr integration.'**
   String get recommendationSystemSubtitle;
 
   /// Recommendation system option: Moonfin Recommends
@@ -525,6 +687,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Moonfin Recommends'**
   String get recommendationSystemMoonfin;
+
+  /// Recommendation system option: Jellyfin Recommends
+  ///
+  /// In en, this message translates to:
+  /// **'Jellyfin Recommends'**
+  String get recommendationSystemJellyfin;
 
   /// Recommendation system option: TMDb Similarity
   ///
@@ -663,6 +831,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reduced'**
   String get glassQualityReduced;
+
+  /// Label for the device performance setting
+  ///
+  /// In en, this message translates to:
+  /// **'Performance'**
+  String get performanceMode;
+
+  /// Explanation under the device performance setting
+  ///
+  /// In en, this message translates to:
+  /// **'Auto measures this device and holds back on the ones short on memory, which keeps fewer images in memory and leaves trailers as still images. Takes full effect on the next launch.'**
+  String get performanceModeSubtitle;
+
+  /// Performance option: measure the device
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get performanceModeAuto;
+
+  /// Performance option: never hold back
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get performanceModeStandard;
+
+  /// Performance option: always hold back
+  ///
+  /// In en, this message translates to:
+  /// **'Reduced'**
+  String get performanceModeReduced;
+
+  /// Shown under the trailer preview switch when the device tier suppresses trailers
+  ///
+  /// In en, this message translates to:
+  /// **'Off because Performance is set to Reduced for this device'**
+  String get trailerPreviewHeldBack;
 
   /// Subtitle for the theme selection screen and theme settings entry
   ///
@@ -1690,6 +1894,18 @@ abstract class AppLocalizations {
   /// **'Latest Audiobooks'**
   String get latestAudiobooks;
 
+  /// Row title for recently added comics in the book library
+  ///
+  /// In en, this message translates to:
+  /// **'Latest Comics'**
+  String get latestComics;
+
+  /// Label for comic media format or section
+  ///
+  /// In en, this message translates to:
+  /// **'Comics'**
+  String get comics;
+
   /// Subtitle for a book series shelf entry showing how many books it contains
   ///
   /// In en, this message translates to:
@@ -1707,6 +1923,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Audiobook'**
   String get bookFormatAudiobook;
+
+  /// Semantic label for the comic format badge on library cards
+  ///
+  /// In en, this message translates to:
+  /// **'Comic'**
+  String get bookFormatComic;
+
+  /// Placeholder when no books are found for an author
+  ///
+  /// In en, this message translates to:
+  /// **'No books found for this author.'**
+  String get noBooksFound;
+
+  /// Description shown when a books library has no items
+  ///
+  /// In en, this message translates to:
+  /// **'This library does not contain any books, audiobooks, or comics yet.'**
+  String get noBooksFoundDescription;
 
   /// Reading progress label on book cards
   ///
@@ -2008,12 +2242,6 @@ abstract class AppLocalizations {
   /// **'No biography available for this author.'**
   String get noBiographyAvailable;
 
-  /// Placeholder when no books are found for an author
-  ///
-  /// In en, this message translates to:
-  /// **'No books found for this author.'**
-  String get noBooksFound;
-
   /// Error message when author details fail to load
   ///
   /// In en, this message translates to:
@@ -2241,6 +2469,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Queued'**
   String get queuedDownload;
+
+  /// Row under the active downloads list standing in for queued items not shown individually
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more queued} other{{count} more queued}}'**
+  String queuedMoreCount(int count);
 
   /// Action button label to download all items
   ///
@@ -2517,6 +2751,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No episodes loaded'**
   String get noEpisodesLoaded;
+
+  /// Title of the sheet asking whether to download all or only unwatched items
+  ///
+  /// In en, this message translates to:
+  /// **'What to download'**
+  String get downloadScopeTitle;
+
+  /// Download scope option: every episode of a series or season
+  ///
+  /// In en, this message translates to:
+  /// **'All episodes'**
+  String get downloadAllEpisodes;
+
+  /// Download scope option: only episodes not yet marked as watched
+  ///
+  /// In en, this message translates to:
+  /// **'All unwatched episodes'**
+  String get downloadUnwatchedEpisodes;
+
+  /// Download scope option: every movie in a collection
+  ///
+  /// In en, this message translates to:
+  /// **'All movies'**
+  String get downloadAllMovies;
+
+  /// Download scope option: only collection movies not yet marked as watched
+  ///
+  /// In en, this message translates to:
+  /// **'All unwatched movies'**
+  String get downloadUnwatchedMovies;
+
+  /// Subtitle shown in the download scope sheet while the item list is being fetched
+  ///
+  /// In en, this message translates to:
+  /// **'Loading items...'**
+  String get downloadScopeLoading;
+
+  /// Snackbar shown when the item list for a batch download could not be fetched
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load items to download'**
+  String get downloadScopeLoadFailed;
+
+  /// Estimated total download size for a batch, e.g. '~1.2 GB total'
+  ///
+  /// In en, this message translates to:
+  /// **'~{size} total'**
+  String downloadEstimateTotal(String size);
+
+  /// Transfer status of a running download, e.g. '1.2 GB of 4.6 GB'
+  ///
+  /// In en, this message translates to:
+  /// **'{received} of {total}'**
+  String downloadBytesOfTotal(String received, String total);
+
+  /// Transfer rate of a running download, e.g. '25.3 MB/s'
+  ///
+  /// In en, this message translates to:
+  /// **'{speed}/s'**
+  String downloadSpeed(String speed);
+
+  /// Exact total file size of a batch of original files, e.g. '12.4 GB total'
+  ///
+  /// In en, this message translates to:
+  /// **'{size} total'**
+  String downloadSizeTotal(String size);
+
+  /// Appended to a batch size estimate when some items had no runtime to estimate from
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unknown'**
+  String downloadEstimateUnknownCount(int count);
 
   /// Snackbar message when downloading an item
   ///
@@ -2992,6 +3298,324 @@ abstract class AppLocalizations {
   /// **'Playback Information'**
   String get playbackInformation;
 
+  /// Button in the stream info sheet that shows mpv's own statistics overlay; Shift+I is the keyboard shortcut
+  ///
+  /// In en, this message translates to:
+  /// **'Show mpv Statistics (Shift+I)'**
+  String get showMpvStats;
+
+  /// Button in the stream info sheet that hides mpv's own statistics overlay; Shift+I is the keyboard shortcut
+  ///
+  /// In en, this message translates to:
+  /// **'Hide mpv Statistics (Shift+I)'**
+  String get hideMpvStats;
+
+  /// Title of the screen and dialog that list every keyboard shortcut
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard shortcuts'**
+  String get keyboardShortcutsTitle;
+
+  /// Subtitle of the About tile that opens the keyboard shortcut list
+  ///
+  /// In en, this message translates to:
+  /// **'Keys for the app, video player and reader'**
+  String get keyboardShortcutsSubtitle;
+
+  /// Footnote on the keyboard shortcuts settings screen
+  ///
+  /// In en, this message translates to:
+  /// **'Press ? or F1 while a video plays to see this list without leaving the player.'**
+  String get keyboardShortcutsPlayerHint;
+
+  /// Keyboard shortcut section for keys that work on every screen
+  ///
+  /// In en, this message translates to:
+  /// **'Everywhere'**
+  String get keyboardShortcutsSectionApp;
+
+  /// Under the Everywhere section title: when those keys apply
+  ///
+  /// In en, this message translates to:
+  /// **'On any screen'**
+  String get keyboardShortcutsSectionAppScope;
+
+  /// Keyboard shortcut section for the video player
+  ///
+  /// In en, this message translates to:
+  /// **'Video player'**
+  String get keyboardShortcutsSectionPlayer;
+
+  /// Under the Video player section title: when those keys apply
+  ///
+  /// In en, this message translates to:
+  /// **'While a video is open, playing or paused'**
+  String get keyboardShortcutsSectionPlayerScope;
+
+  /// Keyboard shortcut section for the ebook and comic reader
+  ///
+  /// In en, this message translates to:
+  /// **'Book and comic reader'**
+  String get keyboardShortcutsSectionReader;
+
+  /// Under the reader section title: when those keys apply
+  ///
+  /// In en, this message translates to:
+  /// **'While reading a book or comic'**
+  String get keyboardShortcutsSectionReaderScope;
+
+  /// Key cap label standing for the four arrow keys
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow keys'**
+  String get keyNameArrowKeys;
+
+  /// Key cap label for the space bar
+  ///
+  /// In en, this message translates to:
+  /// **'Space'**
+  String get keyNameSpace;
+
+  /// Key cap label for the Enter key
+  ///
+  /// In en, this message translates to:
+  /// **'Enter'**
+  String get keyNameEnter;
+
+  /// Key cap label for the Escape key
+  ///
+  /// In en, this message translates to:
+  /// **'Esc'**
+  String get keyNameEsc;
+
+  /// Key cap label for the Backspace key
+  ///
+  /// In en, this message translates to:
+  /// **'Backspace'**
+  String get keyNameBackspace;
+
+  /// Key cap label for the Page Up key
+  ///
+  /// In en, this message translates to:
+  /// **'Page Up'**
+  String get keyNamePageUp;
+
+  /// Key cap label for the Page Down key
+  ///
+  /// In en, this message translates to:
+  /// **'Page Down'**
+  String get keyNamePageDown;
+
+  /// Key cap label for the Home key
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get keyNameHome;
+
+  /// Key cap label for the End key
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get keyNameEnd;
+
+  /// Key cap label for the Shift modifier
+  ///
+  /// In en, this message translates to:
+  /// **'Shift'**
+  String get keyNameShift;
+
+  /// Key cap label for the Control modifier
+  ///
+  /// In en, this message translates to:
+  /// **'Ctrl'**
+  String get keyNameCtrl;
+
+  /// Key cap label for the Alt modifier
+  ///
+  /// In en, this message translates to:
+  /// **'Alt'**
+  String get keyNameAlt;
+
+  /// Key cap label standing for the mouse scroll wheel
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll wheel'**
+  String get keyNameScrollWheel;
+
+  /// What the arrow keys do outside the player
+  ///
+  /// In en, this message translates to:
+  /// **'Move between items'**
+  String get shortcutMoveFocus;
+
+  /// What Enter does outside the player
+  ///
+  /// In en, this message translates to:
+  /// **'Open the selected item'**
+  String get shortcutActivate;
+
+  /// What Esc and Backspace do outside the player
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get shortcutGoBack;
+
+  /// F11 and Alt+Enter anywhere, F in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen on or off'**
+  String get shortcutToggleFullscreen;
+
+  /// What Ctrl+Q does on desktop
+  ///
+  /// In en, this message translates to:
+  /// **'Quit Moonfin'**
+  String get shortcutQuit;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Play or pause'**
+  String get shortcutPlayPause;
+
+  /// What Enter does in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Show controls, or play/pause if shown'**
+  String get shortcutShowControlsOrPlayPause;
+
+  /// Player shortcut action. The step is the skip back length from settings
+  ///
+  /// In en, this message translates to:
+  /// **'Seek back (hold for bigger jumps)'**
+  String get shortcutSeekBack;
+
+  /// Player shortcut action. The step is the skip forward length from settings
+  ///
+  /// In en, this message translates to:
+  /// **'Seek forward (hold for bigger jumps)'**
+  String get shortcutSeekForward;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Volume up'**
+  String get shortcutVolumeUp;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Volume down'**
+  String get shortcutVolumeDown;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Mute or unmute'**
+  String get shortcutMute;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles on or off'**
+  String get shortcutToggleSubtitles;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Slow down'**
+  String get shortcutSlower;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Speed up'**
+  String get shortcutFaster;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Show playback information'**
+  String get shortcutPlaybackInfo;
+
+  /// Player shortcut action, Windows only
+  ///
+  /// In en, this message translates to:
+  /// **'mpv statistics on or off'**
+  String get shortcutMpvStats;
+
+  /// What Esc does in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Exit fullscreen, or stop if not fullscreen'**
+  String get shortcutLeaveFullscreenOrStop;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Stop playback'**
+  String get shortcutStopPlayback;
+
+  /// Player shortcut action for the next-track media key
+  ///
+  /// In en, this message translates to:
+  /// **'Next item'**
+  String get shortcutNextItem;
+
+  /// Player shortcut action for the previous-track media key
+  ///
+  /// In en, this message translates to:
+  /// **'Previous item'**
+  String get shortcutPreviousItem;
+
+  /// What ? and F1 do in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Show this list'**
+  String get shortcutShowShortcuts;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Next page'**
+  String get shortcutNextPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Previous page'**
+  String get shortcutPreviousPage;
+
+  /// What the up and down arrows do in the ebook reader
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll the page (ebooks)'**
+  String get shortcutScrollPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'First page, or start of chapter'**
+  String get shortcutFirstPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Last page, or end of chapter'**
+  String get shortcutLastPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in or out (comics)'**
+  String get shortcutZoom;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Reset zoom (comics)'**
+  String get shortcutResetZoom;
+
   /// Section header in stream info
   ///
   /// In en, this message translates to:
@@ -3063,6 +3687,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'HDR'**
   String get hdr;
+
+  /// Stream info label for whether HDR is reaching the display untouched
+  ///
+  /// In en, this message translates to:
+  /// **'HDR output'**
+  String get hdrOutput;
+
+  /// Stream info value when HDR passthrough is running, e.g. 'Active — HDR10 (PQ, BT.2020)'
+  ///
+  /// In en, this message translates to:
+  /// **'Active — {format}'**
+  String hdrOutputActive(String format);
+
+  /// Stream info value when native output is engaged but the window sits on a display without HDR, so the renderer is tone-mapping
+  ///
+  /// In en, this message translates to:
+  /// **'Active — tone-mapped to SDR for this display'**
+  String get hdrOutputActiveTonemapped;
+
+  /// Stream info value when the display has not been switched into HDR
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive — display is not in HDR mode'**
+  String get hdrOutputDisplayNotHdr;
+
+  /// Stream info value when the title itself is not HDR
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive — content is SDR'**
+  String get hdrOutputContentSdr;
+
+  /// Stream info value when the native HDR output preference is off
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive — turned off in settings'**
+  String get hdrOutputDisabled;
+
+  /// Stream info value when the native HDR window could not be created
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive — could not start, using the standard path'**
+  String get hdrOutputFailed;
+
+  /// Settings label for sending HDR to the display untouched
+  ///
+  /// In en, this message translates to:
+  /// **'Native HDR output'**
+  String get nativeHdrOutput;
+
+  /// Settings description for native HDR output
+  ///
+  /// In en, this message translates to:
+  /// **'Sends HDR video to the display untouched instead of converting it to SDR. Used only when the display is already in HDR mode and the title is HDR.'**
+  String get nativeHdrOutputDescription;
 
   /// Stream info label for codec
   ///
@@ -3727,7 +4405,7 @@ abstract class AppLocalizations {
   /// Header title for saved/downloaded media screen
   ///
   /// In en, this message translates to:
-  /// **'Saved Media'**
+  /// **'Downloads'**
   String get savedMedia;
 
   /// Filter label for TV shows
@@ -4288,6 +4966,204 @@ abstract class AppLocalizations {
   /// **'Visual effects and seasonal decorations'**
   String get seasonalEffectsDescription;
 
+  /// Setting title for custom loading animation
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Animation'**
+  String get loadingAnimation;
+
+  /// Description for loading animation customization settings
+  ///
+  /// In en, this message translates to:
+  /// **'Customize the loading animations used throughout Moonfin'**
+  String get loadingAnimationDescription;
+
+  /// Subtitle header for loading animation settings
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Animation Configuration'**
+  String get loadingAnimationConfiguration;
+
+  /// Title for loading animation image selection
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get loadingAnimationImage;
+
+  /// Loading animation image option: Moonfin Logo
+  ///
+  /// In en, this message translates to:
+  /// **'Moonfin Logo'**
+  String get loadingAnimationImageMoonfinLogo;
+
+  /// Loading animation image option: Spinner
+  ///
+  /// In en, this message translates to:
+  /// **'Spinner'**
+  String get loadingAnimationImageSpinner;
+
+  /// Loading animation image option: Runner
+  ///
+  /// In en, this message translates to:
+  /// **'Runner'**
+  String get loadingAnimationImageRunner;
+
+  /// Loading animation image option: Moon Phases
+  ///
+  /// In en, this message translates to:
+  /// **'Moon Phases'**
+  String get loadingAnimationImageMoonPhases;
+
+  /// Loading animation image option: Moonfin Phases in brand gradient
+  ///
+  /// In en, this message translates to:
+  /// **'Moonfin Phases'**
+  String get loadingAnimationImageMoonfinPhases;
+
+  /// Loading animation image option: Neonfin Phases in neon colors
+  ///
+  /// In en, this message translates to:
+  /// **'Neonfin Phases'**
+  String get loadingAnimationImageNeonfinPhases;
+
+  /// Title for loading animation size selection
+  ///
+  /// In en, this message translates to:
+  /// **'Animation Size'**
+  String get loadingAnimationSize;
+
+  /// Loading animation size option: Thumbnail
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbnail'**
+  String get loadingAnimationSizeThumbnail;
+
+  /// Loading animation size option: Small
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get loadingAnimationSizeSmall;
+
+  /// Loading animation size option: Medium
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get loadingAnimationSizeMedium;
+
+  /// Loading animation size option: Large
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get loadingAnimationSizeLarge;
+
+  /// Title for loading animation position selection
+  ///
+  /// In en, this message translates to:
+  /// **'Animation Position'**
+  String get loadingAnimationPosition;
+
+  /// Loading animation position: Top-Left
+  ///
+  /// In en, this message translates to:
+  /// **'Top-Left'**
+  String get loadingAnimationPositionTopLeft;
+
+  /// Loading animation position: Top-Center
+  ///
+  /// In en, this message translates to:
+  /// **'Top-Center'**
+  String get loadingAnimationPositionTopCenter;
+
+  /// Loading animation position: Top-Right
+  ///
+  /// In en, this message translates to:
+  /// **'Top-Right'**
+  String get loadingAnimationPositionTopRight;
+
+  /// Loading animation position: Middle-Left
+  ///
+  /// In en, this message translates to:
+  /// **'Middle-Left'**
+  String get loadingAnimationPositionMiddleLeft;
+
+  /// Loading animation position: Middle
+  ///
+  /// In en, this message translates to:
+  /// **'Middle'**
+  String get loadingAnimationPositionMiddle;
+
+  /// Loading animation position: Middle-Right
+  ///
+  /// In en, this message translates to:
+  /// **'Middle-Right'**
+  String get loadingAnimationPositionMiddleRight;
+
+  /// Loading animation position: Bottom-Left
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom-Left'**
+  String get loadingAnimationPositionBottomLeft;
+
+  /// Loading animation position: Bottom-Center
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom-Center'**
+  String get loadingAnimationPositionBottomCenter;
+
+  /// Loading animation position: Bottom-Right
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom-Right'**
+  String get loadingAnimationPositionBottomRight;
+
+  /// Loading animation position: Bouncing DVD screensaver style
+  ///
+  /// In en, this message translates to:
+  /// **'Bouncing'**
+  String get loadingAnimationPositionBouncing;
+
+  /// Title for loading animation speed selection
+  ///
+  /// In en, this message translates to:
+  /// **'Animation Speed'**
+  String get loadingAnimationSpeed;
+
+  /// Loading animation speed option: Slow
+  ///
+  /// In en, this message translates to:
+  /// **'Slow'**
+  String get loadingAnimationSpeedSlow;
+
+  /// Loading animation speed option: Moderate
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get loadingAnimationSpeedModerate;
+
+  /// Loading animation speed option: Fast
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get loadingAnimationSpeedFast;
+
+  /// Loading animation speed option: Ultra
+  ///
+  /// In en, this message translates to:
+  /// **'Ultra'**
+  String get loadingAnimationSpeedUltra;
+
+  /// Setting toggle for showing loading animation text
+  ///
+  /// In en, this message translates to:
+  /// **'Show Text?'**
+  String get showLoadingAnimationText;
+
+  /// Label for loading animation preview window
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get loadingAnimationPreview;
+
   /// Seasonal effect: snow
   ///
   /// In en, this message translates to:
@@ -4557,6 +5433,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Preview slides along the seekbar as you scrub, instead of staying centered'**
   String get trickplayFollowScrubPositionSubtitle;
+
+  /// Setting for whether seeking pauses playback so the trickplay preview holds still
+  ///
+  /// In en, this message translates to:
+  /// **'Pause While Scrubbing'**
+  String get trickplayPauseWhileScrubbing;
+
+  /// Description for the trickplay pause-while-scrubbing setting
+  ///
+  /// In en, this message translates to:
+  /// **'Playback pauses while you seek and resumes when you press play. Turn this off to keep playing and jump straight to the new spot'**
+  String get trickplayPauseWhileScrubbingSubtitle;
 
   /// Setting for showing description on pause
   ///
@@ -6004,6 +6892,18 @@ abstract class AppLocalizations {
   /// **'Show Favorites Button'**
   String get showFavoritesButton;
 
+  /// Setting for showing live TV button
+  ///
+  /// In en, this message translates to:
+  /// **'Show Live TV Button'**
+  String get showLiveTvButton;
+
+  /// Setting for showing downloads button
+  ///
+  /// In en, this message translates to:
+  /// **'Show Downloads Button'**
+  String get showDownloadsButton;
+
   /// Setting for showing libraries in toolbar
   ///
   /// In en, this message translates to:
@@ -6892,6 +7792,102 @@ abstract class AppLocalizations {
   /// **'Bouncing'**
   String get clockModeBouncing;
 
+  /// Section header for screensaver general settings
+  ///
+  /// In en, this message translates to:
+  /// **'General Settings'**
+  String get screensaverGeneralSettings;
+
+  /// Section header for screensaver visual components
+  ///
+  /// In en, this message translates to:
+  /// **'Visual Components'**
+  String get screensaverVisualComponents;
+
+  /// Section header for screensaver library content
+  ///
+  /// In en, this message translates to:
+  /// **'Library Content'**
+  String get screensaverLibraryContent;
+
+  /// Setting for screensaver backdrop
+  ///
+  /// In en, this message translates to:
+  /// **'Backdrop'**
+  String get screensaverBackdrop;
+
+  /// Screensaver backdrop: Black
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get screensaverBackdropBlack;
+
+  /// Screensaver backdrop: Moonfin
+  ///
+  /// In en, this message translates to:
+  /// **'Moonfin'**
+  String get screensaverBackdropMoonfin;
+
+  /// Screensaver backdrop: Calm
+  ///
+  /// In en, this message translates to:
+  /// **'Calm'**
+  String get screensaverBackdropCalm;
+
+  /// Screensaver backdrop: Neon Pulse
+  ///
+  /// In en, this message translates to:
+  /// **'Neon Pulse'**
+  String get screensaverBackdropNeonPulse;
+
+  /// Screensaver backdrop: Aurora
+  ///
+  /// In en, this message translates to:
+  /// **'Aurora'**
+  String get screensaverBackdropAurora;
+
+  /// Setting for screensaver additional component
+  ///
+  /// In en, this message translates to:
+  /// **'Additional Component'**
+  String get screensaverAdditionalComponent;
+
+  /// Screensaver component: Moonfin Logo
+  ///
+  /// In en, this message translates to:
+  /// **'Moonfin Logo'**
+  String get screensaverComponentMoonfinLogo;
+
+  /// Screensaver component: Runner
+  ///
+  /// In en, this message translates to:
+  /// **'Runner'**
+  String get screensaverComponentRunner;
+
+  /// Setting for screensaver component movement
+  ///
+  /// In en, this message translates to:
+  /// **'Component Movement'**
+  String get screensaverComponentMovement;
+
+  /// Setting for screensaver component position
+  ///
+  /// In en, this message translates to:
+  /// **'Component Position'**
+  String get screensaverComponentPosition;
+
+  /// Setting for screensaver component size
+  ///
+  /// In en, this message translates to:
+  /// **'Component Size'**
+  String get screensaverComponentSize;
+
+  /// Subtitle when no source libraries are explicitly filtered in screensaver
+  ///
+  /// In en, this message translates to:
+  /// **'All (Default)'**
+  String get screensaverSourceLibrariesDefault;
+
   /// Rating source: Rotten Tomatoes Critics
   ///
   /// In en, this message translates to:
@@ -7215,6 +8211,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide adult content in results'**
   String get hideAdultContent;
+
+  /// Setting title to show missing items from Seerr on Collection pages
+  ///
+  /// In en, this message translates to:
+  /// **'Show Missing Collection Items'**
+  String get showMissingCollectionItems;
+
+  /// Setting subtitle explaining that missing items will be included on Collection pages
+  ///
+  /// In en, this message translates to:
+  /// **'Include missing items on Collection pages'**
+  String get showMissingCollectionItemsDesc;
+
+  /// Setting title for showing Seerr availability badges on media details pages
+  ///
+  /// In en, this message translates to:
+  /// **'Show Seerr Availability Badges'**
+  String get showSeerrAvailabilityBadges;
+
+  /// Setting description for showing Seerr availability badges on media details pages
+  ///
+  /// In en, this message translates to:
+  /// **'Show season availability badges on media details pages'**
+  String get showSeerrAvailabilityBadgesDescription;
 
   /// Header for the Seerr notifications settings section
   ///
@@ -14935,7 +15955,7 @@ abstract class AppLocalizations {
   /// No description provided for @offlineSavedMedia.
   ///
   /// In en, this message translates to:
-  /// **'Saved Media'**
+  /// **'Downloads'**
   String get offlineSavedMedia;
 
   /// No description provided for @offlineBannerTitle.
@@ -15820,6 +16840,12 @@ abstract class AppLocalizations {
   /// **'Show the favorites button in the navigation bar'**
   String get settingsShowFavoritesButtonInNavigation;
 
+  /// No description provided for @settingsShowLiveTvButtonInNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the Live TV button in the navigation bar when the server has a Live TV library'**
+  String get settingsShowLiveTvButtonInNavigation;
+
   /// No description provided for @settingsShowLibrariesButtonInNavigation.
   ///
   /// In en, this message translates to:
@@ -16305,6 +17331,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'mpv (legacy)'**
   String get settingsPlaybackEngineMpvLegacy;
+
+  /// No description provided for @settingsRedetectDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-detect display'**
+  String get settingsRedetectDisplay;
+
+  /// No description provided for @settingsRedetectDisplayDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the TV again what HDR formats it supports. Use this if Dolby Vision or HDR10 titles are being transcoded after the TV or receiver was powered on late.'**
+  String get settingsRedetectDisplayDescription;
+
+  /// No description provided for @settingsDisplayIsSdr.
+  ///
+  /// In en, this message translates to:
+  /// **'My TV is not HDR'**
+  String get settingsDisplayIsSdr;
+
+  /// No description provided for @settingsDisplayIsSdrDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop advertising HDR support for this display. Use this only if detection keeps reporting HDR your TV can\'t actually show.'**
+  String get settingsDisplayIsSdrDescription;
+
+  /// No description provided for @settingsDisplayRedetected.
+  ///
+  /// In en, this message translates to:
+  /// **'Display re-detected: {formats}'**
+  String settingsDisplayRedetected(String formats);
+
+  /// No description provided for @settingsDisplayNoHdrDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'No HDR formats detected'**
+  String get settingsDisplayNoHdrDetected;
+
+  /// No description provided for @settingsDisplayMarkedSdr.
+  ///
+  /// In en, this message translates to:
+  /// **'Display saved as SDR'**
+  String get settingsDisplayMarkedSdr;
 
   /// No description provided for @settingsDolbyVisionFallback.
   ///
@@ -16971,6 +18039,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Classic keeps per-row image type and info overlay. Modern uses portrait-to-backdrop rows.'**
   String get rowsTypeDescription;
+
+  /// No description provided for @modernCardsOnMyMediaRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Modern cards on My Media row'**
+  String get modernCardsOnMyMediaRow;
+
+  /// No description provided for @modernCardsOnMyMediaRowDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Display customizable posters that expand on focus. Disable to always show landscape thumbnail.'**
+  String get modernCardsOnMyMediaRowDescription;
 
   /// No description provided for @sortOrder.
   ///
@@ -18538,6 +19618,12 @@ abstract class AppLocalizations {
   /// **'Focused Timeline'**
   String get audiobookFocusedTimeline;
 
+  /// No description provided for @audiobookFullTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Timeline'**
+  String get audiobookFullTimeline;
+
   /// No description provided for @audiobookExportBookmarks.
   ///
   /// In en, this message translates to:
@@ -18844,6 +19930,12 @@ abstract class AppLocalizations {
   /// **'Size: {size}  •  Format: {format}'**
   String fileSizeFormat(Object size, Object format);
 
+  /// No description provided for @dateCreatedFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Date Added: {date}'**
+  String dateCreatedFormat(Object date);
+
   /// No description provided for @showAllAudioTracks.
   ///
   /// In en, this message translates to:
@@ -18957,6 +20049,165 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Number of audio channels is not supported.'**
   String get transcodeAudioChannelsNotSupported;
+
+  /// No description provided for @transcodeAudioCodecWithCodec.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio codec ({codec}) is not supported directly.'**
+  String transcodeAudioCodecWithCodec(String codec);
+
+  /// No description provided for @transcodeAudioCodecHintPassthrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: If your audio receiver or soundbar supports {codec}, enable Audio Passthrough in Audio settings.'**
+  String transcodeAudioCodecHintPassthrough(String codec);
+
+  /// No description provided for @transcodeAudioChannelsExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio channel count ({channels}ch) exceeds the player limit.'**
+  String transcodeAudioChannelsExceeded(int channels);
+
+  /// No description provided for @transcodeAudioChannelsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Adjust \'Max Audio Channels\' or multichannel downmixing in Audio settings.'**
+  String get transcodeAudioChannelsHint;
+
+  /// No description provided for @transcodeSubtitleBurnInAssDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'ASS/SSA subtitles require transcoding because direct play is turned off.'**
+  String get transcodeSubtitleBurnInAssDisabled;
+
+  /// No description provided for @transcodeSubtitleBurnInAssHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Enable \'ASS/SSA Direct Play\' in Playback settings to play directly without transcoding.'**
+  String get transcodeSubtitleBurnInAssHint;
+
+  /// No description provided for @transcodeSubtitleBurnInPgsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'PGS subtitles require transcoding because direct play is turned off.'**
+  String get transcodeSubtitleBurnInPgsDisabled;
+
+  /// No description provided for @transcodeSubtitleBurnInPgsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Enable \'PGS Direct Play\' in Playback settings to play directly without transcoding.'**
+  String get transcodeSubtitleBurnInPgsHint;
+
+  /// No description provided for @transcodeSubtitleNotSupportedWithCodec.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle format ({codec}) is not supported directly and must be burned in.'**
+  String transcodeSubtitleNotSupportedWithCodec(String codec);
+
+  /// No description provided for @transcodeBitrateExceededWithValues.
+  ///
+  /// In en, this message translates to:
+  /// **'File bitrate ({fileBitrate}) exceeds the configured streaming limit ({maxBitrate}).'**
+  String transcodeBitrateExceededWithValues(
+    String fileBitrate,
+    String maxBitrate,
+  );
+
+  /// No description provided for @transcodeBitrateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Increase \'Maximum Bitrate\' in Playback settings to allow direct streaming.'**
+  String get transcodeBitrateHint;
+
+  /// No description provided for @transcodeResolutionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Increase \'Maximum Resolution\' in Playback settings to allow direct streaming.'**
+  String get transcodeResolutionHint;
+
+  /// No description provided for @transcodeVideoRangeNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Video dynamic range (e.g. Dolby Vision / HDR) is not supported by this display.'**
+  String get transcodeVideoRangeNotSupported;
+
+  /// No description provided for @transcodeDolbyVisionProfile7ElDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Dolby Vision Profile 7 enhancement layer direct play is disabled.'**
+  String get transcodeDolbyVisionProfile7ElDisabled;
+
+  /// No description provided for @transcodeDolbyVisionProfile7ElHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Enable \'Dolby Vision Profile 7 Direct Play\' in Playback settings if your display supports it.'**
+  String get transcodeDolbyVisionProfile7ElHint;
+
+  /// No description provided for @transcodeDolbyVisionFallbackPreferenceTranscode.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcoding is preferred for Dolby Vision fallback per user settings.'**
+  String get transcodeDolbyVisionFallbackPreferenceTranscode;
+
+  /// No description provided for @transcodeDolbyVisionFallbackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Set \'Dolby Vision Fallback\' to \'Play as HDR10\' in Playback settings to avoid transcoding.'**
+  String get transcodeDolbyVisionFallbackHint;
+
+  /// No description provided for @transcodeDisplayReportsNoHdr.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected display does not report support for HDR or Dolby Vision.'**
+  String get transcodeDisplayReportsNoHdr;
+
+  /// No description provided for @transcodeDisplayLacksHdr10ForFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected display lacks HDR10 support needed for Dolby Vision fallback.'**
+  String get transcodeDisplayLacksHdr10ForFallback;
+
+  /// No description provided for @transcodeAudioSampleRateNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio sample rate is not supported.'**
+  String get transcodeAudioSampleRateNotSupported;
+
+  /// No description provided for @transcodeAudioBitDepthNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio bit depth is not supported.'**
+  String get transcodeAudioBitDepthNotSupported;
+
+  /// No description provided for @transcodeRefFramesNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Video reference frames exceed player limits.'**
+  String get transcodeRefFramesNotSupported;
+
+  /// No description provided for @transcodeAnamorphicVideoNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Anamorphic video is not supported.'**
+  String get transcodeAnamorphicVideoNotSupported;
+
+  /// No description provided for @transcodeInterlacedVideoNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Interlaced video is not supported.'**
+  String get transcodeInterlacedVideoNotSupported;
+
+  /// No description provided for @transcodeSecondaryAudioNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary audio stream requires transcoding.'**
+  String get transcodeSecondaryAudioNotSupported;
+
+  /// No description provided for @transcodeDirectPlayError.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct play is not supported for this media format.'**
+  String get transcodeDirectPlayError;
 
   /// No description provided for @sortAlphabetical.
   ///
@@ -19323,6 +20574,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mixed Playlists'**
   String get mixedPlaylistsSection;
+
+  /// The current time as it appears on a clock
+  ///
+  /// In en, this message translates to:
+  /// **'Current Time'**
+  String get currentTime;
 
   /// Setting title for what is shown next to the playback progress bar
   ///
@@ -19798,6 +21055,30 @@ abstract class AppLocalizations {
   /// **'Cinematic, with tabs for cast and extras.'**
   String get setupDetailModernHint;
 
+  /// Name of the hero-first detail layout, offered in the setup wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Spotlight'**
+  String get setupStyleSpotlight;
+
+  /// What the spotlight detail screen style gives you
+  ///
+  /// In en, this message translates to:
+  /// **'Hero-first, with pop-up cards for cast and extras.'**
+  String get setupDetailSpotlightHint;
+
+  /// Name of the full-screen stacked detail layout, offered in the setup wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Nouveau'**
+  String get setupStyleNouveau;
+
+  /// What the nouveau detail screen style gives you
+  ///
+  /// In en, this message translates to:
+  /// **'Full-screen, with sections stacked instead of tabs.'**
+  String get setupDetailNouveauHint;
+
   /// Label above the theme swatches on the final setup screen
   ///
   /// In en, this message translates to:
@@ -19875,6 +21156,430 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Adds a button to the menu for messages sent by your server admin'**
   String get serverMessagesShowButtonSubtitle;
+
+  /// Row in the download sheet of a series that subscribes it to automatic downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-download new episodes'**
+  String get autoDownloadNewEpisodes;
+
+  /// Row in the download sheet of a series that is already subscribed; tapping removes the subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Stop auto-download'**
+  String get autoDownloadStop;
+
+  /// Subtitle under the auto-download row explaining the keep-unwatched rule
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Downloads every new episode} =1{Downloads new episodes, up to 1 unwatched at a time} other{Downloads new episodes, up to {count} unwatched at a time}}'**
+  String autoDownloadKeepUnwatchedSubtitle(int count);
+
+  /// Subtitle under the stop auto-download row showing the subscription's quality
+  ///
+  /// In en, this message translates to:
+  /// **'On • {quality}'**
+  String autoDownloadStopSubtitle(String quality);
+
+  /// Shown under transcoded options when choosing the quality of an auto-download subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Transcoded qualities only download while Moonfin is open. Original quality also downloads in the background.'**
+  String get autoDownloadTranscodedForegroundNote;
+
+  /// Shown under a running transcoded download that a subscription queued
+  ///
+  /// In en, this message translates to:
+  /// **'Transcoded downloads can\'t resume after an interruption and start over from the beginning. Original quality can resume.'**
+  String get autoDownloadTranscodedRunningNote;
+
+  /// Short note next to a followed series in a transcoded quality
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads only while Moonfin is open'**
+  String get autoDownloadForegroundOnly;
+
+  /// Title of the quality sheet when it is opened to create an auto-download subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-download quality'**
+  String get autoDownloadQualityTitle;
+
+  /// Snackbar after subscribing a series
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-download enabled for {title}'**
+  String autoDownloadEnabledFor(String title);
+
+  /// Snackbar after unsubscribing a series
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-download stopped for {title}'**
+  String autoDownloadStoppedFor(String title);
+
+  /// Settings section header for auto-download subscriptions
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic downloads'**
+  String get autoDownloadSection;
+
+  /// Master switch for auto-download subscriptions
+  ///
+  /// In en, this message translates to:
+  /// **'Enable automatic downloads'**
+  String get autoDownloadEnable;
+
+  /// Explains the master switch
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads new episodes of the series you follow. Existing episodes can still be downloaded manually.'**
+  String get autoDownloadEnableSubtitle;
+
+  /// Setting that caps how many unwatched episodes per series stay downloaded
+  ///
+  /// In en, this message translates to:
+  /// **'Keep unwatched episodes'**
+  String get autoDownloadKeepUnwatched;
+
+  /// Option meaning no cap on kept unwatched episodes
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get autoDownloadKeepAll;
+
+  /// Setting that picks how soon an auto-downloaded episode is removed after it was watched
+  ///
+  /// In en, this message translates to:
+  /// **'Delete downloaded episodes'**
+  String get autoDownloadDelete;
+
+  /// Explains the delete-after-watching setting
+  ///
+  /// In en, this message translates to:
+  /// **'When to remove automatically downloaded episodes after you watch them'**
+  String get autoDownloadDeleteSubtitle;
+
+  /// Delete-after-watching option: keep episodes
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get autoDownloadDeleteNever;
+
+  /// Delete-after-watching option: remove at the next check once played
+  ///
+  /// In en, this message translates to:
+  /// **'Right after watching'**
+  String get autoDownloadDeleteImmediately;
+
+  /// Delete-after-watching option
+  ///
+  /// In en, this message translates to:
+  /// **'1 day after watching'**
+  String get autoDownloadDeleteAfterDay;
+
+  /// Delete-after-watching option
+  ///
+  /// In en, this message translates to:
+  /// **'1 week after watching'**
+  String get autoDownloadDeleteAfterWeek;
+
+  /// Setting that lets the system wake the app to check for new episodes
+  ///
+  /// In en, this message translates to:
+  /// **'Check in the background'**
+  String get autoDownloadBackgroundRefresh;
+
+  /// Explains the background refresh setting
+  ///
+  /// In en, this message translates to:
+  /// **'Allow the system to check for new episodes periodically while Moonfin is closed'**
+  String get autoDownloadBackgroundRefreshSubtitle;
+
+  /// Shown when iOS forbids background refresh for the app
+  ///
+  /// In en, this message translates to:
+  /// **'Background App Refresh is disabled for Moonfin. Enable it in iOS Settings.'**
+  String get autoDownloadBackgroundRefreshDenied;
+
+  /// Shown when Android restricts the app from running in the background
+  ///
+  /// In en, this message translates to:
+  /// **'Background usage is restricted for Moonfin in Android Settings.'**
+  String get autoDownloadBackgroundRestrictedAndroid;
+
+  /// Button that runs a subscription check immediately
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get autoDownloadCheckNow;
+
+  /// Subtitle while a subscription check is running
+  ///
+  /// In en, this message translates to:
+  /// **'Checking...'**
+  String get autoDownloadChecking;
+
+  /// Subtitle when no subscription check has run
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get autoDownloadNeverChecked;
+
+  /// Subtitle summarising the last subscription check
+  ///
+  /// In en, this message translates to:
+  /// **'Last check {when}: {queued, plural, =0{nothing new} =1{1 episode queued} other{{queued} episodes queued}}'**
+  String autoDownloadLastCheck(String when, int queued);
+
+  /// Subtitle when the last subscription check hit an error
+  ///
+  /// In en, this message translates to:
+  /// **'Last check {when} failed: {error}'**
+  String autoDownloadLastCheckFailed(String when, String error);
+
+  /// Settings section header listing the series with auto-download on
+  ///
+  /// In en, this message translates to:
+  /// **'Followed series'**
+  String get autoDownloadFollowedSeries;
+
+  /// Shown in settings when no series is followed
+  ///
+  /// In en, this message translates to:
+  /// **'Open a series and choose \"Auto-download new episodes\" from its download menu'**
+  String get autoDownloadNoSubscriptions;
+
+  /// Tooltip on the button that removes a followed series
+  ///
+  /// In en, this message translates to:
+  /// **'Stop following'**
+  String get autoDownloadRemove;
+
+  /// Appended to the last-check summary when the storage limit stopped queueing
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough storage'**
+  String get autoDownloadStorageFull;
+
+  /// Last-check summary when Wi-Fi only is on and the device was on mobile data
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for WiFi'**
+  String get autoDownloadWaitingForWifi;
+
+  /// System notification title while a download transfers
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get downloadNotificationRunning;
+
+  /// System notification title while a batch transfers; done is the 1-based position of the current item
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading ({done}/{total})'**
+  String downloadNotificationRunningBatch(int done, int total);
+
+  /// System notification body with the item label (for example Series S1E1) and its percentage
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — {percent}%'**
+  String downloadNotificationProgress(String name, int percent);
+
+  /// System notification body for a transfer the native engine reports on. The engine fills in progress (a percentage such as 42%) and timeRemaining (mm:ss) itself.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — {progress} · {timeRemaining}'**
+  String downloadNotificationTransfer(
+    String name,
+    String progress,
+    String timeRemaining,
+  );
+
+  /// System notification body before the size of a download is known
+  ///
+  /// In en, this message translates to:
+  /// **'{name}...'**
+  String downloadNotificationStarting(String name);
+
+  /// System notification title once a download or a batch has finished
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Download complete} other{Downloads complete}}'**
+  String downloadNotificationCompleteTitle(int count);
+
+  /// System notification body for one finished download; name is the item label (for example Series S1E1)
+  ///
+  /// In en, this message translates to:
+  /// **'{name} saved for offline'**
+  String downloadNotificationSaved(String name);
+
+  /// System notification body for a finished batch of mixed items
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item saved for offline} other{{count} items saved for offline}}'**
+  String downloadNotificationSavedCount(int count);
+
+  /// System notification body for a finished batch that all belongs to one series
+  ///
+  /// In en, this message translates to:
+  /// **'{series}: {count, plural, =1{1 episode} other{{count} episodes}}'**
+  String downloadNotificationSeriesEpisodes(String series, int count);
+
+  /// System notification title for a failed download
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed'**
+  String get downloadNotificationFailedTitle;
+
+  /// System notification body for a failed download
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: {error}'**
+  String downloadNotificationFailedBody(String name, String error);
+
+  /// System notification title for a message sent by the server when it carries no header
+  ///
+  /// In en, this message translates to:
+  /// **'Remote message'**
+  String get serverMessagesNotificationTitle;
+
+  /// System notification body for a server message with empty text
+  ///
+  /// In en, this message translates to:
+  /// **'Message received'**
+  String get serverMessagesNotificationReceived;
+
+  /// Error shown when a download would exceed the storage limit set in the download settings
+  ///
+  /// In en, this message translates to:
+  /// **'Storage limit reached. Free up space or increase the limit.'**
+  String get downloadStorageLimitReached;
+
+  /// Error shown when a download would not fit on the device; needed and free are formatted sizes
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough storage: {needed} needed, {free} free'**
+  String downloadNotEnoughStorage(String needed, String free);
+
+  /// System notification title when the automatic check has to hold new episodes back
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough storage for new episodes'**
+  String get autoDownloadStorageFullTitle;
+
+  /// System notification body when the automatic check has to hold new episodes back; name is the label of the first one (for example Series S1E1) and size its formatted size
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{name} needs {size}.} other{{count} episodes are waiting for space.}} Free up space or raise the download limit.'**
+  String autoDownloadStorageFullBody(int count, String name, String size);
+
+  /// Section header in General Style settings for configuring motion and transition speeds
+  ///
+  /// In en, this message translates to:
+  /// **'Animation Speed'**
+  String get settingsAnimationSpeed;
+
+  /// Setting title for adjusting the speed of page navigation transitions
+  ///
+  /// In en, this message translates to:
+  /// **'Page Transitions'**
+  String get pageTransitions;
+
+  /// Description for the page transitions animation speed setting
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusts fade time when navigating between pages'**
+  String get pageTransitionsSubtitle;
+
+  /// Setting title for adjusting the speed of focus movement and row scrolling
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation Speed'**
+  String get navigationSpeed;
+
+  /// Description for the navigation animation speed setting
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusts how quickly the focus indicator moves between items and rows'**
+  String get navigationSpeedSubtitle;
+
+  /// Setting title for adjusting animation speed of modern card expansions
+  ///
+  /// In en, this message translates to:
+  /// **'Modern Cards Transition Speed'**
+  String get modernCardsTransitionSpeed;
+
+  /// Description for modern cards transition speed setting
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusts animation speed when expanding focused modern cards'**
+  String get modernCardsTransitionSpeedSubtitle;
+
+  /// Setting title for debouncing modern card expansion during rapid D-pad scrolling
+  ///
+  /// In en, this message translates to:
+  /// **'Delay Card Expansion on Rapid Scroll'**
+  String get delayCardExpansionOnRapidScroll;
+
+  /// Description for debouncing modern card expansion setting
+  ///
+  /// In en, this message translates to:
+  /// **'Waits for focus movement to pause before expanding modern cards'**
+  String get delayCardExpansionOnRapidScrollSubtitle;
+
+  /// Option label for extra slow animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Extra Slow'**
+  String get animationSpeedExtraSlow;
+
+  /// Option label for slow animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Slow'**
+  String get animationSpeedSlow;
+
+  /// Option label for medium/normal animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get animationSpeedMedium;
+
+  /// Option label for fast animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get animationSpeedFast;
+
+  /// Option label for turning animations off / instant transitions
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get animationSpeedOff;
+
+  /// Option label for instant page transition with no fade
+  ///
+  /// In en, this message translates to:
+  /// **'No Fade'**
+  String get pageTransitionFadeNone;
+
+  /// Option label for short fade page transition
+  ///
+  /// In en, this message translates to:
+  /// **'Short Fade'**
+  String get pageTransitionFadeShort;
+
+  /// Option label for medium fade page transition
+  ///
+  /// In en, this message translates to:
+  /// **'Medium Fade'**
+  String get pageTransitionFadeMedium;
+
+  /// Option label for long fade page transition
+  ///
+  /// In en, this message translates to:
+  /// **'Long Fade'**
+  String get pageTransitionFadeLong;
 }
 
 class _AppLocalizationsDelegate

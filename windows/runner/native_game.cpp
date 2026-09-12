@@ -9,25 +9,10 @@
 #include <thread>
 #include <vector>
 
+#include "method_call_args.h"
 #include "lh_audio.h"
 
 namespace {
-
-std::string GetString(const flutter::EncodableMap& map, const char* key) {
-  auto it = map.find(flutter::EncodableValue(std::string(key)));
-  if (it != map.end()) {
-    if (auto* value = std::get_if<std::string>(&it->second)) return *value;
-  }
-  return std::string();
-}
-
-int GetInt(const flutter::EncodableMap& map, const char* key, int fallback) {
-  auto it = map.find(flutter::EncodableValue(std::string(key)));
-  if (it != map.end()) {
-    if (auto* value = std::get_if<int>(&it->second)) return *value;
-  }
-  return fallback;
-}
 
 // A pulse bit is held briefly so the overlay can send Start or Select.
 std::atomic<uint16_t> g_pulse_mask{0};
@@ -145,15 +130,15 @@ void NativeGame::HandleMethod(
     Stop();
     result->Success();
   } else if (method == "setFastForward") {
-    if (host_) lh_set_fast_forward(host_, GetInt(map, "factor", 1));
+    if (host_) lh_set_fast_forward(host_, method_call_args::GetInt(map, "factor", 1));
     result->Success();
   } else if (method == "setInput") {
-    g_dart_mask = static_cast<uint16_t>(GetInt(map, "mask", 0));
+    g_dart_mask = static_cast<uint16_t>(method_call_args::GetInt(map, "mask", 0));
     PushInput();
     result->Success();
   } else if (method == "pulseButton") {
-    int index = GetInt(map, "index", -1);
-    int duration = GetInt(map, "durationMs", 150);
+    int index = method_call_args::GetInt(map, "index", -1);
+    int duration = method_call_args::GetInt(map, "durationMs", 150);
     if (index >= 0 && index < 16) {
       uint16_t bit = static_cast<uint16_t>(1 << index);
       g_pulse_mask |= bit;
@@ -187,8 +172,8 @@ void NativeGame::HandleMethod(
   } else if (method == "getOptions" || method == "getCurrentOptions") {
     result->Success(Options(method == "getCurrentOptions"));
   } else if (method == "setOption") {
-    if (host_) lh_set_option(host_, GetString(map, "id").c_str(),
-                             GetString(map, "value").c_str());
+    if (host_) lh_set_option(host_, method_call_args::GetString(map, "id").c_str(),
+                             method_call_args::GetString(map, "value").c_str());
     result->Success();
   } else if (method == "controllerCount") {
     result->Success(flutter::EncodableValue(1));
@@ -200,11 +185,11 @@ void NativeGame::HandleMethod(
 flutter::EncodableValue NativeGame::Load(const flutter::EncodableMap& args) {
   Stop();
 
-  std::string core_path = GetString(args, "corePath");
-  std::string rom_path = GetString(args, "romPath");
-  std::string system_dir = GetString(args, "systemDir");
-  std::string save_dir = GetString(args, "saveDir");
-  std::string game_id = GetString(args, "gameId");
+  std::string core_path = method_call_args::GetString(args, "corePath");
+  std::string rom_path = method_call_args::GetString(args, "romPath");
+  std::string system_dir = method_call_args::GetString(args, "systemDir");
+  std::string save_dir = method_call_args::GetString(args, "saveDir");
+  std::string game_id = method_call_args::GetString(args, "gameId");
 
   std::vector<std::string> keys;
   std::vector<std::string> values;

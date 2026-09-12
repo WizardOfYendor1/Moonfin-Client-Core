@@ -44,6 +44,7 @@ class SeerrConfigScreen extends StatefulWidget {
 class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
   late final PluginSyncService _syncService;
   late final SeerrPreferences _seerrPrefs;
+  late final UserPreferences _userPreferences;
 
   MoonfinStatusResponse? _seerrStatus;
   bool _statusLoading = false;
@@ -60,6 +61,7 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
     super.initState();
     _syncService = GetIt.instance<PluginSyncService>();
     _seerrPrefs = GetIt.instance<SeerrPreferences>();
+    _userPreferences = GetIt.instance<UserPreferences>();
     _rows = List.of(_seerrPrefs.rowsConfig)..sort((a, b) => a.order.compareTo(b.order));
     final beforeTypes = _rows.map((r) => r.type).toList();
     _sortRowsEnabledAboveDisabled();
@@ -251,6 +253,30 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
 
   Future<void> _setBlockNsfw(bool value) async {
     await _seerrPrefs.setBlockNsfw(value);
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// Kept in [UserPreferences] alone. That is the store the profile sync
+  /// carries, and a second copy in [SeerrPreferences] would never hear about
+  /// a change made on another device.
+  Future<void> _setShowMissingCollectionItems(bool value) async {
+    await GetIt.instance<UserPreferences>().set(
+      UserPreferences.seerrShowMissingCollectionItems,
+      value,
+    );
+    if (mounted) setState(() {});
+    // Pushed even after a quick back-navigation, or the next pull would
+    // quietly undo the change.
+    await _pushSync();
+  }
+
+  Future<void> _setShowAvailabilityBadges(bool value) async {
+    await _userPreferences.set(
+      UserPreferences.showSeerrAvailabilityBadges,
+      value,
+    );
+    await _pushSync();
     if (!mounted) return;
     setState(() {});
   }
@@ -518,6 +544,68 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
             ),
           ),
         if (showSeerrSettings) ...[
+          TvFocusHighlight(
+            builder: (context, focused) => SwitchListTile.adaptive(
+              secondary: Icon(
+                Icons.video_collection_outlined,
+                color: focused ? AppColors.black.withValues(alpha: 0.54) : null,
+              ),
+              title: Text(
+                l10n.showMissingCollectionItems,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: focused
+                      ? AppColors.black.withValues(alpha: 0.87)
+                      : AppColorScheme.onSurface,
+                ),
+              ),
+              subtitle: Text(
+                l10n.showMissingCollectionItemsDesc,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: focused
+                      ? AppColors.black.withValues(alpha: 0.54)
+                      : AppColorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              value: GetIt.instance<UserPreferences>().get(
+                UserPreferences.seerrShowMissingCollectionItems,
+              ),
+              onChanged: _setShowMissingCollectionItems,
+            ),
+          ),
+          TvFocusHighlight(
+            builder: (context, focused) => SwitchListTile.adaptive(
+              secondary: Icon(
+                Icons.check_circle_outline,
+                color: focused ? AppColors.black.withValues(alpha: 0.54) : null,
+              ),
+              title: Text(
+                l10n.showSeerrAvailabilityBadges,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: focused
+                      ? AppColors.black.withValues(alpha: 0.87)
+                      : AppColorScheme.onSurface,
+                ),
+              ),
+              subtitle: Text(
+                l10n.showSeerrAvailabilityBadgesDescription,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: focused
+                      ? AppColors.black.withValues(alpha: 0.54)
+                      : AppColorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              value: _userPreferences.get(
+                UserPreferences.showSeerrAvailabilityBadges,
+              ),
+              onChanged: _setShowAvailabilityBadges,
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Align(

@@ -68,6 +68,15 @@ class _AboutCategoryScreen extends StatelessWidget {
                   const DiagnosticsSettingsScreen(),
                 ),
               ),
+              if (PlatformDetection.useDesktopUi)
+                _TvSettingsListTile(
+                  leading: const Icon(Icons.keyboard_outlined),
+                  title: Text(l10n.keyboardShortcutsTitle),
+                  subtitle: Text(l10n.keyboardShortcutsSubtitle),
+                  onTap: () => context.pushSettingsScreen(
+                    const _KeyboardShortcutsScreen(),
+                  ),
+                ),
               _TvSettingsListTile(
                 leading: const Icon(Icons.auto_awesome),
                 title: Text(l10n.runSetupAgain),

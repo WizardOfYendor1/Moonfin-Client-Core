@@ -322,6 +322,12 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
     icon: Icons.music_note,
     open: () => push(const _ThemeMusicScreen()),
   );
+  final loadingAnimation = _SearchSection(
+    slug: 'loading-animation',
+    path: [l10n.settingsPersonalization, l10n.loadingAnimation],
+    icon: Icons.motion_photos_on_outlined,
+    open: () => push(const _LoadingAnimationScreen()),
+  );
   final video = _SearchSection(
     slug: 'video',
     path: [
@@ -382,7 +388,7 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
   final downloads = _SearchSection(
     slug: 'downloads',
     path: [l10n.settingsPlaybackSyncplay, l10n.settingsOfflineDownloads],
-    icon: Icons.download,
+    icon: Icons.download_for_offline,
     open: () => push(const DownloadSettingsScreen()),
   );
   final emulatorCores = _SearchSection(
@@ -448,6 +454,12 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
     path: [l10n.aboutTitle, 'Diagnostics & Logging'],
     icon: Icons.bug_report,
     open: () => push(const DiagnosticsSettingsScreen()),
+  );
+  final shortcuts = _SearchSection(
+    slug: 'keyboard_shortcuts',
+    path: [l10n.aboutTitle, l10n.keyboardShortcutsTitle],
+    icon: Icons.keyboard_outlined,
+    open: () => push(const _KeyboardShortcutsScreen()),
   );
 
   final entries = <_SettingsSearchEntry>[
@@ -614,11 +626,38 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
       l10n.watchedIndicators,
       keywords: ['checkmark', 'seen', 'badge'],
     ),
+    if (!PlatformDetection.useMobileUi) ...[
+      style.leaf(
+        'pref_page_transition_speed',
+        l10n.pageTransitions,
+        subtitle: l10n.pageTransitionsSubtitle,
+        keywords: ['animation', 'page', 'transition', 'speed', 'motion'],
+      ),
+      style.leaf(
+        'pref_navigation_animation_speed',
+        l10n.navigationSpeed,
+        subtitle: l10n.navigationSpeedSubtitle,
+        keywords: ['focus', 'scroll', 'speed', 'animation', 'cursor'],
+      ),
+      style.leaf(
+        'pref_modern_card_transition_speed',
+        l10n.modernCardsTransitionSpeed,
+        subtitle: l10n.modernCardsTransitionSpeedSubtitle,
+        keywords: ['cards', 'modern', 'expansion', 'speed', 'animation'],
+      ),
+      style.leaf(
+        'pref_delay_card_expansion_on_rapid_scroll',
+        l10n.delayCardExpansionOnRapidScroll,
+        subtitle: l10n.delayCardExpansionOnRapidScrollSubtitle,
+        keywords: ['debounce', 'rapid scroll', 'modern cards', 'expansion', 'delay'],
+      ),
+    ],
 
     details.screen(keywords: ['movie page', 'show page', 'item page']),
     details.leaf('pref_detail_screen_style', l10n.detailScreenStyle, keywords: [
       'classic',
       'modern',
+      'spotlight',
     ]),
     details.leaf('detailsBackgroundBlurAmount', l10n.detailsBackgroundBlur),
     details.leaf(
@@ -701,6 +740,12 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
       'pref_show_favorites_button',
       l10n.showFavoritesButton,
       subtitle: l10n.settingsShowFavoritesButtonInNavigation,
+    ),
+    navigation.leaf(
+      'pref_show_live_tv_button',
+      l10n.showLiveTvButton,
+      subtitle: l10n.settingsShowLiveTvButtonInNavigation,
+      keywords: ['guide', 'channels'],
     ),
     navigation.leaf(
       'pref_show_libraries_in_toolbar',
@@ -1068,6 +1113,27 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
       subtitle: l10n.loopThemeMusicSubtitle,
       keywords: ['repeat'],
     ),
+    loadingAnimation.screen(keywords: ['spinner', 'runner', 'moon', 'logo', 'loading']),
+    loadingAnimation.leaf(
+      'loadingAnimationImage',
+      l10n.loadingAnimationImage,
+    ),
+    loadingAnimation.leaf(
+      'loadingAnimationSize',
+      l10n.loadingAnimationSize,
+    ),
+    loadingAnimation.leaf(
+      'loadingAnimationPosition',
+      l10n.loadingAnimationPosition,
+    ),
+    loadingAnimation.leaf(
+      'loadingAnimationSpeed',
+      l10n.loadingAnimationSpeed,
+    ),
+    loadingAnimation.leaf(
+      'showLoadingAnimationText',
+      l10n.showLoadingAnimationText,
+    ),
 
     playback.screen(keywords: ['video', 'audio', 'subtitles', 'player']),
     video.screen(keywords: ['player', 'playback']),
@@ -1180,6 +1246,17 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
       ),
     if (PlatformDetection.isAndroid && PlatformDetection.isTV) ...[
       video.leaf(
+        'redetect_display',
+        l10n.settingsRedetectDisplay,
+        subtitle: l10n.settingsRedetectDisplayDescription,
+        keywords: ['hdr', 'dolby vision', 'detect', 'edid', 'transcode'],
+      ),
+      video.leaf(
+        'display_is_sdr',
+        l10n.settingsDisplayIsSdr,
+        keywords: ['hdr', 'sdr', 'dolby vision'],
+      ),
+      video.leaf(
         'dolby_vision_fallback_behavior',
         l10n.settingsDolbyVisionFallback,
         keywords: ['hdr'],
@@ -1204,6 +1281,13 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
       ),
     if (PlatformDetection.isWindows)
       video.leaf('auto_hdr_switching_behavior', l10n.autoHdrSwitching),
+    if (PlatformDetection.supportsNativeHdrWindow)
+      video.leaf(
+        'native_hdr_output',
+        l10n.nativeHdrOutput,
+        subtitle: l10n.nativeHdrOutputDescription,
+        keywords: ['hdr10', 'passthrough', 'tone mapping'],
+      ),
     video.leaf(
       'pref_live_direct',
       l10n.settingsLiveTvDirect,
@@ -1416,6 +1500,35 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
         keywords: ['parallel', 'simultaneous'],
       ),
       downloads.leaf('download_storage_limit_mb', l10n.storageLimit),
+      if (AutoDownloadService.isSupportedPlatform) ...[
+        downloads.leaf(
+          'auto_download_enabled',
+          l10n.autoDownloadEnable,
+          subtitle: l10n.autoDownloadEnableSubtitle,
+          keywords: ['follow', 'series', 'subscription'],
+          header: l10n.autoDownloadSection,
+        ),
+        downloads.leaf(
+          'auto_download_keep_unwatched',
+          l10n.autoDownloadKeepUnwatched,
+          keywords: ['episodes', 'limit'],
+          header: l10n.autoDownloadSection,
+        ),
+        downloads.leaf(
+          'auto_download_delete_after_hours',
+          l10n.autoDownloadDelete,
+          subtitle: l10n.autoDownloadDeleteSubtitle,
+          keywords: ['watched', 'remove'],
+          header: l10n.autoDownloadSection,
+        ),
+        downloads.leaf(
+          'auto_download_background_refresh',
+          l10n.autoDownloadBackgroundRefresh,
+          subtitle: l10n.autoDownloadBackgroundRefreshSubtitle,
+          keywords: ['background', 'periodic'],
+          header: l10n.autoDownloadSection,
+        ),
+      ],
       downloads.leaf('download_custom_path', l10n.downloadLocation, keywords: [
         'folder',
         'path',
@@ -1453,9 +1566,18 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
 
     advanced.screen(keywords: ['mpv', 'cache', 'tuning']),
     advanced.leaf('video_start_delay', l10n.settingsVideoStartDelay),
+    if (PlatformDetection.isAndroid)
+      advanced.leaf('pref_performance_mode', l10n.performanceMode, keywords: [
+        'memory',
+        'low ram',
+        'trailers',
+        'previews',
+        'slow',
+      ]),
     if (!PlatformDetection.isWeb) ...[
       advanced.leaf('image_cache_limit_mb', l10n.imageCacheLimit, keywords: [
         'storage',
+        'disk',
       ]),
       advanced.leaf('clear_image_cache', l10n.clearImageCache),
     ],
@@ -1532,6 +1654,10 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
     ]),
 
     about.screen(keywords: ['version', 'update', 'discord', 'license']),
+    if (PlatformDetection.useDesktopUi)
+      shortcuts.screen(
+        keywords: ['keys', 'hotkeys', 'keybind', 'keyboard', 'player'],
+      ),
     if (AppDistribution.supportsInAppUpdates)
       about.leaf(
         'check_updates',

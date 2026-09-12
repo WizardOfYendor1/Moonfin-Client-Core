@@ -100,8 +100,9 @@ void main() {
         }
         await pumpPreview(tester, homeRowsPreview(modern: false));
         await pumpPreview(tester, homeRowsPreview(modern: true));
-        await pumpPreview(tester, detailStylePreview(modern: false));
-        await pumpPreview(tester, detailStylePreview(modern: true));
+        for (final style in DetailScreenStyle.values) {
+          await pumpPreview(tester, detailStylePreview(style));
+        }
         debugDefaultTargetPlatformOverride = null;
       });
 
@@ -117,7 +118,9 @@ void main() {
           await pumpPreview(tester, navbarPreview(position));
         }
         await pumpPreview(tester, homeRowsPreview(modern: false));
-        await pumpPreview(tester, detailStylePreview(modern: true));
+        for (final style in DetailScreenStyle.values) {
+          await pumpPreview(tester, detailStylePreview(style));
+        }
         debugDefaultTargetPlatformOverride = null;
       });
     });

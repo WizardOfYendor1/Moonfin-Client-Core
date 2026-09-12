@@ -6,6 +6,7 @@ import '../../../data/services/plugin_sync_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../widgets/settings/settings_section_header.dart';
 import '../../../preference/user_preferences.dart';
+import '../../../util/device_performance.dart';
 import '../../widgets/adaptive/adaptive_list_section.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import '../../widgets/settings/preference_tiles.dart';
@@ -24,6 +25,10 @@ class LocalPreviewsSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // The switch would otherwise read as on while nothing plays, so say why.
+    final heldBack =
+        GetIt.instance<UserPreferences>().resolveDevicePerformanceTier() ==
+        DevicePerformanceTier.reduced;
     return withCleanSettingsTypography(
       context,
       Scaffold(
@@ -36,7 +41,9 @@ class LocalPreviewsSettingsScreen extends StatelessWidget {
                 SwitchPreferenceTile(
                   preference: UserPreferences.mediaBarTrailerPreview,
                   title: l10n.trailerPreview,
-                  subtitle: l10n.autoPlayTrailers,
+                  subtitle: heldBack
+                      ? l10n.trailerPreviewHeldBack
+                      : l10n.autoPlayTrailers,
                   icon: Icons.movie_outlined,
                   onChanged: _pushSync,
                 ),

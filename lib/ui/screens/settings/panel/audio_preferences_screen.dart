@@ -172,7 +172,9 @@ class _AudioPreferencesScreenState extends State<_AudioPreferencesScreen> {
     // Retry like startup detection does: a one-shot query can race audio
     // output enumeration and return a degenerate stereo result.
     final profile = await AudioCapabilityProbe.queryWithRetry();
-    AudioCapabilityProbe.apply(profile);
+    // The user asked for this answer and the snackbar below names it, so it
+    // lands now rather than waiting out the downgrade settle window.
+    AudioCapabilityProbe.apply(profile, immediate: true);
 
     // Auto is right for every sink under never-transcode, so the reset just
     // hands control back to detection.

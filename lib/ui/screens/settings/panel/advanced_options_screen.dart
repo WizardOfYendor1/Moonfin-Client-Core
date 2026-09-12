@@ -53,6 +53,26 @@ class _AdvancedOptionsScreenState extends State<_AdvancedOptionsScreen> {
                 ),
               ],
             ),
+            if (PlatformDetection.isAndroid) ...[
+              _SectionHeader(l10n.performanceMode),
+              adaptiveListSection(
+                children: [
+                  EnumPreferenceTile<DevicePerformanceMode>(
+                    preference: UserPreferences.performanceMode,
+                    title: l10n.performanceMode,
+                    description: l10n.performanceModeSubtitle,
+                    icon: Icons.speed_outlined,
+                    labelOf: (v) => switch (v) {
+                      DevicePerformanceMode.auto => l10n.performanceModeAuto,
+                      DevicePerformanceMode.standard =>
+                        l10n.performanceModeStandard,
+                      DevicePerformanceMode.reduced =>
+                        l10n.performanceModeReduced,
+                    },
+                  ),
+                ],
+              ),
+            ],
             if (!PlatformDetection.isWeb) ...[
               _SectionHeader(l10n.storage),
               adaptiveListSection(

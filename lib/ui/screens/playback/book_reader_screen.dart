@@ -13,7 +13,10 @@ import 'package:rar/rar.dart';
 import 'package:server_core/server_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdfrx/pdfrx.dart';
+
+import '../../../util/relative_time_label.dart';
 import '../../../util/webview_environment.dart';
+
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -31,6 +34,7 @@ import '../../../util/platform_detection.dart';
 import '../../../util/insecure_certificates.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/current_app_localizations.dart';
+import '../../../util/system_ui.dart';
 import '../../widgets/adaptive/sf_symbol.dart';
 import '../../widgets/reader/reader_chrome_bar.dart';
 import '../../widgets/reader/reader_contents_hub.dart';
@@ -61,7 +65,7 @@ enum _ComicLayout { single, double, vertical }
 enum _ComicDirection { ltr, rtl }
 
 class _BookReaderScreenState extends State<BookReaderScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, ImmersiveSystemUi {
   AggregatedItem? _item;
   String? _extension;
   String? _error;
@@ -314,7 +318,6 @@ class _BookReaderScreenState extends State<BookReaderScreen>
     WidgetsBinding.instance.removeObserver(this);
     _comicStateSaveDebounce?.cancel();
     _pdfPageSaveDebounce?.cancel();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _pageController.dispose();
     _comicTransformController.dispose();
     _comicVerticalController.dispose();
@@ -427,7 +430,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
       _epubThemeCache.clear();
     });
 
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    setImmersive(false);
     _resetComicZoom();
 
     try {
@@ -925,11 +928,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
     setState(() {
       _overlayVisible = !_overlayVisible;
     });
-    if (_overlayVisible) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    }
+    setImmersive(!_overlayVisible);
   }
 
   Future<Uri> _resolveReadableUri(
@@ -1432,12 +1431,9 @@ class _BookReaderScreenState extends State<BookReaderScreen>
   }
 
   String _formatBookmarkDate(DateTime dt, AppLocalizations l10n) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return l10n.justNow;
-    if (diff.inHours < 1) return l10n.minutesAgo(diff.inMinutes);
-    if (diff.inDays < 1) return l10n.hoursAgo(diff.inHours);
-    if (diff.inDays < 7) return l10n.daysAgo(diff.inDays);
+    if (DateTime.now().difference(dt).inDays < 7) {
+      return relativeTimeLabel(l10n, dt);
+    }
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
   }
 

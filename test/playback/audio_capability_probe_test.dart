@@ -1,9 +1,14 @@
+import 'package:fake_async/fake_async.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moonfin/playback/audio_capability_probe.dart';
 import 'package:moonfin/playback/audio_capability_profile.dart';
 import 'package:moonfin/playback/device_capability_cache.dart';
 import 'package:moonfin/util/platform_detection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+const _events = MethodChannel('org.moonfin.androidtv/audioCapabilitiesEvents');
 
 AudioCapabilityProfile _profile({
   AudioRouteType route = AudioRouteType.hdmi,
@@ -18,16 +23,49 @@ AudioCapabilityProfile _profile({
   });
 }
 
+/// What the Fire TV reports while its HDMI sink is mid-renegotiation.
+AudioCapabilityProfile _phantomSpeaker() => _profile(
+  route: AudioRouteType.speaker,
+  passthroughAc3: false,
+  maxPcmChannels: 2,
+);
+
+String? _snapshotRoute() =>
+    PlatformDetection.audioCapabilitiesSnapshot['activeRouteType'] as String?;
+
+/// Reads the cached profile's route inside a fakeAsync zone, where the
+/// in-memory store answers on microtasks.
+String? _cachedRoute(FakeAsync async) {
+  Map<String, dynamic>? cached;
+  DeviceCapabilityCache.readMap(
+    DeviceCapabilityCache.audioKey,
+  ).then((value) => cached = value);
+  async.flushMicrotasks();
+  return cached?['activeRouteType'] as String?;
+}
+
+Future<void> _emit(Map<String, dynamic> payload) {
+  return TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .handlePlatformMessage(
+        _events.name,
+        const StandardMethodCodec().encodeSuccessEnvelope(payload),
+        (_) {},
+      );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     PlatformDetection.setAudioCapabilities(null);
+    AudioCapabilityProbe.resetForTesting();
   });
 
   tearDown(() {
     PlatformDetection.setAudioCapabilities(null);
+    AudioCapabilityProbe.resetForTesting();
+    debugDefaultTargetPlatformOverride = null;
   });
 
   group('looksEmpty', () {
@@ -43,12 +81,7 @@ void main() {
     });
 
     test('a real route is never empty, even downgraded to stereo', () {
-      final tvSpeakers = _profile(
-        route: AudioRouteType.speaker,
-        passthroughAc3: false,
-        maxPcmChannels: 2,
-      );
-      expect(AudioCapabilityProbe.looksEmpty(tvSpeakers), isFalse);
+      expect(AudioCapabilityProbe.looksEmpty(_phantomSpeaker()), isFalse);
     });
 
     test('passthrough on an unknown route counts as a real answer', () {
@@ -84,28 +117,24 @@ void main() {
       );
 
       expect(PlatformDetection.supportsAc3Audio, isTrue);
-      expect(
-        PlatformDetection.audioCapabilitiesSnapshot['activeRouteType'],
-        AudioRouteType.hdmi.name,
-      );
+      expect(_snapshotRoute(), AudioRouteType.hdmi.name);
     });
 
-    test('a genuine downgrade with a real route still lands', () {
-      AudioCapabilityProbe.apply(_profile());
+    test('a genuine downgrade with a real route lands after the window', () {
+      fakeAsync((async) {
+        AudioCapabilityProbe.apply(_profile());
+        AudioCapabilityProbe.apply(_phantomSpeaker());
 
-      AudioCapabilityProbe.apply(
-        _profile(
-          route: AudioRouteType.speaker,
-          passthroughAc3: false,
-          maxPcmChannels: 2,
-        ),
-      );
+        expect(PlatformDetection.supportsAc3Audio, isTrue);
+        expect(_snapshotRoute(), AudioRouteType.hdmi.name);
 
-      expect(PlatformDetection.supportsAc3Audio, isFalse);
-      expect(
-        PlatformDetection.audioCapabilitiesSnapshot['activeRouteType'],
-        AudioRouteType.speaker.name,
-      );
+        async.elapse(AudioCapabilityProbe.settleWindow);
+
+        expect(PlatformDetection.supportsAc3Audio, isFalse);
+        expect(_snapshotRoute(), AudioRouteType.speaker.name);
+        // A real unplug is still cached, so the next launch starts from it.
+        expect(_cachedRoute(async), AudioRouteType.speaker.name);
+      });
     });
 
     test('null keeps whatever was detected before', () {
@@ -121,6 +150,104 @@ void main() {
         _profile(route: AudioRouteType.other, passthroughAc3: false),
       );
       expect(PlatformDetection.hasAudioCapabilities, isTrue);
+    });
+  });
+
+  group('apply holds downgrades', () {
+    test('a flap that heals inside the window never lands', () {
+      fakeAsync((async) {
+        AudioCapabilityProbe.apply(_profile());
+        async.flushMicrotasks();
+
+        AudioCapabilityProbe.apply(_phantomSpeaker());
+        async.elapse(const Duration(seconds: 2));
+        AudioCapabilityProbe.apply(_profile());
+
+        async.elapse(AudioCapabilityProbe.settleWindow);
+        expect(_snapshotRoute(), AudioRouteType.hdmi.name);
+        expect(_cachedRoute(async), AudioRouteType.hdmi.name);
+      });
+    });
+
+    test('the user asking for a re-detect lands on the spot', () {
+      AudioCapabilityProbe.apply(_profile());
+      AudioCapabilityProbe.apply(_phantomSpeaker(), immediate: true);
+
+      expect(_snapshotRoute(), AudioRouteType.speaker.name);
+    });
+
+    test('a repeated downgrade never restarts the window', () {
+      fakeAsync((async) {
+        AudioCapabilityProbe.apply(_profile());
+
+        // A route that keeps reporting the phantom speaker must not push a
+        // genuine unplug out indefinitely.
+        AudioCapabilityProbe.apply(_phantomSpeaker());
+        async.elapse(const Duration(seconds: 4));
+        AudioCapabilityProbe.apply(_phantomSpeaker());
+        async.elapse(const Duration(seconds: 2));
+
+        expect(_snapshotRoute(), AudioRouteType.speaker.name);
+      });
+    });
+
+    test('an equal profile never arms the window', () {
+      fakeAsync((async) {
+        AudioCapabilityProbe.apply(_profile());
+        AudioCapabilityProbe.apply(_profile());
+
+        async.elapse(AudioCapabilityProbe.settleWindow);
+        expect(_snapshotRoute(), AudioRouteType.hdmi.name);
+      });
+    });
+
+    test('an upgrade while a downgrade is pending clears it', () {
+      fakeAsync((async) {
+        AudioCapabilityProbe.apply(
+          _profile(route: AudioRouteType.arc, maxPcmChannels: 6),
+        );
+        AudioCapabilityProbe.apply(_phantomSpeaker());
+        AudioCapabilityProbe.apply(_profile());
+
+        expect(_snapshotRoute(), AudioRouteType.hdmi.name);
+        async.elapse(AudioCapabilityProbe.settleWindow);
+        expect(_snapshotRoute(), AudioRouteType.hdmi.name);
+      });
+    });
+
+    test('the first detection lands at once even when it is stereo', () {
+      AudioCapabilityProbe.apply(_phantomSpeaker());
+      expect(_snapshotRoute(), AudioRouteType.speaker.name);
+    });
+
+    test('an unenumerated result leaves a pending downgrade alone', () {
+      fakeAsync((async) {
+        AudioCapabilityProbe.apply(_profile());
+        AudioCapabilityProbe.apply(_phantomSpeaker());
+        AudioCapabilityProbe.apply(
+          _profile(route: AudioRouteType.other, passthroughAc3: false),
+        );
+
+        async.elapse(AudioCapabilityProbe.settleWindow);
+        expect(_snapshotRoute(), AudioRouteType.speaker.name);
+      });
+    });
+
+    test('route events subscribe once and are held the same way', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      PlatformDetection.setTvMode(true);
+      AudioCapabilityProbe.apply(_profile());
+
+      final first = AudioCapabilityProbe.listenForRouteChanges();
+      expect(AudioCapabilityProbe.listenForRouteChanges(), same(first));
+
+      // The reported flap, end to end: the sink is reported gone and then
+      // back a couple of seconds later.
+      await _emit(_phantomSpeaker().toMap());
+      expect(_snapshotRoute(), AudioRouteType.hdmi.name);
+
+      await _emit(_profile().toMap());
+      expect(_snapshotRoute(), AudioRouteType.hdmi.name);
     });
   });
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ import 'package:screen_brightness_platform_interface/screen_brightness_platform_
 import 'package:volume_controller/volume_controller.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../../data/utils/video_range_label.dart';
 import '../../../playback/subtitle_style.dart';
 import '../../../util/fullscreen_helper.dart';
 import '../../../util/scroll_sensitivity_binding.dart';
@@ -54,10 +56,15 @@ import '../../../util/audio_labels.dart';
 import '../../../util/subtitle_track_logic.dart';
 import '../../../util/auto_hdr_switcher.dart';
 import '../../../util/episode_playability.dart';
+import '../../../playback/hdr_composition.dart';
+import '../../../playback/hdr_output_controller.dart';
+import '../../../playback/hdr_overlay_channel.dart';
+import 'hdr_overlay_capture.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../../util/play_method_label.dart';
 import '../../../util/platform_detection.dart';
 import '../../../util/playback_time_label.dart';
+import '../../../util/server_url.dart';
 import '../../navigation/destinations.dart';
 import '../../widgets/adaptive/sf_symbol.dart';
 import '../../widgets/subtitle_preview.dart';
@@ -65,10 +72,13 @@ import '../../screensaver/screensaver_controller.dart';
 import '../../widgets/remote_play_to_session_dialog.dart';
 import '../../widgets/track_selector_dialog.dart';
 import '../../widgets/playback/player_loading_overlay.dart';
+import '../../widgets/playback/loading_animation_widget.dart';
 import '../../widgets/playback/skip_segment_overlay.dart';
 import '../../widgets/playback/next_up_overlay.dart';
 import '../../widgets/playback/still_watching_dialog.dart';
 import '../../widgets/playback/stream_info_dialog.dart';
+import '../../widgets/keyboard_shortcuts/keyboard_shortcut_reference.dart';
+import '../../../playback/player_key_bindings.dart';
 import '../../widgets/syncplay/syncplay_player_button.dart';
 import '../../../syncplay/syncplay_manager.dart';
 import '../../../l10n/app_localizations.dart';
@@ -76,10 +86,9 @@ import '../../widgets/progress_snack_bar.dart';
 import '../../../util/remote_subtitle_labels.dart';
 import '../../../util/subtitle_appearance_schedule.dart';
 import '../../../playback/media3_player_backend.dart';
-import '../../../playback/tizen_player_backend.dart';
+import '../../../util/system_ui.dart';
 import 'playback_takeover.dart';
 import 'osd_buttons.dart';
-import 'package:video_player/video_player.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({super.key});
@@ -89,7 +98,7 @@ class VideoPlayerScreen extends StatefulWidget {
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen>
-    with WidgetsBindingObserver, WindowListener {
+    with WidgetsBindingObserver, WindowListener, ImmersiveSystemUi {
   static final _camelCaseSpaceRe = RegExp(r'(?<=[a-z])(?=[A-Z])');
   static const _streamLoadingLabel = 'Loading Stream...';
   static const _tvTemporarySpeed = 2.0;
@@ -130,10 +139,78 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return backend is MediaKitPlayerBackend ? backend : null;
   }
 
+  /// The key table the handler and the shortcut list share. Only the
+  /// defaults exist today. A user-editable table plugs in here.
+  PlayerKeyBindings get _keyBindings => PlayerKeyBindings.defaults;
+
+  /// The backend whose mpv statistics overlay this screen can toggle, or null
+  /// where that libmpv build has none. Resolved like [_hdrBackend].
+  MediaKitPlayerBackend? get _mpvStatsBackend {
+    final backend = _activeMediaKitBackend ?? _backend;
+    return backend is MediaKitPlayerBackend && backend.supportsMpvStats
+        ? backend
+        : null;
+  }
+
   Media3PlayerBackend? get _activeMedia3Backend {
     final backend = _activeBackend;
     return backend is Media3PlayerBackend ? backend : null;
   }
+
+  final HdrOverlayChannel _hdrOverlayChannel = HdrOverlayChannel();
+
+  ValueNotifier<HdrOutputStatus>? _hdrStatus;
+  ValueNotifier<bool>? _hdrRendererCycling;
+
+  void _onHdrStatusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Whether the video area must be left transparent for the native window
+  /// to show through. False while the renderer is being recreated for a
+  /// monitor crossing: the runner is see-through then and mpv has no frame
+  /// to put behind it, so the screen paints black rather than the desktop.
+  bool get _videoShowsThrough =>
+      _nativeHdrEngaged && !(_hdrRendererCycling?.value ?? false);
+
+  /// The HDR-output line for the playback info sheet, or null on platforms
+  /// where there is nothing to say. Reports the outcome and, when it did not
+  /// engage, why.
+  String? _hdrOutputRow(AppLocalizations l10n, {bool hdrTonemapped = false}) {
+    final backend = _hdrBackend;
+    if (backend == null) return null;
+    final status = backend.hdrOutput.status.value;
+    // Engaged, but this display is not receiving HDR - the window sits on a
+    // monitor without it.
+    if (status.isActive && hdrTonemapped) {
+      return l10n.hdrOutputActiveTonemapped;
+    }
+    return switch (status) {
+      HdrOutputStatus.active => l10n.hdrOutputActive(
+        HdrOutputController.activeOutputFormat,
+      ),
+      HdrOutputStatus.displayNotInHdrMode => l10n.hdrOutputDisplayNotHdr,
+      HdrOutputStatus.contentIsSdr => l10n.hdrOutputContentSdr,
+      HdrOutputStatus.disabledByPreference => l10n.hdrOutputDisabled,
+      HdrOutputStatus.failed => l10n.hdrOutputFailed,
+    };
+  }
+
+  /// The backend whose HDR output this screen presents, or null on platforms
+  /// without the native window.
+  MediaKitPlayerBackend? get _hdrBackend =>
+      PlatformDetection.supportsNativeHdrWindow
+      ? (_activeMediaKitBackend ?? _backend)
+      : null;
+
+  /// Whether mpv currently renders into its own native window.
+  bool get _nativeHdrEngaged => _hdrBackend?.hdrOutput.isEngaged ?? false;
+
+  /// Whether a route sits above the player - a track picker, the info sheet,
+  /// any dialog. In overlay mode this stops the capture *and* stands the
+  /// video window down, since routes live outside the captured subtree and
+  /// the video would cover them; in DWM mode it does neither.
+  bool get _routeCovered => !(ModalRoute.of(context)?.isCurrent ?? true);
 
   HtmlVideoBackend? get _activeHtmlVideoBackend {
     final backend = _activeBackend;
@@ -169,7 +246,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _subtitleReapplyRetryScheduled = false;
   bool _isStopping = false;
   bool _readyToPop = false;
-  bool _didRestoreSystemUiOnExit = false;
   DateTime? _suppressTvLifecycleExitUntil;
   bool _isOsdLocked = false;
   String? _remotePlaybackState;
@@ -208,8 +284,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   MediaSegment? _skipSegment;
   Duration? _skipTo;
+
   /// True when the auto-hide setting is on for the current segment.
   bool _skipSegmentAutoHideEnabled = false;
+
   /// True while the auto-hide cooldown is still running.
   bool _skipSegmentAutoHidePending = false;
   Timer? _skipSegmentAutoHideTimer;
@@ -455,7 +533,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       results = await withProgressSnackBar(
         messenger,
         AppLocalizations.of(context).searchingSubtitles,
-        () => client.itemsApi.searchRemoteSubtitles(item.id, language: language),
+        () =>
+            client.itemsApi.searchRemoteSubtitles(item.id, language: language),
       );
     } catch (error) {
       if (!mounted) return;
@@ -538,7 +617,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           unawaited(
             _runSinglePlayerMutation(
               'downloaded_subtitle_$streamIndex',
-              () => _manager.changeSubtitleTrack(streamIndex),
+              () => _manager.changeSubtitleTrack(
+                streamIndex,
+                refreshStreams: true,
+              ),
             ).then((_) {
               if (mounted) _syncSubtitleActive();
             }),
@@ -595,6 +677,27 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     if (!(PlatformDetection.isDesktop || PlatformDetection.isWeb)) return;
     if (_overlayFocus.hasFocus) return;
     _overlayFocus.requestFocus();
+  }
+
+  /// Takes key handling back whenever focus falls out of the player.
+  ///
+  /// Every remote key is read on [_overlayFocus], and the OSD, the skip button
+  /// and the next up card are all below it, so they hold focus for it while
+  /// they are up. When one of them goes away Flutter hands focus to whatever
+  /// held it before, which is this node only if it ever did and is otherwise
+  /// the route's own scope, where no player key is read. The remote then does
+  /// nothing at all until a direction press walks focus back by itself.
+  ///
+  /// A dialog opened over the player keeps its focus: requesting it back would
+  /// pull the remote out of an open track or cast picker, and the hide timer
+  /// runs on regardless of what is on top.
+  void _restoreOverlayFocus() {
+    if (!mounted || _overlayFocus.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _overlayFocus.hasFocus) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      _overlayFocus.requestFocus();
+    });
   }
 
   List<Map<String, dynamic>> _streamMaps(dynamic raw) {
@@ -661,16 +764,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Future<void> _syncAutoHdrSwitching() async {
     if (!PlatformDetection.isWindows) return;
     final behavior = _prefs.get(UserPreferences.autoHdrSwitchingBehavior);
-    await _autoHdrSwitcher.sync(
+    final switched = await _autoHdrSwitcher.sync(
       behavior: behavior,
       isHdrContent: _isHdrPlaybackContent(),
       isDesktopFullscreen: _isDesktopFullscreen,
     );
+    // Only on a real mode change: the window did not move, so nothing else
+    // tells the native path.
+    if (switched) {
+      _hdrBackend?.refreshNativeHdrForDisplayState();
+    }
   }
 
   @override
   void initState() {
     super.initState();
+    FocusManager.instance.addListener(_restoreOverlayFocus);
     if (PlatformDetection.isTV || PlatformDetection.isMobile) {
       // The decoder wants every megabyte a constrained box has, and a stale
       // IME binding swallows d-pad presses mid-playback. Desktop keeps its
@@ -678,6 +787,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       // playback far more often.
       releaseImageMemoryForPlayback();
       detachTextInputForPlayback();
+    }
+    final hdrBackend = _hdrBackend;
+    if (hdrBackend != null) {
+      // Engagement finishes at the tail of play(), after the last build, and
+      // swaps which video surface this screen shows - listen so the swap does
+      // not wait for an unrelated rebuild.
+      _hdrStatus = hdrBackend.hdrOutput.status
+        ..addListener(_onHdrStatusChanged);
+      _hdrRendererCycling = hdrBackend.nativeRendererCycling
+        ..addListener(_onHdrStatusChanged);
+      // Only this screen can present the native window; Live TV and the mini
+      // player share the backend but can only render the texture. play() may
+      // have run before this screen mounted and been refused for lack of a
+      // presenter; decide again now that one exists.
+      unawaited(hdrBackend.ensureNativeHdrForPresenter(this));
     }
     _screensaverController.setPlaybackActive(true);
     _screensaverPlayingSub = _state.playingStream.listen(
@@ -708,7 +832,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _applySubtitleStyle();
     _scheduleHide();
     _startEndsAtTicker();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    setImmersive(true);
     if (PlatformDetection.isMobile) {
       _forcedLandscape = true;
       SystemChrome.setPreferredOrientations([
@@ -825,9 +949,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (isMobilePlayback) {
         _pipService.updatePiPActions(isPlaying: playing);
         _syncAirPlayPlaybackState();
-        if (PlatformDetection.useNativeVideoSurface && playing) {
-          _syncSubtitleActive();
-        }
       }
     });
 
@@ -864,6 +985,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   @override
   void dispose() {
     _trickplayLoadGeneration++;
+    _hdrStatus?.removeListener(_onHdrStatusChanged);
+    _hdrRendererCycling?.removeListener(_onHdrStatusChanged);
+    final hdrBackend = _hdrBackend;
+    if (hdrBackend != null) {
+      // Hands the whole native path back: mpv returns to the texture output,
+      // the window is destroyed, and the next playback decides afresh. mpv is
+      // a process-lifetime singleton shared with Live TV and the mini player,
+      // which can only render the texture.
+      unawaited(hdrBackend.releaseNativeHdrPresenter(this));
+      unawaited(_hdrOverlayChannel.hide());
+    }
     if (_isInPiP && GetIt.instance.isRegistered<PlaybackArbiter>()) {
       GetIt.instance<PlaybackArbiter>().pipActive = false;
     }
@@ -923,6 +1055,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _screenLockSub?.cancel();
     _completedSub?.cancel();
     _tvBackgroundExitTimer?.cancel();
+    FocusManager.instance.removeListener(_restoreOverlayFocus);
     _overlayFocus.dispose();
     _tvSeekbarFocus.dispose();
     _tvSkipSegmentFocus.dispose();
@@ -1177,6 +1310,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _ensureDesktopOverlayFocus();
   }
 
+  // Fullscreen can be entered without the player ever being asked: F11 and
+  // Alt+Enter are handled by the global shortcut in app.dart, which calls
+  // FullscreenHelper directly, and the title bar, Win+Up and the window menu
+  // bypass the app entirely. Listening to the window itself catches all of
+  // them, so _isDesktopFullscreen and the auto-HDR switch stay in step
+  // whichever route was taken.
+  @override
+  void onWindowEnterFullScreen() {
+    unawaited(_syncDesktopFullscreenState());
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    unawaited(_syncDesktopFullscreenState());
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState != AppLifecycleState.resumed) {
@@ -1347,7 +1496,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     setState(() => _isInPiP = isInPiP);
     if (!isInPiP) {
       _didRequestIosPiPForBackground = false;
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      setImmersive(true);
       if (PlatformDetection.isMobile && _forcedLandscape) {
         SystemChrome.setPreferredOrientations([
           DeviceOrientation.landscapeLeft,
@@ -1411,7 +1560,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     await _pushMedia3UiMetadata();
   }
 
-  List<Map<String, dynamic>> _buildMedia3StreamInfoSections() {
+  /// [hdrTonemapped] is what the display is receiving right now, resolved at
+  /// sheet-open time; callers that never show the HDR row can leave it.
+  List<Map<String, dynamic>> _buildMedia3StreamInfoSections({
+    bool hdrTonemapped = false,
+  }) {
     final l10n = AppLocalizations.of(context);
     final resolution = _manager.currentResolution;
     final playMethod = resolution?.playMethod;
@@ -1526,13 +1679,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final fileName = resolveFileName();
     final bitrate = mediaSource?['Bitrate'] as int?;
     final overrideMbps = _manager.maxBitrateOverrideMbps;
+    final delivered = resolution?.deliveredFormat;
 
     String effectiveBitrateText() {
       // The override is the user's cap rather than what the server settled on,
       // so it only stands in when the stream URL is silent.
-      final delivered = _manager.currentResolution?.deliveredBitrate;
-      if (delivered != null) {
-        return _formatBitrate(delivered);
+      final total = delivered?.totalBitrate;
+      if (total != null) {
+        return _formatBitrate(total);
       }
       if (overrideMbps != null) {
         return l10n.bitrateValueMbps(overrideMbps);
@@ -1589,6 +1743,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     ];
     addSection(l10n.playback, playbackRows);
 
+    // Its own section rather than overwriting the source rows below, which
+    // are what the transcode reasons above are about.
+    if (delivered != null) {
+      addSection(l10n.transcoding, [
+        if (delivered.container case final container?)
+          row(l10n.container, container.toUpperCase()),
+        if (delivered.videoCodec case final codec?)
+          row(l10n.video, codec.toUpperCase()),
+        if (delivered.videoBitrate case final rate?)
+          row(l10n.videoBitrate, _formatBitrate(rate)),
+        if (delivered.audioCodec case final codec?)
+          row(l10n.audio, codec.toUpperCase()),
+        if (delivered.audioBitrate case final rate?)
+          row(l10n.audioBitrate, _formatBitrate(rate)),
+      ]);
+    }
+
     if (videoStream case final video?) {
       final fps = video['RealFrameRate'] as num?;
       final width = video['Width'];
@@ -1598,7 +1769,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           l10n.resolution,
           '${width ?? '?'}×${height ?? '?'}${fps != null ? ' @ ${fps.round()}fps' : ''}',
         ),
-        row(l10n.hdr, _getHdrType(video)),
+        row(l10n.hdr, videoRangeLabel(video)),
+        if (_hdrOutputRow(l10n, hdrTonemapped: hdrTonemapped)
+            case final hdrOutput?)
+          row(l10n.hdrOutput, hdrOutput),
         row(l10n.codec, _formatVideoCodec(video)),
         if (video['BitRate'] != null)
           row(l10n.videoBitrate, _formatBitrate(video['BitRate'] as int?)),
@@ -2456,6 +2630,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     });
   }
 
+  /// A viewer reaching for the remote has answered the prompt's question.
+  void _noteViewerActivity() => _consecutiveEpisodes = 0;
+
   /// Returns false when the viewer chose to stop, so the caller can drop the
   /// queue advance it was about to make.
   Future<bool> _checkStillWatching() async {
@@ -2480,6 +2657,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   void _skipCurrentSegment() {
+    _noteViewerActivity();
     final replaceSkipOutroWithNextUp = _prefs.get(
       UserPreferences.replaceSkipOutroWithNextUp,
     );
@@ -2621,9 +2799,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   Future<void> _restoreSystemUiForExit() async {
-    if (_didRestoreSystemUiOnExit) return;
-    _didRestoreSystemUiOnExit = true;
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    setImmersive(false);
     await SystemChrome.setPreferredOrientations([]);
   }
 
@@ -2804,6 +2980,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   void _seekRelative(int ms, {bool showControls = true}) {
+    _noteViewerActivity();
     _suppressSeekPrompts();
     final target = _state.position + Duration(milliseconds: ms);
     final clamped = Duration(
@@ -2820,11 +2997,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   void _seekRelativeAccumulate(int ms) {
+    _noteViewerActivity();
     _suppressSeekPrompts();
     // While a released commit is still converging, the pending target is
     // already null but _state.position still reads pre-seek - basing a quick
     // follow-up press on it would jump back to the old position.
-    final basePosition = _pendingScrubSeekTarget ??
+    final basePosition =
+        _pendingScrubSeekTarget ??
         (_isSeeking ? _lastScrubCommitTarget : null) ??
         _state.position;
     final target = basePosition + Duration(milliseconds: ms);
@@ -2836,16 +3015,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _prefs.get(UserPreferences.trickPlayMode) != TrickplayMode.disabled &&
       (_trickplayInfo?.isValid ?? false);
 
+  bool get _pauseDuringScrub =>
+      _hasTrickplayPreview &&
+      _prefs.get(UserPreferences.trickPlayPauseWhileScrubbing);
+
   // Pauses playback once per scrub session so the trickplay preview has a
-  // stable frozen reference; without a preview, scrubbing leaves playback
-  // untouched. The Slider path resumes after its committed seek converges;
-  // the D-pad path stays paused until the user presses play. Callers gate
-  // this on
-  // _pendingScrubSeekTarget being null (see _accumulateScrub), not on
-  // _isSeeking - _isSeeking can still be true from an OLDER commit that
-  // hasn't finished converging yet when a brand new gesture starts (release,
-  // then press again quickly), and that stale state must not block this new
-  // gesture's own setup.
+  // stable frozen reference, unless the setting is off. Without a preview,
+  // scrubbing leaves playback untouched. The Slider path resumes after its
+  // committed seek converges and the D-pad path stays paused until the user
+  // presses play. Callers gate this on _pendingScrubSeekTarget being null
+  // (see _accumulateScrub), not on _isSeeking - _isSeeking can still be true
+  // from an OLDER commit that hasn't finished converging yet when a brand new
+  // gesture starts (release, then press again quickly), and that stale state
+  // must not block this new gesture's own setup.
   void _beginScrub() {
     // Dragging fires PointerMoveEvents, not hover events, so stale
     // _hoverPosition must be cleared or it flashes the wrong preview on drag end.
@@ -2858,15 +3040,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _scrubSeekCommitId++;
     if (_hasTrickplayPreview) {
       _prefetchAllTrickplaySheets(_state.position);
-      _isPausedScrubActive = true;
-      // If an earlier still-resolving commit already paused playback for
-      // this chain of overlapping gestures, _wasPlayingBeforeScrubPause is
-      // already correctly true - re-reading _state.isPlaying now would see
-      // "paused" and wrongly conclude nothing needs resuming later.
-      if (!_wasPlayingBeforeScrubPause) {
-        _wasPlayingBeforeScrubPause = _state.isPlaying;
-        if (_wasPlayingBeforeScrubPause) {
-          _manager.pause();
+      if (_pauseDuringScrub) {
+        _isPausedScrubActive = true;
+        // If an earlier still-resolving commit already paused playback for
+        // this chain of overlapping gestures, _wasPlayingBeforeScrubPause is
+        // already correctly true - re-reading _state.isPlaying now would see
+        // "paused" and wrongly conclude nothing needs resuming later.
+        if (!_wasPlayingBeforeScrubPause) {
+          _wasPlayingBeforeScrubPause = _state.isPlaying;
+          if (_wasPlayingBeforeScrubPause) {
+            _manager.pause();
+          }
         }
       }
     }
@@ -2898,6 +3082,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// session. Called on Slider drag-end and on play during a paused D-pad
   /// scrub session - the actual "go" signals, not a timer guess.
   void _commitPendingScrub() {
+    _noteViewerActivity();
     _isPausedScrubActive = false;
     final pendingTarget = _pendingScrubSeekTarget;
     if (pendingTarget == null) return;
@@ -2976,6 +3161,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   void _togglePlayPause() {
+    _noteViewerActivity();
     if (_state.isPlaying) {
       _manager.pause();
       return;
@@ -3310,10 +3496,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
           event.logicalKey == LogicalKeyboardKey.arrowRight) {
         _resetSeekAcceleration();
-        // With a trickplay preview up, the session survives key-release -
-        // the preview stays on the paused frame and play is what commits
-        // (#1025). With nothing to browse, release commits directly.
-        if (!_hasTrickplayPreview) {
+        // While the preview holds a paused frame the session survives
+        // key-release and play is what commits. Otherwise release commits
+        // directly.
+        if (!_pauseDuringScrub) {
           _commitPendingScrub();
         }
       }
@@ -3503,128 +3689,119 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     }
 
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.space:
-      case LogicalKeyboardKey.mediaPlayPause:
+    // The keys themselves live in PlayerKeyBindings, shared with the shortcut
+    // list, so this only decides what each action does.
+    final action = _keyBindings.actionFor(
+      event.logicalKey,
+      shift: HardwareKeyboard.instance.isShiftPressed,
+    );
+    switch (action) {
+      case null:
+        return KeyEventResult.ignored;
+      case PlayerAction.playPause:
         _togglePlayPause();
         _showControls();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaPlay:
+      case PlayerAction.play:
         unawaited(_resumeWithConfiguredRewind());
         _showControls();
         _focusTvPrimaryButton();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaPause:
+      case PlayerAction.pause:
         _manager.pause();
         _showControls();
         _focusTvPrimaryButton();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaStop:
-        _exitPlayback();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaTrackNext:
-        unawaited(_manager.next());
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaTrackPrevious:
-        unawaited(_manager.previous());
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaFastForward:
-        _seekRelative(_prefs.get(UserPreferences.skipForwardLength));
-        _showControls(focusSeekbar: PlatformDetection.isTV);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaRewind:
-        _seekRelative(-_prefs.get(UserPreferences.skipBackLength));
-        _showControls(focusSeekbar: PlatformDetection.isTV);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowLeft:
-        _seekRelative(
-          -_accelerateSeekStep(
-            _prefs.get(UserPreferences.skipBackLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowRight:
-        _seekRelative(
-          _accelerateSeekStep(
-            _prefs.get(UserPreferences.skipForwardLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowUp:
-        _changeVolumeBy(0.05);
-        _showControls();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowDown:
-        _changeVolumeBy(-0.05);
-        _showControls();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyK:
-        _togglePlayPause();
-        _showControls();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyJ:
-        _seekRelative(
-          -_accelerateSeekStep(
-            _prefs.get(UserPreferences.skipBackLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyL:
-        _seekRelative(
-          _accelerateSeekStep(
-            _prefs.get(UserPreferences.skipForwardLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyH:
+      case PlayerAction.stop:
         if (event is! KeyRepeatEvent) {
           _exitPlayback();
         }
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyF:
+      case PlayerAction.next:
+        unawaited(_manager.next());
+        return KeyEventResult.handled;
+      case PlayerAction.previous:
+        unawaited(_manager.previous());
+        return KeyEventResult.handled;
+      case PlayerAction.skipForward:
+        _seekRelative(_prefs.get(UserPreferences.skipForwardLength));
+        _showControls(focusSeekbar: PlatformDetection.isTV);
+        return KeyEventResult.handled;
+      case PlayerAction.skipBack:
+        _seekRelative(-_prefs.get(UserPreferences.skipBackLength));
+        _showControls(focusSeekbar: PlatformDetection.isTV);
+        return KeyEventResult.handled;
+      case PlayerAction.seekBack:
+        _seekRelative(
+          -_accelerateSeekStep(
+            _prefs.get(UserPreferences.skipBackLength),
+            event,
+          ),
+        );
+        return KeyEventResult.handled;
+      case PlayerAction.seekForward:
+        _seekRelative(
+          _accelerateSeekStep(
+            _prefs.get(UserPreferences.skipForwardLength),
+            event,
+          ),
+        );
+        return KeyEventResult.handled;
+      case PlayerAction.volumeUp:
+        _changeVolumeBy(0.05);
+        _showControls();
+        return KeyEventResult.handled;
+      case PlayerAction.volumeDown:
+        _changeVolumeBy(-0.05);
+        _showControls();
+        return KeyEventResult.handled;
+      case PlayerAction.toggleFullscreen:
         if (PlatformDetection.useDesktopUi) {
           unawaited(_toggleDesktopFullscreen());
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
-      case LogicalKeyboardKey.keyM:
+      case PlayerAction.mute:
         _toggleMute();
         _showControls();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyC:
+      case PlayerAction.toggleSubtitles:
         unawaited(_toggleSubtitlesQuick());
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.comma:
+      case PlayerAction.slowDown:
         _stepPlaybackSpeed(-1);
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.period:
+      case PlayerAction.speedUp:
         _stepPlaybackSpeed(1);
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyI:
+      case PlayerAction.mpvStats:
+        final backend = _mpvStatsBackend;
+        if (backend == null) return KeyEventResult.ignored;
+        if (event is! KeyRepeatEvent) unawaited(backend.toggleMpvStats());
+        return KeyEventResult.handled;
+      case PlayerAction.playbackInfo:
         _showStreamInfo();
         _showControls();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.escape:
-        if (PlatformDetection.useDesktopUi && _isDesktopFullscreen) {
-          unawaited(_setDesktopFullscreen(false));
+      case PlayerAction.escape:
+        // A held Escape would leave fullscreen and then stop playback on the
+        // repeat.
+        if (event is KeyRepeatEvent) {
+          return KeyEventResult.handled;
+        }
+        if (PlatformDetection.useDesktopUi) {
+          unawaited(_leaveFullscreenOrPlayback());
           return KeyEventResult.handled;
         }
         _exitPlayback();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.select:
-      case LogicalKeyboardKey.enter:
+      case PlayerAction.showControlsOrPlayPause:
         if (_controlsVisible) {
           _togglePlayPause();
         } else {
           _showControls();
         }
         return KeyEventResult.handled;
-      default:
-        return KeyEventResult.ignored;
     }
   }
 
@@ -3672,7 +3849,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         _exitPlayback();
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        // Overlay mode: black - the capture sits inside the body, so the
+        // background is not part of it. DWM mode: transparent while the video
+        // shows through - the video window sits behind a see-through runner
+        // window, so any opaque pixel here would cover it.
+        backgroundColor: HdrComposition.videoBehindFlutter && _videoShowsThrough
+            ? Colors.transparent
+            : Colors.black,
         body: Focus(
           focusNode: _overlayFocus,
           autofocus: true,
@@ -3709,86 +3892,118 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     }
                   }
                 },
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    const Positioned.fill(
-                      child: ColoredBox(color: Colors.black),
-                    ),
-                    _buildVideoSurface(),
-                    if (PlatformDetection.isWeb)
-                      const Positioned.fill(
-                        child: ColoredBox(color: Colors.transparent),
-                      ), // Workaround for a Flutter web issue where the video surface can block pointer events.
-                    _buildTrickplayVideoCover(),
-                    _buildBringupOverlay(context),
-                    if (_isRestoringPosition)
-                      const Positioned.fill(
-                        child: ColoredBox(color: Colors.black),
-                      ),
-                    _buildPausedDescriptionOverlay(),
-                    if (_controlsVisible &&
-                        !_isOsdLocked &&
-                        !hideOsdForPreroll) ...[
-                      _buildTopOverlay(context),
-                      if (!PlatformDetection.useLeanbackUi)
-                        Positioned.fill(
-                          child: Center(child: _buildCenterTransportControls()),
+                // Everything this screen draws is mirrored into the layered
+                // window, not just the chrome - the OSDs, next-up,
+                // skip-segment and the locked overlay are siblings below.
+                // Routes above this screen (pickers, the info sheet) are
+                // outside this subtree and cannot be mirrored; both the
+                // capture and the video window stand down while one is open.
+                //
+                // Wrapped unconditionally so the subtree keeps one element
+                // identity; toggling a wrapper re-parents it and the player
+                // loses its focus node.
+                child: HdrOverlayCapture(
+                  enabled:
+                      // In DWM mode the compositor already draws Flutter over
+                      // the video.
+                      !HdrComposition.videoBehindFlutter &&
+                      _nativeHdrEngaged &&
+                      !_routeCovered,
+                  channel: _hdrOverlayChannel,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Transparent while mpv owns the video window: this
+                      // capture is drawn over the picture, so black here would
+                      // paint it out.
+                      Positioned.fill(
+                        child: ColoredBox(
+                          color: _videoShowsThrough
+                              ? Colors.transparent
+                              : Colors.black,
                         ),
-                      _buildBottomOverlay(context),
+                      ),
+                      _buildVideoSurface(),
+                      if (PlatformDetection.isWeb)
+                        const Positioned.fill(
+                          child: ColoredBox(color: Colors.transparent),
+                        ), // Workaround for a Flutter web issue where the video surface can block pointer events.
+                      _buildTrickplayVideoCover(),
+                      _buildBringupOverlay(context),
+                      if (_isRestoringPosition)
+                        const Positioned.fill(
+                          child: ColoredBox(color: Colors.black),
+                        ),
+                      _buildPausedDescriptionOverlay(),
+                      if (_controlsVisible &&
+                          !_isOsdLocked &&
+                          !hideOsdForPreroll) ...[
+                        // The chrome stays in the tree while mpv owns its own
+                        // window: both native windows are WS_EX_TRANSPARENT, so
+                        // these widgets are still what gets hit-tested - only
+                        // their pixels are re-sent by HdrOverlayCapture.
+                        _buildTopOverlay(context),
+                        if (!PlatformDetection.useLeanbackUi)
+                          Positioned.fill(
+                            child: Center(
+                              child: _buildCenterTransportControls(),
+                            ),
+                          ),
+                        _buildBottomOverlay(context),
+                      ],
+                      _buildBufferingIndicator(),
+                      _buildVolumeOverlay(),
+                      if (PlatformDetection.useMobileUi)
+                        _buildBrightnessOverlay(),
+                      if (PlatformDetection.useMobileUi)
+                        _buildDoubleTapSkipOverlay(),
+                      if (_isOsdLocked && !hideOsdForPreroll)
+                        _buildLockedOverlay(),
+                      if (_isSkipSegmentButtonVisible)
+                        SkipSegmentOverlay(
+                          segment: _skipSegment!,
+                          onSkip: _skipCurrentSegment,
+                          focusNode: PlatformDetection.isTV
+                              ? _tvSkipSegmentFocus
+                              : null,
+                          onDismiss: _clearSkipSegment,
+                          positionStream: _state.positionStream,
+                          initialPosition: _state.position,
+                        ),
+                      if (_showNextUp && _nextUpItem != null)
+                        NextUpOverlay(
+                          nextItem: _nextUpItem!,
+                          isMinimal:
+                              _prefs.get(UserPreferences.nextUpBehavior) ==
+                              NextUpBehavior.minimal,
+                          imageUrl:
+                              _nextUpItem!.primaryImageTag != null &&
+                                  _prefs.get(UserPreferences.nextUpBehavior) !=
+                                      NextUpBehavior.minimal
+                              ? _clientForItem(
+                                  _nextUpItem!,
+                                ).imageApi.getPrimaryImageUrl(
+                                  _nextUpItem!.id,
+                                  maxWidth: 400,
+                                  tag: _nextUpItem!.primaryImageTag,
+                                )
+                              : null,
+                          timeoutMs: _prefs.get(UserPreferences.nextUpTimeout),
+                          onPlayNext: _handleNextUpPlay,
+                          onDismiss: _handleNextUpCancel,
+                          onTimeout:
+                              _prefs.get(UserPreferences.autoplayNextEpisode)
+                              ? _handleNextUpPlay
+                              : _handleNextUpCancel,
+                          focusNode: PlatformDetection.isTV
+                              ? _tvNextUpPlayFocus
+                              : null,
+                          dismissFocusNode: PlatformDetection.isTV
+                              ? _tvNextUpDismissFocus
+                              : null,
+                        ),
                     ],
-                    _buildBufferingIndicator(),
-                    _buildVolumeOverlay(),
-                    if (PlatformDetection.useMobileUi)
-                      _buildBrightnessOverlay(),
-                    if (PlatformDetection.useMobileUi)
-                      _buildDoubleTapSkipOverlay(),
-                    if (_isOsdLocked && !hideOsdForPreroll)
-                      _buildLockedOverlay(),
-                    if (_isSkipSegmentButtonVisible)
-                      SkipSegmentOverlay(
-                        segment: _skipSegment!,
-                        onSkip: _skipCurrentSegment,
-                        focusNode: PlatformDetection.isTV
-                            ? _tvSkipSegmentFocus
-                            : null,
-                        onDismiss: _clearSkipSegment,
-                        positionStream: _state.positionStream,
-                        initialPosition: _state.position,
-                      ),
-                    if (_showNextUp && _nextUpItem != null)
-                      NextUpOverlay(
-                        nextItem: _nextUpItem!,
-                        isMinimal:
-                            _prefs.get(UserPreferences.nextUpBehavior) ==
-                            NextUpBehavior.minimal,
-                        imageUrl:
-                            _nextUpItem!.primaryImageTag != null &&
-                                _prefs.get(UserPreferences.nextUpBehavior) !=
-                                    NextUpBehavior.minimal
-                            ? _clientForItem(
-                                _nextUpItem!,
-                              ).imageApi.getPrimaryImageUrl(
-                                _nextUpItem!.id,
-                                maxWidth: 400,
-                                tag: _nextUpItem!.primaryImageTag,
-                              )
-                            : null,
-                        timeoutMs: _prefs.get(UserPreferences.nextUpTimeout),
-                        onPlayNext: _handleNextUpPlay,
-                        onDismiss: _handleNextUpCancel,
-                        onTimeout:
-                            _prefs.get(UserPreferences.autoplayNextEpisode)
-                            ? _handleNextUpPlay
-                            : _handleNextUpCancel,
-                        focusNode: PlatformDetection.isTV
-                            ? _tvNextUpPlayFocus
-                            : null,
-                        dismissFocusNode: PlatformDetection.isTV
-                            ? _tvNextUpDismissFocus
-                            : null,
-                      ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -3860,16 +4075,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   Widget _buildVideoSurface() {
-    if (PlatformDetection.isTizen) {
-      return _buildTizenVideoSurface();
-    }
-
     if (PlatformDetection.isIOS || PlatformDetection.isMacOS) {
       return Positioned.fill(
-        child: AetherVideoView(
-          key: _videoSurfaceKey,
-          zoomMode: _zoomMode.name,
-        ),
+        child: AetherVideoView(key: _videoSurfaceKey, zoomMode: _zoomMode.name),
       );
     }
 
@@ -3893,6 +4101,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final mediaKitBackend = _activeMediaKitBackend ?? _backend;
     if (mediaKitBackend == null) {
       return const Positioned.fill(child: ColoredBox(color: Colors.black));
+    }
+
+    // Native HDR output: mpv draws into its own window, so nothing is painted
+    // here - but the rect is measured from the same layout so the window can
+    // follow it.
+    if (mediaKitBackend.hdrOutput.isEngaged) {
+      return Positioned.fill(
+        child: HdrVideoGeometry(
+          key: _videoSurfaceKey,
+          // In overlay mode the video stands down under a route (pickers,
+          // sheets) so Flutter can draw it; in DWM mode Flutter draws over
+          // the video anyway.
+          showVideo: HdrComposition.videoBehindFlutter || !_routeCovered,
+          onGeometry: (rect) =>
+              unawaited(mediaKitBackend.hdrOutput.window.claim(this, rect)),
+          onDetached: () =>
+              unawaited(mediaKitBackend.hdrOutput.window.release(this)),
+        ),
+      );
     }
     final hwDecodingEnabled = _prefs.get(UserPreferences.hardwareDecoding);
     const selectedVo = 'gpu';
@@ -3929,30 +4156,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             subtitleViewConfiguration: _buildSubtitleConfig(),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildTizenVideoSurface() {
-    final backend = _activeBackend;
-    if (backend is! TizenPlayerBackend) {
-      return const Positioned.fill(child: ColoredBox(color: Colors.black));
-    }
-    final controller = backend.controller;
-    if (controller == null || !controller.value.isInitialized) {
-      return const Positioned.fill(child: ColoredBox(color: Colors.black));
-    }
-    return Positioned.fill(
-      child: ColoredBox(
-        color: Colors.black,
-        child: FittedBox(
-          fit: _zoomToFit(_zoomMode),
-          child: SizedBox(
-            width: controller.value.size.width,
-            height: controller.value.size.height,
-            child: VideoPlayer(controller),
-          ),
-        ),
       ),
     );
   }
@@ -4001,13 +4204,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       return const SizedBox.shrink();
     }
 
+    final pos = _prefs.get(UserPreferences.loadingAnimationPosition);
+
     return Positioned.fill(
       child: IgnorePointer(
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.45),
           ),
-          child: Center(child: PlayerLoadingOverlay(label: _bringupLabel())),
+          child: pos == LoadingAnimationPosition.bouncing
+              ? BouncingPositionWrapper(
+                  speed: _prefs.get(UserPreferences.loadingAnimationSpeed),
+                  safePadding: const EdgeInsets.all(40.0),
+                  builder: (context, movingLeft) => PlayerLoadingOverlay(
+                    label: _bringupLabel(),
+                    flipHorizontal: movingLeft,
+                  ),
+                )
+              : Align(
+                  alignment: pos.alignment,
+                  child: Padding(
+                    padding: pos.safePadding,
+                    child: PlayerLoadingOverlay(label: _bringupLabel()),
+                  ),
+                ),
         ),
       ),
     );
@@ -4029,12 +4249,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         if (hasTrickplay && (_isSeeking || recentlySought)) {
           return const SizedBox.shrink();
         }
-        return const Center(
-          child: PlayerLoadingOverlay(
-            label: _streamLoadingLabel,
-            logoSize: 160,
-            labelSpacing: 40,
-          ),
+        final pos = _prefs.get(UserPreferences.loadingAnimationPosition);
+        return Positioned.fill(
+          child: pos == LoadingAnimationPosition.bouncing
+              ? BouncingPositionWrapper(
+                  speed: _prefs.get(UserPreferences.loadingAnimationSpeed),
+                  safePadding: const EdgeInsets.all(40.0),
+                  builder: (context, movingLeft) => PlayerLoadingOverlay(
+                    label: _streamLoadingLabel,
+                    flipHorizontal: movingLeft,
+                  ),
+                )
+              : Align(
+                  alignment: pos.alignment,
+                  child: Padding(
+                    padding: pos.safePadding,
+                    child: PlayerLoadingOverlay(
+                      label: _streamLoadingLabel,
+                    ),
+                  ),
+                ),
         );
       },
     );
@@ -4883,7 +5117,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     required double trackWidth,
     required bool showTimeLabel,
   }) {
-    final timeLabel = showTimeLabel ? formatPlaybackDuration(seekPosition) : null;
+    final timeLabel = showTimeLabel
+        ? formatPlaybackDuration(seekPosition)
+        : null;
     final scalePercent = _prefs.get(
       UserPreferences.trickPlayPreviewScalePercent,
     );
@@ -4892,7 +5128,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     );
 
     final resolvedBottomMargin =
-        _bottomOverlayHeight ?? TrickplayPreviewLayout.verticalTravelBottomMargin;
+        _bottomOverlayHeight ??
+        TrickplayPreviewLayout.verticalTravelBottomMargin;
     final resolvedTopMargin =
         _topOverlayHeight ?? TrickplayPreviewLayout.verticalTravelTopMargin;
 
@@ -5021,24 +5258,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     required MediaServerClient client,
     TrickplayTileResolution? resolution,
   }) {
+    final String? url;
     if (!info.usesIndividualFrames) {
-      return client.imageApi.getTrickplayTileImageUrl(
+      url = client.imageApi.getTrickplayTileImageUrl(
         itemId,
         width: info.width,
         index: imageIndex,
         mediaSourceId: _trickplayMediaSourceId,
       );
+    } else if (imageIndex < 0 || imageIndex >= info.frames.length) {
+      return null;
+    } else {
+      final frame = info.frames[imageIndex];
+      url = client.trickplayApi?.getFrameImageUrl(
+        itemId,
+        width: info.width,
+        positionTicks: resolution?.positionTicks ?? frame.positionTicks,
+        imageTag: resolution?.imageTag ?? frame.imageTag,
+        mediaSourceId: _trickplayMediaSourceId,
+      );
     }
-
-    if (imageIndex < 0 || imageIndex >= info.frames.length) return null;
-    final frame = info.frames[imageIndex];
-    return client.trickplayApi?.getFrameImageUrl(
-      itemId,
-      width: info.width,
-      positionTicks: resolution?.positionTicks ?? frame.positionTicks,
-      imageTag: resolution?.imageTag ?? frame.imageTag,
-      mediaSourceId: _trickplayMediaSourceId,
-    );
+    // The browser loads these through an element that leaves our headers
+    // behind, and the server guards them, so the token travels in the url.
+    return kIsWeb ? tokenAuthedUrl(client, url) : url;
   }
 
   Widget _buildTvTransportRow() {
@@ -5497,6 +5739,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       setState(() => _isDesktopFullscreen = full);
       unawaited(_syncAutoHdrSwitching());
     } catch (_) {}
+  }
+
+  /// Asks the window rather than reading [_isDesktopFullscreen], because
+  /// fullscreen can be toggled from outside this screen and the flag only
+  /// catches up when a window event lands. A flag that says "not fullscreen"
+  /// while the window is turns Escape into stopping playback.
+  Future<void> _leaveFullscreenOrPlayback() async {
+    bool fullscreen;
+    try {
+      fullscreen = await FullscreenHelper.isFullscreen();
+    } catch (_) {
+      fullscreen = _isDesktopFullscreen;
+    }
+    if (!mounted) return;
+    if (fullscreen) {
+      await _setDesktopFullscreen(false);
+      return;
+    }
+    await _exitPlayback();
   }
 
   Future<void> _setDesktopFullscreen(bool full) async {
@@ -6226,8 +6487,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     ),
                     _controlButton(
                       seekBackIcon(_prefs.get(UserPreferences.skipBackLength)),
-                      onPressed: () =>
-                          _seekRelative(-_prefs.get(UserPreferences.skipBackLength)),
+                      onPressed: () => _seekRelative(
+                        -_prefs.get(UserPreferences.skipBackLength),
+                      ),
                       size: 46,
                       extent: 78,
                       tooltip: _tooltipMessage(
@@ -6257,9 +6519,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _controlButton(
-                      seekForwardIcon(_prefs.get(UserPreferences.skipForwardLength)),
-                      onPressed: () =>
-                          _seekRelative(_prefs.get(UserPreferences.skipForwardLength)),
+                      seekForwardIcon(
+                        _prefs.get(UserPreferences.skipForwardLength),
+                      ),
+                      onPressed: () => _seekRelative(
+                        _prefs.get(UserPreferences.skipForwardLength),
+                      ),
                       size: 46,
                       extent: 78,
                       tooltip: _tooltipMessage(
@@ -7308,35 +7573,53 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     };
   }
 
-  String _getHdrType(Map<String, dynamic> stream) {
-    final rangeType = stream['VideoRangeType'] as String? ?? '';
-    if (rangeType.contains('DOVI') || rangeType.contains('DoVi')) {
-      return 'Dolby Vision';
-    }
-    if (rangeType.contains('HDR10Plus') || rangeType.contains('HDR10+')) {
-      return 'HDR10+';
-    }
-    if (rangeType.contains('HDR10') || rangeType.contains('HDR')) {
-      return 'HDR10';
-    }
-    if (rangeType.contains('HLG')) {
-      return 'HLG';
-    }
-    final range = stream['VideoRange'] as String?;
-    if (range == 'HDR') {
-      return 'HDR';
-    }
-    return 'SDR';
+  void _showStreamInfo() {
+    unawaited(_showStreamInfoAsync());
   }
 
-  void _showStreamInfo() {
+  Future<void> _showStreamInfoAsync() async {
+    // Live display state: the session stays "active" on an SDR monitor, so
+    // the row must not claim HDR while the screen shows SDR.
+    final live = await _hdrBackend?.isCurrentOutputHdr();
+    if (!mounted) return;
     final l10n = AppLocalizations.of(context);
-    final streamInfoSections = _buildMedia3StreamInfoSections();
+    final streamInfoSections = _buildMedia3StreamInfoSections(
+      hdrTonemapped: live == false,
+    );
+    // mpv's own statistics overlay, the Shift+I one, offered as a button so
+    // it can be found without knowing the key.
+    final mediaKit = _mpvStatsBackend;
     unawaited(
       showStreamInfoDialog(
         context: context,
         title: l10n.playbackInformation,
         streamInfoSections: streamInfoSections,
+        actions: [
+          if (mediaKit != null)
+            (
+              label: mediaKit.mpvStatsVisible
+                  ? l10n.hideMpvStats
+                  : l10n.showMpvStats,
+              icon: Icons.query_stats_rounded,
+              onPressed: () {
+                // Close first: in the overlay-capture arrangement a route
+                // above the player stands the video down.
+                Navigator.of(context, rootNavigator: true).pop();
+                unawaited(mediaKit.toggleMpvStats());
+              },
+            ),
+          // The same list ? and F1 open, for whoever does not know those keys.
+          if (!PlatformDetection.isTV)
+            (
+              label: l10n.keyboardShortcutsTitle,
+              icon: Icons.keyboard_outlined,
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).pop();
+                unawaited(showKeyboardShortcutsDialog(context));
+                _showControls();
+              },
+            ),
+        ],
       ),
     );
     _showControls();

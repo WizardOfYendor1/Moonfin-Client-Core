@@ -83,6 +83,13 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
                 divisions: 20,
                 labelOf: (v) => '$v%',
               ),
+              SwitchPreferenceTile(
+                preference: UserPreferences.navbarAlwaysExpanded,
+                title: l10n.navbarAlwaysExpanded,
+                subtitle: l10n.settingsAlwaysExpandNavbarLabels,
+                icon: Icons.unfold_more,
+                onChanged: _pushPersonalizationSync,
+              ),
             ],
           ),
           _SectionHeader(l10n.navButtons),
@@ -121,17 +128,17 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
                 onChanged: _pushPersonalizationSync,
               ),
               SwitchPreferenceTile(
+                preference: UserPreferences.showLiveTvButton,
+                title: l10n.showLiveTvButton,
+                subtitle: l10n.settingsShowLiveTvButtonInNavigation,
+                icon: Icons.live_tv,
+                onChanged: _pushPersonalizationSync,
+              ),
+              SwitchPreferenceTile(
                 preference: UserPreferences.showLibrariesInToolbar,
                 title: l10n.showLibrariesInToolbar,
                 subtitle: l10n.settingsShowLibrariesButtonInNavigation,
                 icon: Icons.video_library,
-                onChanged: _pushPersonalizationSync,
-              ),
-              SwitchPreferenceTile(
-                preference: UserPreferences.navbarAlwaysExpanded,
-                title: l10n.navbarAlwaysExpanded,
-                subtitle: l10n.settingsAlwaysExpandNavbarLabels,
-                icon: Icons.unfold_more,
                 onChanged: _pushPersonalizationSync,
               ),
               SwitchPreferenceTile(
@@ -151,6 +158,14 @@ class _NavigationCategoryScreenState extends State<_NavigationCategoryScreen> {
                     width: size,
                     height: size,
                   ),
+                  onChanged: _pushPersonalizationSync,
+                ),
+              if (PlatformDetection.supportsOfflineDownloads &&
+                  !PlatformDetection.isWeb)
+                SwitchPreferenceTile(
+                  preference: UserPreferences.showDownloadsButton,
+                  title: l10n.showDownloadsButton,
+                  icon: Icons.download_for_offline,
                   onChanged: _pushPersonalizationSync,
                 ),
               SwitchPreferenceTile(

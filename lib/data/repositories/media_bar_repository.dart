@@ -79,14 +79,19 @@ class MediaBarRepository {
       final validLibraryIds = <String>{};
       for (final view in views) {
         final viewId = view['Id']?.toString();
+        if (viewId == null ||
+            !supportsMediaBarLibrary(view, preferredCollectionTypes)) {
+          continue;
+        }
+
+        validLibraryIds.add(viewId);
+
+        // A mixed library is left off this map so it keeps the full type list
         final type = _normalizeCollectionType(view['CollectionType']);
-        if (viewId != null && preferredCollectionTypes.contains(type)) {
-          validLibraryIds.add(viewId);
-          if (type == 'movies') {
-            allParentItemTypes[viewId] = const ['Movie'];
-          } else if (type == 'tvshows') {
-            allParentItemTypes[viewId] = const ['Series'];
-          }
+        if (type == 'movies') {
+          allParentItemTypes[viewId] = const ['Movie'];
+        } else if (type == 'tvshows') {
+          allParentItemTypes[viewId] = const ['Series'];
         }
       }
 
@@ -260,10 +265,7 @@ class MediaBarRepository {
 
       if (libraryId == null) {
         for (final view in views) {
-          final collectionType = _normalizeCollectionType(
-            view['CollectionType'],
-          );
-          if (collectionType != 'tvshows' && collectionType != 'movies') {
+          if (!supportsMediaBarLibrary(view, const ['movies', 'tvshows'])) {
             continue;
           }
           final id = view['Id']?.toString();
@@ -578,4 +580,20 @@ class MediaBarRepository {
           const [],
     );
   }
+}
+
+// A mixed library names no collection type, so the bar takes it for either
+// kind. Folders and recordings name none either, but a query on one of those
+// reaches every library, so they go out by name.
+bool supportsMediaBarLibrary(
+  Map<String, dynamic> view,
+  List<String> preferredTypes,
+) {
+  final name = (view['Name']?.toString() ?? '').trim().toLowerCase();
+  if (name == 'folders' || name == 'recordings') return false;
+
+  final type = (view['CollectionType']?.toString() ?? '').trim().toLowerCase();
+  if (type.isEmpty || type == 'mixed' || type == 'unknown') return true;
+
+  return preferredTypes.contains(type);
 }

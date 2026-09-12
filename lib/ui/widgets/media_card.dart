@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tvos/flutter_tvos.dart'
@@ -9,6 +11,8 @@ import '../../preference/preference_constants.dart';
 import '../../util/platform_detection.dart';
 import '../../util/focus/dpad_keys.dart';
 import '../../util/focus/key_event_utils.dart';
+import '../../util/item_watch_state.dart';
+import '../../util/focus/scroll_utils.dart';
 import 'bounded_network_image.dart';
 import 'focus/glass_focus_halo.dart';
 import 'marquee_text.dart';
@@ -21,6 +25,16 @@ class MediaCard extends StatefulWidget {
   /// cards against a clip boundary or each other has to leave that much room
   /// or the focused card loses its edges.
   static double get focusScale => PlatformDetection.isAppleTV ? 1.12 : 1.05;
+
+  /// How much room to leave beside a card of [extent] so a focused one keeps
+  /// its edges.
+  ///
+  /// Cards paint in the order they are laid out, so the one after the focused
+  /// card covers whatever the growth pushed into the gap. Wide artwork grows
+  /// by the same fraction of a much larger number, so a gap that suits a
+  /// poster does not suit a banner.
+  static double focusGap(double extent, {double minimum = 12.0}) =>
+      math.max(minimum, extent * (focusScale - 1) / 2);
 
   final String? title;
   final String? subtitle;
@@ -282,7 +296,7 @@ class _MediaCardState extends State<MediaCard> with FocusStateMixin {
     final titleStyle = baseTextStyle.copyWith(
       color:
           widget.titleColor ??
-          (isNeon ? AppColorScheme.accent : baseTextStyle.color),
+          (isNeon ? AppColorScheme.accent : AppColorScheme.onSurface),
       fontWeight: FontWeight.bold,
       fontSize: (baseTextStyle.fontSize ?? 12) + 1.0,
       shadows: const [Shadow(blurRadius: 4, color: Colors.black54)],
@@ -328,7 +342,7 @@ class _MediaCardState extends State<MediaCard> with FocusStateMixin {
           active: cardActive,
           child: AnimatedScale(
             scale: cardActive ? MediaCard.focusScale : 1.0,
-            duration: const Duration(milliseconds: 150),
+            duration: navigationAnimationDuration,
             curve: PlatformDetection.isAppleTV
                 ? Curves.easeOutCubic
                 : Curves.linear,
@@ -639,6 +653,12 @@ class _CardImage extends StatelessWidget {
     this.isGenreFallback = false,
   });
 
+  /// How far the focus ring sits outside the artwork. The ring is 3px thick
+  /// and drawn inside its own box, so this also decides the gap between the
+  /// two. Too small a gap and an antialiased poster corner bleeds over the
+  /// ring, which reads as the image escaping its rounded container.
+  static const _focusRingInset = 5.0;
+
   @override
   Widget build(BuildContext context) {
     final radius = isCircular ? 999.0 : 8.0;
@@ -660,16 +680,17 @@ class _CardImage extends StatelessWidget {
         children: [
           if (showGlow)
             Positioned(
-              top: -3.5,
-              bottom: -3.5,
-              left: -3.5,
-              right: -3.5,
+              top: -_focusRingInset,
+              bottom: -_focusRingInset,
+              left: -_focusRingInset,
+              right: -_focusRingInset,
               child: IgnorePointer(
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: isCircular
-                        ? AppRadius.circular(radius + 3.5)
-                        : borders.cardRadius + AppRadius.circular(3.5),
+                        ? AppRadius.circular(radius + _focusRingInset)
+                        : borders.cardRadius +
+                              AppRadius.circular(_focusRingInset),
                     boxShadow: borders.focusGlow,
                   ),
                 ),
@@ -805,16 +826,17 @@ class _CardImage extends StatelessWidget {
           ),
           if (showBorder)
             Positioned(
-              top: -3.5,
-              bottom: -3.5,
-              left: -3.5,
-              right: -3.5,
+              top: -_focusRingInset,
+              bottom: -_focusRingInset,
+              left: -_focusRingInset,
+              right: -_focusRingInset,
               child: IgnorePointer(
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: isCircular
-                        ? AppRadius.circular(radius + 3.5)
-                        : borders.cardRadius + AppRadius.circular(3.5),
+                        ? AppRadius.circular(radius + _focusRingInset)
+                        : borders.cardRadius +
+                              AppRadius.circular(_focusRingInset),
                     border: Border.fromBorderSide(
                       borders.focusBorder.copyWith(
                         color: borderColor,
@@ -830,19 +852,12 @@ class _CardImage extends StatelessWidget {
     );
   }
 
-  bool get _showWatchedIndicator {
-    switch (watchedBehavior) {
-      case WatchedIndicatorBehavior.always:
-        return isPlayed || (unplayedCount != null && unplayedCount! > 0);
-      case WatchedIndicatorBehavior.hideUnwatched:
-        return isPlayed;
-      case WatchedIndicatorBehavior.episodesOnly:
-        return itemType == 'Episode' &&
-            (isPlayed || (unplayedCount != null && unplayedCount! > 0));
-      case WatchedIndicatorBehavior.never:
-        return false;
-    }
-  }
+  bool get _showWatchedIndicator => showsWatchedIndicator(
+    behavior: watchedBehavior,
+    isPlayed: isPlayed,
+    itemType: itemType,
+    unplayedCount: unplayedCount,
+  );
 
   bool get _showSeerrMediaTypeBadge {
     final type = seerrMediaType?.toLowerCase();

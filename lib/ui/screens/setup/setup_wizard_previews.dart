@@ -2313,12 +2313,156 @@ Widget _homeRowsColumn(
 // Detail screen styles
 // ---------------------------------------------------------------------------
 
-Widget detailStylePreview({required bool modern}) => _liveOrFallback(
-  live: (context, items) => modern
-      ? _modernDetail(context, items.first)
-      : _classicDetail(context, items),
-  fallback: _fallbackDetail(modern: modern),
+Widget detailStylePreview(DetailScreenStyle style) => _liveOrFallback(
+  live: (context, items) => switch (style) {
+    DetailScreenStyle.classic => _classicDetail(context, items),
+    DetailScreenStyle.modern => _modernDetail(context, items.first),
+    DetailScreenStyle.spotlight => _spotlightDetail(context, items.first),
+    DetailScreenStyle.nouveau => _nouveauDetail(context, items),
+  },
+  fallback: _fallbackDetail(style),
 );
+
+Widget _detailCircleButton(IconData icon, double diameter) => Container(
+  width: diameter,
+  height: diameter,
+  decoration: BoxDecoration(
+    shape: BoxShape.circle,
+    color: Colors.white.withValues(alpha: 0.06),
+    border: Border.all(
+      color: AppColorScheme.onSurface.withValues(alpha: 0.35),
+      width: 1.5,
+    ),
+  ),
+  child: Icon(icon, size: 24, color: AppColorScheme.onSurface),
+);
+
+Widget _detailPlayPill(BuildContext context, {required bool landscape}) {
+  final l10n = AppLocalizations.of(context);
+  return Container(
+    height: landscape ? 54 : 50,
+    constraints: landscape ? const BoxConstraints(minWidth: 200) : null,
+    width: landscape ? null : double.infinity,
+    padding: const EdgeInsets.only(left: 10, right: 14),
+    decoration: BoxDecoration(
+      color: AppColorScheme.accent,
+      borderRadius: BorderRadius.circular(landscape ? 27 : 25),
+    ),
+    child: Row(
+      mainAxisSize: landscape ? MainAxisSize.min : MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.play_arrow_rounded,
+          size: 24,
+          color: AppColorScheme.onAccent,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          l10n.play,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            height: 1.1,
+            color: AppColorScheme.onAccent,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The backdrop, scrims, and hero placement shared by the modern and
+/// spotlight detail previews.
+Widget _detailPreviewScaffold({
+  required MediaBarSlideItem item,
+  required bool landscape,
+  required Widget hero,
+}) {
+  final base = AppColorScheme.background;
+  const gradientScale = 0.58;
+  return Stack(
+    fit: StackFit.expand,
+    children: [
+      ColoredBox(color: base),
+      _artwork(
+        item.backdropUrl,
+        alignment: landscape ? Alignment.centerRight : Alignment.topCenter,
+      ),
+      ColoredBox(color: Colors.black.withValues(alpha: 0.32)),
+      if (landscape) ...[
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                base.withValues(alpha: 1.0 * gradientScale),
+                base.withValues(alpha: 0.90 * gradientScale),
+                base.withValues(alpha: 0.45 * gradientScale),
+                base.withValues(alpha: 0.0),
+              ],
+              stops: const [0.0, 0.35, 0.60, 0.85],
+            ),
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                base.withValues(alpha: 1.0 * gradientScale),
+                base.withValues(alpha: 0.80 * gradientScale),
+                base.withValues(alpha: 0.0),
+              ],
+              stops: const [0.0, 0.45, 0.80],
+            ),
+          ),
+        ),
+      ] else
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                base.withValues(alpha: 0.15 * gradientScale),
+                base.withValues(alpha: 0.45 * gradientScale),
+                base.withValues(alpha: 0.85 * gradientScale),
+              ],
+              stops: const [0.0, 0.55, 1.0],
+            ),
+          ),
+        ),
+      ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          maxHeight: double.infinity,
+          child: landscape
+              ? Padding(
+                  padding: EdgeInsets.fromLTRB(40, _tv ? 71 : 68, 40, 0),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox(
+                      width: (_designSize().width * 0.85).clamp(450.0, 1100.0),
+                      child: hero,
+                    ),
+                  ),
+                )
+              : Padding(
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: _designSize().height * 0.26 + 60,
+                  ),
+                  child: hero,
+                ),
+        ),
+      ),
+    ],
+  );
+}
 
 Widget _detailActionTile(
   IconData icon,
@@ -2653,8 +2797,6 @@ Widget _classicDetail(BuildContext context, List<MediaBarSlideItem> items) {
 Widget _modernDetail(BuildContext context, MediaBarSlideItem item) {
   final l10n = AppLocalizations.of(context);
   final landscape = !_phone;
-  final base = AppColorScheme.background;
-  const gradientScale = 0.58;
 
   final metaStyle = TextStyle(
     fontSize: 14,
@@ -2734,51 +2876,7 @@ Widget _modernDetail(BuildContext context, MediaBarSlideItem item) {
     ),
   );
 
-  Widget circleButton(IconData icon, double diameter) => Container(
-    width: diameter,
-    height: diameter,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: 0.06),
-      border: Border.all(
-        color: AppColorScheme.onSurface.withValues(alpha: 0.35),
-        width: 1.5,
-      ),
-    ),
-    child: Icon(icon, size: 24, color: AppColorScheme.onSurface),
-  );
-
-  final playPill = Container(
-    height: landscape ? 54 : 50,
-    constraints: landscape ? const BoxConstraints(minWidth: 200) : null,
-    width: landscape ? null : double.infinity,
-    padding: const EdgeInsets.only(left: 10, right: 14),
-    decoration: BoxDecoration(
-      color: AppColorScheme.accent,
-      borderRadius: BorderRadius.circular(landscape ? 27 : 25),
-    ),
-    child: Row(
-      mainAxisSize: landscape ? MainAxisSize.min : MainAxisSize.max,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.play_arrow_rounded,
-          size: 24,
-          color: AppColorScheme.onAccent,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          l10n.play,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            height: 1.1,
-            color: AppColorScheme.onAccent,
-          ),
-        ),
-      ],
-    ),
-  );
+  final playPill = _detailPlayPill(context, landscape: landscape);
 
   final hero = Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2820,11 +2918,11 @@ Widget _modernDetail(BuildContext context, MediaBarSlideItem item) {
           children: [
             playPill,
             const SizedBox(width: 8),
-            circleButton(Icons.favorite_border_rounded, 52),
+            _detailCircleButton(Icons.favorite_border_rounded, 52),
             const SizedBox(width: 8),
-            circleButton(Icons.check_rounded, 52),
+            _detailCircleButton(Icons.check_rounded, 52),
             const SizedBox(width: 8),
-            circleButton(Icons.more_horiz_rounded, 52),
+            _detailCircleButton(Icons.more_horiz_rounded, 52),
           ],
         )
       else ...[
@@ -2833,10 +2931,10 @@ Widget _modernDetail(BuildContext context, MediaBarSlideItem item) {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            circleButton(Icons.favorite_border_rounded, 48),
-            circleButton(Icons.check_rounded, 48),
-            circleButton(Icons.subtitles_outlined, 48),
-            circleButton(Icons.more_horiz_rounded, 48),
+            _detailCircleButton(Icons.favorite_border_rounded, 48),
+            _detailCircleButton(Icons.check_rounded, 48),
+            _detailCircleButton(Icons.subtitles_outlined, 48),
+            _detailCircleButton(Icons.more_horiz_rounded, 48),
           ],
         ),
       ],
@@ -2847,87 +2945,330 @@ Widget _modernDetail(BuildContext context, MediaBarSlideItem item) {
     ],
   );
 
-  return Stack(
-    fit: StackFit.expand,
+  return _detailPreviewScaffold(item: item, landscape: landscape, hero: hero);
+}
+
+/// An all-caps genre line above an oversized title, then a section rail
+/// stacked under the actions where Modern puts tabs and Spotlight puts
+/// summary cards. Takes the whole list so the rail has real artwork.
+Widget _nouveauDetail(BuildContext context, List<MediaBarSlideItem> items) {
+  final l10n = AppLocalizations.of(context);
+  final item = items.first;
+  final landscape = !_phone;
+
+  final metaStyle = TextStyle(
+    fontSize: 14,
+    color: AppColorScheme.onSurface.withValues(alpha: 0.75),
+  );
+
+  // Genres sit in the eyebrow above the title, so they are left out here
+  // rather than repeated.
+  final metaParts = [
+    if (item.year != null) '${item.year}',
+    if (item.officialRating != null) item.officialRating!,
+    if (item.runtime != null) _runtimeText(item.runtime),
+  ];
+
+  final meta = Wrap(
+    spacing: 8,
+    runSpacing: 6,
+    crossAxisAlignment: WrapCrossAlignment.center,
     children: [
-      ColoredBox(color: base),
-      _artwork(
-        item.backdropUrl,
-        alignment: landscape ? Alignment.centerRight : Alignment.topCenter,
+      for (final (index, part) in metaParts.indexed) ...[
+        if (index > 0) Text('·', style: metaStyle),
+        Text(part, style: metaStyle),
+      ],
+    ],
+  );
+
+  final railPosterWidth = landscape ? 92.0 : 74.0;
+
+  final rail = Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        l10n.moreLikeThis,
+        style: TextStyle(
+          fontSize: landscape ? 22 : 18,
+          fontWeight: FontWeight.w700,
+          color: AppColorScheme.onSurface,
+        ),
       ),
-      ColoredBox(color: Colors.black.withValues(alpha: 0.32)),
-      if (landscape) ...[
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                base.withValues(alpha: 1.0 * gradientScale),
-                base.withValues(alpha: 0.90 * gradientScale),
-                base.withValues(alpha: 0.45 * gradientScale),
-                base.withValues(alpha: 0.0),
-              ],
-              stops: const [0.0, 0.35, 0.60, 0.85],
-            ),
-          ),
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                base.withValues(alpha: 1.0 * gradientScale),
-                base.withValues(alpha: 0.80 * gradientScale),
-                base.withValues(alpha: 0.0),
-              ],
-              stops: const [0.0, 0.45, 0.80],
-            ),
-          ),
-        ),
-      ] else
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                base.withValues(alpha: 0.15 * gradientScale),
-                base.withValues(alpha: 0.45 * gradientScale),
-                base.withValues(alpha: 0.85 * gradientScale),
-              ],
-              stops: const [0.0, 0.55, 1.0],
-            ),
-          ),
-        ),
-      ClipRect(
-        child: OverflowBox(
-          alignment: Alignment.topCenter,
-          maxHeight: double.infinity,
-          child: landscape
-              ? Padding(
-                  padding: EdgeInsets.fromLTRB(40, _tv ? 71 : 68, 40, 0),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: SizedBox(
-                      width: (_designSize().width * 0.85).clamp(450.0, 1100.0),
-                      child: hero,
-                    ),
+      SizedBox(height: landscape ? 14 : 10),
+      // The real rail runs off the edge of the screen, so let this one do the
+      // same instead of squeezing the posters to fit.
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Row(
+          children: [
+            for (var index = 1; index <= (landscape ? 6 : 4); index++)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: ClipRRect(
+                  borderRadius: AppRadius.circular(8),
+                  child: SizedBox(
+                    width: railPosterWidth,
+                    height: railPosterWidth * 3 / 2,
+                    child: _artwork(_itemAt(items, index).posterUrl),
                   ),
-                )
-              : Padding(
-                  padding: EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    top: _designSize().height * 0.26 + 60,
-                  ),
-                  child: hero,
                 ),
+              ),
+          ],
         ),
       ),
     ],
   );
+
+  final hero = Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (item.genres.isNotEmpty) ...[
+        Text(
+          item.genres.take(3).join('   •   ').toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: landscape ? 13 : 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.7,
+            height: 1,
+            color: AppColorScheme.onSurface.withValues(alpha: 0.64),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+      _logoOrTitle(
+        item,
+        width: landscape ? 320 : 270,
+        height: landscape ? 82 : 70,
+        fallbackStyle: TextStyle(
+          fontSize: landscape ? 41 : 32,
+          fontWeight: FontWeight.w700,
+          color: AppColorScheme.onSurface,
+        ),
+      ),
+      const SizedBox(height: 14),
+      meta,
+      const SizedBox(height: 6),
+      _communityRating(item),
+      if (item.overview != null) ...[
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: Text(
+            item.overview!,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: landscape ? 16 : 14,
+              height: 1.45,
+              color: AppColorScheme.onSurface.withValues(alpha: 0.87),
+            ),
+          ),
+        ),
+      ],
+      SizedBox(height: landscape ? 28 : 22),
+      // The portrait pill takes the full width, so it can't share a Row.
+      if (landscape)
+        Row(
+          children: [
+            _detailPlayPill(context, landscape: true),
+            const SizedBox(width: 14),
+            _detailCircleButton(Icons.favorite_border_rounded, 52),
+            const SizedBox(width: 14),
+            _detailCircleButton(Icons.more_horiz_rounded, 52),
+          ],
+        )
+      else ...[
+        _detailPlayPill(context, landscape: false),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _detailCircleButton(Icons.favorite_border_rounded, 48),
+            const SizedBox(width: 12),
+            _detailCircleButton(Icons.more_horiz_rounded, 48),
+          ],
+        ),
+      ],
+      SizedBox(height: landscape ? 34 : 26),
+      rail,
+    ],
+  );
+
+  return _detailPreviewScaffold(item: item, landscape: landscape, hero: hero);
+}
+
+Widget _spotlightDetail(BuildContext context, MediaBarSlideItem item) {
+  final l10n = AppLocalizations.of(context);
+  final landscape = !_phone;
+
+  final metaStyle = TextStyle(
+    fontSize: 14,
+    color: AppColorScheme.onSurface.withValues(alpha: 0.75),
+  );
+  final metaChildren = <Widget>[
+    if (item.year != null) Text('${item.year}', style: metaStyle),
+    if (item.officialRating != null)
+      Text(item.officialRating!, style: metaStyle),
+    if (item.genres.isNotEmpty)
+      Text(item.genres.take(2).join(' · '), style: metaStyle),
+  ];
+  final meta = Wrap(
+    spacing: 8,
+    runSpacing: 6,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      for (var i = 0; i < metaChildren.length; i++) ...[
+        if (i > 0) Text('·', style: metaStyle),
+        metaChildren[i],
+      ],
+    ],
+  );
+
+  final playPill = _detailPlayPill(context, landscape: landscape);
+
+  Widget summaryCard(IconData icon, String label) => Expanded(
+    child: Container(
+      height: landscape ? 92 : 72,
+      decoration: BoxDecoration(
+        borderRadius: AppRadius.circular(12),
+        border: Border.all(
+          color: AppColorScheme.onSurface.withValues(alpha: 0.2),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColorScheme.onSurface.withValues(alpha: 0.10),
+            Colors.black.withValues(alpha: 0.55),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // The icon badge the real card paints top-left.
+          Positioned(
+            left: 8,
+            top: 8,
+            child: Container(
+              width: landscape ? 22 : 18,
+              height: landscape ? 22 : 18,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withValues(alpha: 0.45),
+              ),
+              child: Icon(
+                icon,
+                size: landscape ? 12 : 10,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 10,
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  final hero = Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _logoOrTitle(
+        item,
+        width: landscape ? 300 : 260,
+        height: landscape ? 75 : 64,
+        fallbackStyle: TextStyle(
+          fontSize: landscape ? 34 : 26,
+          fontWeight: FontWeight.w700,
+          color: AppColorScheme.onSurface,
+        ),
+      ),
+      const SizedBox(height: 10),
+      meta,
+      const SizedBox(height: 6),
+      _communityRating(item),
+      if (item.overview != null) ...[
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Text(
+            item.overview!,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.45,
+              color: AppColorScheme.onSurface.withValues(alpha: 0.85),
+            ),
+          ),
+        ),
+      ],
+      const SizedBox(height: 24),
+      if (landscape)
+        Row(
+          children: [
+            playPill,
+            const SizedBox(width: 8),
+            _detailCircleButton(Icons.movie_outlined, 52),
+            const SizedBox(width: 8),
+            _detailCircleButton(Icons.subtitles_outlined, 52),
+            const SizedBox(width: 8),
+            _detailCircleButton(Icons.graphic_eq_rounded, 52),
+            const SizedBox(width: 8),
+            _detailCircleButton(Icons.more_horiz_rounded, 52),
+          ],
+        )
+      else ...[
+        playPill,
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _detailCircleButton(Icons.movie_outlined, 48),
+            _detailCircleButton(Icons.subtitles_outlined, 48),
+            _detailCircleButton(Icons.graphic_eq_rounded, 48),
+            _detailCircleButton(Icons.more_horiz_rounded, 48),
+          ],
+        ),
+      ],
+      SizedBox(height: landscape ? 20 : 24),
+      Row(
+        children: [
+          summaryCard(Icons.people_outline, l10n.spotlightCastCrewStudios),
+          const SizedBox(width: 10),
+          summaryCard(
+            Icons.video_library_outlined,
+            l10n.spotlightChaptersExtras,
+          ),
+          const SizedBox(width: 10),
+          summaryCard(
+            Icons.auto_awesome_outlined,
+            l10n.spotlightSimilarRecommendations,
+          ),
+        ],
+      ),
+    ],
+  );
+
+  return _detailPreviewScaffold(item: item, landscape: landscape, hero: hero);
 }
 
 // ---------------------------------------------------------------------------
@@ -3135,8 +3476,136 @@ Widget _fallbackHomeRows({required bool modern}) => Padding(
   ),
 );
 
-Widget _fallbackDetail({required bool modern}) {
-  if (!modern) {
+Widget _fallbackDetail(DetailScreenStyle style) {
+  if (style == DetailScreenStyle.nouveau) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: 4, child: _backdrop()),
+        Expanded(
+          flex: 6,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Transform.translate(
+                  offset: const Offset(0, -14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 4,
+                    children: [
+                      _bar(34, 2, _weak),
+                      _bar(58, 6, _strong),
+                      _bar(30, 3, _weak),
+                    ],
+                  ),
+                ),
+                Row(
+                  spacing: 4,
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: AppColorScheme.onSurface.withValues(alpha: 0.85),
+                        borderRadius: AppRadius.circular(4),
+                      ),
+                    ),
+                    for (var i = 0; i < 2; i++)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _posterFill,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+                const Spacer(),
+                _bar(24, 3, _strong),
+                const SizedBox(height: 4),
+                Row(
+                  spacing: 4,
+                  children: [for (var i = 0; i < 5; i++) _posterCard(16)],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  if (style == DetailScreenStyle.spotlight) {
+    Widget summaryCard() => Expanded(
+      child: Container(
+        height: 22,
+        padding: const EdgeInsets.all(4),
+        alignment: Alignment.bottomLeft,
+        decoration: BoxDecoration(
+          color: _posterFill,
+          borderRadius: AppRadius.circular(4),
+        ),
+        child: _bar(18, 3, _strong),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: 4, child: _backdrop()),
+        Expanded(
+          flex: 6,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Transform.translate(
+                  offset: const Offset(0, -12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 4,
+                    children: [_bar(46, 4, _strong), _bar(30, 3, _weak)],
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  spacing: 4,
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: AppColorScheme.onSurface.withValues(alpha: 0.85),
+                        borderRadius: AppRadius.circular(4),
+                      ),
+                    ),
+                    for (var i = 0; i < 3; i++)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _weak, width: 1),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  spacing: 5,
+                  children: [summaryCard(), summaryCard(), summaryCard()],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  if (style == DetailScreenStyle.classic) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

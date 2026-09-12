@@ -19,6 +19,9 @@ import '../utils/playlist_utils.dart';
 import '../../preference/seerr_preferences.dart';
 import '../../util/episode_playability.dart';
 import '../services/plugin_sync_service.dart';
+import '../services/user_data_sync.dart';
+import '../services/seerr/seerr_api_models.dart';
+import 'seerr_discover_view_model.dart';
 import 'seerr_media_detail_view_model.dart';
 
 enum CollectionSortOption {
@@ -80,9 +83,114 @@ class DeleteItemFailure {
 class ParentCollection {
   final String id;
   final String name;
+
+  /// The collection itself as an item, for a grid cell that opens it.
+  final AggregatedItem boxSetItem;
+
+  /// The collection's library members, in release order.
   final List<AggregatedItem> items;
 
-  ParentCollection({required this.id, required this.name, required this.items});
+  /// Titles TMDB files under this collection that the library lacks, from
+  /// Seerr. Kept apart from [items] because the library lists feed user-data
+  /// sync and the classic collection row, and neither can take a Seerr id.
+  final List<AggregatedItem> missingItems;
+
+  ParentCollection({
+    required this.id,
+    required this.name,
+    required this.boxSetItem,
+    required this.items,
+    this.missingItems = const [],
+  });
+
+  /// Library members with the missing titles slotted in by release date.
+  List<AggregatedItem> get itemsWithMissing =>
+      mergeMissingByReleaseOrder(items, missingItems);
+
+  ParentCollection withMissingItems(List<AggregatedItem> missing) =>
+      ParentCollection(
+        id: id,
+        name: name,
+        boxSetItem: boxSetItem,
+        items: items,
+        missingItems: missing,
+      );
+}
+
+/// Where the detail page's similar-titles list came from, so a section can be
+/// named for the source that produced it.
+enum SimilarSource { jellyfin, moonfin, tmdb }
+
+/// Slots [missing] into [library] by release date without reordering the
+/// library entries, so a collection keeps whatever order the server gave it
+/// and each absent title lands where it belongs in the run.
+List<AggregatedItem> mergeMissingByReleaseOrder(
+  List<AggregatedItem> library,
+  List<AggregatedItem> missing,
+) {
+  if (missing.isEmpty) return library;
+  DateTime? released(AggregatedItem item) {
+    final date = item.premiereDate;
+    if (date != null) return date;
+    final year = item.productionYear;
+    return year == null ? null : DateTime(year);
+  }
+
+  final merged = List<AggregatedItem>.of(library);
+  for (final item in missing) {
+    final key = released(item);
+    var at = merged.length;
+    if (key != null) {
+      final later = merged.indexWhere((existing) {
+        final date = released(existing);
+        return date != null && key.isBefore(date);
+      });
+      if (later >= 0) at = later;
+    }
+    merged.insert(at, item);
+  }
+  return merged;
+}
+
+/// The parts of a TMDB collection the library lacks, as Seerr-backed items.
+/// Ids are bare TMDB numbers carrying a `SeerrMediaType`, the shape every
+/// other Seerr item in the app has, so the Seerr detail route resolves them.
+/// Adult titles are dropped under the same rule the discover rows apply.
+@visibleForTesting
+List<AggregatedItem> seerrMissingCollectionItems({
+  required Iterable<SeerrDiscoverItem> parts,
+  required Set<String> libraryTmdbIds,
+  required bool blockNsfw,
+}) {
+  final missing = <AggregatedItem>[];
+  for (final part in parts) {
+    final tmdbId = part.id.toString();
+    if (libraryTmdbIds.contains(tmdbId)) continue;
+    if (blockNsfw && SeerrDiscoverViewModel.isNsfw(part)) continue;
+    final releaseDate = part.releaseDate;
+    missing.add(
+      AggregatedItem(
+        id: tmdbId,
+        serverId: 'seerr',
+        rawData: {
+          'Id': tmdbId,
+          'Name': part.title ?? part.name ?? '',
+          'Type': 'Movie',
+          'Overview': part.overview,
+          'PosterPath': part.posterPath,
+          'BackdropPath': part.backdropPath,
+          'PremiereDate': releaseDate,
+          'ProductionYear': releaseDate != null && releaseDate.length >= 4
+              ? int.tryParse(releaseDate.substring(0, 4))
+              : null,
+          'SeerrMediaType': 'movie',
+          'SeerrStatus': part.mediaInfo?.status,
+          'ProviderIds': {'Tmdb': tmdbId},
+        },
+      ),
+    );
+  }
+  return missing;
 }
 
 class ItemDetailViewModel extends ChangeNotifier {
@@ -142,6 +250,13 @@ class ItemDetailViewModel extends ChangeNotifier {
 
   List<AggregatedItem> _similar = const [];
   List<AggregatedItem> get similar => _similar;
+  bool _similarInitialLoadComplete = false;
+  bool get similarInitialLoadComplete => _similarInitialLoadComplete;
+
+  SimilarSource _similarSource = SimilarSource.jellyfin;
+
+  /// Where [similar] came from, for a label that matches the list.
+  SimilarSource get similarSource => _similarSource;
 
   List<AggregatedItem> _filmography = const [];
   List<AggregatedItem> get filmography => _filmography;
@@ -149,11 +264,28 @@ class ItemDetailViewModel extends ChangeNotifier {
   List<AggregatedItem> _seasons = const [];
   List<AggregatedItem> get seasons => _seasons;
 
+  bool _seasonsLoaded = false;
+
+  /// Whether the seasons fetch has finished, however it went. An empty
+  /// [seasons] says nothing on its own until this is true, so callers can tell
+  /// a load still in flight from a series that really has none.
+  bool get seasonsLoaded => _seasonsLoaded;
+
   List<AggregatedItem> _episodes = const [];
   List<AggregatedItem> get episodes => _episodes;
 
+  bool _episodesLoaded = false;
+
+  /// The [seasonsLoaded] contract, for [episodes].
+  bool get episodesLoaded => _episodesLoaded;
+
   List<AggregatedItem> _seriesEpisodes = const [];
   bool _seriesEpisodesRequested = false;
+  bool _seriesEpisodesLoaded = false;
+
+  /// Whether [seriesEpisodes] has arrived. Unlike [seasonsLoaded] this only
+  /// turns true on a fetch that worked, because a failed one is tried again.
+  bool get seriesEpisodesLoaded => _seriesEpisodesLoaded;
 
   /// All episodes of a Series across every season, in the server's
   /// season/episode order. Empty until [loadAllSeriesEpisodes] completes.
@@ -174,24 +306,11 @@ class ItemDetailViewModel extends ChangeNotifier {
   List<AggregatedItem> _collectionItems = const [];
   List<AggregatedItem> get collectionItems => _collectionItems;
 
+  List<AggregatedItem> _missingCollectionItems = const [];
+  List<AggregatedItem> get missingCollectionItems => _missingCollectionItems;
+
   // --- Collection grid pagination state ---
   static const _collectionPageSize = 50;
-
-  /// What a collection is allowed to show once its query walks the tree. A
-  /// recursive read reaches the seasons and episodes inside a series, and those
-  /// belong to the series rather than to the collection, so they stay out.
-  static const _collectionMemberTypes = <String>[
-    'Movie',
-    'Series',
-    'Video',
-    'MusicVideo',
-    'Audio',
-    'MusicAlbum',
-    'Book',
-    'AudioBook',
-    'Photo',
-    'BoxSet',
-  ];
 
   /// Items fetched so far for the grid (startIndex).
   int _collectionFetchedCount = 0;
@@ -297,6 +416,10 @@ class ItemDetailViewModel extends ChangeNotifier {
   List<AggregatedItem> get parentCollectionItems => _parentCollectionItems;
 
   List<ParentCollection> _parentCollections = const [];
+
+  /// Bumped on every publication of [_parentCollections], so a Seerr pass
+  /// started for an earlier load can tell it has gone stale.
+  int _parentCollectionsLoad = 0;
   List<ParentCollection> get parentCollections => _parentCollections;
 
   List<AggregatedItem> _features = const [];
@@ -350,22 +473,57 @@ class ItemDetailViewModel extends ChangeNotifier {
   Future<void> _loadSeerrOverlay() async {
     final item = _item;
     if (item == null) return;
-    if (item.type != 'Movie' && item.type != 'Series') return;
+    final isMedia = item.type == 'Movie' || item.type == 'Series';
+    final isTvPart = item.type == 'Season' || item.type == 'Episode';
+    if (!isMedia && !isTvPart) return;
     if (!GetIt.instance<PluginSyncService>().seerrAvailable) return;
 
-    // TMDB is the id Seerr speaks. IMDb goes through its search fallback.
-    final tmdbId = item.tmdbId;
-    final lookupId = (tmdbId != null && tmdbId.isNotEmpty)
-        ? tmdbId
-        : item.imdbId;
+    String? lookupId;
+    String mediaType = 'movie';
+    String title = item.name;
+
+    if (item.type == 'Movie') {
+      lookupId = (item.tmdbId != null && item.tmdbId!.isNotEmpty)
+          ? item.tmdbId
+          : item.imdbId;
+      mediaType = 'movie';
+      title = item.name;
+    } else if (item.type == 'Series') {
+      lookupId = (item.tmdbId != null && item.tmdbId!.isNotEmpty)
+          ? item.tmdbId
+          : item.imdbId;
+      mediaType = 'tv';
+      title = item.name;
+    } else if (isTvPart) {
+      final seriesId = item.seriesId;
+      if (seriesId != null && seriesId.isNotEmpty) {
+        try {
+          final seriesData = await _client.itemsApi.getItem(seriesId);
+          if (_isDisposed) return;
+          final seriesItem = AggregatedItem(
+            id: seriesId,
+            serverId: _serverId ?? _client.baseUrl,
+            rawData: seriesData,
+          );
+          lookupId =
+              (seriesItem.tmdbId != null && seriesItem.tmdbId!.isNotEmpty)
+                  ? seriesItem.tmdbId
+                  : seriesItem.imdbId;
+          mediaType = 'tv';
+          title = seriesItem.name;
+        } catch (_) {}
+      }
+    }
+
     if (lookupId == null || lookupId.isEmpty) return;
 
     try {
       final vm = await _ensureSeerr();
+      if (_isDisposed) return;
       await vm.load(
         lookupId,
-        item.type == 'Series' ? 'tv' : 'movie',
-        title: item.name,
+        mediaType,
+        title: title,
       );
     } catch (_) {}
   }
@@ -401,7 +559,83 @@ class ItemDetailViewModel extends ChangeNotifier {
        _client = client,
        _mutations = mutations,
        _mdbListRepository = mdbListRepository,
-       _tmdbRepository = tmdbRepository;
+       _tmdbRepository = tmdbRepository {
+    userDataSync.addListener(_onUserDataChanged);
+  }
+
+  /// Whether anything this page shows has been watched, favourited or rated
+  /// since it was loaded. [syncUserDataIfStale] clears it, which is what
+  /// catches the series' own state after an episode of it was played.
+  bool _userDataStale = false;
+  bool _syncingUserData = false;
+
+  void _onUserDataChanged() {
+    if (_isDisposed) return;
+    var changed = false;
+
+    final item = userDataSync.applyOrNull(_item);
+    if (!identical(item, _item)) {
+      _item = item;
+      changed = true;
+    }
+    final nextUp = userDataSync.applyOrNull(_nextUp);
+    if (!identical(nextUp, _nextUp)) {
+      _nextUp = nextUp;
+      changed = true;
+    }
+
+    List<AggregatedItem> patch(List<AggregatedItem> list) {
+      final patched = userDataSync.applyAll(list);
+      if (!identical(patched, list)) changed = true;
+      return patched;
+    }
+
+    _episodes = patch(_episodes);
+    _seriesEpisodes = patch(_seriesEpisodes);
+    _seasons = patch(_seasons);
+    _similar = patch(_similar);
+    _filmography = patch(_filmography);
+    _albums = patch(_albums);
+    _tracks = patch(_tracks);
+    _collectionItems = patch(_collectionItems);
+    _playlistItems = patch(_playlistItems);
+    _parentCollectionItems = patch(_parentCollectionItems);
+    _features = patch(_features);
+
+    if (changed) notifyListeners();
+    if (!_syncingUserData) _userDataStale = true;
+  }
+
+  /// Does nothing until a change has actually been recorded, so coming back to
+  /// the page normally costs no request.
+  Future<void> syncUserDataIfStale() async {
+    if (_isDisposed || _syncingUserData || !_userDataStale) return;
+    final ids = <String>{
+      itemId,
+      if (_nextUp != null) _nextUp!.id,
+      for (final list in [
+        _episodes,
+        _seriesEpisodes,
+        _seasons,
+        _similar,
+        _filmography,
+        _albums,
+        _tracks,
+        _collectionItems,
+        _playlistItems,
+        _parentCollectionItems,
+        _features,
+      ])
+        for (final item in list) item.id,
+    };
+    _syncingUserData = true;
+    try {
+      await userDataSync.refreshFromServer(_client, ids);
+    } finally {
+      _syncingUserData = false;
+      _userDataStale = false;
+    }
+  }
 
   /// Builds the screen for a title that is not in the library at all, out of
   /// what Seerr knows about it. The shape is the same, so the layouts, the
@@ -440,6 +674,7 @@ class ItemDetailViewModel extends ChangeNotifier {
     // Seerr owns the seasons here, so nothing goes looking for them on a server
     // that has never heard of this title.
     _seasons = _seerrSeasons(state);
+    _seasonsLoaded = true;
     _state = ItemDetailState.ready;
     notifyListeners();
 
@@ -497,7 +732,7 @@ class ItemDetailViewModel extends ChangeNotifier {
         for (final season in s.tv?.seasons ?? const [])
           if (season.seasonNumber > 0)
             AggregatedItem(
-              id: '${itemId}:s${season.seasonNumber}',
+              id: '$itemId:s${season.seasonNumber}',
               serverId: 'seerr',
               rawData: {
                 'Name': season.name ?? '',
@@ -509,8 +744,10 @@ class ItemDetailViewModel extends ChangeNotifier {
       ];
 
   Future<void> load({String? mediaSourceId}) async {
+    _similarInitialLoadComplete = false;
     _state = ItemDetailState.loading;
     _collectionItems = const [];
+    _missingCollectionItems = const [];
     _parentCollectionItems = const [];
     _parentCollectionName = null;
     _parentCollections = const [];
@@ -655,7 +892,10 @@ class ItemDetailViewModel extends ChangeNotifier {
     } else if (type == 'Audio') {
       futures.add(_loadLyrics());
     } else if (type == 'BoxSet') {
-      futures.add(_loadCollectionItems()); // grid — Phase 2, starts immediately
+      futures.add(_loadCollectionItems());
+      // Deliberately not awaited, so a slow Seerr server never holds the
+      // collection's own members back.
+      unawaited(_loadBoxSetSeerrItems());
       futures.add(_buildPlaylistIndex());  // playlist — Phase 1, runs concurrently
     } else if (type == 'MusicVideo' ||
         type == 'Movie' ||
@@ -676,11 +916,17 @@ class ItemDetailViewModel extends ChangeNotifier {
 
   Future<void> _loadSeasons() async {
     try {
-      final data = await _client.itemsApi.getSeasons(itemId);
+      final data = await _client.itemsApi.getSeasons(
+        itemId,
+        fields: 'ChildCount,UserData',
+      );
       final items = (data['Items'] as List?) ?? [];
       _seasons = _mapItems(items);
+    } catch (_) {
+    } finally {
+      _seasonsLoaded = true;
       notifyListeners();
-    } catch (_) {}
+    }
   }
 
   Future<void> _loadEpisodes() async {
@@ -719,29 +965,44 @@ class ItemDetailViewModel extends ChangeNotifier {
 
       _resolvedEpisodesSeasonId = seasonId;
       _episodes = episodes;
+    } catch (_) {
+    } finally {
+      _episodesLoaded = true;
       notifyListeners();
-    } catch (_) {}
+    }
   }
 
   /// Loads every episode of the current Series (all seasons) on demand. Used by
-  /// the Modern detail layout's Episodes tab and accurate season counts. No-op
-  /// for non-Series items or once already loaded.
+  /// the Modern and Nouveau detail layout's Episodes tab, accurate season counts,
+  /// and the Spotlight More Episodes modal. No-op once already loaded.
   Future<void> loadAllSeriesEpisodes() async {
     final item = _item;
-    if (item == null || item.type != 'Series') return;
+    if (item == null) return;
+    final seriesId = item.type == 'Series' ? itemId : item.seriesId;
+    if (seriesId == null || seriesId.isEmpty) return;
     if (_seriesEpisodesRequested) return;
     _seriesEpisodesRequested = true;
     try {
       final data = await _client.itemsApi.getEpisodes(
-        itemId,
+        seriesId,
         fields: _episodeOverviewFields,
       );
       final items = (data['Items'] as List?) ?? [];
       _seriesEpisodes = _mapItems(items);
+      _seriesEpisodesLoaded = true;
       notifyListeners();
     } catch (_) {
+      // Left unloaded and silent on purpose. The Modern layout calls this from
+      // build, so the next rebuild gets another go, and notifying here would
+      // turn that into a loop against a server that is down.
       _seriesEpisodesRequested = false;
     }
+  }
+
+  Future<void> refreshSeriesEpisodes() {
+    _seriesEpisodesRequested = false;
+    _seriesEpisodesLoaded = false;
+    return loadAllSeriesEpisodes();
   }
 
   Future<void> _loadNextUp() async {
@@ -1044,12 +1305,14 @@ class ItemDetailViewModel extends ChangeNotifier {
   /// [_collectionItems]; playlist content is managed by [_buildPlaylistIndex]
   /// and [_fetchPlaylistPage].
   Future<void> _fetchCollectionPage() async {
+    // Deliberately not recursive and not filtered by type. The server returns
+    // exactly the collection's own members this way, episodes included, where
+    // a recursive read either drags in every episode of a member series or,
+    // filtered, drops episode members and leaves the grid blank.
     final data = await _client.itemsApi.getItems(
       parentId: itemId,
       startIndex: _collectionFetchedCount,
       limit: _collectionPageSize,
-      recursive: true,
-      includeItemTypes: _collectionMemberTypes,
       fields: 'PrimaryImageAspectRatio,BasicSyncInfo,People',
     );
     final newItems = _mapItems((data['Items'] as List?) ?? []);
@@ -1063,6 +1326,151 @@ class ItemDetailViewModel extends ChangeNotifier {
         : newItems.length == _collectionPageSize;
     _collectionItems = [..._collectionItems, ...newItems];
     notifyListeners();
+  }
+
+  bool get _showMissingCollectionItems =>
+      GetIt.instance<UserPreferences>().get(
+        UserPreferences.seerrShowMissingCollectionItems,
+      ) &&
+      GetIt.instance<PluginSyncService>().seerrAvailable;
+
+  /// Fills [missingCollectionItems] with the titles TMDB files under this box
+  /// set's collection that the library lacks. The grid is paged, so the diff
+  /// runs against the whole membership. Every title past the first page would
+  /// otherwise come back as missing.
+  Future<void> _loadBoxSetSeerrItems() async {
+    final item = _item;
+    if (item == null || item.type != 'BoxSet') return;
+    if (!_showMissingCollectionItems) return;
+    try {
+      final repo = await GetIt.instance.getAsync<SeerrRepository>();
+      await repo.ensureInitialized();
+      final data = await _client.itemsApi.getItems(
+        parentId: itemId,
+        fields: 'ProviderIds',
+      );
+      final members = _mapItems((data['Items'] as List?) ?? []);
+      final collectionId = await _resolveSeerrCollectionId(
+        repo,
+        boxSetTmdbId: item.tmdbId,
+        members: members,
+      );
+      if (collectionId == null) return;
+      final missing = await _fetchMissingCollectionItems(
+        repo,
+        collectionId,
+        members,
+      );
+      if (_isDisposed || _item?.id != item.id) return;
+      _missingCollectionItems = missing;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Seerr's missing-title pass for the parent collections, run after they
+  /// are on screen so a slow Seerr server never holds the library rows back.
+  /// [load] is the publication this pass belongs to, and a reload in the
+  /// meantime makes the result stale, so it's dropped.
+  Future<void> _loadMissingParentCollectionItems(
+    List<ParentCollection> collections,
+    int load,
+  ) async {
+    if (collections.isEmpty || !_showMissingCollectionItems) return;
+    try {
+      final repo = await GetIt.instance.getAsync<SeerrRepository>();
+      await repo.ensureInitialized();
+      for (final collection in collections) {
+        final collectionId = await _resolveSeerrCollectionId(
+          repo,
+          boxSetTmdbId: collection.boxSetItem.tmdbId,
+          members: collection.items,
+        );
+        if (collectionId == null) continue;
+        final missing = await _fetchMissingCollectionItems(
+          repo,
+          collectionId,
+          collection.items,
+        );
+        if (missing.isEmpty) continue;
+        if (_isDisposed || load != _parentCollectionsLoad) return;
+        _parentCollections = [
+          for (final current in _parentCollections)
+            current.id == collection.id
+                ? current.withMissingItems(missing)
+                : current,
+        ];
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// TMDB's collection id for a set of library members: the box set's own
+  /// TMDB id when the server scraped one, else the first movie member TMDB
+  /// files under a collection. Movie and TV ids share no namespace on TMDB,
+  /// so only movies are probed. A series id would resolve to a stranger.
+  Future<int?> _resolveSeerrCollectionId(
+    SeerrRepository repo, {
+    required String? boxSetTmdbId,
+    required List<AggregatedItem> members,
+  }) async {
+    final own = int.tryParse(boxSetTmdbId ?? '');
+    if (own != null && own > 0) return own;
+    // Movies only, because a series id would resolve to an unrelated film.
+    // Capped, because a large hand-made set carries no shared collection and
+    // would otherwise cost one request per member every time it's opened.
+    const maxProbes = 8;
+    final candidates = <int>[
+      for (final member in members)
+        if (member.type == 'Movie')
+          if (int.tryParse(member.tmdbId ?? '') case final id? when id > 0)
+            id,
+    ].take(maxProbes).toList();
+    const maxConcurrent = 4;
+    for (var i = 0; i < candidates.length; i += maxConcurrent) {
+      final batch = candidates.skip(i).take(maxConcurrent);
+      final found = await Future.wait(
+        batch.map((id) async {
+          try {
+            return (await repo.getMovieDetails(id)).collection?.id;
+          } catch (_) {
+            return null;
+          }
+        }),
+      );
+      for (final id in found) {
+        if (id != null) return id;
+      }
+    }
+    return null;
+  }
+
+  /// The collection's parts the library lacks, or nothing when the collection
+  /// doesn't actually describe these members. A hand-made box set of
+  /// unrelated films would otherwise adopt whichever franchise its first
+  /// member happens to belong to.
+  Future<List<AggregatedItem>> _fetchMissingCollectionItems(
+    SeerrRepository repo,
+    int collectionId,
+    List<AggregatedItem> members,
+  ) async {
+    final collection = await repo.getCollectionDetails(collectionId);
+    final memberTmdbIds = <String>{
+      for (final member in members)
+        if (member.tmdbId case final id?) id,
+    };
+    final movieCount = members.where((m) => m.type == 'Movie').length;
+    final overlap = collection.parts
+        .where((part) => memberTmdbIds.contains(part.id.toString()))
+        .length;
+    // One match is enough for a single-film set, two otherwise. Nothing
+    // matching means this collection describes something else entirely.
+    if (overlap == 0) return const [];
+    if (movieCount > 1 && overlap < 2) return const [];
+    return seerrMissingCollectionItems(
+      parts: collection.parts,
+      libraryTmdbIds: memberTmdbIds,
+      blockNsfw: GetIt.instance<SeerrPreferences>().blockNsfw,
+    );
   }
 
   /// Puts [_flattenedIds] in place, either from a saved order or by scanning
@@ -1186,7 +1594,7 @@ class ItemDetailViewModel extends ChangeNotifier {
 
     final data = await _client.itemsApi.getItems(
       ids: batch,
-      fields: 'PrimaryImageAspectRatio,BasicSyncInfo,People',
+      fields: 'PrimaryImageAspectRatio,BasicSyncInfo,People,Overview',
     );
     final items = _mapItems((data['Items'] as List?) ?? []);
 
@@ -1253,6 +1661,99 @@ class ItemDetailViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Refreshes the already loaded BoxSet collection cards without resetting
+  /// pagination, scroll position, focus or the detail screen state.
+  ///
+  /// Used after an item mutation (watched/favorite/etc.). Only the items that
+  /// are currently loaded are hydrated again from the server.
+  Future<void> refreshCollectionItems() async {
+    if (_collectionItems.isEmpty) {
+      return;
+    }
+
+    final ids = _collectionItems
+        .map((item) => item.id)
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+
+    if (ids.isEmpty) {
+      return;
+    }
+
+    try {
+      final refreshedById = await _refetchItemsById(ids, _collectionPageSize);
+
+      if (refreshedById.isEmpty) {
+        return;
+      }
+
+      _collectionItems = _collectionItems
+          .map((item) => refreshedById[item.id] ?? item)
+          .toList(growable: false);
+
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Re-reads [ids] a page at a time. One request carrying every loaded id
+  /// builds a query string long enough for the server to reject.
+  Future<Map<String, AggregatedItem>> _refetchItemsById(
+    List<String> ids,
+    int pageSize,
+  ) async {
+    final refreshedById = <String, AggregatedItem>{};
+
+    for (var start = 0; start < ids.length; start += pageSize) {
+      final end = start + pageSize;
+      final data = await _client.itemsApi.getItems(
+        ids: ids.sublist(start, end > ids.length ? ids.length : end),
+        fields: 'PrimaryImageAspectRatio,BasicSyncInfo,People,Overview',
+      );
+
+      for (final item in _mapItems((data['Items'] as List?) ?? const [])) {
+        refreshedById[item.id] = item;
+      }
+    }
+
+    return refreshedById;
+  }
+
+  /// Refreshes the already loaded BoxSet playlist cards without rebuilding the
+  /// playlist index or resetting pagination.
+  ///
+  /// This keeps the active sort, loaded page count, focus and horizontal scroll
+  /// completely intact while updating UserData such as watched/progress state.
+  Future<void> refreshPlaylistItems() async {
+    if (_playlistItems.isEmpty) {
+      return;
+    }
+
+    final ids = _playlistItems
+        .map((item) => item.id)
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+
+    if (ids.isEmpty) {
+      return;
+    }
+
+    try {
+      final refreshedById = await _refetchItemsById(ids, _playlistPageSize);
+
+      if (refreshedById.isEmpty) {
+        return;
+      }
+
+      _playlistItems = _playlistItems
+          .map((item) => refreshedById[item.id] ?? item)
+          .toList(growable: false);
+
+      _resolveNextUp();
+
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<void> _loadParentCollection() async {
     final item = _item;
     if (item == null) {
@@ -1264,7 +1765,7 @@ class ItemDetailViewModel extends ChangeNotifier {
     }
 
     try {
-      final Map<String, String> boxSetIds = {};
+      final Map<String, ({String name, Map<String, dynamic> rawData})> boxSetInfo = {};
       final ancestors = await _client.itemsApi.getAncestors(item.id);
       for (final ancestor in ancestors) {
         if (ancestor['Type'] == 'BoxSet') {
@@ -1272,17 +1773,20 @@ class ItemDetailViewModel extends ChangeNotifier {
           final name = ancestor['Name']?.toString();
           if (boxSetId != null && boxSetId.isNotEmpty && name != null) {
             final isMember = await _boxSetContainsItem(boxSetId, item.id);
-            if (isMember && !boxSetIds.containsKey(boxSetId)) {
-              boxSetIds[boxSetId] = name;
+            if (isMember && !boxSetInfo.containsKey(boxSetId)) {
+              boxSetInfo[boxSetId] = (
+                name: name,
+                rawData: Map<String, dynamic>.from(ancestor),
+              );
             }
           }
         }
       }
 
       final scannedCollections = await _findParentCollectionsByScanningBoxSets(item.id);
-      boxSetIds.addAll(scannedCollections);
+      boxSetInfo.addAll(scannedCollections);
 
-      if (boxSetIds.isEmpty) {
+      if (boxSetInfo.isEmpty) {
         _parentCollections = const [];
         _parentCollectionItems = const [];
         _parentCollectionName = null;
@@ -1292,29 +1796,34 @@ class ItemDetailViewModel extends ChangeNotifier {
 
       // Keep collections in a stable order so the rows and the legacy
       // single-collection fields don't shuffle around between opens.
-      final entries = boxSetIds.entries.toList();
+      final entries = boxSetInfo.entries.toList();
       final ordered = List<ParentCollection?>.filled(entries.length, null);
       final fetchFutures = <Future<void>>[];
 
       for (var i = 0; i < entries.length; i++) {
         final index = i;
         final boxSetId = entries[i].key;
-        final name = entries[i].value;
+        final info = entries[i].value;
 
         fetchFutures.add(() async {
+          // Not recursive and not filtered, same as the collection grid, so a
+          // collection made of episodes still shows its members here.
           final data = await _client.itemsApi.getItems(
             parentId: boxSetId,
-            recursive: true,
-            includeItemTypes: _collectionMemberTypes,
             sortBy: 'PremiereDate,SortName',
             sortOrder: 'Ascending',
-            fields: 'PrimaryImageAspectRatio,BasicSyncInfo',
+            fields: 'PrimaryImageAspectRatio,BasicSyncInfo,ProviderIds',
           );
 
           final items = (data['Items'] as List?) ?? [];
           ordered[index] = ParentCollection(
             id: boxSetId,
-            name: name,
+            name: info.name,
+            boxSetItem: AggregatedItem(
+              id: boxSetId,
+              serverId: item.serverId,
+              rawData: info.rawData,
+            ),
             items: _sortCollectionByReleaseOrder(_mapItems(items)),
           );
         }());
@@ -1322,6 +1831,7 @@ class ItemDetailViewModel extends ChangeNotifier {
       await Future.wait(fetchFutures);
 
       final collections = ordered.whereType<ParentCollection>().toList();
+
       _parentCollections = collections;
       if (collections.isNotEmpty) {
         _parentCollectionName = collections.first.name;
@@ -1332,6 +1842,8 @@ class ItemDetailViewModel extends ChangeNotifier {
       }
 
       notifyListeners();
+      final load = ++_parentCollectionsLoad;
+      unawaited(_loadMissingParentCollectionItems(collections, load));
     } catch (_) {}
   }
 
@@ -1354,8 +1866,8 @@ class ItemDetailViewModel extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, String>> _findParentCollectionsByScanningBoxSets(String itemId) async {
-    final Map<String, String> result = {};
+  Future<Map<String, ({String name, Map<String, dynamic> rawData})>> _findParentCollectionsByScanningBoxSets(String itemId) async {
+    final Map<String, ({String name, Map<String, dynamic> rawData})> result = {};
     try {
       const pageSize = 200;
       var startIndex = 0;
@@ -1365,7 +1877,7 @@ class ItemDetailViewModel extends ChangeNotifier {
           includeItemTypes: ['BoxSet'],
           recursive: true,
           sortBy: 'SortName',
-          fields: 'BasicSyncInfo',
+          fields: 'BasicSyncInfo,PrimaryImageAspectRatio,ImageTags,ProviderIds',
           startIndex: startIndex,
           limit: pageSize,
           enableTotalRecordCount: true,
@@ -1375,7 +1887,7 @@ class ItemDetailViewModel extends ChangeNotifier {
           break;
         }
 
-        final candidates = <MapEntry<String, String>>[];
+        final candidates = <({String id, String name, Map<String, dynamic> rawData})>[];
         for (final raw in boxSets.whereType<Map>()) {
           final boxSet = raw.cast<String, dynamic>();
           final boxSetId = boxSet['Id']?.toString();
@@ -1383,7 +1895,7 @@ class ItemDetailViewModel extends ChangeNotifier {
           if (boxSetId == null || boxSetId.isEmpty || boxSetName == null) {
             continue;
           }
-          candidates.add(MapEntry(boxSetId, boxSetName));
+          candidates.add((id: boxSetId, name: boxSetName, rawData: boxSet));
         }
 
         // Cap how many membership lookups run at once so a large library
@@ -1393,7 +1905,7 @@ class ItemDetailViewModel extends ChangeNotifier {
           final batch = candidates.skip(i).take(maxConcurrent);
           await Future.wait(batch.map((candidate) async {
             final membership = await _client.itemsApi.getItems(
-              parentId: candidate.key,
+              parentId: candidate.id,
               fields: 'BasicSyncInfo',
             );
             final members = (membership['Items'] as List?) ?? const [];
@@ -1402,7 +1914,10 @@ class ItemDetailViewModel extends ChangeNotifier {
               return map['Id'] == itemId;
             });
             if (hasItem) {
-              result[candidate.key] = candidate.value;
+              result[candidate.id] = (
+                name: candidate.name,
+                rawData: candidate.rawData,
+              );
             }
           }));
         }
@@ -1490,41 +2005,83 @@ class ItemDetailViewModel extends ChangeNotifier {
   }
 
   Future<void> _loadSimilar() async {
-    final item = _item;
-    if (item != null && (item.type == 'Movie' || item.type == 'Series')) {
-      try {
-        final prefs = GetIt.instance<UserPreferences>();
-        final sourceSetting = prefs.get(UserPreferences.recommendationSystemSource);
-        final isLocal = sourceSetting == RecommendationSystemSource.local;
-        final serverId = _serverId ?? _client.baseUrl;
-        final dataSource = GetIt.instance<RowDataSource>();
-
-        final recommended = await dataSource.getRecommendations(
-          serverId: serverId,
-          baseItem: item,
-          isLocal: isLocal,
-          limit: 15,
-          includeWatched: true,
-        );
-        // Only short-circuit when we actually have results. An empty list (e.g.
-        // the online source without Seerr configured, or no local matches)
-        // falls through to Jellyfin's similar-items below.
-        if (recommended.isNotEmpty) {
-          _similar = recommended;
-          notifyListeners();
-          return;
-        }
-      } catch (e) {
-        debugPrint('[ItemDetailViewModel] Custom recommendation system failed: $e');
-      }
-    }
-
     try {
-      final data = await _client.itemsApi.getSimilarItems(itemId, limit: 15);
-      final items = (data['Items'] as List?) ?? [];
-      _similar = _mapItems(items);
+      final item = _item;
+      if (item != null && (item.type == 'Movie' || item.type == 'Series')) {
+        try {
+          final prefs = GetIt.instance<UserPreferences>();
+          final sourceSetting = prefs.get(UserPreferences.recommendationSystemSource);
+
+          if (sourceSetting == RecommendationSystemSource.server) {
+            final data = await _client.itemsApi.getSimilarItems(
+              itemId,
+              limit: 100,
+              bypass: 'moonfin',
+            );
+            final items = (data['Items'] as List?) ?? [];
+            _similar = _mapItems(items);
+            _similarSource = SimilarSource.jellyfin;
+            return;
+          }
+
+          final isLocal = sourceSetting == RecommendationSystemSource.local;
+
+          // Auto-detect server recommendations via Moonbase if "Moonfin Recommends" is selected
+          // and Moonbase announces recommendationsSupported.
+          if (isLocal && GetIt.instance.isRegistered<PluginSyncService>()) {
+            final pluginSync = GetIt.instance<PluginSyncService>();
+            if (pluginSync.recommendationsSupported) {
+              try {
+                final data = await pluginSync.fetchSimilarItems(
+                  _client,
+                  itemId,
+                  limit: 100,
+                );
+                final items = (data?['Items'] as List?) ?? [];
+                if (items.isNotEmpty) {
+                  _similar = _mapItems(items);
+                  _similarSource = SimilarSource.moonfin;
+                  return;
+                }
+              } catch (e) {
+                debugPrint('[ItemDetailViewModel] Moonbase server recommendation failed, falling back to local: $e');
+              }
+            }
+          }
+
+          final serverId = _serverId ?? _client.baseUrl;
+          final dataSource = GetIt.instance<RowDataSource>();
+
+          final recommended = await dataSource.getRecommendations(
+            serverId: serverId,
+            baseItem: item,
+            isLocal: isLocal,
+            limit: 15,
+            includeWatched: true,
+          );
+          // Only short-circuit when we actually have results. An empty list (e.g.
+          // the online source without Seerr configured, or no local matches)
+          // falls through to Jellyfin's similar-items below.
+          if (recommended.isNotEmpty) {
+            _similar = recommended;
+            _similarSource = isLocal ? SimilarSource.moonfin : SimilarSource.tmdb;
+            return;
+          }
+        } catch (e) {
+          debugPrint('[ItemDetailViewModel] Custom recommendation system failed: $e');
+        }
+      }
+
+      try {
+        final data = await _client.itemsApi.getSimilarItems(itemId, limit: 100);
+        final items = (data['Items'] as List?) ?? [];
+        _similar = _mapItems(items);
+        _similarSource = SimilarSource.jellyfin;
+      } catch (_) {}
+    } finally {
+      _similarInitialLoadComplete = true;
       notifyListeners();
-    } catch (_) {}
+    }
   }
 
   Future<void> _loadRatings() async {
@@ -1757,6 +2314,7 @@ class ItemDetailViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    userDataSync.removeListener(_onUserDataChanged);
     // The child owns a download poll timer, so this is what stops it.
     _seerr?.removeListener(notifyListeners);
     _seerr?.dispose();

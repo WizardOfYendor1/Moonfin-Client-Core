@@ -189,6 +189,9 @@ enum PlaybackTimeSlot {
 
   /// Wall-clock time the item will finish at, e.g. `Ends at 21:45`.
   endsAt,
+
+  /// The current time
+  time,
 }
 
 enum DesktopScrollWheelAction {
@@ -201,6 +204,10 @@ enum DesktopScrollWheelAction {
 /// hardware, zero-blur sheen on TV boxes/web); `full` forces real blur;
 /// `reduced` forces the zero-blur sheen everywhere.
 enum GlassQualityMode { auto, full, reduced }
+
+/// How much this device is asked to spend on decoded images and inline video.
+/// [DevicePerformanceMode.auto] measures the device, the other two pin it.
+enum DevicePerformanceMode { auto, standard, reduced }
 
 /// Persisted settled quality of the adaptive glass renderer, mirroring the
 /// package's GlassQuality tiers. `unset` means no benchmark has settled yet,
@@ -247,15 +254,22 @@ enum VisualThemeId {
 ///
 /// [classic] is the original centered-stack layout. [modern] is the responsive
 /// cinematic layout (landscape two-pane / portrait stack) and is the default.
-/// Stored per server and user.
+/// [spotlight] is the hero-first layout: Play plus at most three action
+/// buttons with the rest behind an ellipsis menu, and summary cards that open
+/// sectioned grid modals. [nouveau] is the full-screen layout, with every
+/// section stacked down the page rather than behind tabs or cards. Stored per
+/// server and user.
 enum DetailScreenStyle {
   classic,
-  modern;
+  modern,
+  spotlight,
+  nouveau;
 }
 
 /// Selectable algorithm source for similarity recommendation system.
 enum RecommendationSystemSource {
   local,
+  server,
   online;
 }
 
@@ -413,6 +427,18 @@ enum HomeSectionType {
 
   const HomeSectionType(this.serializedName);
   final String serializedName;
+
+  /// Which Since You Watched row this is, counting from one, or zero for
+  /// anything else. Those rows render only up to the configured count, so the
+  /// position is what decides whether a row falls inside it.
+  int get sinceYouWatchedRow => switch (this) {
+    HomeSectionType.sinceYouWatched1 => 1,
+    HomeSectionType.sinceYouWatched2 => 2,
+    HomeSectionType.sinceYouWatched3 => 3,
+    HomeSectionType.sinceYouWatched4 => 4,
+    HomeSectionType.sinceYouWatched5 => 5,
+    _ => 0,
+  };
 
   static HomeSectionType fromSerialized(String name) {
     if (name == 'watchlist') return HomeSectionType.playlists;
@@ -755,6 +781,69 @@ extension HomeSectionTypeSeerrRow on HomeSectionType {
 
 enum ScreensaverMode { library, logo }
 
+enum ScreensaverBackdrop {
+  library,
+  black,
+  moonfin,
+  calm,
+  neonPulse,
+  aurora,
+}
+
+enum ScreensaverPosition {
+  topLeft,
+  topCenter,
+  topRight,
+  middleLeft,
+  middle,
+  middleRight,
+  bottomLeft,
+  bottomCenter,
+  bottomRight,
+}
+
+enum ScreensaverSize {
+  thumbnail,
+  small,
+  medium,
+  large,
+}
+
+enum ScreensaverComponent {
+  none,
+  moonfinLogo,
+  clock,
+  runner,
+}
+
+enum ScreensaverMovement {
+  staticCorner,
+  slow,
+  moderate,
+  fast,
+  ultra,
+}
+
+extension ScreensaverMovementX on ScreensaverMovement {
+  bool get isBouncing => this != ScreensaverMovement.staticCorner;
+
+  double get speedMultiplier => switch (this) {
+        ScreensaverMovement.staticCorner => 0.0,
+        ScreensaverMovement.slow => 0.45,
+        ScreensaverMovement.moderate => 0.70,
+        ScreensaverMovement.fast => 1.0,
+        ScreensaverMovement.ultra => 1.60,
+      };
+
+  LoadingAnimationSpeed get loadingSpeed => switch (this) {
+        ScreensaverMovement.staticCorner => LoadingAnimationSpeed.fast,
+        ScreensaverMovement.slow => LoadingAnimationSpeed.slow,
+        ScreensaverMovement.moderate => LoadingAnimationSpeed.moderate,
+        ScreensaverMovement.fast => LoadingAnimationSpeed.fast,
+        ScreensaverMovement.ultra => LoadingAnimationSpeed.ultra,
+      };
+}
+
 enum ScreensaverClockMode { off, staticCorner, bouncing }
 
 enum ScreensaverTimeout {
@@ -772,9 +861,14 @@ enum ScreensaverTimeout {
 
 enum SinceYouWatchedSource {
   local,
+  server,
   online;
 
-  String get displayName => this == local ? 'Local' : 'Online';
+  String get displayName => switch (this) {
+    SinceYouWatchedSource.local => 'Moonfin Recommends',
+    SinceYouWatchedSource.server => 'Jellyfin Recommends',
+    SinceYouWatchedSource.online => 'TMDb Similarity',
+  };
 }
 
 enum SinceYouWatchedSourceType {
@@ -833,3 +927,71 @@ enum RecentlyReleasedSeriesType { series, season, episode }
 /// When a home row card shows its MOVIE or SERIES label. Only external rows
 /// carry a media type, so the rest are unaffected either way.
 enum MediaTypeBadgeBehavior { always, mixedRowsOnly, never }
+
+enum LoadingAnimationImage {
+  none,
+  moonfinLogo,
+  spinner,
+  runner,
+  moonPhases,
+  moonfinPhases,
+  neonfinPhases,
+}
+
+enum LoadingAnimationSize {
+  thumbnail,
+  small,
+  medium,
+  large,
+}
+
+enum LoadingAnimationPosition {
+  topLeft,
+  topCenter,
+  topRight,
+  middleLeft,
+  middle,
+  middleRight,
+  bottomLeft,
+  bottomCenter,
+  bottomRight,
+  bouncing,
+}
+
+enum LoadingAnimationSpeed {
+  slow,
+  moderate,
+  fast,
+  ultra,
+}
+
+enum PageTransitionSpeed {
+  slow(Duration(milliseconds: 450)),
+  medium(Duration(milliseconds: 300)),
+  fast(Duration(milliseconds: 150)),
+  off(Duration.zero);
+
+  const PageTransitionSpeed(this.duration);
+  final Duration duration;
+}
+
+enum NavigationAnimationSpeed {
+  extraSlow(Duration(milliseconds: 400)),
+  slow(Duration(milliseconds: 250)),
+  medium(Duration(milliseconds: 150)),
+  fast(Duration(milliseconds: 80));
+
+  const NavigationAnimationSpeed(this.duration);
+  final Duration duration;
+}
+
+enum ModernCardTransitionSpeed {
+  extraSlow(Duration(milliseconds: 450)),
+  slow(Duration(milliseconds: 300)),
+  medium(Duration(milliseconds: 180)),
+  fast(Duration(milliseconds: 90)),
+  off(Duration.zero);
+
+  const ModernCardTransitionSpeed(this.duration);
+  final Duration duration;
+}

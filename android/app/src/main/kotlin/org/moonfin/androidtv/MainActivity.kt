@@ -1,6 +1,7 @@
 package org.moonfin.androidtv
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -16,6 +17,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.content.res.Configuration
 import android.graphics.drawable.Icon
+import android.hardware.display.DisplayManager
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -26,8 +28,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Rational
-import android.view.Display
 import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.mediarouter.media.MediaRouteSelector
@@ -87,6 +89,9 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
     private var audioCapsEventsChannel: EventChannel? = null
     private var audioCapsSink: EventChannel.EventSink? = null
     private var audioDeviceCallback: AudioDeviceCallback? = null
+    private var displayCapsEventsChannel: EventChannel? = null
+    private var displayCapsSink: EventChannel.EventSink? = null
+    private var displayListener: DisplayManager.DisplayListener? = null
     private var castStatusListener: SessionManagerListener<CastSession>? = null
     private var castDiscoveryCallback: MediaRouter.Callback? = null
 
@@ -144,6 +149,41 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
     private var castProgressListener: RemoteMediaClient.ProgressListener? = null
     private var castErrorReported = false
 
+    // The Handler half of a BurstCoalescer: one pending runnable, replaced on
+    // every event, so the trigger that reaches the emit is the burst's last.
+    private inner class DebouncedEmit(
+        private val coalescer: BurstCoalescer,
+        private val emit: (String) -> Unit,
+    ) {
+        private var pending: Runnable? = null
+
+        fun schedule(trigger: String) {
+            val at = coalescer.onEvent(SystemClock.uptimeMillis())
+            pending?.let { handler.removeCallbacks(it) }
+            val runnable = Runnable {
+                pending = null
+                coalescer.fired()
+                emit(trigger)
+            }
+            pending = runnable
+            handler.postAtTime(runnable, at)
+        }
+
+        fun cancel() {
+            pending?.let { handler.removeCallbacks(it) }
+            pending = null
+            coalescer.fired()
+        }
+    }
+
+    private val displayEmit = DebouncedEmit(
+        BurstCoalescer(DISPLAY_EMIT_DEBOUNCE_MS, DISPLAY_EMIT_MAX_WAIT_MS),
+    ) { trigger -> emitDisplayCapabilities(trigger) }
+
+    private val audioEmit = DebouncedEmit(
+        BurstCoalescer(AUDIO_EMIT_DEBOUNCE_MS, AUDIO_EMIT_MAX_WAIT_MS),
+    ) { emitAudioCapabilities() }
+
     private fun emitAudioCapabilities() {
         audioCapsSink?.success(AudioCapabilities.query(this))
     }
@@ -156,6 +196,7 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
             }
         }
         audioDeviceCallback = null
+        audioEmit.cancel()
     }
 
     companion object {
@@ -173,6 +214,16 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
         private const val WATCH_NEXT_CHANNEL = WatchNextWorker.CHANNEL
         private const val AUDIO_CAPS_EVENTS_CHANNEL =
             "org.moonfin.androidtv/audioCapabilitiesEvents"
+        private const val DISPLAY_CAPS_EVENTS_CHANNEL =
+            "org.moonfin.androidtv/displayCapabilitiesEvents"
+        private const val DISPLAY_EMIT_DEBOUNCE_MS = 750L
+        private const val DISPLAY_EMIT_MAX_WAIT_MS = 3_000L
+        // The HDMI audio route drops and returns between 1.8 and 3.2 s apart
+        // when the link renegotiates at playback start and stop, so the
+        // debounce has to outlast that gap or the removal escapes on its own
+        // as a stereo, no-passthrough answer.
+        private const val AUDIO_EMIT_DEBOUNCE_MS = 4_000L
+        private const val AUDIO_EMIT_MAX_WAIT_MS = 12_000L
         private const val EXTERNAL_PLAYER_PROXY_REQUEST_CODE = 17115
         private const val EXTRA_EXTERNAL_PLAYER_LAUNCH_INTENT = "moonfin.external_player.launch_intent"
         private const val EXTRA_EXTERNAL_PLAYER_ERROR_CODE = "moonfin.external_player.error_code"
@@ -194,26 +245,36 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
         private const val API_MPV_RESULT_ID = "is.xyz.mpv.MPVActivity.result"
     }
 
+    // Both facts are fixed for the life of the device, unlike availMem, which
+    // would make a feature come and go between launches. totalMem stays a Long
+    // on the wire: narrowing it to Int overflows to negative above 2 GB.
+    private fun deviceMemory(): Map<String, Any> {
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(info)
+        return mapOf(
+            "totalMem" to info.totalMem,
+            "lowRam" to activityManager.isLowRamDevice,
+        )
+    }
+
+    @Suppress("UNCHECKED_CAST")
     private fun getDisplayHdrTypes(): List<String> {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-            return emptyList()
+        return DisplayCapabilities.query(this, "pull")["types"] as? List<String>
+            ?: emptyList()
+    }
+
+    private fun emitDisplayCapabilities(trigger: String) {
+        displayCapsSink?.success(DisplayCapabilities.query(this, trigger))
+    }
+
+    private fun unregisterDisplayListener() {
+        displayListener?.let { listener ->
+            (getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager)
+                ?.unregisterDisplayListener(listener)
         }
-        val currentDisplay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            display
-        } else {
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay
-        }
-        val hdrTypes = currentDisplay?.hdrCapabilities?.supportedHdrTypes ?: return emptyList()
-        return hdrTypes.map { type ->
-            when (type) {
-                Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION -> "DOLBY_VISION"
-                Display.HdrCapabilities.HDR_TYPE_HDR10 -> "HDR10"
-                Display.HdrCapabilities.HDR_TYPE_HDR10_PLUS -> "HDR10_PLUS"
-                Display.HdrCapabilities.HDR_TYPE_HLG -> "HLG"
-                else -> type.toString()
-            }
-        }
+        displayListener = null
+        displayEmit.cancel()
     }
 
     private val pipReceiver = object : BroadcastReceiver() {
@@ -289,6 +350,7 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
             flutterEngine,
             onActiveChanged = { active -> nativePad?.setActive(active) },
             onBeforeResume = { nativePad?.releaseHeldInput() },
+            onControllerTypeChanged = { nativePad?.onControllerTypeChanged() },
         )
         libretroBridge = bridge
         nativePad = NativePadInput(
@@ -311,6 +373,10 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
             flutterEngine.dartExecutor.binaryMessenger,
             MediaStoreHelper.CHANNEL,
         ).setMethodCallHandler(MediaStoreHelper(this))
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DeviceStorageHelper.CHANNEL,
+        ).setMethodCallHandler(DeviceStorageHelper())
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -321,6 +387,12 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
                     result.success(isTvDevice())
                 }
                 "displayHdrTypes" -> result.success(getDisplayHdrTypes())
+                "displayCapabilities" -> {
+                    // The caller stamps why it asked, so the probe log can tell
+                    // a launch answer from a resume or retry one.
+                    val trigger = call.argument<String>("trigger") ?: "pull"
+                    result.success(DisplayCapabilities.query(this, trigger))
+                }
                 "buildFingerprint" -> result.success(Build.FINGERPRINT)
                 "dolbyVisionCodecCapabilities" -> {
                     result.success(MediaCodecCapabilities.queryDolbyVisionCapabilities())
@@ -336,6 +408,9 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
                 }
                 "audioCapabilities" -> {
                     result.success(AudioCapabilities.query(this))
+                }
+                "deviceMemory" -> {
+                    result.success(deviceMemory())
                 }
                 "exitApp" -> {
                     result.success(true)
@@ -621,7 +696,10 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
 
         // Re-probe audio capabilities whenever the audio route changes (e.g. an
         // AVR is powered on after launch) and push the fresh result to Dart so
-        // the device profile self-heals without an app restart.
+        // the device profile self-heals without an app restart. A link
+        // renegotiating mid-playback reports the sink removed and then added
+        // again, and answering the removal would tell Dart the box has stereo
+        // speakers, so only the trailing edge of a burst is probed.
         audioCapsEventsChannel = EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             AUDIO_CAPS_EVENTS_CHANNEL,
@@ -635,11 +713,11 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
                     val callback = object : AudioDeviceCallback() {
                         override fun onAudioDevicesAdded(
                             addedDevices: Array<out AudioDeviceInfo>?,
-                        ) = emitAudioCapabilities()
+                        ) = audioEmit.schedule("added")
 
                         override fun onAudioDevicesRemoved(
                             removedDevices: Array<out AudioDeviceInfo>?,
-                        ) = emitAudioCapabilities()
+                        ) = audioEmit.schedule("removed")
                     }
                     audioDeviceCallback = callback
                     audioManager?.registerAudioDeviceCallback(
@@ -652,6 +730,48 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
             override fun onCancel(arguments: Any?) {
                 unregisterAudioDeviceCallback()
                 audioCapsSink = null
+            }
+        })
+
+        // The display side of the same self-healing story. A box that launched
+        // before its TV or AVR woke up has no way to learn the panel does HDR
+        // after all, so without this it keeps forcing a transcode on every
+        // Dolby Vision item until the app is restarted.
+        displayCapsEventsChannel = EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DISPLAY_CAPS_EVENTS_CHANNEL,
+        )
+        displayCapsEventsChannel?.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                displayCapsSink = events
+                val displayManager =
+                    getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+                // No display id filter. A sink waking up can arrive as a remove
+                // and re-add under a brand new id, which is exactly the event
+                // worth reacting to, so anything the system reports is probed.
+                // onDisplayChanged also fires for rotation, refresh rate and
+                // brightness, so a waking chain arrives as a burst and only
+                // the trailing edge of it describes settled hardware.
+                val listener = object : DisplayManager.DisplayListener {
+                    override fun onDisplayAdded(displayId: Int) =
+                        displayEmit.schedule("added")
+
+                    override fun onDisplayRemoved(displayId: Int) =
+                        displayEmit.schedule("removed")
+
+                    override fun onDisplayChanged(displayId: Int) =
+                        displayEmit.schedule("changed")
+                }
+                displayListener = listener
+                displayManager?.registerDisplayListener(
+                    listener,
+                    Handler(Looper.getMainLooper()),
+                )
+            }
+
+            override fun onCancel(arguments: Any?) {
+                unregisterDisplayListener()
+                displayCapsSink = null
             }
         })
 
@@ -702,6 +822,29 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
                     WatchNextWorker.runNow(applicationContext)
                     result.success(null)
                 }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Shared with iOS: Dart drives the periodic auto-download check
+        // through this channel; the worker answers on the same one.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            AutoDownloadWorker.REFRESH_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "configure" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    val wifiOnly = call.argument<Boolean>("wifiOnly") ?: false
+                    if (enabled && !isTelevision(applicationContext)) {
+                        AutoDownloadWorker.schedule(applicationContext, wifiOnly)
+                    } else {
+                        AutoDownloadWorker.cancel(applicationContext)
+                    }
+                    result.success(null)
+                }
+                "refreshStatus" ->
+                    result.success(AutoDownloadWorker.refreshStatus(applicationContext))
                 else -> result.notImplemented()
             }
         }
@@ -975,6 +1118,10 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
         castEventsChannel?.setStreamHandler(null)
         unregisterAudioDeviceCallback()
         audioCapsEventsChannel?.setStreamHandler(null)
+        // DisplayManagerGlobal holds registrations process wide, so without
+        // this the listener keeps this Activity alive across every recreation.
+        unregisterDisplayListener()
+        displayCapsEventsChannel?.setStreamHandler(null)
         dlnaController?.onDestroy()
         dlnaChannel?.setMethodCallHandler(null)
         dlnaEventsChannel?.setStreamHandler(null)

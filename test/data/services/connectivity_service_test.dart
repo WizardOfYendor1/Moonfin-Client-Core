@@ -79,6 +79,20 @@ void main() {
     expect(probes, 3);
   });
 
+  // A pooled connection the server already dropped fails the same way a server
+  // that went away does, and one of those used to send the whole app to the
+  // downloads catalog.
+  test('one lost probe does not send the app offline', () async {
+    failuresLeft = 1;
+    final service = serviceOnline(online: true);
+    addTearDown(service.dispose);
+
+    await service.recheckNow();
+
+    expect(service.canReachServer, isTrue);
+    expect(probes, 2);
+  });
+
   // Startup, a network flip and the retry can all ask at once. Two probes would
   // each open a connection and each read the verdict from before either
   // answered, which reported the server unreachable twice over.

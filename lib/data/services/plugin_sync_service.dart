@@ -80,6 +80,9 @@ class PluginSyncService extends ChangeNotifier {
   bool get mdblistAvailable => _mdblistAvailable;
   bool _tmdbAvailable = false;
   bool get tmdbAvailable => _tmdbAvailable;
+  bool _recommendationsSupported = false;
+  bool get recommendationsSupported =>
+      _pluginAvailable && _recommendationsSupported;
   String? _activeThemeCacheServerId;
   void Function(
     String title,
@@ -205,6 +208,7 @@ class PluginSyncService extends ChangeNotifier {
     _seerrInfoAvailable = false;
     _mdblistAvailable = false;
     _tmdbAvailable = false;
+    _recommendationsSupported = false;
     _activeThemeCacheServerId = null;
     if (notify) {
       _setLocalSeerrEnabled(false);
@@ -261,6 +265,8 @@ class PluginSyncService extends ChangeNotifier {
       _seerrEnabled = _readBool(pingResult, 'seerrEnabled') ?? false;
       _mdblistAvailable = _readBool(pingResult, 'mdblistAvailable') ?? false;
       _tmdbAvailable = _readBool(pingResult, 'tmdbAvailable') ?? false;
+      _recommendationsSupported =
+          _readBool(pingResult, 'recommendationsSupported') ?? false;
       // Older plugins leave this out, which reads as false and hides the button.
       _messages?.setSupported(
         _readBool(pingResult, 'messagesSupported') ?? false,
@@ -1029,6 +1035,29 @@ class PluginSyncService extends ChangeNotifier {
     return null;
   }
 
+  Future<Map<String, dynamic>?> fetchSimilarItems(
+    MediaServerClient client,
+    String itemId, {
+    int limit = 100,
+  }) async {
+    final headers = _authHeaders(client);
+    if (headers == null) return null;
+
+    try {
+      final response = await _dio.get(
+        '${client.baseUrl}/Moonfin/Items/$itemId/Similar',
+        queryParameters: {'limit': limit},
+        options: Options(headers: headers),
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('[PluginSyncService] fetchSimilarItems failed: $e');
+    }
+    return null;
+  }
+
   Future<dynamic> _fetchThemesPayload(MediaServerClient client) async {
     final headers = _authHeaders(client);
     if (headers == null) return null;
@@ -1347,6 +1376,7 @@ class PluginSyncService extends ChangeNotifier {
           sections.add(custom.copyWith(order: order++));
         }
         _appendDisabledBuiltinSections(sections, order);
+        await _raiseSinceYouWatchedRowCount(sections);
         await _prefs.setHomeSectionsConfig(sections);
         await _syncSeerrHomeRowsWithSections(sections);
         appliedHomeSections = true;
@@ -1695,6 +1725,32 @@ class PluginSyncService extends ChangeNotifier {
       } else {
         _store.set(effective as Preference<int>, value);
       }
+    }
+  }
+
+  /// A layout carries which Since You Watched rows are on but not how many of
+  /// them render, which is a separate count, so three of those rows arrive
+  /// against a count of one and only the first appears.
+  ///
+  /// Raised, never lowered. A row the layout left off is already hidden by its
+  /// own toggle, so lowering would gain nothing and would undo a count set
+  /// higher on purpose.
+  Future<void> _raiseSinceYouWatchedRowCount(
+    List<HomeSectionConfig> sections,
+  ) async {
+    var highest = 0;
+    for (final section in sections) {
+      if (!section.enabled) continue;
+      final row = section.type.sinceYouWatchedRow;
+      if (row > highest) highest = row;
+    }
+    if (highest <= _prefs.get(UserPreferences.sinceYouWatchedNumRows).value) {
+      return;
+    }
+    for (final option in prefs.SinceYouWatchedNumRows.values) {
+      if (option.value != highest) continue;
+      await _prefs.set(UserPreferences.sinceYouWatchedNumRows, option);
+      return;
     }
   }
 

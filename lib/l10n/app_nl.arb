@@ -10129,5 +10129,22 @@
     "serverMessagesEmpty": "Nog geen berichten van uw server",
     "@serverMessagesEmpty": {
         "description": "Shown in the messages window when the server has sent nothing"
-    }
+    },
+    "trickplaySettingsPreviewHint": "Schuif de schuifregelaar om een voorbeeld van het schrobben te zien",
+    "@trickplaySettingsPreviewHint": {
+        "description": "Hint shown below the live trickplay settings preview"
+    },
+    "trickplayFollowScrubPositionSubtitle": "Geef voorbeelddia's langs de zoekbalk tijdens het schrobben, in plaats van het te centreren",
+    "@trickplayFollowScrubPositionSubtitle": {
+        "description": "Description for the trickplay follow-scrub-position setting"
+    },
+    "playerSwipeGesturesDescription": "Schuif links naar boven of naar beneden in de speler om helderheid te veranderen en rechts om volume te veranderen",
+    "@playerSwipeGesturesDescription": {
+        "description": "Description for player swipe gestures"
+    },
+    "recentlyReleasedSeriesTypeDescription": "Sorteer recent uitgebrachte serie thuisrijen naar serie, nieuwste seizoen, of meeste recente uitzending",
+    "@recentlyReleasedSeriesTypeDescription": {
+        "description": "Description for recently released series type setting"
+    },
+    "adminMetadataInheritHelp": "Laat dit op Standaard staan om de instelling over te nemen van een bovenliggend item of van de serverstandaard."
 }

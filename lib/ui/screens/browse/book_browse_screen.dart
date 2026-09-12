@@ -24,6 +24,7 @@ import '../../widgets/book/book_stats_band.dart';
 import '../../widgets/book/discover/book_discover_tab.dart';
 import '../../widgets/focus/context_menu_sheet.dart';
 import '../../widgets/focus/focusable_wrapper.dart';
+import '../../widgets/skeleton/skeleton_library_grid.dart';
 import '../../widgets/focus/locked_focus_row.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/navigation_layout.dart';
@@ -123,7 +124,7 @@ class _BookBrowseScreenState extends State<BookBrowseScreen> {
       context.push(Destinations.folder(item.id, serverId: item.serverId));
       return;
     }
-    if (type == 'Book') {
+    if (type == 'Book' || item.isComic) {
       context.push(Destinations.book(item.id, serverId: item.serverId));
       return;
     }
@@ -185,8 +186,11 @@ class _BookBrowseScreenState extends State<BookBrowseScreen> {
 
   List<BookStat> _stats(AppLocalizations l10n) => [
     if (_vm.isMixedLibrary) ...[
-      BookStat(label: l10n.books, count: _vm.bookCount),
-      BookStat(label: l10n.audiobooks, count: _vm.audiobookCount),
+      if (_vm.bookCount > 0) BookStat(label: l10n.books, count: _vm.bookCount),
+      if (_vm.audiobookCount > 0)
+        BookStat(label: l10n.audiobooks, count: _vm.audiobookCount),
+      if (_vm.comicCount > 0)
+        BookStat(label: l10n.comics, count: _vm.comicCount),
     ] else
       BookStat(
         label: _vm.isAudiobookLibrary ? l10n.audiobooks : l10n.books,
@@ -208,8 +212,9 @@ class _BookBrowseScreenState extends State<BookBrowseScreen> {
       body: NavigationLayout(
         showBackButton: true,
         child: _vm.isLoading
-            ? Center(
-                child: CircularProgressIndicator(color: AppColorScheme.accent),
+            ? const SkeletonLibraryGrid(
+                cardWidth: 160,
+                aspectRatio: 2 / 3,
               )
             : RefreshIndicator(
                 onRefresh: _vm.refresh,
@@ -268,6 +273,7 @@ class _BookBrowseScreenState extends State<BookBrowseScreen> {
               child: BookScopeFilter(
                 value: _vm.scope,
                 onChanged: _vm.setScope,
+                availableScopes: _vm.availableScopes,
                 focusNode: _scopeFocusNode,
                 onVerticalNavigation: (isUp) =>
                     _moveVertical(scopeIndex, isUp),
@@ -298,17 +304,56 @@ class _BookBrowseScreenState extends State<BookBrowseScreen> {
           ),
         ),
       ),
-      if (_tab == 0)
-        ...[
+      if (_tab == 0) ...[
+        if (rows.isNotEmpty)
           for (var i = 0; i < rows.length; i++)
-            _buildShelf(rows[i], l10n, firstRowIndex + i),
-        ]
-      else
+            _buildShelf(rows[i], l10n, firstRowIndex + i)
+        else
+          _buildEmptyState(l10n),
+      ] else
         BookDiscoverTab(
           libraryId: widget.libraryId,
           isAudiobook: _vm.isAudiobookLibrary,
         ),
     ];
+  }
+
+  Widget _buildEmptyState(AppLocalizations l10n) {
+    final onSurface = AppColorScheme.onSurface;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 64),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.auto_stories_outlined,
+              size: 56,
+              color: onSurface.withValues(alpha: 0.35),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.noBooksFound,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: onSurface.withValues(alpha: 0.85),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.noBooksFoundDescription,
+              style: TextStyle(
+                fontSize: 14,
+                color: onSurface.withValues(alpha: 0.5),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildHero(
@@ -372,6 +417,7 @@ class _BookBrowseScreenState extends State<BookBrowseScreen> {
       imageUrlFor: _vm.bookImageUrl,
       subtitleFor: _vm.bookSubtitle,
       isAudiobookFor: _vm.isAudiobookItem,
+      isComicFor: _vm.isComicItem,
       remainingFor: _vm.remainingFor,
     );
   }

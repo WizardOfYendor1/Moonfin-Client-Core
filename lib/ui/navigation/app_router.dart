@@ -174,7 +174,11 @@ CustomTransitionPage<T> _opaqueFullScreenPage<T>({
     // go_router only auto-names builder-based routes, not pageBuilder ones.
     name: state.name ?? state.uri.path,
     opaque: true,
-    barrierColor: Colors.black,
+    // No barrier on Windows. The route is opaque with a zero-length
+    // transition, so the barrier is never visible - but it paints an opaque
+    // black ModalBarrier under the page, which would paint out the video
+    // behind the transparent player screen native HDR output relies on.
+    barrierColor: PlatformDetection.isWindows ? null : Colors.black,
     transitionDuration: Duration.zero,
     reverseTransitionDuration: Duration.zero,
     transitionsBuilder: (context, animation, secondaryAnimation, child) =>
@@ -807,11 +811,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: Destinations.seerrMediaDetail,
       builder: (context, state) {
-        final tmdbId = state.pathParameters['itemId']!;
+        final rawId = state.pathParameters['itemId']!;
         final kind = state.uri.queryParameters['mediaType'] == 'tv'
             ? TmdbItemKind.tv
             : TmdbItemKind.movie;
-        final ref = TmdbItemRef(kind, tmdbId);
+        final ref = TmdbItemRef.tryParse(rawId) ?? TmdbItemRef(kind, rawId);
         return ItemDetailScreen(
           key: ValueKey(ref.itemId),
           itemId: ref.itemId,
@@ -831,7 +835,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final personId = state.pathParameters['personId']!;
         final prefs = GetIt.instance<UserPreferences>();
-        if (prefs.get(UserPreferences.detailScreenStyle) == DetailScreenStyle.modern) {
+        if (prefs.get(UserPreferences.detailScreenStyle) != DetailScreenStyle.classic) {
           return ItemDetailScreen(
             key: ValueKey('tmdb:$personId'),
             itemId: 'tmdb:$personId',
@@ -850,12 +854,7 @@ class PlayerRouteObserver extends NavigatorObserver {
 
   bool _isPlayer(Route<dynamic> route) {
     final name = route.settings.name;
-    return name != null &&
-        (name.startsWith('/player/') ||
-         name.startsWith('/game-player/') ||
-         name == '/live-tv/player' ||
-         name == Destinations.audioPlayer ||
-         name == Destinations.videoPlayer);
+    return name != null && Destinations.isPlayerRoute(name);
   }
 
   @override

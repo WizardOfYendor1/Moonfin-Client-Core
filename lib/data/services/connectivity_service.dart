@@ -35,6 +35,8 @@ class ConnectivityService extends ChangeNotifier {
   final Duration _retryBase;
   static const _retryCap = Duration(seconds: 30);
 
+  static const _probeAttempts = 2;
+
   bool _isOnline = true;
   bool get isOnline => _isOnline;
 
@@ -192,18 +194,27 @@ class ConnectivityService extends ChangeNotifier {
     if (!GetIt.instance.isRegistered<MediaServerClient>()) return;
     final client = GetIt.instance<MediaServerClient>();
     final wasReachable = _serverReachable;
-    try {
-      await _pingDio.get('${client.baseUrl}/System/Ping');
-      _serverReachable = true;
-    } catch (e) {
-      _serverReachable = false;
-      if (wasReachable) {
-        ServerLog.network(
-          'Server marked unreachable, the probe failed',
-          level: ServerLogLevel.warning,
-          error: e,
-        );
+    Object? failure;
+    // A pooled connection the server already dropped fails exactly like a
+    // server that went away, and sending the whole app to the downloads
+    // catalog over one of those is worse than asking twice. The failure takes
+    // the bad connection with it, so the second try needs no wait in front.
+    for (var attempt = 0; attempt < _probeAttempts; attempt++) {
+      try {
+        await _pingDio.get('${client.baseUrl}/System/Ping');
+        failure = null;
+        break;
+      } catch (e) {
+        failure = e;
       }
+    }
+    _serverReachable = failure == null;
+    if (!_serverReachable && wasReachable) {
+      ServerLog.network(
+        'Server marked unreachable, every probe failed',
+        level: ServerLogLevel.warning,
+        error: failure,
+      );
     }
     if (_serverReachable) {
       if (!wasReachable) ServerLog.network('Server reachable again');

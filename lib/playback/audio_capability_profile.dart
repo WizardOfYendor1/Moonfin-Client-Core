@@ -70,9 +70,32 @@ class AudioCapabilityProfile {
   bool get hasMultichannelCapability {
     if (maxPcmChannels > 2) return true;
     if (!hasCompressedPassthroughRoute) return false;
-    return activeRouteType == AudioRouteType.hdmi ||
-        activeRouteType == AudioRouteType.arc ||
-        activeRouteType == AudioRouteType.earc;
+    return isBitstreamRoute;
+  }
+
+  /// Whether this route carries a bitstream to an external decoder. Leaving
+  /// the class is what a sink vanishing looks like, while moving within it
+  /// shows up in the per-format flags instead.
+  bool get isBitstreamRoute =>
+      activeRouteType == AudioRouteType.hdmi ||
+      activeRouteType == AudioRouteType.arc ||
+      activeRouteType == AudioRouteType.earc;
+
+  /// Whether landing this profile would take a capability away from
+  /// [previous]. Any loss counts, because lowering capabilities makes every
+  /// playback transcode until something raises them again. Per-flag rather
+  /// than the aggregate, since [fromMap] already gates the lossless formats
+  /// by route, so a move from HDMI to ARC shows up here as TrueHD lost.
+  bool isDowngradeFrom(AudioCapabilityProfile previous) {
+    if (previous.isBitstreamRoute && !isBitstreamRoute) return true;
+    if (maxPcmChannels < previous.maxPcmChannels) return true;
+    if (previous.canPassthroughAc3 && !canPassthroughAc3) return true;
+    if (previous.canPassthroughEac3 && !canPassthroughEac3) return true;
+    if (previous.canPassthroughDts && !canPassthroughDts) return true;
+    if (previous.canPassthroughDtsHd && !canPassthroughDtsHd) return true;
+    if (previous.canPassthroughTrueHd && !canPassthroughTrueHd) return true;
+    if (previous.routeSupportsHdAudio && !routeSupportsHdAudio) return true;
+    return false;
   }
 
   factory AudioCapabilityProfile.fromMap(Map<String, dynamic>? values) {

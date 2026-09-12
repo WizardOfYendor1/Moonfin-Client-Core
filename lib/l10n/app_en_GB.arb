@@ -371,7 +371,7 @@
             }
         }
     },
-    "failedToLoadFavorites": "Failed to load favorites",
+    "failedToLoadFavorites": "Failed to load favourites",
     "@failedToLoadFavorites": {
         "description": "Error when favorites cannot be loaded"
     },
@@ -379,11 +379,11 @@
     "@retry": {
         "description": "Button label to retry a failed operation"
     },
-    "noFavoritesYet": "No favorites yet",
+    "noFavoritesYet": "No favourites yet",
     "@noFavoritesYet": {
         "description": "Empty state when user has no favorites"
     },
-    "favorites": "Favorites",
+    "favorites": "Favourites",
     "@favorites": {
         "description": "Favorites section heading and filter label"
     },
@@ -625,7 +625,7 @@
     "@pickUpAgain": {
         "description": "Book rail title for in-progress bookmarked items"
     },
-    "bookHighlightsDescription": "Your books with highlights, favorites, or reading progress.",
+    "bookHighlightsDescription": "Your books with highlights, favourites, or reading progress.",
     "@bookHighlightsDescription": {
         "description": "Subtitle for saved highlights section"
     },
@@ -637,7 +637,7 @@
     "@handPickedFromListeningQueue": {
         "description": "Subtitle for primary book rail from audiobooks"
     },
-    "booksWithHighlights": "Books with highlights, favorites, or reading progress.",
+    "booksWithHighlights": "Books with highlights, favourites, or reading progress.",
     "@booksWithHighlights": {
         "description": "Subtitle for bookmarks secondary rail"
     },
@@ -1119,11 +1119,11 @@
     "@finished": {
         "description": "Status label for a finished book"
     },
-    "favorited": "Favorited",
+    "favorited": "Favourited",
     "@favorited": {
         "description": "Status label for a favorited item"
     },
-    "favorite": "Favorite",
+    "favorite": "Favourite",
     "@favorite": {
         "description": "Action button label to favorite an item"
     },
@@ -2167,23 +2167,23 @@
     "@movie": {
         "description": "Movie category chip label"
     },
-    "removedFromFavoriteChannels": "Removed from favorite channels",
+    "removedFromFavoriteChannels": "Removed from favourite channels",
     "@removedFromFavoriteChannels": {
         "description": "Snackbar confirmation after removing a channel from favorites"
     },
-    "addedToFavoriteChannels": "Added to favorite channels",
+    "addedToFavoriteChannels": "Added to favourite channels",
     "@addedToFavoriteChannels": {
         "description": "Snackbar confirmation after adding a channel to favorites"
     },
-    "failedToUpdateFavoriteChannel": "Failed to update favorite channel",
+    "failedToUpdateFavoriteChannel": "Failed to update favourite channel",
     "@failedToUpdateFavoriteChannel": {
         "description": "Error when toggling channel favorite fails"
     },
-    "unfavoriteChannel": "Unfavorite Channel",
+    "unfavoriteChannel": "Unfavourite Channel",
     "@unfavoriteChannel": {
         "description": "Button label to remove a channel from favorites"
     },
-    "favoriteChannel": "Favorite Channel",
+    "favoriteChannel": "Favourite Channel",
     "@favoriteChannel": {
         "description": "Button label to add a channel to favorites"
     },
@@ -2312,7 +2312,7 @@
     "@seerr": {
         "description": "Seerr brand name"
     },
-    "savedMedia": "Saved Media",
+    "savedMedia": "Downloads",
     "@savedMedia": {
         "description": "Header title for saved/downloaded media screen"
     },
@@ -2641,7 +2641,7 @@
     "@serverSettingsUsersLibraries": {
         "description": "Administration section description"
     },
-    "customization": "Customization",
+    "customization": "Customisation",
     "@customization": {
         "description": "Customization section title"
     },
@@ -3153,11 +3153,11 @@
     "@textStrokeColor": {
         "description": "Setting for subtitle text stroke color"
     },
-    "subtitleCustomization": "Subtitle Customization",
+    "subtitleCustomization": "Subtitle Customisation",
     "@subtitleCustomization": {
         "description": "Title of the subtitle customization screen"
     },
-    "subtitleCustomizationDescription": "Customize subtitle appearance",
+    "subtitleCustomizationDescription": "Customise subtitle appearance",
     "@subtitleCustomizationDescription": {
         "description": "Subtitle for the subtitle customization tile"
     },
@@ -3260,7 +3260,7 @@
             }
         }
     },
-    "customizationProfile": "Customization Profile",
+    "customizationProfile": "Customisation Profile",
     "@customizationProfile": {
         "description": "Setting for customization profile"
     },
@@ -3408,7 +3408,7 @@
     "@showGenresButton": {
         "description": "Setting for showing genres button"
     },
-    "showFavoritesButton": "Show Favorites Button",
+    "showFavoritesButton": "Show Favourites Button",
     "@showFavoritesButton": {
         "description": "Setting for showing favorites button"
     },
@@ -4007,7 +4007,7 @@
     "@whatSyncControls": {
         "description": "Info title for sync explanation"
     },
-    "syncControlsDescription": "Sync only controls whether plugin-backed settings are pushed to and pulled from the server. Profile selection and profile sync actions are in Customization settings when plugin sync is enabled.",
+    "syncControlsDescription": "Sync only controls whether plugin-backed settings are pushed to and pulled from the server. Profile selection and profile sync actions are in Customisation settings when plugin sync is enabled.",
     "@syncControlsDescription": {
         "description": "Description of what sync controls"
     },
@@ -6269,7 +6269,7 @@
     "offlineNoInternet": "You are offline. Only downloaded content is available.",
     "offlineFileNotAvailable": "File not available",
     "offlineSwitchServer": "Switch Server",
-    "offlineSavedMedia": "Saved Media",
+    "offlineSavedMedia": "Downloads",
     "castGoogleCast": "Google Cast",
     "castAirPlay": "AirPlay",
     "castDlna": "DLNA",
@@ -6377,8 +6377,8 @@
     "trackActionDeleteFromPlaylist": "Delete from Playlist",
     "trackActionMoveUp": "Move Up",
     "trackActionMoveDown": "Move Down",
-    "trackActionRemoveFromFavorites": "Remove from Favorites",
-    "trackActionAddToFavorites": "Add to Favorites",
+    "trackActionRemoveFromFavorites": "Remove from Favourites",
+    "trackActionAddToFavorites": "Add to Favourites",
     "trackActionGoToAlbum": "Go to Album",
     "trackActionGoToArtist": "Go to Artist",
     "trackActionDownloading": "Downloading {name}…",
@@ -6498,11 +6498,11 @@
     "@contextMenuMarkUnwatched": {
         "description": "Context menu action to mark an item as unwatched"
     },
-    "contextMenuAddToFavorites": "Add to Favorites",
+    "contextMenuAddToFavorites": "Add to Favourites",
     "@contextMenuAddToFavorites": {
         "description": "Context menu action to add an item to favorites"
     },
-    "contextMenuRemoveFromFavorites": "Remove from Favorites",
+    "contextMenuRemoveFromFavorites": "Remove from Favourites",
     "@contextMenuRemoveFromFavorites": {
         "description": "Context menu action to remove an item from favorites"
     },
@@ -6513,7 +6513,7 @@
     "settingsAdministrationSubtitle": "Access the server administration panel",
     "settingsAccountSecurity": "Account & Security",
     "settingsAccountSecuritySubtitle": "Authentication, PIN code, and parental controls",
-    "settingsPersonalization": "Personalization",
+    "settingsPersonalization": "Personalisation",
     "settingsPersonalizationSubtitle": "Theme, navigation, home rows, and library visibility",
     "settingsDynamicContent": "Dynamic Content",
     "settingsDynamicContentSubtitle": "Media Bar and visual overlays",
@@ -6536,7 +6536,7 @@
     "settingsTwentyFourHourClockSubtitle": "Use 24-hour time formatting wherever the clock is shown",
     "settingsShowShuffleButtonInNavigation": "Show the shuffle button in the navigation bar",
     "settingsShowGenresButtonInNavigation": "Show the genres button in the navigation bar",
-    "settingsShowFavoritesButtonInNavigation": "Show the favorites button in the navigation bar",
+    "settingsShowFavoritesButtonInNavigation": "Show the favourites button in the navigation bar",
     "settingsShowLibrariesButtonInNavigation": "Show the libraries button in the navigation bar",
     "settingsLibraryVisibilitySubtitle": "Toggle home page visibility per library. Restart Moonfin for changes to take effect.",
     "settingsMediaBarAndLocalPreviews": "Media Bar & Local Previews",
@@ -6585,7 +6585,7 @@
     "settingsAutomationAndQueue": "Automation & Queue",
     "settingsAutomationAndQueueSubtitle": "Automated playback and sequencing",
     "settingsOfflineDownloadsSubtitle": "Download quality, storage limits, and queue size",
-    "settingsSyncplaySubtitle": "Synchronization logic for group sessions",
+    "settingsSyncplaySubtitle": "Synchronisation logic for group sessions",
     "settingsAdvancedOptionsSubtitle": "Specialized player features. Use with caution, as some options may cause playback issues",
     "settingsSkipIntrosAndOutros": "Skip Intros and Outros?",
     "settingsPromptUser": "Prompt User",
@@ -7066,10 +7066,10 @@
     "homeRowsSection": "Home Rows",
     "rowsType": "Row Type",
     "rowsTypeDescription": "Classic keeps per-row image type and info overlay. Modern uses portrait-to-backdrop rows.",
-    "displayFavoritesRows": "Display Favorites Rows",
-    "displayFavoritesRowsSubtitle": "Show Favorite Movies, Series, and other favorite rows in Home Sections.",
-    "favoritesRowSorting": "Favorites Row Sorting",
-    "favoritesRowSortingDescription": "Sort Favorites rows by date added, release date, alphabetically, and more.",
+    "displayFavoritesRows": "Display Favourites Rows",
+    "displayFavoritesRowsSubtitle": "Show Favourite Movies, Series, and other favourite rows in Home Sections.",
+    "favoritesRowSorting": "Favourites Row Sorting",
+    "favoritesRowSortingDescription": "Sort Favourites rows by date added, release date, alphabetically, and more.",
     "displayCollectionsRows": "Display Collections Rows",
     "displayCollectionsRowsSubtitle": "Show Collections rows in Home Sections.",
     "collectionsRowSorting": "Collections Row Sorting",
@@ -7146,7 +7146,7 @@
     "webDiagnosticsNoMixedContentDetected": "No obvious mixed-content configuration detected from current runtime settings.",
     "webDiagnosticsCorsChecklist": "CORS Checklist",
     "webDiagnosticsCorsChecklistItem1": "• Allow the browser origin in Access-Control-Allow-Origin.",
-    "webDiagnosticsCorsChecklistItem2": "• Include Authorization, X-Emby-Authorization, and X-Emby-Token in Access-Control-Allow-Headers.",
+    "webDiagnosticsCorsChecklistItem2": "• Include Authorisation, X-Emby-Authorisation, and X-Emby-Token in Access-Control-Allow-Headers.",
     "webDiagnosticsCorsChecklistItem3": "• Expose Content-Range and Accept-Ranges for streaming and seek behavior.",
     "webDiagnosticsCorsChecklistItem4": "• Return 204 to OPTIONS preflight requests.",
     "webDiagnosticsHeaderSnippetTitle": "Example Header Snippet (nginx-style)",
@@ -8771,7 +8771,7 @@
     "adminLibSaveTrickplayWithMedia": "Save trickplay images into media folders",
     "adminLibAutomaticSeriesGrouping": "Automatically merge series that are spread across multiple folders",
     "adminLibSeasonZeroName": "Season zero display name",
-    "adminLibLufsScan": "Enable LUFS scan for audio normalization",
+    "adminLibLufsScan": "Enable LUFS scan for audio normalisation",
     "adminLibPreferNonstandardArtist": "Prefer non-standard artists tag",
     "adminLibAutoAddToCollection": "Automatically add movies to collections",
     "adminParentalControl": "Parental Control",
@@ -10068,5 +10068,208 @@
     "runSetupAgain": "Run setup again",
     "@runSetupAgain": {
         "description": "Starts the first-run setup wizard again from settings"
+    },
+    "controller": "Controller",
+    "@controller": {
+        "description": "Settings section header for game controller options"
+    },
+    "gamepadNavigation": "Gamepad navigation",
+    "@gamepadNavigation": {
+        "description": "Settings label for the switch that lets a game controller move focus and select items"
+    },
+    "gamepadNavigationDescription": "Let a connected game controller move focus and select items",
+    "@gamepadNavigationDescription": {
+        "description": "Settings subtitle for the gamepad navigation switch"
+    },
+    "searchingSubtitles": "Searching for subtitles…",
+    "@searchingSubtitles": {
+        "description": "Shown while a remote subtitle search is running"
+    },
+    "downloadingSubtitle": "Downloading subtitle…",
+    "@downloadingSubtitle": {
+        "description": "Shown while a chosen subtitle is downloaded and the server is picking it up"
+    },
+    "aiTranslated": "AI Translated",
+    "@aiTranslated": {
+        "description": "Label for a remote subtitle the provider marked as AI translated"
+    },
+    "machineTranslated": "Machine Translated",
+    "@machineTranslated": {
+        "description": "Label for a remote subtitle the provider marked as machine translated"
+    },
+    "hearingImpaired": "SDH",
+    "@hearingImpaired": {
+        "description": "Label for a remote subtitle marked as hearing impaired"
+    },
+    "framerateFps": "{rate} fps",
+    "@framerateFps": {
+        "description": "Framerate of a remote subtitle, shown in its detail line",
+        "placeholders": {
+            "rate": {
+                "type": "String"
+            }
+        }
+    },
+    "trickplayDisplayStyleSingle": "Single Thumbnail",
+    "@trickplayDisplayStyleSingle": {
+        "description": "Trickplay display style option: one thumbnail at the scrub position"
+    },
+    "trickplayDisplayStyleStrip": "Filmstrip",
+    "@trickplayDisplayStyleStrip": {
+        "description": "Trickplay display style option: a row of 5 thumbnails around the scrub position"
+    },
+    "trickplayModeFull": "Full Screen",
+    "@trickplayModeFull": {
+        "description": "Trickplay mode option: temporarily replaces the video with the trickplay image while scrubbing"
+    },
+    "trickplaySettingsPreviewHint": "Drag the slider to preview scrubbing",
+    "@trickplaySettingsPreviewHint": {
+        "description": "Hint shown below the live trickplay settings preview"
+    },
+    "trickplayPreviewScale": "Preview Size",
+    "@trickplayPreviewScale": {
+        "description": "Setting for the size of the trickplay seek preview"
+    },
+    "trickplayVerticalOffset": "Distance From Seekbar",
+    "@trickplayVerticalOffset": {
+        "description": "Setting for the vertical position of the trickplay seek preview relative to the seekbar"
+    },
+    "trickplayFollowScrubPosition": "Follow Scrub Position",
+    "@trickplayFollowScrubPosition": {
+        "description": "Setting for whether the trickplay preview horizontally tracks the scrub handle"
+    },
+    "trickplayFollowScrubPositionSubtitle": "Preview slides along the seekbar as you scrub, instead of staying centred",
+    "@trickplayFollowScrubPositionSubtitle": {
+        "description": "Description for the trickplay follow-scrub-position setting"
+    },
+    "seerrDownloading": "Downloading",
+    "@seerrDownloading": {
+        "description": "Seerr download bar label when the server reports no usable file sizes"
+    },
+    "seerrDownloadingSize": "Downloading · {done} / {total}",
+    "@seerrDownloadingSize": {
+        "description": "Label above the Seerr download progress bar when byte counts are known",
+        "placeholders": {
+            "done": {
+                "type": "String"
+            },
+            "total": {
+                "type": "String"
+            }
+        }
+    },
+    "seerrDownloadedOfTotal": "{done} / {total}",
+    "@seerrDownloadedOfTotal": {
+        "description": "Short form of the Seerr download label, used when the card is too narrow for the verb",
+        "placeholders": {
+            "done": {
+                "type": "String"
+            },
+            "total": {
+                "type": "String"
+            }
+        }
+    },
+    "seerrPercentValue": "{percent}%",
+    "@seerrPercentValue": {
+        "description": "Standalone percentage shown at the end of the Seerr download bar label",
+        "placeholders": {
+            "percent": {
+                "type": "int"
+            }
+        }
+    },
+    "serverMessages": "Messages",
+    "@serverMessages": {
+        "description": "Menu button and window title for messages sent by the server admin"
+    },
+    "serverMessagesEmpty": "No messages from your server yet",
+    "@serverMessagesEmpty": {
+        "description": "Shown in the messages window when the server has sent nothing"
+    },
+    "serverMessagesMarkAllRead": "Mark all as read",
+    "@serverMessagesMarkAllRead": {
+        "description": "Button in the messages window that marks every message as read"
+    },
+    "serverMessagesShowButton": "Show messages button",
+    "@serverMessagesShowButton": {
+        "description": "Setting that shows or hides the messages button in the menu"
+    },
+    "serverMessagesShowButtonSubtitle": "Adds a button to the menu for messages sent by your server admin",
+    "@serverMessagesShowButtonSubtitle": {
+        "description": "Explains the setting that shows or hides the messages button"
+    },
+    "performanceMode": "Performance",
+    "@performanceMode": {
+        "description": "Label for the device performance setting"
+    },
+    "performanceModeSubtitle": "Auto measures this device and holds back on the ones short on memory, which keeps fewer images in memory and leaves trailers as still images. Takes full effect on the next launch.",
+    "@performanceModeSubtitle": {
+        "description": "Explanation under the device performance setting"
+    },
+    "performanceModeAuto": "Auto",
+    "@performanceModeAuto": {
+        "description": "Performance option: measure the device"
+    },
+    "performanceModeStandard": "Standard",
+    "@performanceModeStandard": {
+        "description": "Performance option: never hold back"
+    },
+    "performanceModeReduced": "Reduced",
+    "@performanceModeReduced": {
+        "description": "Performance option: always hold back"
+    },
+    "trailerPreviewHeldBack": "Off because Performance is set to Reduced for this device",
+    "@trailerPreviewHeldBack": {
+        "description": "Shown under the trailer preview switch when the device tier suppresses trailers"
+    },
+    "showMpvStats": "Show mpv Statistics (Shift+I)",
+    "@showMpvStats": {
+        "description": "Button in the stream info sheet that shows mpv's own statistics overlay; Shift+I is the keyboard shortcut"
+    },
+    "hideMpvStats": "Hide mpv Statistics (Shift+I)",
+    "@hideMpvStats": {
+        "description": "Button in the stream info sheet that hides mpv's own statistics overlay; Shift+I is the keyboard shortcut"
+    },
+    "hdrOutput": "HDR output",
+    "@hdrOutput": {
+        "description": "Stream info label for whether HDR is reaching the display untouched"
+    },
+    "hdrOutputActive": "Active — {format}",
+    "@hdrOutputActive": {
+        "description": "Stream info value when HDR passthrough is running, e.g. 'Active — HDR10 (PQ, BT.2020)'",
+        "placeholders": {
+            "format": {
+                "type": "String"
+            }
+        }
+    },
+    "hdrOutputActiveTonemapped": "Active — tone-mapped to SDR for this display",
+    "@hdrOutputActiveTonemapped": {
+        "description": "Stream info value when native output is engaged but the window sits on a display without HDR, so the renderer is tone-mapping"
+    },
+    "hdrOutputDisplayNotHdr": "Inactive — display is not in HDR mode",
+    "@hdrOutputDisplayNotHdr": {
+        "description": "Stream info value when the display has not been switched into HDR"
+    },
+    "hdrOutputContentSdr": "Inactive — content is SDR",
+    "@hdrOutputContentSdr": {
+        "description": "Stream info value when the title itself is not HDR"
+    },
+    "hdrOutputDisabled": "Inactive — turned off in settings",
+    "@hdrOutputDisabled": {
+        "description": "Stream info value when the native HDR output preference is off"
+    },
+    "hdrOutputFailed": "Inactive — could not start, using the standard path",
+    "@hdrOutputFailed": {
+        "description": "Stream info value when the native HDR window could not be created"
+    },
+    "nativeHdrOutput": "Native HDR output",
+    "@nativeHdrOutput": {
+        "description": "Settings label for sending HDR to the display untouched"
+    },
+    "nativeHdrOutputDescription": "Sends HDR video to the display untouched instead of converting it to SDR. Used only when the display is already in HDR mode and the title is HDR.",
+    "@nativeHdrOutputDescription": {
+        "description": "Settings description for native HDR output"
     }
 }

@@ -370,6 +370,21 @@ class Destinations {
       '/admin/logs/${Uri.encodeComponent(fileName)}';
   static String adminMetadata(String itemId) => '/admin/metadata/$itemId';
 
+  /// Whether [path] is one of the full-screen player routes: video, audio,
+  /// the reader and its overlays, live TV, or a game.
+  static bool isPlayerRoute(String path) =>
+      path.startsWith('/player/') ||
+      path == liveTvPlayer ||
+      path.startsWith('/game-player/');
+
+  /// The video player turns Escape into leaving fullscreen and the game player
+  /// turns it into its own overlay, so both need the global handlers to stand
+  /// aside. Every other playback screen relies on being popped from there, so
+  /// treating the whole group alike leaves Escape doing nothing in a book, a
+  /// photo or a trailer.
+  static bool routeReadsBackKey(String path) =>
+      path == videoPlayer || path.startsWith('/game-player/');
+
   static String seerrBrowseWith({
     required String filterId,
     required String filterName,

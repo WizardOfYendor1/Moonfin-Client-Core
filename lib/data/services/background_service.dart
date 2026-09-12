@@ -44,7 +44,10 @@ class BackgroundService {
   Stream<String?> get backgroundStream => _backgroundController.stream;
   Stream<BlurContext> get blurContextStream => _blurContextController.stream;
 
-  void setBackground(AggregatedItem? item, {BlurContext context = BlurContext.details}) {
+  void setBackground(
+    AggregatedItem? item, {
+    BlurContext context = BlurContext.details,
+  }) {
     if (item == null) return clearBackgrounds();
 
     _blurContext = context;
