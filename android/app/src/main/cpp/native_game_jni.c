@@ -38,6 +38,7 @@ typedef struct {
   int has_render_thread;
   atomic_int render_running;
   atomic_int frame_dirty;
+  int egl_backend_installed;
 } native_ctx;
 
 // libretro allows one session per process, so the context is a single global.
@@ -239,7 +240,10 @@ static void teardown(JNIEnv *env) {
   // lh_stop above already tore the context down on the emulation thread, so
   // the backend is not holding this window any more; clear it before the
   // reference goes away so nothing can pick it back up.
-  egl_backend_shutdown();
+  if (g_ctx.egl_backend_installed) {
+    egl_backend_shutdown();
+    g_ctx.egl_backend_installed = 0;
+  }
   if (g_ctx.window) {
     ANativeWindow_release(g_ctx.window);
     g_ctx.window = NULL;
@@ -288,7 +292,7 @@ static void release_options(JNIEnv *env, int count, const char **keys,
 JNI(jdoubleArray, nativeLoad)(
     JNIEnv *env, jobject thiz, jstring core, jstring corePath, jstring romPath,
     jstring systemDir, jstring saveDir, jstring gameId, jobjectArray optKeys,
-    jobjectArray optVals) {
+    jobjectArray optVals, jboolean hardware_rendering_enabled) {
   (void)core;
   teardown(env);
 
@@ -322,16 +326,21 @@ JNI(jdoubleArray, nativeLoad)(
     LOGE("Could not allocate libretro host");
     return NULL;
   }
-  // Must happen before lh_load: SET_HW_RENDER arrives inside retro_load_game,
-  // and a backend registered after that is too late for the core to use.
-  // Failure here is not fatal - the host simply keeps refusing hardware
-  // contexts, which is exactly how every build behaved before this existed.
-  if (egl_backend_install(g_ctx.host) != 0) {
-    LOGE("EGL backend failed to register; hardware cores will be refused");
+  if (hardware_rendering_enabled) {
+    // Must happen before lh_load: SET_HW_RENDER arrives inside
+    // retro_load_game, and a backend registered after that is too late for the
+    // core to use. When disabled, no backend is registered and libretro stays
+    // on its existing software-frame path.
+    if (egl_backend_install(g_ctx.host) != 0) {
+      LOGE("EGL backend failed to register; hardware cores will be refused");
+    } else {
+      g_ctx.egl_backend_installed = 1;
+      pthread_mutex_lock(&g_window_lock);
+      egl_backend_set_window(g_ctx.window);
+      pthread_mutex_unlock(&g_window_lock);
+    }
   } else {
-    pthread_mutex_lock(&g_window_lock);
-    egl_backend_set_window(g_ctx.window);
-    pthread_mutex_unlock(&g_window_lock);
+    LOGI("Hardware rendering disabled for this session");
   }
   g_ctx.bridge = (*env)->NewGlobalRef(env, thiz);
   if (!g_ctx.bridge) {

@@ -1014,6 +1014,12 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: true,
   );
 
+  /// Enables Android's experimental libretro hardware-rendering path.
+  static final useHardwareRendering = Preference(
+    key: 'pref_use_hardware_rendering',
+    defaultValue: true,
+  );
+
   static final seriesThumbnailsEnabled = Preference(
     key: 'pref_enable_series_thumbnails',
     defaultValue: false,
