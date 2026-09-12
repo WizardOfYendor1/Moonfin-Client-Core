@@ -16,9 +16,7 @@ void main() {
     }
   });
 
-  test('derives positive time density for the fixed fetch window', () {
-    expect(GuideLayoutProfile.guideWindow, const Duration(minutes: 150));
-
+  test('derives positive time density for every responsive window', () {
     for (final width in [120.0, 240.0, 480.0, 720.0, 960.0, 1920.0, 3840.0]) {
       final profile = GuideLayoutProfile.fromAvailableArea(
         availableWidth: width,
@@ -30,20 +28,17 @@ void main() {
     }
   });
 
-  test('shows a 2.5-hour window of programming at every width', () {
-    expect(GuideLayoutProfile.guideWindow, const Duration(minutes: 150));
-
+  test('uses half-hour windows bounded between 2.5 and 6 hours', () {
     for (final width in [120.0, 240.0, 480.0, 720.0, 960.0, 1920.0, 3840.0]) {
       final profile = GuideLayoutProfile.fromAvailableArea(
         availableWidth: width,
         availableHeight: 540,
       );
 
-      // Five half-hour ticks, and a rendered window that exactly fills the
-      // grid: pixelsPerMinute * 150 is the guide area's width.
-      expect(profile.targetSlots, 5);
+      expect(profile.targetSlots, inInclusiveRange(5, 12));
+      expect(profile.guideWindow.inMinutes, profile.targetSlots * 30);
       expect(
-        profile.pixelsPerMinute * 150,
+        profile.pixelsPerMinute * profile.guideWindow.inMinutes,
         // The profile floors the guide area at one pixel, which only bites at
         // widths the channel column alone consumes.
         closeTo(math.max(1.0, width - profile.channelColumnWidth), 0.0001),
@@ -53,15 +48,46 @@ void main() {
   });
 
   test('gives a 30-minute cell a readable width on a 1080p television', () {
-    // 1920 physical at density 2 is 960 logical; the channel column is 192 of
-    // it, leaving 768 for 150 minutes.
+    // 1920 physical at density 2 is 960 logical. This remains the compact TV
+    // density: five half-hour slots with a narrower, content-sized rail.
     final profile = GuideLayoutProfile.fromAvailableArea(
       availableWidth: 960,
       availableHeight: 540,
     );
 
-    expect(profile.channelColumnWidth, 192);
-    expect(profile.pixelsPerMinute, closeTo(5.12, 0.0001));
-    expect(30 * profile.pixelsPerMinute, closeTo(153.6, 0.0001));
+    expect(profile.guideWindow, const Duration(minutes: 150));
+    expect(profile.channelColumnWidth, closeTo(153.6, 0.0001));
+    expect(profile.pixelsPerMinute, closeTo(5.376, 0.0001));
+    expect(30 * profile.pixelsPerMinute, closeTo(161.28, 0.0001));
+  });
+
+  test(
+    'uses six hours on a wide browser without widening the channel rail',
+    () {
+      final profile = GuideLayoutProfile.fromAvailableArea(
+        availableWidth: 2000,
+        availableHeight: 900,
+      );
+
+      expect(profile.guideWindow, const Duration(hours: 6));
+      expect(profile.targetSlots, 12);
+      expect(profile.channelColumnWidth, 168);
+      expect(30 * profile.pixelsPerMinute, closeTo(152.6667, 0.0001));
+    },
+  );
+
+  test('allows bounded channel-rail growth for accessibility text', () {
+    final regular = GuideLayoutProfile.fromAvailableArea(
+      availableWidth: 1200,
+      availableHeight: 700,
+    );
+    final scaled = GuideLayoutProfile.fromAvailableArea(
+      availableWidth: 1200,
+      availableHeight: 700,
+      textScaleFactor: 2,
+    );
+
+    expect(regular.channelColumnWidth, 168);
+    expect(scaled.channelColumnWidth, 200);
   });
 }

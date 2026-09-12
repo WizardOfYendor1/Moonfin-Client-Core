@@ -115,7 +115,11 @@ String? _focusedLabel() => FocusManager.instance.primaryFocus?.debugLabel;
 /// (the grid and the time header, which are kept in sync).
 List<double> _horizontalOffsets(WidgetTester tester) => tester
     .stateList<ScrollableState>(find.byType(Scrollable))
-    .where((state) => state.position.axis == Axis.horizontal)
+    .where(
+      (state) =>
+          state.position.axis == Axis.horizontal &&
+          state.widget.physics is! NeverScrollableScrollPhysics,
+    )
     .map((state) => state.position.pixels)
     .toList();
 
@@ -537,6 +541,70 @@ void main() {
     expect(_focusedCell()!.row, 0);
     expect(_focusedCell()!.index, _cellIndexForRow(0, anchorMinutes));
     expect(_horizontalOffsets(tester), offsets);
+  });
+
+  testWidgets('the channel column handles ordinary vertical arrows', (
+    tester,
+  ) async {
+    await pumpGuide(tester);
+
+    final first = _nodeLabelled(tester, 'GuideChannel:0');
+    first.requestFocus();
+    await tester.pumpAndSettle();
+
+    final downResult = first.onKeyEvent!(
+      first,
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.arrowDown,
+        logicalKey: LogicalKeyboardKey.arrowDown,
+        timeStamp: Duration.zero,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(downResult, KeyEventResult.handled);
+    expect(_focusedLabel(), 'GuideChannel:1');
+
+    final second = _nodeLabelled(tester, 'GuideChannel:1');
+    final upResult = second.onKeyEvent!(
+      second,
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.arrowUp,
+        logicalKey: LogicalKeyboardKey.arrowUp,
+        timeStamp: Duration.zero,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(upResult, KeyEventResult.handled);
+    expect(_focusedLabel(), 'GuideChannel:0');
+  });
+
+  testWidgets('RIGHT enters the programme row and LEFT returns to its channel', (
+    tester,
+  ) async {
+    await pumpGuide(tester);
+
+    final channel = _nodeLabelled(tester, 'GuideChannel:1');
+    channel.requestFocus();
+    await tester.pumpAndSettle();
+
+    final rightResult = channel.onKeyEvent!(
+      channel,
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.arrowRight,
+        logicalKey: LogicalKeyboardKey.arrowRight,
+        timeStamp: Duration.zero,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(rightResult, KeyEventResult.handled);
+    expect(_focusedLabel(), startsWith('GuideProgramRow1:'));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(_focusedLabel(), 'GuideChannel:1');
   });
 
   testWidgets('UP from row zero reaches the mini player in miniPlayerMode', (

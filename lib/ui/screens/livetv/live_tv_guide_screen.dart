@@ -169,6 +169,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     availableWidth: 960,
     availableHeight: 540,
   );
+  Duration? _pendingGuideWindow;
 
   /// The grid's selection model; vertical navigation resolves against its
   /// anchor time instead of focus geometry. Seeded on the first cell focus.
@@ -231,7 +232,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       _layoutProfile = profile;
       unawaited(
         _vm.load(
-          window: GuideLayoutProfile.guideWindow,
+          window: profile.guideWindow,
           windowStart: guideLeftEdge(DateTime.now()),
           livePosition: true,
         ),
@@ -249,7 +250,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   Future<void> _resumeGuide(DateTime now) async {
     await _vm.reloadIfStale(
-      window: GuideLayoutProfile.guideWindow,
+      window: _layoutProfile.guideWindow,
       windowStart: guideLeftEdge(now),
     );
     if (!mounted) return;
@@ -673,6 +674,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             PlatformDetection.isTV ||
             PlatformDetection.useDesktopUi ||
             constraints.maxWidth >= constraints.maxHeight;
+        if (landscape) _scheduleGuideWindowUpdate(profile.guideWindow);
         return Padding(
           padding: EdgeInsets.only(
             top: _contentTopInset(),
@@ -699,6 +701,25 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         child: body,
       ),
     );
+  }
+
+  void _scheduleGuideWindowUpdate(Duration window) {
+    if (_vm.state != GuideState.ready ||
+        window == _vm.guideWindow ||
+        window == _pendingGuideWindow) {
+      return;
+    }
+    _pendingGuideWindow = window;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _pendingGuideWindow != window) return;
+      try {
+        await _vm.setWindow(window);
+      } finally {
+        if (mounted && _pendingGuideWindow == window) {
+          _pendingGuideWindow = null;
+        }
+      }
+    });
   }
 
   Widget _buildLandscape() {
@@ -1389,8 +1410,30 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           );
           return KeyEventResult.handled;
         }
-        if (index == 0 && event.logicalKey.isUpKey) {
-          _focusWindowBarFromGrid();
+        final key = event.logicalKey;
+        if (key.isUpKey) {
+          _onNavigationKey();
+          if (index == 0) {
+            _focusWindowBarFromGrid();
+          } else {
+            _focusChannelRow(index - 1);
+          }
+          return KeyEventResult.handled;
+        }
+        if (key.isDownKey) {
+          _onNavigationKey();
+          if (index < _vm.filteredChannels.length - 1) {
+            _focusChannelRow(index + 1);
+          }
+          return KeyEventResult.handled;
+        }
+        if (key.isRightKey) {
+          _onNavigationKey();
+          _focusProgramFromChannel(index);
+          return KeyEventResult.handled;
+        }
+        if (key.isLeftKey) {
+          _onNavigationKey();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
@@ -1441,6 +1484,32 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   /// state produces, so there is no real cell to land on yet.
   static bool _cellsAreLoading(List<GuideCell> cells) =>
       cells.length == 1 && cells.first.kind == GuideCellKind.loading;
+
+  /// Enters the programme row at the same timeline anchor the viewer last
+  /// used, falling back to now when focus arrived through the channel rail.
+  void _focusProgramFromChannel(int rowIndex) {
+    final channels = _vm.filteredChannels;
+    if (rowIndex < 0 || rowIndex >= channels.length) return;
+    final cells = _cellsForChannel(channels[rowIndex].id);
+    final rowState = _rowStates[rowIndex];
+    if (cells.isEmpty || rowState == null || _cellsAreLoading(cells)) return;
+
+    final current = _selection;
+    final rawAnchor = current?.anchorTime ?? DateTime.now();
+    final anchor = rawAnchor.isBefore(_vm.windowStart)
+        ? _vm.windowStart
+        : rawAnchor.isAfter(_vm.windowEnd)
+        ? _vm.windowEnd.subtract(const Duration(microseconds: 1))
+        : rawAnchor;
+    final index = resolveCellIndexAt(cells, anchor);
+    final cell = cells[index];
+    _selection = GuideSelection(
+      channelId: channels[rowIndex].id,
+      anchorTime: clampAnchorInto(cell, anchor),
+      programId: cell.program?.id,
+    );
+    rowState.focusCellAt(index);
+  }
 
   /// Moves one row while holding [GuideSelection.anchorTime], so the selection
   /// keeps its place in time instead of following the nearest rectangle. An
@@ -1812,7 +1881,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
     if (!mounted) return;
     await _vm.reloadIfStale(
-      window: GuideLayoutProfile.guideWindow,
+      window: _layoutProfile.guideWindow,
       windowStart: guideLeftEdge(DateTime.now()),
     );
     if (mounted) _vm.scheduleBoundaryRefresh();

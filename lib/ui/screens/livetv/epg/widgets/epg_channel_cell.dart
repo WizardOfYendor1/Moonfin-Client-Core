@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
+import '../../../../widgets/marquee_text.dart';
+
 /// Channel identity cell for the guide rail: logo pinned left, with the accent
 /// number chip and the channel name right-justified against the cell's trailing
 /// edge. The cell itself carries a dim plate so pale logo artwork has something
@@ -85,13 +87,24 @@ class EpgChannelCell extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
               ],
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: nameStyle,
-              ),
+              focused
+                  ? SizedBox(
+                      width: double.infinity,
+                      child: MarqueeText(
+                        text: name,
+                        style: nameStyle ?? const TextStyle(),
+                        showDotSeparator: false,
+                        textAlign: TextAlign.right,
+                        startAtEnd: true,
+                      ),
+                    )
+                  : Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: nameStyle,
+                    ),
             ],
           ),
         ),

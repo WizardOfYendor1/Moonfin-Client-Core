@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
+import '../../../../widgets/marquee_text.dart';
 import '../epg_genre.dart';
 
 /// A single program in the guide grid. Pure presentation: the host positions it
@@ -222,12 +223,21 @@ class EpgProgramCell extends StatelessWidget {
                                 const SizedBox(width: 6),
                               ],
                               Flexible(
-                                child: Text(
-                                  placeholderLabel ?? title,
-                                  maxLines: wrapTitle ? 2 : 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: titleStyle,
-                                ),
+                                child:
+                                    focused &&
+                                        !wrapTitle &&
+                                        placeholderLabel == null
+                                    ? MarqueeText(
+                                        text: title,
+                                        style: titleStyle,
+                                        showDotSeparator: false,
+                                      )
+                                    : Text(
+                                        placeholderLabel ?? title,
+                                        maxLines: wrapTitle ? 2 : 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: titleStyle,
+                                      ),
                               ),
                               if (hasTimer && showOrnaments) ...[
                                 const SizedBox(width: 6),
@@ -331,12 +341,18 @@ class EpgProgramCell extends StatelessWidget {
             SizedBox(width: gap),
             SizedBox(
               width: titleWidth,
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: titleStyle,
-              ),
+              child: focused
+                  ? MarqueeText(
+                      text: title,
+                      style: titleStyle,
+                      showDotSeparator: false,
+                    )
+                  : Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
+                    ),
             ),
             if (hasTimer)
               SizedBox(
