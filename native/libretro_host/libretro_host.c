@@ -1565,6 +1565,7 @@ static bool RETRO_CALLCONV environment_cb(unsigned cmd, void *data) {
       }
       *out = h->hw_pref_cached;
       return false;
+    }
     case RETRO_ENVIRONMENT_GET_CLEAR_ALL_THREAD_WAITS_CB: {
       // Write the out-param before anything else can return early: a core
       // that gets false here still calls whatever is in its variable.

@@ -1088,10 +1088,10 @@ static void test_format(const char *core_path, const char *rom_path,
 
   if (fmt == LH_FORMAT_RGBA8888) {
     // stub_speed, stub_pattern, stub_rotation, stub_format, stub_huge_frame,
-    // stub_bad_pitch, stub_vfs_dir_check, stub_analog_check,
+    // stub_bad_pitch, stub_vfs_dir_check, stub_analog_check, stub_hw,
     // stub_analog_query, stub_repeat_geometry, stub_unserved,
     // stub_input_thread, stub_no_poll, stub_waits_report.
-    CHECK(lh_option_count(host) == 14, "fourteen core options");
+    CHECK(lh_option_count(host) == 15, "fifteen core options");
     lh_option opt;
     int opt_rc = lh_get_option(host, 0, &opt);
     CHECK(opt_rc == 0 && strcmp(opt.id, "stub_speed") == 0, "option id");
@@ -1119,7 +1119,7 @@ static void test_format(const char *core_path, const char *rom_path,
     uint8_t blob_a[64], blob_b[64], blob_c[64];
     CHECK(size > 0, "serialize size");
     CHECK(lh_serialize(host, blob_a, size) == 0, "serialize after restart");
-    CHECK(lh_option_count(host) == 14, "restart replaces option definitions");
+    CHECK(lh_option_count(host) == 15, "restart replaces option definitions");
     lh_get_option(host, 0, &opt);
     CHECK(strcmp(opt.current, "fast") == 0, "restart retains option value");
     int32_t restart_marker;
@@ -2200,6 +2200,8 @@ int main(int argc, char **argv) {
 
     lh_stop(sw);
     lh_destroy(sw);
+  }
+
   // bug-175. mupen64plus-next asks for this in retro_set_environment, stores
   // it in a variable initialised to NULL, and - whenever its threaded renderer
   // is enabled - calls it with no null check from retro_unload_game,
