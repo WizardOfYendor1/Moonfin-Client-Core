@@ -630,6 +630,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     // remembered has to be put back once this one reports its own captions.
     _captionTrackApplied = false;
     final channel = _currentChannel;
+    unawaited(_prefs.set(UserPreferences.liveTvLastChannelId, channel.id));
     final item = AggregatedItem(
       id: channel.id,
       serverId: _client.baseUrl,
