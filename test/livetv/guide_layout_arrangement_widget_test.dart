@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get_it/get_it.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:mocktail/mocktail.dart';
@@ -21,6 +22,8 @@ class _MockLiveTvApi extends Mock implements LiveTvApi {}
 
 class _MockPlaybackManager extends Mock implements PlaybackManager {}
 
+class _MockImageApi extends Mock implements ImageApi {}
+
 late DateTime _windowStart;
 
 FocusNode _nodeLabelled(WidgetTester tester, String label) => tester
@@ -34,6 +37,7 @@ void main() {
 
   late _MockMediaServerClient client;
   late _MockLiveTvApi liveTvApi;
+  late _MockImageApi imageApi;
   late List<Map<String, dynamic>> channels;
   late List<Map<String, dynamic>> programs;
 
@@ -51,7 +55,7 @@ void main() {
         'Id': 'ch0',
         'Name': 'Channel Zero',
         'ChannelNumber': '101',
-        'ImageTags': <String, dynamic>{},
+        'ImageTags': <String, dynamic>{'Primary': 'channel-tag'},
         'UserData': <String, dynamic>{'IsFavorite': false},
       },
     ];
@@ -75,7 +79,16 @@ void main() {
 
     client = _MockMediaServerClient();
     liveTvApi = _MockLiveTvApi();
+    imageApi = _MockImageApi();
     when(() => client.liveTvApi).thenReturn(liveTvApi);
+    when(() => client.imageApi).thenReturn(imageApi);
+    when(
+      () => imageApi.getPrimaryImageUrl(
+        any(),
+        maxHeight: any(named: 'maxHeight'),
+        tag: any(named: 'tag'),
+      ),
+    ).thenReturn('https://example.test/channel.png');
     when(() => client.userId).thenReturn('user');
     when(
       () => liveTvApi.getChannels(
@@ -204,6 +217,13 @@ void main() {
     expect(texts, contains('Airing Now Show'));
     // The channel number belonged to the removed logo block.
     expect(texts.any((t) => t.contains('101')), isFalse);
+    expect(
+      find.descendant(
+        of: find.byType(EpgHeroPreview),
+        matching: find.byType(CachedNetworkImage),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('DOWN from the genre rail descends through the controls row', (

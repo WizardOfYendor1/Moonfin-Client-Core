@@ -163,6 +163,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   int? _lastFocusedRowIndex;
   final ValueNotifier<GuideProgram?> _focusedProgram = ValueNotifier(null);
   final ValueNotifier<GuideChannel?> _focusedChannel = ValueNotifier(null);
+  final ValueNotifier<bool> _channelRailFocused = ValueNotifier(false);
   bool _didInitializeMiniPlayerMode = false;
   bool _didRestoreInitialChannelFocus = false;
   late EpgMobileView _mobileView;
@@ -622,6 +623,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _windowBarFocusNodes.clear();
     _focusedProgram.dispose();
     _focusedChannel.dispose();
+    _channelRailFocused.dispose();
     super.dispose();
   }
 
@@ -777,12 +779,17 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   Widget _buildTopSection() {
     if (widget.miniPlayerMode) {
       return ListenableBuilder(
-        listenable: Listenable.merge([_focusedProgram, _focusedChannel]),
+        listenable: Listenable.merge([
+          _focusedProgram,
+          _focusedChannel,
+          _channelRailFocused,
+        ]),
         builder: (context, _) {
           final focusedProgram = _focusedProgram.value;
-          final focusedChannel = focusedProgram == null
-              ? (widget.currentChannel ?? _focusedChannel.value)
-              : _vm.channelForId(focusedProgram.channelId);
+          final focusedChannel =
+              !_channelRailFocused.value && focusedProgram != null
+              ? _vm.channelForId(focusedProgram.channelId)
+              : (widget.currentChannel ?? _focusedChannel.value);
           return _buildProgramInfoHeader(
             program: focusedProgram,
             channel: focusedChannel,
@@ -799,12 +806,16 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   Widget _buildHero() {
     return ListenableBuilder(
-      listenable: Listenable.merge([_focusedProgram, _focusedChannel]),
+      listenable: Listenable.merge([
+        _focusedProgram,
+        _focusedChannel,
+        _channelRailFocused,
+      ]),
       builder: (context, _) {
         final program = _focusedProgram.value;
-        final channel = program == null
-            ? _focusedChannel.value
-            : _vm.channelForId(program.channelId);
+        final channel = !_channelRailFocused.value && program != null
+            ? _vm.channelForId(program.channelId)
+            : _focusedChannel.value;
         // Focus on the channel column has no programme, so the band previews
         // what that channel is airing now under the channel's name.
         final preview =
@@ -815,7 +826,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             preview != null &&
             now.isAfter(preview.startDate) &&
             now.isBefore(preview.endDate);
-        final isChannelPreview = program == null && channel != null;
+        final isChannelPreview = _channelRailFocused.value && channel != null;
         final channelLogoUrl = isChannelPreview && channel.imageTag != null
             ? _vm.imageApi.getPrimaryImageUrl(
                 channel.id,
@@ -1480,6 +1491,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       onFocusChange: (focused) {
         if (!focused) return;
         _scrollToRow(index);
+        _channelRailFocused.value = true;
         _focusedProgram.value = null;
         _focusedChannel.value = channel;
       },
@@ -1844,6 +1856,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       },
       onTopEdge: rowIndex == 0 ? _focusWindowBarFromGrid : null,
       onProgramFocused: (cell, _, _) {
+        _channelRailFocused.value = false;
         _focusedProgram.value = cell.program;
         _focusedChannel.value = _vm.channelForId(channelId);
         _scrollToRow(rowIndex);
