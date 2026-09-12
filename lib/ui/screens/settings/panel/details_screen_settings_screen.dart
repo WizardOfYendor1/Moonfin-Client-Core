@@ -47,9 +47,12 @@ class _DetailsScreenSettingsScreenState
                     labelOf: (v) => switch (v) {
                       DetailScreenStyle.classic =>
                         l10n.detailScreenStyleMoonfin,
-                      DetailScreenStyle.modern => l10n.detailScreenStyleModern,
+                      DetailScreenStyle.modern =>
+                        l10n.detailScreenStyleModern,
                       DetailScreenStyle.spotlight =>
                         l10n.detailScreenStyleSpotlight,
+                      DetailScreenStyle.nouveau =>
+                        l10n.detailScreenStyleNouveau,
                     },
                   ),
                   EnumPreferenceTile<PersonalRatingStyle>(
@@ -152,6 +155,8 @@ class _DetailsScreenSettingsScreenState
                     labelOf: (v) => switch (v) {
                       RecommendationSystemSource.local =>
                         l10n.recommendationSystemMoonfin,
+                      RecommendationSystemSource.server =>
+                        l10n.recommendationSystemJellyfin,
                       RecommendationSystemSource.online =>
                         l10n.recommendationSystemTmdb,
                     },

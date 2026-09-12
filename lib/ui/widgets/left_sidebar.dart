@@ -21,6 +21,7 @@ import '../../l10n/app_localizations.dart';
 import '../../util/clock_format.dart';
 import '../../util/focus/dpad_keys.dart';
 import '../../util/game_library.dart';
+import '../../util/live_tv_library.dart';
 import '../../util/overlay_color_palette.dart';
 import '../../util/platform_detection.dart';
 import '../navigation/destinations.dart';
@@ -330,6 +331,13 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
     }
     return true;
   }
+
+  bool get _showLiveTvButton =>
+      _prefs.get(UserPreferences.showLiveTvButton) &&
+      _libraries.any(isLiveTvLibrary);
+
+  List<AggregatedLibrary> get _navLibraries =>
+      librariesForNav(_libraries, _showLiveTvButton);
 
   Color _overlayColor() {
     return OverlayColorPalette.resolveColor(
@@ -839,6 +847,8 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
     final showShuffle = _prefs.get(UserPreferences.showShuffleButton);
     final showGenres = _prefs.get(UserPreferences.showGenresButton);
     final showFavorites = _prefs.get(UserPreferences.showFavoritesButton);
+    final showLiveTv = _showLiveTvButton;
+    final navLibraries = _navLibraries;
     final showLibraries = _prefs.get(UserPreferences.showLibrariesInToolbar);
     final showFolders = _prefs.get(UserPreferences.enableFolderView);
     final showSyncPlay =
@@ -963,6 +973,23 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                       context.navigateTopLevel(Destinations.allFavorites);
                     },
                   ),
+                if (showLiveTv)
+                  _SidebarItem(
+                    key: const ValueKey('sidebar-livetv'),
+                    icon: Icons.live_tv_rounded,
+                    label: l10n.liveTv,
+                    baseColor: nextMainSidebarColor(),
+                    showLabel: _showLabels,
+                    onPressed: () {
+                      _onNavigate();
+                      if (_isActive(Destinations.liveTvGuide)) {
+                        _exitSidebarToContent();
+                        return;
+                      }
+                      _markNavigationAwayFromSidebar();
+                      context.navigateTopLevel(Destinations.liveTvGuide);
+                    },
+                  ),
                 if (showFolders)
                   _SidebarItem(
                     key: const ValueKey('sidebar-folders'),
@@ -1017,7 +1044,7 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                       context.navigateTopLevel(Destinations.seerrDiscover);
                     },
                   ),
-                if (showLibraries && _libraries.isNotEmpty) ...[
+                if (showLibraries && navLibraries.isNotEmpty) ...[
                   _SidebarItem(
                     key: const ValueKey('sidebar-libraries'),
                     baseColor: nextMainSidebarColor(),
@@ -1055,7 +1082,7 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                     curve: Curves.easeInOut,
                     child: _librariesExpanded
                         ? Column(
-                            children: _libraries
+                            children: navLibraries
                                 .map(
                                   (lib) => _SidebarLibraryItem(
                                     key: ObjectKey(lib.id),

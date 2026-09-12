@@ -442,6 +442,7 @@ class UserPreferences extends ChangeNotifier {
     'poster_size_playlist',
     'pref_home_rows_fullscreen',
     'pref_show_seerr_button',
+    'pref_show_seerr_availability_badges',
     'pref_show_server_messages_button',
     'pref_show_media_details_on_library_page',
     'pref_use_detailed_sub_headings',
@@ -485,6 +486,7 @@ class UserPreferences extends ChangeNotifier {
     'pref_home_rows_style',
     'pref_modern_home_rows_padding',
     'pref_classic_home_rows_padding',
+    'pref_modern_cards_my_media',
     'poster_size',
     'pref_display_favorites_rows',
     'pref_display_collections_rows',
@@ -500,6 +502,7 @@ class UserPreferences extends ChangeNotifier {
     'pref_show_shuffle_button',
     'pref_show_genres_button',
     'pref_show_favorites_button',
+    'pref_show_live_tv_button',
     'pref_show_syncplay_button',
     'pref_show_downloads_button',
     'pref_show_libraries_in_toolbar',
@@ -976,6 +979,11 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: 30,
   );
 
+  static final modernCardsOnMyMediaRow = Preference<bool>(
+    key: 'pref_modern_cards_my_media',
+    defaultValue: true,
+  );
+
   /// How far a mouse wheel notch scrolls, as a percentage of what the platform
   /// reports.
   static final desktopScrollSensitivity = Preference(
@@ -1004,6 +1012,12 @@ class UserPreferences extends ChangeNotifier {
   /// the right backend is a per-device choice.
   static final useNativeEmulator = Preference(
     key: 'pref_use_native_emulator',
+    defaultValue: true,
+  );
+
+  /// Enables Android's experimental libretro hardware-rendering path.
+  static final useHardwareRendering = Preference(
+    key: 'pref_use_hardware_rendering',
     defaultValue: true,
   );
 
@@ -1334,6 +1348,33 @@ class UserPreferences extends ChangeNotifier {
     values: GlassSettledQuality.values,
   );
 
+  /// Animation speed for page navigation transitions.
+  static final pageTransitionSpeed = EnumPreference(
+    key: 'pref_page_transition_speed',
+    defaultValue: PageTransitionSpeed.medium,
+    values: PageTransitionSpeed.values,
+  );
+
+  /// Animation speed for focus movement and row scrolling.
+  static final navigationAnimationSpeed = EnumPreference(
+    key: 'pref_navigation_animation_speed',
+    defaultValue: NavigationAnimationSpeed.medium,
+    values: NavigationAnimationSpeed.values,
+  );
+
+  /// Animation speed for Modern card focus expansion transitions.
+  static final modernCardTransitionSpeed = EnumPreference(
+    key: 'pref_modern_card_transition_speed',
+    defaultValue: ModernCardTransitionSpeed.medium,
+    values: ModernCardTransitionSpeed.values,
+  );
+
+  /// When on, delays Modern card expansion during rapid navigation until focus settles.
+  static final delayCardExpansionOnRapidScroll = Preference(
+    key: 'pref_delay_card_expansion_on_rapid_scroll',
+    defaultValue: true,
+  );
+
   /// Structural style for the media detail screen. Stored per server and user,
   /// because it syncs to that server's profile.
   static final detailScreenStyle = EnumPreference(
@@ -1446,6 +1487,11 @@ class UserPreferences extends ChangeNotifier {
     defaultValue: true,
   );
 
+  static final showLiveTvButton = Preference(
+    key: 'pref_show_live_tv_button',
+    defaultValue: true,
+  );
+
   static final showDownloadsButton = Preference(
     key: 'pref_show_downloads_button',
     defaultValue: true,
@@ -1473,6 +1519,11 @@ class UserPreferences extends ChangeNotifier {
 
   static final showSeerrButton = Preference(
     key: 'pref_show_seerr_button',
+    defaultValue: true,
+  );
+
+  static final showSeerrAvailabilityBadges = Preference(
+    key: 'pref_show_seerr_availability_badges',
     defaultValue: true,
   );
 

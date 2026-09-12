@@ -232,6 +232,7 @@ class Destinations {
     String? name,
     bool startFresh = false,
     bool forceEmulatorJs = false,
+    bool hardwareRenderingEnabled = true,
   }) {
     final base =
         '/game-player/${Uri.encodeComponent(libraryId)}/${Uri.encodeComponent(gameId)}';
@@ -245,6 +246,7 @@ class Destinations {
         'name=${Uri.encodeQueryComponent(name)}',
       if (startFresh) 'fresh=1',
       if (forceEmulatorJs) 'backend=emulatorjs',
+      if (!hardwareRenderingEnabled) 'hw=0',
     ];
     return '$base?${params.join('&')}';
   }
@@ -370,6 +372,8 @@ class Destinations {
       '/admin/logs/${Uri.encodeComponent(fileName)}';
   static String adminMetadata(String itemId) => '/admin/metadata/$itemId';
 
+  /// Whether [path] is one of the full-screen player routes: video, audio,
+  /// the reader and its overlays, live TV, or a game.
   static bool isPlayerRoute(String path) =>
       path.startsWith('/player/') ||
       path == liveTvPlayer ||

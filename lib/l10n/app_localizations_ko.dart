@@ -157,7 +157,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get detailScreenStyleSpotlight => 'Spotlight';
 
   @override
-  String get spotlightMoreActions => 'More actions';
+  String get spotlightMoreActions => 'More Actions';
 
   @override
   String get spotlightCastCrewStudios => 'Cast, Crew, and Studios';
@@ -336,6 +336,9 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String get detailScreenStyleNouveau => 'Nouveau';
+
+  @override
   String get expandedTabs => '탭 자동 펼치기';
 
   @override
@@ -357,6 +360,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get recommendationSystemMoonfin => 'Moonfin 추천';
+
+  @override
+  String get recommendationSystemJellyfin => 'Jellyfin Recommends';
 
   @override
   String get recommendationSystemTmdb => 'TMDb 유사도';
@@ -1872,6 +1878,165 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get hideMpvStats => 'Hide mpv Statistics (Shift+I)';
+
+  @override
+  String get keyboardShortcutsTitle => 'Keyboard shortcuts';
+
+  @override
+  String get keyboardShortcutsSubtitle =>
+      'Keys for the app, video player and reader';
+
+  @override
+  String get keyboardShortcutsPlayerHint =>
+      'Press ? or F1 while a video plays to see this list without leaving the player.';
+
+  @override
+  String get keyboardShortcutsSectionApp => 'Everywhere';
+
+  @override
+  String get keyboardShortcutsSectionAppScope => 'On any screen';
+
+  @override
+  String get keyboardShortcutsSectionPlayer => 'Video player';
+
+  @override
+  String get keyboardShortcutsSectionPlayerScope =>
+      'While a video is open, playing or paused';
+
+  @override
+  String get keyboardShortcutsSectionReader => 'Book and comic reader';
+
+  @override
+  String get keyboardShortcutsSectionReaderScope =>
+      'While reading a book or comic';
+
+  @override
+  String get keyNameArrowKeys => 'Arrow keys';
+
+  @override
+  String get keyNameSpace => 'Space';
+
+  @override
+  String get keyNameEnter => 'Enter';
+
+  @override
+  String get keyNameEsc => 'Esc';
+
+  @override
+  String get keyNameBackspace => 'Backspace';
+
+  @override
+  String get keyNamePageUp => 'Page Up';
+
+  @override
+  String get keyNamePageDown => 'Page Down';
+
+  @override
+  String get keyNameHome => 'Home';
+
+  @override
+  String get keyNameEnd => 'End';
+
+  @override
+  String get keyNameShift => 'Shift';
+
+  @override
+  String get keyNameCtrl => 'Ctrl';
+
+  @override
+  String get keyNameAlt => 'Alt';
+
+  @override
+  String get keyNameScrollWheel => 'Scroll wheel';
+
+  @override
+  String get shortcutMoveFocus => 'Move between items';
+
+  @override
+  String get shortcutActivate => 'Open the selected item';
+
+  @override
+  String get shortcutGoBack => 'Go back';
+
+  @override
+  String get shortcutToggleFullscreen => 'Fullscreen on or off';
+
+  @override
+  String get shortcutQuit => 'Quit Moonfin';
+
+  @override
+  String get shortcutPlayPause => 'Play or pause';
+
+  @override
+  String get shortcutShowControlsOrPlayPause =>
+      'Show controls, or play/pause if shown';
+
+  @override
+  String get shortcutSeekBack => 'Seek back (hold for bigger jumps)';
+
+  @override
+  String get shortcutSeekForward => 'Seek forward (hold for bigger jumps)';
+
+  @override
+  String get shortcutVolumeUp => 'Volume up';
+
+  @override
+  String get shortcutVolumeDown => 'Volume down';
+
+  @override
+  String get shortcutMute => 'Mute or unmute';
+
+  @override
+  String get shortcutToggleSubtitles => 'Subtitles on or off';
+
+  @override
+  String get shortcutSlower => 'Slow down';
+
+  @override
+  String get shortcutFaster => 'Speed up';
+
+  @override
+  String get shortcutPlaybackInfo => 'Show playback information';
+
+  @override
+  String get shortcutMpvStats => 'mpv statistics on or off';
+
+  @override
+  String get shortcutLeaveFullscreenOrStop =>
+      'Exit fullscreen, or stop if not fullscreen';
+
+  @override
+  String get shortcutStopPlayback => 'Stop playback';
+
+  @override
+  String get shortcutNextItem => 'Next item';
+
+  @override
+  String get shortcutPreviousItem => 'Previous item';
+
+  @override
+  String get shortcutShowShortcuts => 'Show this list';
+
+  @override
+  String get shortcutNextPage => 'Next page';
+
+  @override
+  String get shortcutPreviousPage => 'Previous page';
+
+  @override
+  String get shortcutScrollPage => 'Scroll the page (ebooks)';
+
+  @override
+  String get shortcutFirstPage => 'First page, or start of chapter';
+
+  @override
+  String get shortcutLastPage => 'Last page, or end of chapter';
+
+  @override
+  String get shortcutZoom => 'Zoom in or out (comics)';
+
+  @override
+  String get shortcutResetZoom => 'Reset zoom (comics)';
 
   @override
   String get playback => '재생';
@@ -3665,6 +3830,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get showFavoritesButton => '즐겨찾기 버튼 표시';
 
   @override
+  String get showLiveTvButton => 'Show Live TV Button';
+
+  @override
   String get showDownloadsButton => 'Show Downloads Button';
 
   @override
@@ -4347,6 +4515,13 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get showMissingCollectionItemsDesc =>
       'Include missing items on Collection pages';
+
+  @override
+  String get showSeerrAvailabilityBadges => 'Show Seerr Availability Badges';
+
+  @override
+  String get showSeerrAvailabilityBadgesDescription =>
+      'Show season availability badges on media details pages';
 
   @override
   String get seerrNotificationsSection => '알림';
@@ -9072,6 +9247,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsShowFavoritesButtonInNavigation => '탐색 표시줄에 즐겨찾기 버튼 표시';
 
   @override
+  String get settingsShowLiveTvButtonInNavigation =>
+      'Show the Live TV button in the navigation bar when the server has a Live TV library';
+
+  @override
   String get settingsShowLibrariesButtonInNavigation => '탐색 모음에 라이브러리 버튼 표시';
 
   @override
@@ -9740,6 +9919,13 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get rowsTypeDescription =>
       '클래식은 행별 이미지 유형과 정보 오버레이를 유지합니다. 모던은 세로형에서 가로형으로 이어지는 행을 사용합니다.';
+
+  @override
+  String get modernCardsOnMyMediaRow => 'Modern cards on My Media row';
+
+  @override
+  String get modernCardsOnMyMediaRowDescription =>
+      'Display customizable posters that expand on focus. Disable to always show landscape thumbnail.';
 
   @override
   String get sortOrder => '정렬 순서';
@@ -10592,6 +10778,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get audiobookFocusedTimeline => '집중 타임라인';
 
   @override
+  String get audiobookFullTimeline => 'Full Timeline';
+
+  @override
   String get audiobookExportBookmarks => '북마크 내보내기';
 
   @override
@@ -10846,6 +11035,118 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get transcodeAudioChannelsNotSupported => '지원하지 않는 오디오 채널 수입니다.';
+
+  @override
+  String transcodeAudioCodecWithCodec(String codec) {
+    return 'Audio codec ($codec) is not supported directly.';
+  }
+
+  @override
+  String transcodeAudioCodecHintPassthrough(String codec) {
+    return 'Tip: If your audio receiver or soundbar supports $codec, enable Audio Passthrough in Audio settings.';
+  }
+
+  @override
+  String transcodeAudioChannelsExceeded(int channels) {
+    return 'Audio channel count (${channels}ch) exceeds the player limit.';
+  }
+
+  @override
+  String get transcodeAudioChannelsHint =>
+      'Tip: Adjust \'Max Audio Channels\' or multichannel downmixing in Audio settings.';
+
+  @override
+  String get transcodeSubtitleBurnInAssDisabled =>
+      'ASS/SSA subtitles require transcoding because direct play is turned off.';
+
+  @override
+  String get transcodeSubtitleBurnInAssHint =>
+      'Tip: Enable \'ASS/SSA Direct Play\' in Playback settings to play directly without transcoding.';
+
+  @override
+  String get transcodeSubtitleBurnInPgsDisabled =>
+      'PGS subtitles require transcoding because direct play is turned off.';
+
+  @override
+  String get transcodeSubtitleBurnInPgsHint =>
+      'Tip: Enable \'PGS Direct Play\' in Playback settings to play directly without transcoding.';
+
+  @override
+  String transcodeSubtitleNotSupportedWithCodec(String codec) {
+    return 'Subtitle format ($codec) is not supported directly and must be burned in.';
+  }
+
+  @override
+  String transcodeBitrateExceededWithValues(
+    String fileBitrate,
+    String maxBitrate,
+  ) {
+    return 'File bitrate ($fileBitrate) exceeds the configured streaming limit ($maxBitrate).';
+  }
+
+  @override
+  String get transcodeBitrateHint =>
+      'Tip: Increase \'Maximum Bitrate\' in Playback settings to allow direct streaming.';
+
+  @override
+  String get transcodeResolutionHint =>
+      'Tip: Increase \'Maximum Resolution\' in Playback settings to allow direct streaming.';
+
+  @override
+  String get transcodeVideoRangeNotSupported =>
+      'Video dynamic range (e.g. Dolby Vision / HDR) is not supported by this display.';
+
+  @override
+  String get transcodeDolbyVisionProfile7ElDisabled =>
+      'Dolby Vision Profile 7 enhancement layer direct play is disabled.';
+
+  @override
+  String get transcodeDolbyVisionProfile7ElHint =>
+      'Tip: Enable \'Dolby Vision Profile 7 Direct Play\' in Playback settings if your display supports it.';
+
+  @override
+  String get transcodeDolbyVisionFallbackPreferenceTranscode =>
+      'Transcoding is preferred for Dolby Vision fallback per user settings.';
+
+  @override
+  String get transcodeDolbyVisionFallbackHint =>
+      'Tip: Set \'Dolby Vision Fallback\' to \'Play as HDR10\' in Playback settings to avoid transcoding.';
+
+  @override
+  String get transcodeDisplayReportsNoHdr =>
+      'Connected display does not report support for HDR or Dolby Vision.';
+
+  @override
+  String get transcodeDisplayLacksHdr10ForFallback =>
+      'Connected display lacks HDR10 support needed for Dolby Vision fallback.';
+
+  @override
+  String get transcodeAudioSampleRateNotSupported =>
+      'Audio sample rate is not supported.';
+
+  @override
+  String get transcodeAudioBitDepthNotSupported =>
+      'Audio bit depth is not supported.';
+
+  @override
+  String get transcodeRefFramesNotSupported =>
+      'Video reference frames exceed player limits.';
+
+  @override
+  String get transcodeAnamorphicVideoNotSupported =>
+      'Anamorphic video is not supported.';
+
+  @override
+  String get transcodeInterlacedVideoNotSupported =>
+      'Interlaced video is not supported.';
+
+  @override
+  String get transcodeSecondaryAudioNotSupported =>
+      'Secondary audio stream requires transcoding.';
+
+  @override
+  String get transcodeDirectPlayError =>
+      'Direct play is not supported for this media format.';
 
   @override
   String get sortAlphabetical => '가나다순';
@@ -11293,6 +11594,13 @@ class AppLocalizationsKo extends AppLocalizations {
       'Hero-first, with pop-up cards for cast and extras.';
 
   @override
+  String get setupStyleNouveau => 'Nouveau';
+
+  @override
+  String get setupDetailNouveauHint =>
+      'Full-screen, with sections stacked instead of tabs.';
+
+  @override
   String get setupPickALook => '스타일 선택';
 
   @override
@@ -11574,4 +11882,87 @@ class AppLocalizationsKo extends AppLocalizations {
     );
     return '$_temp0 Free up space or raise the download limit.';
   }
+
+  @override
+  String get settingsAnimationSpeed => 'Animation Speed';
+
+  @override
+  String get pageTransitions => 'Page Transitions';
+
+  @override
+  String get pageTransitionsSubtitle =>
+      'Adjusts fade time when navigating between pages';
+
+  @override
+  String get navigationSpeed => 'Navigation Speed';
+
+  @override
+  String get navigationSpeedSubtitle =>
+      'Adjusts how quickly the focus indicator moves between items and rows';
+
+  @override
+  String get modernCardsTransitionSpeed => 'Modern Cards Transition Speed';
+
+  @override
+  String get modernCardsTransitionSpeedSubtitle =>
+      'Adjusts animation speed when expanding focused modern cards';
+
+  @override
+  String get delayCardExpansionOnRapidScroll =>
+      'Delay Card Expansion on Rapid Scroll';
+
+  @override
+  String get delayCardExpansionOnRapidScrollSubtitle =>
+      'Waits for focus movement to pause before expanding modern cards';
+
+  @override
+  String get animationSpeedExtraSlow => 'Extra Slow';
+
+  @override
+  String get animationSpeedSlow => 'Slow';
+
+  @override
+  String get animationSpeedMedium => 'Medium';
+
+  @override
+  String get animationSpeedFast => 'Fast';
+
+  @override
+  String get animationSpeedOff => 'Off';
+
+  @override
+  String get pageTransitionFadeNone => 'No Fade';
+
+  @override
+  String get pageTransitionFadeShort => 'Short Fade';
+
+  @override
+  String get pageTransitionFadeMedium => 'Medium Fade';
+
+  @override
+  String get pageTransitionFadeLong => 'Long Fade';
+
+  @override
+  String get liveTvConnecting => 'Connecting to channel…';
+
+  @override
+  String get liveTvTunerStillTrying =>
+      'The tuner is still trying to get this channel…';
+
+  @override
+  String get liveTvReconnecting => 'Signal lost. The tuner is reconnecting…';
+
+  @override
+  String get liveTvChannelUnavailableTitle => 'Channel unavailable';
+
+  @override
+  String get liveTvChannelUnavailableBody =>
+      'The server could not get this channel from the tuner. The source may be down, or the tuner gave up after retrying.';
+
+  @override
+  String get liveTvChannelLostTitle => 'Channel lost';
+
+  @override
+  String get liveTvChannelLostBody =>
+      'The stream stopped and the tuner did not bring it back. Try again or pick another channel.';
 }

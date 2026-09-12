@@ -43,6 +43,7 @@ import 'ui/widgets/cast_mini_player.dart';
 import 'ui/widgets/offline_banner.dart';
 import 'ui/widgets/server_messages_dialog.dart';
 import 'ui/widgets/exit_confirmation_dialog.dart';
+import 'ui/widgets/keyboard_shortcuts/keyboard_shortcut_reference.dart';
 import 'ui/screensaver/screensaver_controller.dart';
 import 'ui/screensaver/screensaver_host.dart';
 import 'util/app_exit.dart';
@@ -639,6 +640,35 @@ class _GlobalShortcutScopeState extends State<_GlobalShortcutScope>
 
   bool _isHomeRoute() => _currentRoutePath() == Destinations.home;
 
+  bool _shortcutsDialogOpen = false;
+
+  /// The shortcut list for wherever the user is. Pressing the key again
+  /// closes it rather than stacking another. The book reader sits under the
+  /// player path, so it is checked first.
+  void _showKeyboardShortcuts() {
+    final navContext = appRouter.routerDelegate.navigatorKey.currentContext;
+    if (navContext == null || !navContext.mounted) return;
+    if (_shortcutsDialogOpen) {
+      Navigator.of(navContext, rootNavigator: true).pop();
+      return;
+    }
+    final KeyboardShortcutContext shownIn;
+    if (_currentRoutePath().startsWith('/player/book/')) {
+      shownIn = KeyboardShortcutContext.reader;
+    } else if (_isPlayerRoute()) {
+      shownIn = KeyboardShortcutContext.player;
+    } else {
+      shownIn = KeyboardShortcutContext.browse;
+    }
+    _shortcutsDialogOpen = true;
+    unawaited(
+      showKeyboardShortcutsDialog(
+        navContext,
+        shownIn: shownIn,
+      ).whenComplete(() => _shortcutsDialogOpen = false),
+    );
+  }
+
   bool _isEditingText() {
     final focusContext = FocusManager.instance.primaryFocus?.context;
     if (focusContext == null) return false;
@@ -731,6 +761,16 @@ class _GlobalShortcutScopeState extends State<_GlobalShortcutScope>
         _exitDialogShowing = true;
         unawaited(_showExitConfirmation());
       }
+      return true;
+    }
+
+    // ? and F1 list the keyboard shortcuts on every screen, trimmed to the
+    // ones that work where the user is. ? is a character, so a text field
+    // keeps it. F1 isn't, so it still opens the list there.
+    if (!PlatformDetection.isTV &&
+        isShowShortcutsKey(key) &&
+        (key == LogicalKeyboardKey.f1 || !_isEditingText())) {
+      _showKeyboardShortcuts();
       return true;
     }
 

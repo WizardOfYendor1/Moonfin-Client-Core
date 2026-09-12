@@ -469,7 +469,7 @@ abstract class AppLocalizations {
   /// Explanation under the detail screen style setting
   ///
   /// In en, this message translates to:
-  /// **'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards.'**
+  /// **'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards. Nouveau is a full-screen layout with sections stacked down the page.'**
   String get detailScreenStyleSubtitle;
 
   /// Detail screen style option: the classic centered layout
@@ -493,7 +493,7 @@ abstract class AppLocalizations {
   /// Tooltip/semantics of the spotlight ellipsis button and the title of the overflow actions menu it opens
   ///
   /// In en, this message translates to:
-  /// **'More actions'**
+  /// **'More Actions'**
   String get spotlightMoreActions;
 
   /// Title of the spotlight summary card that opens the people and studios modal
@@ -640,6 +640,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 title} other{{count} titles}}'**
   String spotlightTitlesCount(int count);
 
+  /// Detail screen style option: nouveau full-screen layout with integrated sections
+  ///
+  /// In en, this message translates to:
+  /// **'Nouveau'**
+  String get detailScreenStyleNouveau;
+
   /// Label for the detail screen expanded tabs setting
   ///
   /// In en, this message translates to:
@@ -673,7 +679,7 @@ abstract class AppLocalizations {
   /// Explanation under the recommendation system setting
   ///
   /// In en, this message translates to:
-  /// **'Use the Moonfin Recommends local-library algorithm or the online TMDb\'s Similarity Metrics. Note: Online recommendations require Seerr integration.'**
+  /// **'Use the Moonfin Recommends local-library algorithm, Jellyfin Recommends server engine, or the online TMDb\'s Similarity Metrics. Note: Online recommendations require Seerr integration.'**
   String get recommendationSystemSubtitle;
 
   /// Recommendation system option: Moonfin Recommends
@@ -681,6 +687,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Moonfin Recommends'**
   String get recommendationSystemMoonfin;
+
+  /// Recommendation system option: Jellyfin Recommends
+  ///
+  /// In en, this message translates to:
+  /// **'Jellyfin Recommends'**
+  String get recommendationSystemJellyfin;
 
   /// Recommendation system option: TMDb Similarity
   ///
@@ -3297,6 +3309,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide mpv Statistics (Shift+I)'**
   String get hideMpvStats;
+
+  /// Title of the screen and dialog that list every keyboard shortcut
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard shortcuts'**
+  String get keyboardShortcutsTitle;
+
+  /// Subtitle of the About tile that opens the keyboard shortcut list
+  ///
+  /// In en, this message translates to:
+  /// **'Keys for the app, video player and reader'**
+  String get keyboardShortcutsSubtitle;
+
+  /// Footnote on the keyboard shortcuts settings screen
+  ///
+  /// In en, this message translates to:
+  /// **'Press ? or F1 while a video plays to see this list without leaving the player.'**
+  String get keyboardShortcutsPlayerHint;
+
+  /// Keyboard shortcut section for keys that work on every screen
+  ///
+  /// In en, this message translates to:
+  /// **'Everywhere'**
+  String get keyboardShortcutsSectionApp;
+
+  /// Under the Everywhere section title: when those keys apply
+  ///
+  /// In en, this message translates to:
+  /// **'On any screen'**
+  String get keyboardShortcutsSectionAppScope;
+
+  /// Keyboard shortcut section for the video player
+  ///
+  /// In en, this message translates to:
+  /// **'Video player'**
+  String get keyboardShortcutsSectionPlayer;
+
+  /// Under the Video player section title: when those keys apply
+  ///
+  /// In en, this message translates to:
+  /// **'While a video is open, playing or paused'**
+  String get keyboardShortcutsSectionPlayerScope;
+
+  /// Keyboard shortcut section for the ebook and comic reader
+  ///
+  /// In en, this message translates to:
+  /// **'Book and comic reader'**
+  String get keyboardShortcutsSectionReader;
+
+  /// Under the reader section title: when those keys apply
+  ///
+  /// In en, this message translates to:
+  /// **'While reading a book or comic'**
+  String get keyboardShortcutsSectionReaderScope;
+
+  /// Key cap label standing for the four arrow keys
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow keys'**
+  String get keyNameArrowKeys;
+
+  /// Key cap label for the space bar
+  ///
+  /// In en, this message translates to:
+  /// **'Space'**
+  String get keyNameSpace;
+
+  /// Key cap label for the Enter key
+  ///
+  /// In en, this message translates to:
+  /// **'Enter'**
+  String get keyNameEnter;
+
+  /// Key cap label for the Escape key
+  ///
+  /// In en, this message translates to:
+  /// **'Esc'**
+  String get keyNameEsc;
+
+  /// Key cap label for the Backspace key
+  ///
+  /// In en, this message translates to:
+  /// **'Backspace'**
+  String get keyNameBackspace;
+
+  /// Key cap label for the Page Up key
+  ///
+  /// In en, this message translates to:
+  /// **'Page Up'**
+  String get keyNamePageUp;
+
+  /// Key cap label for the Page Down key
+  ///
+  /// In en, this message translates to:
+  /// **'Page Down'**
+  String get keyNamePageDown;
+
+  /// Key cap label for the Home key
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get keyNameHome;
+
+  /// Key cap label for the End key
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get keyNameEnd;
+
+  /// Key cap label for the Shift modifier
+  ///
+  /// In en, this message translates to:
+  /// **'Shift'**
+  String get keyNameShift;
+
+  /// Key cap label for the Control modifier
+  ///
+  /// In en, this message translates to:
+  /// **'Ctrl'**
+  String get keyNameCtrl;
+
+  /// Key cap label for the Alt modifier
+  ///
+  /// In en, this message translates to:
+  /// **'Alt'**
+  String get keyNameAlt;
+
+  /// Key cap label standing for the mouse scroll wheel
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll wheel'**
+  String get keyNameScrollWheel;
+
+  /// What the arrow keys do outside the player
+  ///
+  /// In en, this message translates to:
+  /// **'Move between items'**
+  String get shortcutMoveFocus;
+
+  /// What Enter does outside the player
+  ///
+  /// In en, this message translates to:
+  /// **'Open the selected item'**
+  String get shortcutActivate;
+
+  /// What Esc and Backspace do outside the player
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get shortcutGoBack;
+
+  /// F11 and Alt+Enter anywhere, F in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen on or off'**
+  String get shortcutToggleFullscreen;
+
+  /// What Ctrl+Q does on desktop
+  ///
+  /// In en, this message translates to:
+  /// **'Quit Moonfin'**
+  String get shortcutQuit;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Play or pause'**
+  String get shortcutPlayPause;
+
+  /// What Enter does in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Show controls, or play/pause if shown'**
+  String get shortcutShowControlsOrPlayPause;
+
+  /// Player shortcut action. The step is the skip back length from settings
+  ///
+  /// In en, this message translates to:
+  /// **'Seek back (hold for bigger jumps)'**
+  String get shortcutSeekBack;
+
+  /// Player shortcut action. The step is the skip forward length from settings
+  ///
+  /// In en, this message translates to:
+  /// **'Seek forward (hold for bigger jumps)'**
+  String get shortcutSeekForward;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Volume up'**
+  String get shortcutVolumeUp;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Volume down'**
+  String get shortcutVolumeDown;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Mute or unmute'**
+  String get shortcutMute;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles on or off'**
+  String get shortcutToggleSubtitles;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Slow down'**
+  String get shortcutSlower;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Speed up'**
+  String get shortcutFaster;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Show playback information'**
+  String get shortcutPlaybackInfo;
+
+  /// Player shortcut action, Windows only
+  ///
+  /// In en, this message translates to:
+  /// **'mpv statistics on or off'**
+  String get shortcutMpvStats;
+
+  /// What Esc does in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Exit fullscreen, or stop if not fullscreen'**
+  String get shortcutLeaveFullscreenOrStop;
+
+  /// Player shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Stop playback'**
+  String get shortcutStopPlayback;
+
+  /// Player shortcut action for the next-track media key
+  ///
+  /// In en, this message translates to:
+  /// **'Next item'**
+  String get shortcutNextItem;
+
+  /// Player shortcut action for the previous-track media key
+  ///
+  /// In en, this message translates to:
+  /// **'Previous item'**
+  String get shortcutPreviousItem;
+
+  /// What ? and F1 do in the player
+  ///
+  /// In en, this message translates to:
+  /// **'Show this list'**
+  String get shortcutShowShortcuts;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Next page'**
+  String get shortcutNextPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Previous page'**
+  String get shortcutPreviousPage;
+
+  /// What the up and down arrows do in the ebook reader
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll the page (ebooks)'**
+  String get shortcutScrollPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'First page, or start of chapter'**
+  String get shortcutFirstPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Last page, or end of chapter'**
+  String get shortcutLastPage;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in or out (comics)'**
+  String get shortcutZoom;
+
+  /// Reader shortcut action
+  ///
+  /// In en, this message translates to:
+  /// **'Reset zoom (comics)'**
+  String get shortcutResetZoom;
 
   /// Section header in stream info
   ///
@@ -6586,6 +6904,12 @@ abstract class AppLocalizations {
   /// **'Show Favorites Button'**
   String get showFavoritesButton;
 
+  /// Setting for showing live TV button
+  ///
+  /// In en, this message translates to:
+  /// **'Show Live TV Button'**
+  String get showLiveTvButton;
+
   /// Setting for showing downloads button
   ///
   /// In en, this message translates to:
@@ -7911,6 +8235,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Include missing items on Collection pages'**
   String get showMissingCollectionItemsDesc;
+
+  /// Setting title for showing Seerr availability badges on media details pages
+  ///
+  /// In en, this message translates to:
+  /// **'Show Seerr Availability Badges'**
+  String get showSeerrAvailabilityBadges;
+
+  /// Setting description for showing Seerr availability badges on media details pages
+  ///
+  /// In en, this message translates to:
+  /// **'Show season availability badges on media details pages'**
+  String get showSeerrAvailabilityBadgesDescription;
 
   /// Header for the Seerr notifications settings section
   ///
@@ -16516,6 +16852,12 @@ abstract class AppLocalizations {
   /// **'Show the favorites button in the navigation bar'**
   String get settingsShowFavoritesButtonInNavigation;
 
+  /// No description provided for @settingsShowLiveTvButtonInNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the Live TV button in the navigation bar when the server has a Live TV library'**
+  String get settingsShowLiveTvButtonInNavigation;
+
   /// No description provided for @settingsShowLibrariesButtonInNavigation.
   ///
   /// In en, this message translates to:
@@ -17709,6 +18051,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Classic keeps per-row image type and info overlay. Modern uses portrait-to-backdrop rows.'**
   String get rowsTypeDescription;
+
+  /// No description provided for @modernCardsOnMyMediaRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Modern cards on My Media row'**
+  String get modernCardsOnMyMediaRow;
+
+  /// No description provided for @modernCardsOnMyMediaRowDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Display customizable posters that expand on focus. Disable to always show landscape thumbnail.'**
+  String get modernCardsOnMyMediaRowDescription;
 
   /// No description provided for @sortOrder.
   ///
@@ -19276,6 +19630,12 @@ abstract class AppLocalizations {
   /// **'Focused Timeline'**
   String get audiobookFocusedTimeline;
 
+  /// No description provided for @audiobookFullTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Timeline'**
+  String get audiobookFullTimeline;
+
   /// No description provided for @audiobookExportBookmarks.
   ///
   /// In en, this message translates to:
@@ -19701,6 +20061,165 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Number of audio channels is not supported.'**
   String get transcodeAudioChannelsNotSupported;
+
+  /// No description provided for @transcodeAudioCodecWithCodec.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio codec ({codec}) is not supported directly.'**
+  String transcodeAudioCodecWithCodec(String codec);
+
+  /// No description provided for @transcodeAudioCodecHintPassthrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: If your audio receiver or soundbar supports {codec}, enable Audio Passthrough in Audio settings.'**
+  String transcodeAudioCodecHintPassthrough(String codec);
+
+  /// No description provided for @transcodeAudioChannelsExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio channel count ({channels}ch) exceeds the player limit.'**
+  String transcodeAudioChannelsExceeded(int channels);
+
+  /// No description provided for @transcodeAudioChannelsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Adjust \'Max Audio Channels\' or multichannel downmixing in Audio settings.'**
+  String get transcodeAudioChannelsHint;
+
+  /// No description provided for @transcodeSubtitleBurnInAssDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'ASS/SSA subtitles require transcoding because direct play is turned off.'**
+  String get transcodeSubtitleBurnInAssDisabled;
+
+  /// No description provided for @transcodeSubtitleBurnInAssHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Enable \'ASS/SSA Direct Play\' in Playback settings to play directly without transcoding.'**
+  String get transcodeSubtitleBurnInAssHint;
+
+  /// No description provided for @transcodeSubtitleBurnInPgsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'PGS subtitles require transcoding because direct play is turned off.'**
+  String get transcodeSubtitleBurnInPgsDisabled;
+
+  /// No description provided for @transcodeSubtitleBurnInPgsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Enable \'PGS Direct Play\' in Playback settings to play directly without transcoding.'**
+  String get transcodeSubtitleBurnInPgsHint;
+
+  /// No description provided for @transcodeSubtitleNotSupportedWithCodec.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle format ({codec}) is not supported directly and must be burned in.'**
+  String transcodeSubtitleNotSupportedWithCodec(String codec);
+
+  /// No description provided for @transcodeBitrateExceededWithValues.
+  ///
+  /// In en, this message translates to:
+  /// **'File bitrate ({fileBitrate}) exceeds the configured streaming limit ({maxBitrate}).'**
+  String transcodeBitrateExceededWithValues(
+    String fileBitrate,
+    String maxBitrate,
+  );
+
+  /// No description provided for @transcodeBitrateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Increase \'Maximum Bitrate\' in Playback settings to allow direct streaming.'**
+  String get transcodeBitrateHint;
+
+  /// No description provided for @transcodeResolutionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Increase \'Maximum Resolution\' in Playback settings to allow direct streaming.'**
+  String get transcodeResolutionHint;
+
+  /// No description provided for @transcodeVideoRangeNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Video dynamic range (e.g. Dolby Vision / HDR) is not supported by this display.'**
+  String get transcodeVideoRangeNotSupported;
+
+  /// No description provided for @transcodeDolbyVisionProfile7ElDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Dolby Vision Profile 7 enhancement layer direct play is disabled.'**
+  String get transcodeDolbyVisionProfile7ElDisabled;
+
+  /// No description provided for @transcodeDolbyVisionProfile7ElHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Enable \'Dolby Vision Profile 7 Direct Play\' in Playback settings if your display supports it.'**
+  String get transcodeDolbyVisionProfile7ElHint;
+
+  /// No description provided for @transcodeDolbyVisionFallbackPreferenceTranscode.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcoding is preferred for Dolby Vision fallback per user settings.'**
+  String get transcodeDolbyVisionFallbackPreferenceTranscode;
+
+  /// No description provided for @transcodeDolbyVisionFallbackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Set \'Dolby Vision Fallback\' to \'Play as HDR10\' in Playback settings to avoid transcoding.'**
+  String get transcodeDolbyVisionFallbackHint;
+
+  /// No description provided for @transcodeDisplayReportsNoHdr.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected display does not report support for HDR or Dolby Vision.'**
+  String get transcodeDisplayReportsNoHdr;
+
+  /// No description provided for @transcodeDisplayLacksHdr10ForFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected display lacks HDR10 support needed for Dolby Vision fallback.'**
+  String get transcodeDisplayLacksHdr10ForFallback;
+
+  /// No description provided for @transcodeAudioSampleRateNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio sample rate is not supported.'**
+  String get transcodeAudioSampleRateNotSupported;
+
+  /// No description provided for @transcodeAudioBitDepthNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio bit depth is not supported.'**
+  String get transcodeAudioBitDepthNotSupported;
+
+  /// No description provided for @transcodeRefFramesNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Video reference frames exceed player limits.'**
+  String get transcodeRefFramesNotSupported;
+
+  /// No description provided for @transcodeAnamorphicVideoNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Anamorphic video is not supported.'**
+  String get transcodeAnamorphicVideoNotSupported;
+
+  /// No description provided for @transcodeInterlacedVideoNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Interlaced video is not supported.'**
+  String get transcodeInterlacedVideoNotSupported;
+
+  /// No description provided for @transcodeSecondaryAudioNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary audio stream requires transcoding.'**
+  String get transcodeSecondaryAudioNotSupported;
+
+  /// No description provided for @transcodeDirectPlayError.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct play is not supported for this media format.'**
+  String get transcodeDirectPlayError;
 
   /// No description provided for @sortAlphabetical.
   ///
@@ -20560,6 +21079,18 @@ abstract class AppLocalizations {
   /// **'Hero-first, with pop-up cards for cast and extras.'**
   String get setupDetailSpotlightHint;
 
+  /// Name of the full-screen stacked detail layout, offered in the setup wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Nouveau'**
+  String get setupStyleNouveau;
+
+  /// What the nouveau detail screen style gives you
+  ///
+  /// In en, this message translates to:
+  /// **'Full-screen, with sections stacked instead of tabs.'**
+  String get setupDetailNouveauHint;
+
   /// Label above the theme swatches on the final setup screen
   ///
   /// In en, this message translates to:
@@ -20953,6 +21484,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{{name} needs {size}.} other{{count} episodes are waiting for space.}} Free up space or raise the download limit.'**
   String autoDownloadStorageFullBody(int count, String name, String size);
+
+  /// Section header in General Style settings for configuring motion and transition speeds
+  ///
+  /// In en, this message translates to:
+  /// **'Animation Speed'**
+  String get settingsAnimationSpeed;
+
+  /// Setting title for adjusting the speed of page navigation transitions
+  ///
+  /// In en, this message translates to:
+  /// **'Page Transitions'**
+  String get pageTransitions;
+
+  /// Description for the page transitions animation speed setting
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusts fade time when navigating between pages'**
+  String get pageTransitionsSubtitle;
+
+  /// Setting title for adjusting the speed of focus movement and row scrolling
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation Speed'**
+  String get navigationSpeed;
+
+  /// Description for the navigation animation speed setting
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusts how quickly the focus indicator moves between items and rows'**
+  String get navigationSpeedSubtitle;
+
+  /// Setting title for adjusting animation speed of modern card expansions
+  ///
+  /// In en, this message translates to:
+  /// **'Modern Cards Transition Speed'**
+  String get modernCardsTransitionSpeed;
+
+  /// Description for modern cards transition speed setting
+  ///
+  /// In en, this message translates to:
+  /// **'Adjusts animation speed when expanding focused modern cards'**
+  String get modernCardsTransitionSpeedSubtitle;
+
+  /// Setting title for debouncing modern card expansion during rapid D-pad scrolling
+  ///
+  /// In en, this message translates to:
+  /// **'Delay Card Expansion on Rapid Scroll'**
+  String get delayCardExpansionOnRapidScroll;
+
+  /// Description for debouncing modern card expansion setting
+  ///
+  /// In en, this message translates to:
+  /// **'Waits for focus movement to pause before expanding modern cards'**
+  String get delayCardExpansionOnRapidScrollSubtitle;
+
+  /// Option label for extra slow animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Extra Slow'**
+  String get animationSpeedExtraSlow;
+
+  /// Option label for slow animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Slow'**
+  String get animationSpeedSlow;
+
+  /// Option label for medium/normal animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get animationSpeedMedium;
+
+  /// Option label for fast animation speed
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get animationSpeedFast;
+
+  /// Option label for turning animations off / instant transitions
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get animationSpeedOff;
+
+  /// Option label for instant page transition with no fade
+  ///
+  /// In en, this message translates to:
+  /// **'No Fade'**
+  String get pageTransitionFadeNone;
+
+  /// Option label for short fade page transition
+  ///
+  /// In en, this message translates to:
+  /// **'Short Fade'**
+  String get pageTransitionFadeShort;
+
+  /// Option label for medium fade page transition
+  ///
+  /// In en, this message translates to:
+  /// **'Medium Fade'**
+  String get pageTransitionFadeMedium;
+
+  /// Option label for long fade page transition
+  ///
+  /// In en, this message translates to:
+  /// **'Long Fade'**
+  String get pageTransitionFadeLong;
+
+  /// Live TV player status while a channel is being tuned
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to channel…'**
+  String get liveTvConnecting;
+
+  /// Live TV player status when the server has kept a channel request open for several seconds, meaning the tuner is retrying its source
+  ///
+  /// In en, this message translates to:
+  /// **'The tuner is still trying to get this channel…'**
+  String get liveTvTunerStillTrying;
+
+  /// Live TV player status when a playing channel stops receiving data
+  ///
+  /// In en, this message translates to:
+  /// **'Signal lost. The tuner is reconnecting…'**
+  String get liveTvReconnecting;
+
+  /// Title shown when a live TV channel could not be started
+  ///
+  /// In en, this message translates to:
+  /// **'Channel unavailable'**
+  String get liveTvChannelUnavailableTitle;
+
+  /// Explanation shown when a live TV channel could not be started
+  ///
+  /// In en, this message translates to:
+  /// **'The server could not get this channel from the tuner. The source may be down, or the tuner gave up after retrying.'**
+  String get liveTvChannelUnavailableBody;
+
+  /// Title shown when a playing live TV channel stopped and did not recover
+  ///
+  /// In en, this message translates to:
+  /// **'Channel lost'**
+  String get liveTvChannelLostTitle;
+
+  /// Explanation shown when a playing live TV channel stopped and did not recover
+  ///
+  /// In en, this message translates to:
+  /// **'The stream stopped and the tuner did not bring it back. Try again or pick another channel.'**
+  String get liveTvChannelLostBody;
 }
 
 class _AppLocalizationsDelegate

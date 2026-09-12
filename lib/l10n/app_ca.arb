@@ -854,7 +854,7 @@
     "@rssFeed": {
         "description": "Button label for RSS feed external link"
     },
-    "downloadZip": "Descarrega Zip",
+    "downloadZip": "Baixa Zip",
     "@downloadZip": {
         "description": "Button label for zip download external link"
     },
@@ -1131,19 +1131,19 @@
     "@playlist": {
         "description": "Action button label for adding to a playlist"
     },
-    "downloaded": "Descarregat",
+    "downloaded": "Baixat",
     "@downloaded": {
         "description": "Status label for a downloaded item"
     },
-    "downloadAll": "Descarrega-ho tot",
+    "downloadAll": "Baixa-ho tot",
     "@downloadAll": {
         "description": "Action button label to download all items"
     },
-    "download": "Descarregar",
+    "download": "Baixar",
     "@download": {
         "description": "Action button label to download an item"
     },
-    "deleteDownloaded": "Suprimeix els descarregats",
+    "deleteDownloaded": "Suprimeix els baixats",
     "@deleteDownloaded": {
         "description": "Action button label to delete downloaded album tracks"
     },
@@ -1279,7 +1279,7 @@
     "@none": {
         "description": "Option label for no subtitle selected"
     },
-    "downloadSubtitlesLabel": "Descarrega els subtítols...",
+    "downloadSubtitlesLabel": "Baixa els subtítols...",
     "@downloadSubtitlesLabel": {
         "description": "Label for the download subtitles option"
     },
@@ -1287,7 +1287,7 @@
     "@searchOpenSubtitlesPlugin": {
         "description": "Subtitle for the download subtitles option"
     },
-    "downloadSubtitles": "Descarrega els subtítols",
+    "downloadSubtitles": "Baixa els subtítols",
     "@downloadSubtitles": {
         "description": "Dialog title for downloading remote subtitles"
     },
@@ -1304,7 +1304,7 @@
             }
         }
     },
-    "subtitleDownloadedPending": "Subtítols descarregats. Pot trigar un moment a aparèixer mentre Jellyfin actualitza l'element.",
+    "subtitleDownloadedPending": "Subtítols baixats. Pot trigar un moment a aparèixer mentre Jellyfin actualitza l'element.",
     "@subtitleDownloadedPending": {
         "description": "Message when subtitle was downloaded but not yet visible"
     },
@@ -1334,7 +1334,7 @@
     "@downloadAllQuality": {
         "description": "Title for download quality picker when downloading all"
     },
-    "downloadQuality": "Qualitat de descàrrega",
+    "downloadQuality": "Qualitat de baixada",
     "@downloadQuality": {
         "description": "Title for download quality picker for a single item"
     },
@@ -1362,11 +1362,11 @@
             }
         }
     },
-    "deleteDownloadedFiles": "Suprimeix els fitxers descarregats",
+    "deleteDownloadedFiles": "Suprimeix els fitxers baixats",
     "@deleteDownloadedFiles": {
         "description": "Dialog title for deleting downloaded files"
     },
-    "deleteLocalFilesMessage": "Vols suprimir els fitxers locals per a {typeLabel}?\n\nAixò alliberarà espai d'emmagatzematge. Podeu tornar a descarregar-lo més tard.",
+    "deleteLocalFilesMessage": "Vols suprimir els fitxers locals per a {typeLabel}?\n\nAixò alliberarà espai d'emmagatzematge. Podeu tornar a baixar-lo més tard.",
     "@deleteLocalFilesMessage": {
         "description": "Confirmation message for deleting local downloaded files",
         "placeholders": {
@@ -1504,7 +1504,7 @@
     "@shuffle": {
         "description": "Action button label for shuffle playback"
     },
-    "downloadsCount": "{count} descàrregues",
+    "downloadsCount": "{count} baixades",
     "@downloadsCount": {
         "description": "Subtitle showing number of downloads for a remote subtitle",
         "placeholders": {
@@ -2312,7 +2312,7 @@
     "@seerr": {
         "description": "Seerr brand name"
     },
-    "savedMedia": "Mitjans desats",
+    "savedMedia": "Baixades",
     "@savedMedia": {
         "description": "Header title for saved/downloaded media screen"
     },
@@ -2340,7 +2340,7 @@
     "@browseLibrary": {
         "description": "Button to navigate to the library"
     },
-    "deleteDownload": "Suprimeix la descàrrega",
+    "deleteDownload": "Suprimeix la baixada",
     "@deleteDownload": {
         "description": "Dialog title for deleting a download"
     },
@@ -2451,7 +2451,7 @@
     "@errorLoadingSeries": {
         "description": "Error when loading a series fails"
     },
-    "downloadedEpisodes": "Episodis descarregats",
+    "downloadedEpisodes": "Episodis baixats",
     "@downloadedEpisodes": {
         "description": "Section title for downloaded episodes"
     },
@@ -2507,7 +2507,7 @@
     "@storageBreakdown": {
         "description": "Section title for storage breakdown"
     },
-    "downloadedItems": "Elements descarregats",
+    "downloadedItems": "Elements baixats",
     "@downloadedItems": {
         "description": "Section title for downloaded items list"
     },
@@ -2519,11 +2519,11 @@
     "@noLimit": {
         "description": "Option: no limit"
     },
-    "deleteAllDownloads": "Suprimeix totes les descàrregues",
+    "deleteAllDownloads": "Suprimeix totes les baixades",
     "@deleteAllDownloads": {
         "description": "Button and dialog title for deleting all downloads"
     },
-    "deleteAllDownloadsWarning": "Això eliminarà tots els fitxers multimèdia descarregats i no es pot desfer.",
+    "deleteAllDownloadsWarning": "Això eliminarà tots els fitxers multimèdia baixats i no es pot desfer.",
     "@deleteAllDownloadsWarning": {
         "description": "Warning message when deleting all downloads"
     },
@@ -3292,7 +3292,7 @@
     "@quality": {
         "description": "Section title for quality settings"
     },
-    "defaultDownloadQuality": "Qualitat de descàrrega per defecte",
+    "defaultDownloadQuality": "Qualitat de baixada per defecte",
     "@defaultDownloadQuality": {
         "description": "Setting for default download quality"
     },
@@ -3300,7 +3300,7 @@
     "@network": {
         "description": "Section title for network settings"
     },
-    "wifiOnlyDownloads": "Descàrregues només per a WiFi",
+    "wifiOnlyDownloads": "Baixades només per a WiFi",
     "@wifiOnlyDownloads": {
         "description": "Setting for wifi-only downloads"
     },
@@ -3324,7 +3324,7 @@
     "@calculating": {
         "description": "Label while calculating"
     },
-    "downloadLocation": "Descarrega la ubicació",
+    "downloadLocation": "Ubicació de les baixades",
     "@downloadLocation": {
         "description": "Setting for download location"
     },
@@ -3336,7 +3336,7 @@
     "@saveToDownloadsFolder": {
         "description": "Setting for saving to downloads folder"
     },
-    "downloadsVisibleToOtherApps": "Descàrregues/Moonfin: visible per a altres aplicacions",
+    "downloadsVisibleToOtherApps": "Baixades/Moonfin: visible per a altres aplicacions",
     "@downloadsVisibleToOtherApps": {
         "description": "Description for downloads folder visibility"
     },
@@ -3352,7 +3352,7 @@
     "@original": {
         "description": "Quality option: original"
     },
-    "changeDownloadLocation": "Canvia la ubicació de descàrrega",
+    "changeDownloadLocation": "Canvia la ubicació de les baixades",
     "@changeDownloadLocation": {
         "description": "Dialog title for changing download location"
     },
@@ -3372,7 +3372,7 @@
     "@saveToDownloadsFolderQuestion": {
         "description": "Dialog title for saving to downloads folder"
     },
-    "saveToDownloadsFolderDescription": "Els mitjans descarregats es desaran a Descàrregues/Moonfin al vostre dispositiu. Aquests fitxers seran visibles per a altres aplicacions, com ara la galeria o el reproductor de música.\n\nLes baixades existents es mantindran a la seva ubicació actual.",
+    "saveToDownloadsFolderDescription": "Els mitjans baixats es desaran a Baixades/Moonfin al vostre dispositiu. Aquests fitxers seran visibles per a altres aplicacions, com ara la galeria o el reproductor de música.\n\nLes baixades existents es mantindran a la seva ubicació actual.",
     "@saveToDownloadsFolderDescription": {
         "description": "Description for saving to downloads folder"
     },
@@ -3380,7 +3380,7 @@
     "@enable": {
         "description": "Button to enable a feature"
     },
-    "clearAllDownloadsWarning": "Això suprimirà tots els mitjans descarregats i no es pot desfer.",
+    "clearAllDownloadsWarning": "Això suprimirà tots els mitjans baixats i no es pot desfer.",
     "@clearAllDownloadsWarning": {
         "description": "Warning when clearing all downloads"
     },
@@ -4199,7 +4199,7 @@
     "@downloadingUpdate": {
         "description": "Label shown while an update is being downloaded"
     },
-    "updateDownloadFailed": "La descàrrega de l'actualització ha fallat. Si us plau, torna-ho a provar.",
+    "updateDownloadFailed": "La baixada de l'actualització ha fallat. Si us plau, torna-ho a provar.",
     "@updateDownloadFailed": {
         "description": "Error shown when the update download fails"
     },
@@ -4459,7 +4459,7 @@
     "@partiallyAvailable": {
         "description": "Request status label"
     },
-    "downloadingStatus": "Descàrrega",
+    "downloadingStatus": "Baixada",
     "@downloadingStatus": {
         "description": "Request status label"
     },
@@ -6267,10 +6267,10 @@
     "mediaBarLoading": "S'està carregant la barra multimèdia...",
     "mediaBarError": "La barra multimèdia no s'ha pogut carregar",
     "offlineServerUnavailable": "Connectat a Internet, però el servidor actual no està disponible.",
-    "offlineNoInternet": "Estàs fora de línia. Només el contingut descarregat està disponible.",
+    "offlineNoInternet": "Estàs fora de línia. Només el contingut baixat està disponible.",
     "offlineFileNotAvailable": "Fitxer no disponible",
     "offlineSwitchServer": "Canvia de servidor",
-    "offlineSavedMedia": "Mitjans desats",
+    "offlineSavedMedia": "Baixades",
     "castGoogleCast": "Google Cast",
     "castAirPlay": "AirPlay",
     "castDlna": "DLNA",
@@ -6374,7 +6374,7 @@
     "trackActionPlayNext": "Reproduir a continuació",
     "trackActionAddToQueue": "Afegeix a la cua",
     "trackActionAddToPlaylist": "Afegeix a la llista de reproducció",
-    "trackActionCancelDownload": "Cancel·la la descàrrega",
+    "trackActionCancelDownload": "Cancel·la la baixada",
     "trackActionDeleteFromPlaylist": "Suprimeix de la llista de reproducció",
     "trackActionMoveUp": "Mou cap amunt",
     "trackActionMoveDown": "Mou cap avall",
@@ -6390,7 +6390,7 @@
             }
         }
     },
-    "trackActionDeletedFile": "S'ha suprimit el fitxer descarregat",
+    "trackActionDeletedFile": "S'ha suprimit el fitxer baixat",
     "trackActionDeleteFileFailed": "No s'ha pogut suprimir el fitxer baixat",
     "shuffleBy": "Barrejar per",
     "shuffleSelectLibrary": "Seleccioneu Biblioteca",
@@ -6519,7 +6519,7 @@
     "settingsDynamicContent": "Contingut dinàmic",
     "settingsDynamicContentSubtitle": "Barra multimèdia i superposicions visuals",
     "settingsPlaybackSyncplay": "Reproducció i SyncPlay",
-    "settingsPlaybackSyncplaySubtitle": "Configuració d'àudio/vídeo, subtítols, descàrregues i controls de SyncPlay",
+    "settingsPlaybackSyncplaySubtitle": "Configuració d'àudio/vídeo, subtítols, baixades i controls de SyncPlay",
     "settingsIntegrationsSubtitle": "Sincronització de connectors, Seerr, puntuacions i molt més",
     "settingsAboutSubtitle": "Versió de l'aplicació, informació legal i crèdits",
     "settingsAuthenticationSection": "Autenticació",
@@ -6545,13 +6545,13 @@
     "settingsSeasonalSurprise": "Sorpresa de temporada",
     "settingsMetadataAndRatings": "Metadades i puntuacions",
     "settingsPluginScreenDescription": "Moonbase potencia les integracions del servidor, incloses fonts de qualificació addicionals, sol·licituds de Seerr i preferències sincronitzades.",
-    "settingsOfflineDownloads": "Descàrregues fora de línia",
+    "settingsOfflineDownloads": "Baixades fora de línia",
     "settingsHigh": "Alt",
     "settingsLow": "Baixa",
     "settingsCustomPath": "Camí personalitzat",
-    "settingsEnterDownloadFolderPath": "Introduïu el camí de la carpeta de descàrrega",
-    "settingsConcurrentDownloads": "Descàrregues concurrents",
-    "settingsConcurrentDownloadsDescription": "Nombre màxim d'elements per descarregar alhora.",
+    "settingsEnterDownloadFolderPath": "Introduïu el camí de la carpeta de baixades",
+    "settingsConcurrentDownloads": "Baixades concurrents",
+    "settingsConcurrentDownloadsDescription": "Nombre màxim d'elements per baixar alhora.",
     "settingsAppInfo": "INFORMACIÓ DE L'APP",
     "settingsReportAnIssue": "Informar d'un problema",
     "settingsReportAnIssueSubtitle": "Obriu el rastrejador de problemes a GitHub",
@@ -7961,8 +7961,8 @@
     "@subtitleStream": {
         "description": "Header for subtitle stream settings"
     },
-    "reportDownloadsActivity": "Mostra les descàrregues al servidor",
-    "reportDownloadsActivitySubtitle": "Permet que l'administrador del servidor vegi les teves descàrregues transcodificades al tauler",
+    "reportDownloadsActivity": "Mostra les baixades al servidor",
+    "reportDownloadsActivitySubtitle": "Permet que l'administrador del servidor vegi les teves baixades transcodificades al tauler",
     "navbarAlwaysExpanded": "Mostra sempre les etiquetes de la barra de navegació",
     "@navbarAlwaysExpanded": {
         "description": "Setting to keep every top navbar heading's text label visible at all times, tvOS-style"
@@ -8031,7 +8031,7 @@
     "imageCacheLimit": "Límit de la memòria cau d'imatges",
     "clearImageCache": "Esborra la memòria cau d'imatges",
     "imageCacheCleared": "S'ha esborrat la memòria cau d'imatges",
-    "seerrDownloadingPercent": "Descarregant · {percent}%",
+    "seerrDownloadingPercent": "Baixant · {percent}%",
     "@seerrDownloadingPercent": {
         "description": "Label above the Seerr download progress bar",
         "placeholders": {
@@ -8383,8 +8383,8 @@
     "adminLibEmbeddedAllowText": "Només text",
     "adminLibEmbeddedAllowImage": "Només imatge",
     "adminLibEmbeddedAllowNone": "Cap",
-    "adminLibSkipIfEmbeddedSubs": "Omet la descàrrega si hi ha subtítols incrustats",
-    "adminLibSkipIfAudioMatches": "Omet la descàrrega si la pista d'àudio coincideix amb l'idioma de descàrrega",
+    "adminLibSkipIfEmbeddedSubs": "Omet la baixada si hi ha subtítols incrustats",
+    "adminLibSkipIfAudioMatches": "Omet la baixada si la pista d'àudio coincideix amb l'idioma de baixada",
     "adminLibRequirePerfectMatch": "Exigeix una coincidència perfecta dels subtítols",
     "adminLibSaveSubtitlesWithMedia": "Desa els subtítols a les carpetes multimèdia",
     "adminLibChapterImageExtraction": "Extreu les imatges dels capítols",
@@ -8579,10 +8579,10 @@
     "adminGeneralSectionPerformance": "Rendiment",
     "adminGeneralDisplayLanguage": "Idioma de visualització preferit",
     "offlineBannerTitle": "No tens connexió",
-    "offlineBannerSubtitle": "Es mostren les teves descàrregues",
-    "offlineBannerAction": "Descàrregues",
+    "offlineBannerSubtitle": "Es mostren les teves baixades",
+    "offlineBannerAction": "Baixades",
     "serverUnreachableBannerTitle": "No es pot connectar amb el teu servidor",
-    "serverUnreachableBannerSubtitle": "Es reprodueix des de les descàrregues fins que torni",
+    "serverUnreachableBannerSubtitle": "Es reprodueix des de les baixades fins que torni",
     "contextMenuHideFromContinueWatching": "Amaga de Continuar mirant",
     "@contextMenuHideFromContinueWatching": {
         "description": "Context menu action to hide an item from the Continue Watching section"
@@ -8636,7 +8636,7 @@
     "changeArtwork": "Canvia la il·lustració",
     "missing": "Falta",
     "clearAllArtworkButton": "Esborrar totes les il·lustracions?",
-    "clearAllArtworkWarning": "Segur que vols esborrar totes les il·lustracions descarregades?",
+    "clearAllArtworkWarning": "Segur que vols esborrar totes les il·lustracions baixades?",
     "confirmClear": "Confirma l'esborrat",
     "confirmClearMessage": "Segur que vols esborrar aquesta imatge ({itemType})?",
     "@confirmClearMessage": {
@@ -9217,10 +9217,10 @@
     "emulatorCores": "Nuclis de l'emulador",
     "emulatorCoresSubtitle": "Descargueu sistemes per jugar a jocs de manera nativa",
     "emulatorCoresDescription": "Tria quins sistemes vols instal·lar. Els nuclis els proporciona el projecte libretro i permeten que els jocs s’executin de manera nativa, en lloc de fer-ho dins d’una vista del navegador.",
-    "emulatorCoreDownloading": "Descarregant",
+    "emulatorCoreDownloading": "Baixant",
     "emulatorCoreUnavailable": "No disponible per aquest dispositiu",
-    "emulatorCoreDownloadFailed": "No s'ha pogut descarregar el nucli. Verifica la connexió i torna-ho a provar.",
-    "downloadedGames": "Jocs descarregats",
+    "emulatorCoreDownloadFailed": "No s'ha pogut baixar el nucli. Verifica la connexió i torna-ho a provar.",
+    "downloadedGames": "Jocs baixats",
     "@downloadedGames": {
         "description": "Settings screen title for managing game files stored on the device"
     },
@@ -9232,7 +9232,7 @@
     "@downloadedGamesDescription": {
         "description": "Explanation at the top of the Downloaded Games settings screen"
     },
-    "downloadedGamesEmpty": "Encara no s'ha descarregat cap joc en aquest dispositiu.",
+    "downloadedGamesEmpty": "Encara no s'ha baixat cap joc en aquest dispositiu.",
     "@downloadedGamesEmpty": {
         "description": "Shown on the Downloaded Games screen when nothing is cached"
     },
@@ -9252,7 +9252,7 @@
     "@removeAllDownloadedGames": {
         "description": "Button that deletes every downloaded game from the device"
     },
-    "removeDownloadedGameConfirm": "Eliminar {title} d'aquest dispositiu? Es tornarà a descarregar la propera vegada que el juguis.",
+    "removeDownloadedGameConfirm": "Eliminar {title} d'aquest dispositiu? Es tornarà a baixar la propera vegada que el juguis.",
     "@removeDownloadedGameConfirm": {
         "description": "Confirmation prompt before deleting a single downloaded game, where title is the game name",
         "placeholders": {
@@ -9261,7 +9261,7 @@
             }
         }
     },
-    "removeAllDownloadedGamesConfirm": "Eliminar tots els jocs descarregats d'aquest dispositiu? Es tornaran a descarregar la propera vegada que els juguis.",
+    "removeAllDownloadedGamesConfirm": "Eliminar tots els jocs baixats d'aquest dispositiu? Es tornaran a baixar la propera vegada que els juguis.",
     "@removeAllDownloadedGamesConfirm": {
         "description": "Confirmation prompt before deleting every downloaded game"
     },
@@ -9473,7 +9473,7 @@
     "@sdCard": {
         "description": "Download location option for a removable storage volume"
     },
-    "downloadLocationLimitedByAndroid": "Android només permet que Moonfin escrigui a les carpetes que posseeix, i aquest dispositiu no té emmagatzematge extraïble. Activa la carpeta «Desar a Baixades» anterior per guardar les descàrregues en un lloc al qual les altres aplicacions puguin accedir.",
+    "downloadLocationLimitedByAndroid": "Android només permet que Moonfin escrigui a les carpetes que posseeix, i aquest dispositiu no té emmagatzematge extraïble. Activa la carpeta «Desar a Baixades» anterior per guardar les baixades en un lloc al qual les altres aplicacions puguin accedir.",
     "@downloadLocationLimitedByAndroid": {
         "description": "Note shown when the only download location Android allows is the default one"
     },
@@ -9940,7 +9940,7 @@
     "@setupTourBulletThemes": {
         "description": "Bullet on the closing setup screen for custom themes"
     },
-    "setupTourBulletDownloads": "Descàrregues offline",
+    "setupTourBulletDownloads": "Baixades offline",
     "@setupTourBulletDownloads": {
         "description": "Bullet on the closing setup screen for downloads"
     },
@@ -10017,11 +10017,11 @@
     "@queuedDownload": {
         "description": "Status label for a download waiting in the queue for a free download slot"
     },
-    "tvOfflineDownloads": "Habilita descàrregues offline",
+    "tvOfflineDownloads": "Habilita baixades offline",
     "@tvOfflineDownloads": {
         "description": "TV-only toggle in the Offline Downloads settings: offer download actions on item pages"
     },
-    "tvOfflineDownloadsSubtitle": "Mostra accions de descàrrega a les pàgines d'ítems",
+    "tvOfflineDownloadsSubtitle": "Mostra accions de baixada a les pàgines d'ítems",
     "@tvOfflineDownloadsSubtitle": {
         "description": "Subtitle for the TV-only offline downloads toggle"
     },
@@ -10035,7 +10035,7 @@
     "adminMetadataDisplayOrderSortName": "Ordenar per nom",
     "adminMetadataDisplayOrderReleaseDate": "Data de publicació",
     "adminMetadataSettings": "Configuració de metadades",
-    "adminMetadataDownloadLanguage": "Idioma de descàrrega preferit",
+    "adminMetadataDownloadLanguage": "Idioma de baixada preferit",
     "adminMetadataCountryRegion": "País/Regió",
     "adminMetadataInheritHelp": "Deixa-ho com a Predeterminat per heretar la configuració d'un element principal o de la configuració predeterminada del servidor.",
     "adminMetadataField3DFormat": "Format 3D",
@@ -10118,7 +10118,7 @@
     "@searchingSubtitles": {
         "description": "Shown while a remote subtitle search is running"
     },
-    "downloadingSubtitle": "Descarregant subtítols…",
+    "downloadingSubtitle": "Baixant subtítols…",
     "@downloadingSubtitle": {
         "description": "Shown while a chosen subtitle is downloaded and the server is picking it up"
     },
@@ -10175,11 +10175,11 @@
     "@trickplayFollowScrubPositionSubtitle": {
         "description": "Description for the trickplay follow-scrub-position setting"
     },
-    "seerrDownloading": "Descarregant",
+    "seerrDownloading": "Baixant",
     "@seerrDownloading": {
         "description": "Seerr download bar label when the server reports no usable file sizes"
     },
-    "seerrDownloadingSize": "Descarregant · {done} / {total}",
+    "seerrDownloadingSize": "Baixant · {done} / {total}",
     "@seerrDownloadingSize": {
         "description": "Label above the Seerr download progress bar when byte counts are known",
         "placeholders": {
@@ -10476,5 +10476,468 @@
     "screensaverSourceLibrariesDefault": "Tot (predeterminat)",
     "@screensaverSourceLibrariesDefault": {
         "description": "Subtitle when no source libraries are explicitly filtered in screensaver"
+    },
+    "queuedMoreCount": "{count, plural, =1{1 més a la cua} other{{count} més a la cua}}",
+    "@queuedMoreCount": {
+        "description": "Row under the active downloads list standing in for queued items not shown individually",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "downloadScopeTitle": "Què baixar",
+    "@downloadScopeTitle": {
+        "description": "Title of the sheet asking whether to download all or only unwatched items"
+    },
+    "downloadAllEpisodes": "Tots els episodis",
+    "@downloadAllEpisodes": {
+        "description": "Download scope option: every episode of a series or season"
+    },
+    "downloadUnwatchedEpisodes": "Tots els episodis no vistos",
+    "@downloadUnwatchedEpisodes": {
+        "description": "Download scope option: only episodes not yet marked as watched"
+    },
+    "downloadAllMovies": "Totes les pel·lícules",
+    "@downloadAllMovies": {
+        "description": "Download scope option: every movie in a collection"
+    },
+    "downloadUnwatchedMovies": "Totes les pel·lícules no vistes",
+    "@downloadUnwatchedMovies": {
+        "description": "Download scope option: only collection movies not yet marked as watched"
+    },
+    "downloadScopeLoading": "S'estan carregant els elements...",
+    "@downloadScopeLoading": {
+        "description": "Subtitle shown in the download scope sheet while the item list is being fetched"
+    },
+    "downloadScopeLoadFailed": "No s'han pogut carregar els elements per baixar",
+    "@downloadScopeLoadFailed": {
+        "description": "Snackbar shown when the item list for a batch download could not be fetched"
+    },
+    "downloadEstimateTotal": "~{size} en total",
+    "@downloadEstimateTotal": {
+        "description": "Estimated total download size for a batch, e.g. '~1.2 GB total'",
+        "placeholders": {
+            "size": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadBytesOfTotal": "{received} de {total}",
+    "@downloadBytesOfTotal": {
+        "description": "Transfer status of a running download, e.g. '1.2 GB of 4.6 GB'",
+        "placeholders": {
+            "received": {
+                "type": "String"
+            },
+            "total": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadSpeed": "{speed}/s",
+    "@downloadSpeed": {
+        "description": "Transfer rate of a running download, e.g. '25.3 MB/s'",
+        "placeholders": {
+            "speed": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadSizeTotal": "{size} en total",
+    "@downloadSizeTotal": {
+        "description": "Exact total file size of a batch of original files, e.g. '12.4 GB total'",
+        "placeholders": {
+            "size": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadEstimateUnknownCount": "{count} desconeguts",
+    "@downloadEstimateUnknownCount": {
+        "description": "Appended to a batch size estimate when some items had no runtime to estimate from",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "showDownloadsButton": "Mostra el botó de baixades",
+    "@showDownloadsButton": {
+        "description": "Setting for showing downloads button"
+    },
+    "latestComics": "Còmics afegits recentment",
+    "@latestComics": {
+        "description": "Row title for recently added comics in the book library"
+    },
+    "comics": "Còmics",
+    "@comics": {
+        "description": "Label for comic media format or section"
+    },
+    "bookFormatComic": "Còmic",
+    "@bookFormatComic": {
+        "description": "Semantic label for the comic format badge on library cards"
+    },
+    "noBooksFoundDescription": "Aquesta biblioteca encara no conté cap llibre, audiollibre ni còmic.",
+    "@noBooksFoundDescription": {
+        "description": "Description shown when a books library has no items"
+    },
+    "settingsRedetectDisplay": "Torna a detectar la pantalla",
+    "settingsRedetectDisplayDescription": "Torna a preguntar al televisor quins formats HDR admet. Utilitza-ho si els títols en Dolby Vision o HDR10 es transcodifiquen després d'encendre el televisor o el receptor amb retard.",
+    "settingsDisplayIsSdr": "El meu televisor no és HDR",
+    "settingsDisplayIsSdrDescription": "Deixa d'anunciar la compatibilitat amb HDR per a aquesta pantalla. Utilitza-ho només si la detecció continua informant d'un HDR que el televisor no pot mostrar realment.",
+    "settingsDisplayRedetected": "S'ha tornat a detectar la pantalla: {formats}",
+    "@settingsDisplayRedetected": {
+        "placeholders": {
+            "formats": {
+                "type": "String"
+            }
+        }
+    },
+    "settingsDisplayNoHdrDetected": "No s'ha detectat cap format HDR",
+    "settingsDisplayMarkedSdr": "S'ha desat la pantalla com a SDR",
+    "dateCreatedFormat": "Data d'addició: {date}",
+    "@dateCreatedFormat": {
+        "placeholders": {
+            "date": {}
+        }
+    },
+    "currentTime": "Hora actual",
+    "@currentTime": {
+        "description": "The current time as it appears on a clock"
+    },
+    "autoDownloadNewEpisodes": "Baixa automàticament els episodis nous",
+    "@autoDownloadNewEpisodes": {
+        "description": "Row in the download sheet of a series that subscribes it to automatic downloads"
+    },
+    "autoDownloadStop": "Atura la baixada automàtica",
+    "@autoDownloadStop": {
+        "description": "Row in the download sheet of a series that is already subscribed; tapping removes the subscription"
+    },
+    "autoDownloadKeepUnwatchedSubtitle": "{count, plural, =0{Baixa tots els episodis nous} =1{Baixa els episodis nous, amb un màxim d'1 de no vist alhora} other{Baixa els episodis nous, amb un màxim de {count} de no vistos alhora}}",
+    "@autoDownloadKeepUnwatchedSubtitle": {
+        "description": "Subtitle under the auto-download row explaining the keep-unwatched rule",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "autoDownloadStopSubtitle": "Activat • {quality}",
+    "@autoDownloadStopSubtitle": {
+        "description": "Subtitle under the stop auto-download row showing the subscription's quality",
+        "placeholders": {
+            "quality": {
+                "type": "String"
+            }
+        }
+    },
+    "autoDownloadTranscodedForegroundNote": "Les qualitats transcodificades només es baixen mentre Moonfin està obert. La qualitat original també es baixa en segon pla.",
+    "@autoDownloadTranscodedForegroundNote": {
+        "description": "Shown under transcoded options when choosing the quality of an auto-download subscription"
+    },
+    "autoDownloadTranscodedRunningNote": "Les baixades transcodificades no es poden reprendre després d'una interrupció i tornen a començar des del principi. La qualitat original sí que es pot reprendre.",
+    "@autoDownloadTranscodedRunningNote": {
+        "description": "Shown under a running transcoded download that a subscription queued"
+    },
+    "autoDownloadForegroundOnly": "Només es baixa mentre Moonfin està obert",
+    "@autoDownloadForegroundOnly": {
+        "description": "Short note next to a followed series in a transcoded quality"
+    },
+    "autoDownloadQualityTitle": "Qualitat de la baixada automàtica",
+    "@autoDownloadQualityTitle": {
+        "description": "Title of the quality sheet when it is opened to create an auto-download subscription"
+    },
+    "autoDownloadEnabledFor": "S'ha activat la baixada automàtica per a {title}",
+    "@autoDownloadEnabledFor": {
+        "description": "Snackbar after subscribing a series",
+        "placeholders": {
+            "title": {
+                "type": "String"
+            }
+        }
+    },
+    "autoDownloadStoppedFor": "S'ha aturat la baixada automàtica per a {title}",
+    "@autoDownloadStoppedFor": {
+        "description": "Snackbar after unsubscribing a series",
+        "placeholders": {
+            "title": {
+                "type": "String"
+            }
+        }
+    },
+    "autoDownloadSection": "Baixades automàtiques",
+    "@autoDownloadSection": {
+        "description": "Settings section header for auto-download subscriptions"
+    },
+    "autoDownloadEnable": "Activa les baixades automàtiques",
+    "@autoDownloadEnable": {
+        "description": "Master switch for auto-download subscriptions"
+    },
+    "autoDownloadEnableSubtitle": "Baixa els episodis nous de les sèries que segueixes. Els episodis existents encara es poden baixar manualment.",
+    "@autoDownloadEnableSubtitle": {
+        "description": "Explains the master switch"
+    },
+    "autoDownloadKeepUnwatched": "Conserva els episodis no vistos",
+    "@autoDownloadKeepUnwatched": {
+        "description": "Setting that caps how many unwatched episodes per series stay downloaded"
+    },
+    "autoDownloadKeepAll": "Tots",
+    "@autoDownloadKeepAll": {
+        "description": "Option meaning no cap on kept unwatched episodes"
+    },
+    "autoDownloadDelete": "Elimina els episodis baixats",
+    "@autoDownloadDelete": {
+        "description": "Setting that picks how soon an auto-downloaded episode is removed after it was watched"
+    },
+    "autoDownloadDeleteSubtitle": "Quan s'han d'eliminar els episodis baixats automàticament després de veure'ls",
+    "@autoDownloadDeleteSubtitle": {
+        "description": "Explains the delete-after-watching setting"
+    },
+    "autoDownloadDeleteNever": "Mai",
+    "@autoDownloadDeleteNever": {
+        "description": "Delete-after-watching option: keep episodes"
+    },
+    "autoDownloadDeleteImmediately": "Just després de veure'ls",
+    "@autoDownloadDeleteImmediately": {
+        "description": "Delete-after-watching option: remove at the next check once played"
+    },
+    "autoDownloadDeleteAfterDay": "1 dia després de veure'ls",
+    "@autoDownloadDeleteAfterDay": {
+        "description": "Delete-after-watching option"
+    },
+    "autoDownloadDeleteAfterWeek": "1 setmana després de veure'ls",
+    "@autoDownloadDeleteAfterWeek": {
+        "description": "Delete-after-watching option"
+    },
+    "autoDownloadBackgroundRefresh": "Comprova en segon pla",
+    "@autoDownloadBackgroundRefresh": {
+        "description": "Setting that lets the system wake the app to check for new episodes"
+    },
+    "autoDownloadBackgroundRefreshSubtitle": "Permet que el sistema comprovi periòdicament si hi ha episodis nous mentre Moonfin està tancat",
+    "@autoDownloadBackgroundRefreshSubtitle": {
+        "description": "Explains the background refresh setting"
+    },
+    "autoDownloadBackgroundRefreshDenied": "Background App Refresh està desactivat per a Moonfin. Activa'l a iOS Settings.",
+    "@autoDownloadBackgroundRefreshDenied": {
+        "description": "Shown when iOS forbids background refresh for the app"
+    },
+    "autoDownloadBackgroundRestrictedAndroid": "L'ús en segon pla està restringit per a Moonfin a Android Settings.",
+    "@autoDownloadBackgroundRestrictedAndroid": {
+        "description": "Shown when Android restricts the app from running in the background"
+    },
+    "autoDownloadCheckNow": "Comprova ara",
+    "@autoDownloadCheckNow": {
+        "description": "Button that runs a subscription check immediately"
+    },
+    "autoDownloadChecking": "S'està comprovant...",
+    "@autoDownloadChecking": {
+        "description": "Subtitle while a subscription check is running"
+    },
+    "autoDownloadNeverChecked": "Encara no s'ha comprovat",
+    "@autoDownloadNeverChecked": {
+        "description": "Subtitle when no subscription check has run"
+    },
+    "autoDownloadLastCheck": "Última comprovació {when}: {queued, plural, =0{res de nou} =1{1 episodi a la cua} other{{queued} episodis a la cua}}",
+    "@autoDownloadLastCheck": {
+        "description": "Subtitle summarising the last subscription check",
+        "placeholders": {
+            "when": {
+                "type": "String"
+            },
+            "queued": {
+                "type": "int"
+            }
+        }
+    },
+    "autoDownloadLastCheckFailed": "L'última comprovació {when} ha fallat: {error}",
+    "@autoDownloadLastCheckFailed": {
+        "description": "Subtitle when the last subscription check hit an error",
+        "placeholders": {
+            "when": {
+                "type": "String"
+            },
+            "error": {
+                "type": "String"
+            }
+        }
+    },
+    "autoDownloadFollowedSeries": "Sèries seguides",
+    "@autoDownloadFollowedSeries": {
+        "description": "Settings section header listing the series with auto-download on"
+    },
+    "autoDownloadNoSubscriptions": "Obre una sèrie i tria «Baixa automàticament els episodis nous» al seu menú de baixada",
+    "@autoDownloadNoSubscriptions": {
+        "description": "Shown in settings when no series is followed"
+    },
+    "autoDownloadRemove": "Deixa de seguir",
+    "@autoDownloadRemove": {
+        "description": "Tooltip on the button that removes a followed series"
+    },
+    "autoDownloadStorageFull": "No hi ha prou emmagatzematge",
+    "@autoDownloadStorageFull": {
+        "description": "Appended to the last-check summary when the storage limit stopped queueing"
+    },
+    "autoDownloadWaitingForWifi": "S'està esperant la WiFi",
+    "@autoDownloadWaitingForWifi": {
+        "description": "Last-check summary when Wi-Fi only is on and the device was on mobile data"
+    },
+    "downloadNotificationRunning": "Baixant",
+    "@downloadNotificationRunning": {
+        "description": "System notification title while a download transfers"
+    },
+    "downloadNotificationRunningBatch": "Baixant ({done}/{total})",
+    "@downloadNotificationRunningBatch": {
+        "description": "System notification title while a batch transfers; done is the 1-based position of the current item",
+        "placeholders": {
+            "done": {
+                "type": "int"
+            },
+            "total": {
+                "type": "int"
+            }
+        }
+    },
+    "downloadNotificationProgress": "{name} — {percent}%",
+    "@downloadNotificationProgress": {
+        "description": "System notification body with the item label (for example Series S1E1) and its percentage",
+        "placeholders": {
+            "name": {
+                "type": "String"
+            },
+            "percent": {
+                "type": "int"
+            }
+        }
+    },
+    "downloadNotificationTransfer": "{name} — {progress} · {timeRemaining}",
+    "@downloadNotificationTransfer": {
+        "description": "System notification body for a transfer the native engine reports on. The engine fills in progress (a percentage such as 42%) and timeRemaining (mm:ss) itself.",
+        "placeholders": {
+            "name": {
+                "type": "String"
+            },
+            "progress": {
+                "type": "String"
+            },
+            "timeRemaining": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadNotificationStarting": "{name}...",
+    "@downloadNotificationStarting": {
+        "description": "System notification body before the size of a download is known",
+        "placeholders": {
+            "name": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadNotificationCompleteTitle": "{count, plural, =1{Baixada completada} other{Baixades completades}}",
+    "@downloadNotificationCompleteTitle": {
+        "description": "System notification title once a download or a batch has finished",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "downloadNotificationSaved": "S'ha desat {name} per veure'l fora de línia",
+    "@downloadNotificationSaved": {
+        "description": "System notification body for one finished download; name is the item label (for example Series S1E1)",
+        "placeholders": {
+            "name": {
+                "type": "String"
+            }
+        }
+    },
+    "downloadNotificationSavedCount": "{count, plural, =1{1 element desat per veure'l fora de línia} other{{count} elements desats per veure'ls fora de línia}}",
+    "@downloadNotificationSavedCount": {
+        "description": "System notification body for a finished batch of mixed items",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "downloadNotificationSeriesEpisodes": "{series}: {count, plural, =1{1 episodi} other{{count} episodis}}",
+    "@downloadNotificationSeriesEpisodes": {
+        "description": "System notification body for a finished batch that all belongs to one series",
+        "placeholders": {
+            "series": {
+                "type": "String"
+            },
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "downloadNotificationFailedTitle": "Ha fallat la baixada",
+    "@downloadNotificationFailedTitle": {
+        "description": "System notification title for a failed download"
+    },
+    "downloadNotificationFailedBody": "{name}: {error}",
+    "@downloadNotificationFailedBody": {
+        "description": "System notification body for a failed download",
+        "placeholders": {
+            "name": {
+                "type": "String"
+            },
+            "error": {
+                "type": "String"
+            }
+        }
+    },
+    "serverMessagesNotificationTitle": "Missatge remot",
+    "@serverMessagesNotificationTitle": {
+        "description": "System notification title for a message sent by the server when it carries no header"
+    },
+    "serverMessagesNotificationReceived": "Missatge rebut",
+    "@serverMessagesNotificationReceived": {
+        "description": "System notification body for a server message with empty text"
+    },
+    "downloadStorageLimitReached": "S'ha assolit el límit d'emmagatzematge. Allibera espai o augmenta el límit.",
+    "@downloadStorageLimitReached": {
+        "description": "Error shown when a download would exceed the storage limit set in the download settings"
+    },
+    "downloadNotEnoughStorage": "No hi ha prou emmagatzematge: calen {needed} i només n'hi ha {free} de lliures",
+    "@downloadNotEnoughStorage": {
+        "description": "Error shown when a download would not fit on the device; needed and free are formatted sizes",
+        "placeholders": {
+            "needed": {
+                "type": "String"
+            },
+            "free": {
+                "type": "String"
+            }
+        }
+    },
+    "autoDownloadStorageFullTitle": "No hi ha prou emmagatzematge per als episodis nous",
+    "@autoDownloadStorageFullTitle": {
+        "description": "System notification title when the automatic check has to hold new episodes back"
+    },
+    "autoDownloadStorageFullBody": "{count, plural, =1{{name} necessita {size}.} other{Hi ha {count} episodis esperant espai.}} Allibera espai o augmenta el límit de baixada.",
+    "@autoDownloadStorageFullBody": {
+        "description": "System notification body when the automatic check has to hold new episodes back; name is the label of the first one (for example Series S1E1) and size its formatted size",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            },
+            "name": {
+                "type": "String"
+            },
+            "size": {
+                "type": "String"
+            }
+        }
+    },
+    "trickplayPauseWhileScrubbing": "Pausa mentre es cerca",
+    "@trickplayPauseWhileScrubbing": {
+        "description": "Setting for whether seeking pauses playback so the trickplay preview holds still"
+    },
+    "trickplayPauseWhileScrubbingSubtitle": "La reproducció es posa en pausa mentre cerques i es reprèn quan prems reproduir. Desactiva-ho per continuar reproduint i saltar directament al punt nou",
+    "@trickplayPauseWhileScrubbingSubtitle": {
+        "description": "Description for the trickplay pause-while-scrubbing setting"
     }
 }

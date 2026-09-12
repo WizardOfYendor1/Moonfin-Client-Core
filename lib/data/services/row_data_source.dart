@@ -2428,11 +2428,38 @@ class RowDataSource {
     return 3; // Default intermediate severity level
   }
 
+  /// Applies the row's watched and parental-rating rules. Both server paths
+  /// get their candidates back unfiltered, so the rule lives here rather than
+  /// in each of them.
+  List<AggregatedItem> _filterServerRecommendations(
+    List<AggregatedItem> candidates,
+    AggregatedItem baseItem,
+  ) {
+    final prefs = GetIt.instance<UserPreferences>();
+    final includeWatched = prefs.get(
+      UserPreferences.sinceYouWatchedIncludeWatched,
+    );
+    final applyRatingCap = prefs.get(
+      UserPreferences.recommendationsApplyParentalRatingCap,
+    );
+    final sourceRatingLevel = _getRatingLevel(baseItem.officialRating);
+
+    return candidates.where((item) {
+      if (!includeWatched && item.isPlayed) return false;
+      if (applyRatingCap &&
+          _getRatingLevel(item.officialRating) > sourceRatingLevel) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
   Future<HomeRow> loadSinceYouWatchedRow(String serverId, int rowIndex) async {
     final prefs = GetIt.instance<UserPreferences>();
     final sourceType = prefs.get(UserPreferences.sinceYouWatchedSourceType);
     final sourceItemType = prefs.get(UserPreferences.sinceYouWatchedSourceItem);
-    final isLocal = prefs.get(UserPreferences.sinceYouWatchedSource) == SinceYouWatchedSource.local;
+    final source = prefs.get(UserPreferences.sinceYouWatchedSource);
+    final isLocal = source == SinceYouWatchedSource.local;
 
     final List<String> queryItemTypes;
     if (sourceItemType == SinceYouWatchedSourceItem.recentlyWatched) {
@@ -2575,13 +2602,60 @@ class RowDataSource {
     final baseItem = baseItems[sourceIdx];
     final baseItemName = baseItem.name;
 
-    final recommendedItems = await getRecommendations(
-      serverId: serverId,
-      baseItem: baseItem,
-      isLocal: isLocal,
-      candidateItemTypes: candidateItemTypes,
-      limit: 100,
-    );
+    List<AggregatedItem> recommendedItems = const [];
+    if (source == SinceYouWatchedSource.server) {
+      try {
+        final data = await _client.itemsApi.getSimilarItems(
+          baseItem.id,
+          limit: 100,
+          bypass: 'moonfin',
+        );
+        recommendedItems = _filterServerRecommendations(
+          _parseItems(data, serverId),
+          baseItem,
+        );
+      } catch (e) {
+        debugPrint('[RowDataSource] Server recommendation failed: $e');
+        recommendedItems = const [];
+      }
+    } else {
+      bool usedServerRecs = false;
+      if (isLocal && GetIt.instance.isRegistered<PluginSyncService>()) {
+        final pluginSync = GetIt.instance<PluginSyncService>();
+        if (pluginSync.recommendationsSupported) {
+          try {
+            final data = await pluginSync.fetchSimilarItems(
+              _client,
+              baseItem.id,
+              limit: 100,
+            );
+            if (data != null) {
+              final filtered = _filterServerRecommendations(
+                _parseItems(data, serverId),
+                baseItem,
+              );
+
+              if (filtered.isNotEmpty) {
+                recommendedItems = filtered;
+                usedServerRecs = true;
+              }
+            }
+          } catch (e) {
+            debugPrint('[RowDataSource] Moonbase server recommendation failed, falling back to local: $e');
+          }
+        }
+      }
+
+      if (!usedServerRecs) {
+        recommendedItems = await getRecommendations(
+          serverId: serverId,
+          baseItem: baseItem,
+          isLocal: isLocal,
+          candidateItemTypes: candidateItemTypes,
+          limit: 100,
+        );
+      }
+    }
 
     final rowId = 'sinceYouWatched$rowIndex';
     _scoredRecommendationsCache[rowId] = recommendedItems;

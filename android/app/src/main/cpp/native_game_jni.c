@@ -38,6 +38,7 @@ typedef struct {
   int has_render_thread;
   atomic_int render_running;
   atomic_int frame_dirty;
+  int egl_backend_installed;
 } native_ctx;
 
 // libretro allows one session per process, so the context is a single global.
@@ -50,43 +51,56 @@ static native_ctx g_ctx;
 // window.
 static pthread_mutex_t g_window_lock = PTHREAD_MUTEX_INITIALIZER;
 
-// Keep the software render thread attached to the JVM for the frame loop.
-// This avoids creating thousands of Java Thread registrations during a game session.
-typedef struct {
-  int attempted;
-  int attached_here;
-} render_thread_jvm;
+// Detaches the calling native thread from the JVM when that thread exits.
+// Registered as the destructor for g_thread_env_key below, so a thread that
+// attached via get_thread_env never has to detach explicitly, since pthread
+// runs this automatically as part of thread teardown.
+static void detach_on_thread_exit(void *value) {
+  (void)value;
+  if (g_ctx.vm) (*g_ctx.vm)->DetachCurrentThread(g_ctx.vm);
+}
 
-static void ensure_render_thread_attached(native_ctx *c,
-                                          render_thread_jvm *jvm) {
-  if (jvm->attempted) return;
-  jvm->attempted = 1;
-  if (!c->vm) return;
+static pthread_key_t g_thread_env_key;
+static pthread_once_t g_thread_env_key_once = PTHREAD_ONCE_INIT;
 
+static void make_thread_env_key(void) {
+  pthread_key_create(&g_thread_env_key, detach_on_thread_exit);
+}
+
+// Returns a JNIEnv* for the calling thread, attaching as a daemon thread at
+// most once per native thread rather than once per call. Cores can call
+// SET_GEOMETRY every frame and the render thread posts a frame at the same
+// rate, so attaching and detaching a java.lang.Thread on every one of those
+// (up to 60x/second) is wasted work the JVM has to do and undo. The thread
+// stays attached until it exits, at which point detach_on_thread_exit runs
+// via the pthread key destructor. [name] labels the java.lang.Thread the
+// attach creates, NULL takes the JVM's default.
+static JNIEnv *get_thread_env(const char *name) {
+  if (!g_ctx.vm) return NULL;
   JNIEnv *env = NULL;
-  jint state = (*c->vm)->GetEnv(c->vm, (void **)&env, JNI_VERSION_1_6);
-  if (state == JNI_OK) return;
-  if (state != JNI_EDETACHED) {
-    LOGE("Could not query software render thread JVM state (%d)", state);
-    return;
-  }
+  jint state = (*g_ctx.vm)->GetEnv(g_ctx.vm, (void **)&env, JNI_VERSION_1_6);
+  if (state == JNI_OK) return env;
+  if (state != JNI_EDETACHED) return NULL;
 
+  pthread_once(&g_thread_env_key_once, make_thread_env_key);
   JavaVMAttachArgs args = {
       .version = JNI_VERSION_1_6,
-      .name = "moonfin.retro",
+      .name = name,
       .group = NULL,
   };
-  if ((*c->vm)->AttachCurrentThreadAsDaemon(c->vm, &env, &args) == JNI_OK) {
-    jvm->attached_here = 1;
-  } else {
-    LOGE("Could not attach software render thread to the JVM");
+  if ((*g_ctx.vm)->AttachCurrentThreadAsDaemon(g_ctx.vm, &env, &args) != JNI_OK) {
+    return NULL;
   }
+  // Any non-NULL value marks this thread as attached for the key's
+  // destructor. The value itself is never read back.
+  pthread_setspecific(g_thread_env_key, (void *)1);
+  return env;
 }
 
 // Copies the host's latest frame into the output surface. ANativeWindow_lock
 // blocks while the compositor holds the buffers, so this runs on its own thread
 // rather than the emulation thread, which stays paced by audio.
-static void blit_frame(native_ctx *c, render_thread_jvm *jvm) {
+static void blit_frame(native_ctx *c) {
   pthread_mutex_lock(&g_window_lock);
   ANativeWindow *window = c->window;
   if (!window) {
@@ -100,8 +114,6 @@ static void blit_frame(native_ctx *c, render_thread_jvm *jvm) {
     pthread_mutex_unlock(&g_window_lock);
     return;
   }
-
-  ensure_render_thread_attached(c, jvm);
 
   // Renegotiating the buffer queue every frame stalls rendering, so only set
   // the geometry when the frame size changes.
@@ -131,15 +143,23 @@ static void blit_frame(native_ctx *c, render_thread_jvm *jvm) {
 
 static void *render_loop(void *arg) {
   native_ctx *c = (native_ctx *)arg;
-  render_thread_jvm jvm = {0};
+  // Attached for the life of the loop even though nothing here calls into
+  // Java. The Surface comes from Flutter's texture registry, whose consumer
+  // lives in this process and delivers its frame-available callback through
+  // JNI on the thread that queued the buffer. When that thread isn't
+  // attached, the glue attaches and detaches a fresh java.lang.Thread around
+  // every post, once per frame for the whole session. Staying attached lets
+  // it find this thread instead.
+  if (!get_thread_env("moonfin.retro")) {
+    LOGE("Could not attach the render thread to the JVM");
+  }
   while (atomic_load(&c->render_running)) {
     if (atomic_exchange(&c->frame_dirty, 0)) {
-      blit_frame(c, &jvm);
+      blit_frame(c);
     } else {
       usleep(2000);
     }
   }
-  if (jvm.attached_here) (*c->vm)->DetachCurrentThread(c->vm);
   return NULL;
 }
 
@@ -154,49 +174,10 @@ static int controller_count(void *user) {
   return 1;
 }
 
-// Detaches the calling native thread from the JVM when that thread exits.
-// Registered as the destructor for g_geometry_thread_key below, so a thread
-// that attached via get_geometry_thread_env never has to detach explicitly -
-// pthread runs this automatically as part of thread teardown.
-static void detach_on_thread_exit(void *value) {
-  (void)value;
-  if (g_ctx.vm) (*g_ctx.vm)->DetachCurrentThread(g_ctx.vm);
-}
-
-static pthread_key_t g_geometry_thread_key;
-static pthread_once_t g_geometry_thread_key_once = PTHREAD_ONCE_INIT;
-
-static void make_geometry_thread_key(void) {
-  pthread_key_create(&g_geometry_thread_key, detach_on_thread_exit);
-}
-
-// Returns a JNIEnv* for the calling thread, attaching as a daemon thread at
-// most once per native thread rather than once per call. Cores can call
-// SET_GEOMETRY every frame; attaching/detaching a java.lang.Thread on every
-// one of those (up to 60x/second) is wasted work the JVM has to do and undo.
-// The thread stays attached until it exits, at which point
-// detach_on_thread_exit runs via the pthread key destructor.
-static JNIEnv *get_geometry_thread_env(void) {
-  if (!g_ctx.vm) return NULL;
-  JNIEnv *env = NULL;
-  jint state = (*g_ctx.vm)->GetEnv(g_ctx.vm, (void **)&env, JNI_VERSION_1_6);
-  if (state == JNI_OK) return env;
-  if (state != JNI_EDETACHED) return NULL;
-
-  pthread_once(&g_geometry_thread_key_once, make_geometry_thread_key);
-  if ((*g_ctx.vm)->AttachCurrentThreadAsDaemon(g_ctx.vm, &env, NULL) != JNI_OK) {
-    return NULL;
-  }
-  // Any non-NULL value marks this thread as attached for the key's
-  // destructor; the value itself is never read back.
-  pthread_setspecific(g_geometry_thread_key, (void *)1);
-  return env;
-}
-
 static void geometry_changed(void *user, int width, int height, double aspect) {
   native_ctx *c = (native_ctx *)user;
   if (!c->vm || !c->bridge || !c->on_geometry) return;
-  JNIEnv *env = get_geometry_thread_env();
+  JNIEnv *env = get_thread_env(NULL);
   if (!env) return;
   (*env)->CallVoidMethod(env, c->bridge, c->on_geometry, width, height, aspect);
 }
@@ -225,7 +206,7 @@ static void core_message(void *user, const char *text) {
   native_ctx *c = (native_ctx *)user;
   if (text) LOGI("%s", text);
   if (!c->vm || !c->bridge || !c->on_core_message || !text) return;
-  JNIEnv *env = get_geometry_thread_env();
+  JNIEnv *env = get_thread_env(NULL);
   if (!env) return;
   jstring message = (*env)->NewStringUTF(env, text);
   if (message) {
@@ -239,7 +220,7 @@ static void core_message(void *user, const char *text) {
 static void core_shutdown(void *user) {
   native_ctx *c = (native_ctx *)user;
   if (!c->vm || !c->bridge || !c->on_core_shutdown) return;
-  JNIEnv *env = get_geometry_thread_env();
+  JNIEnv *env = get_thread_env(NULL);
   if (!env) return;
   (*env)->CallVoidMethod(env, c->bridge, c->on_core_shutdown);
 }
@@ -259,7 +240,10 @@ static void teardown(JNIEnv *env) {
   // lh_stop above already tore the context down on the emulation thread, so
   // the backend is not holding this window any more; clear it before the
   // reference goes away so nothing can pick it back up.
-  egl_backend_shutdown();
+  if (g_ctx.egl_backend_installed) {
+    egl_backend_shutdown();
+    g_ctx.egl_backend_installed = 0;
+  }
   if (g_ctx.window) {
     ANativeWindow_release(g_ctx.window);
     g_ctx.window = NULL;
@@ -308,7 +292,7 @@ static void release_options(JNIEnv *env, int count, const char **keys,
 JNI(jdoubleArray, nativeLoad)(
     JNIEnv *env, jobject thiz, jstring core, jstring corePath, jstring romPath,
     jstring systemDir, jstring saveDir, jstring gameId, jobjectArray optKeys,
-    jobjectArray optVals) {
+    jobjectArray optVals, jboolean hardware_rendering_enabled) {
   (void)core;
   teardown(env);
 
@@ -342,16 +326,21 @@ JNI(jdoubleArray, nativeLoad)(
     LOGE("Could not allocate libretro host");
     return NULL;
   }
-  // Must happen before lh_load: SET_HW_RENDER arrives inside retro_load_game,
-  // and a backend registered after that is too late for the core to use.
-  // Failure here is not fatal - the host simply keeps refusing hardware
-  // contexts, which is exactly how every build behaved before this existed.
-  if (egl_backend_install(g_ctx.host) != 0) {
-    LOGE("EGL backend failed to register; hardware cores will be refused");
+  if (hardware_rendering_enabled) {
+    // Must happen before lh_load: SET_HW_RENDER arrives inside
+    // retro_load_game, and a backend registered after that is too late for the
+    // core to use. When disabled, no backend is registered and libretro stays
+    // on its existing software-frame path.
+    if (egl_backend_install(g_ctx.host) != 0) {
+      LOGE("EGL backend failed to register; hardware cores will be refused");
+    } else {
+      g_ctx.egl_backend_installed = 1;
+      pthread_mutex_lock(&g_window_lock);
+      egl_backend_set_window(g_ctx.window);
+      pthread_mutex_unlock(&g_window_lock);
+    }
   } else {
-    pthread_mutex_lock(&g_window_lock);
-    egl_backend_set_window(g_ctx.window);
-    pthread_mutex_unlock(&g_window_lock);
+    LOGI("Hardware rendering disabled for this session");
   }
   g_ctx.bridge = (*env)->NewGlobalRef(env, thiz);
   if (!g_ctx.bridge) {

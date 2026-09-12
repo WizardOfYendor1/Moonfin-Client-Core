@@ -4455,7 +4455,7 @@
     "@declinedStatus": {
         "description": "Request status label"
     },
-    "partiallyAvailable": "Osittain saatavilla",
+    "partiallyAvailable": "Osittain Saatavilla",
     "@partiallyAvailable": {
         "description": "Request status label"
     },
@@ -4467,7 +4467,7 @@
     "@approvedStatus": {
         "description": "Request status label"
     },
-    "notRequestedStatus": "Ei pyydetty",
+    "notRequestedStatus": "Ei Pyyntöjä",
     "@notRequestedStatus": {
         "description": "Request status label when no request exists"
     },
@@ -7975,7 +7975,7 @@
     "@processingStatus": {
         "description": "Filter label for approved requests being processed"
     },
-    "modifiedByName": "Muokkaaja: {name}",
+    "modifiedByName": "Muokkaaja {name}",
     "@modifiedByName": {
         "description": "Label showing which manager acted on a request",
         "placeholders": {
@@ -7984,15 +7984,15 @@
             }
         }
     },
-    "completedStatus": "Valmis",
+    "completedStatus": "Käsitelty",
     "@completedStatus": {
         "description": "Request status label when the request finished"
     },
-    "requestErrorDuplicate": "Tämä nimike on jo pyydetty",
+    "requestErrorDuplicate": "Nimikettä on jo pyydetty",
     "@requestErrorDuplicate": {
         "description": "Error when creating a request that already exists"
     },
-    "requestErrorQuota": "Pyyntöraja saavutettu",
+    "requestErrorQuota": "Kyselyjen enimmäismäärä on saavutettu",
     "@requestErrorQuota": {
         "description": "Error when the user is out of request quota"
     },
@@ -8000,7 +8000,7 @@
     "@requestErrorBlocklisted": {
         "description": "Error when requesting blocklisted media"
     },
-    "requestErrorNoSeasons": "Ei enää pyydettäviä kausia",
+    "requestErrorNoSeasons": "Ei jäljellä olevia kausia saatavilla",
     "@requestErrorNoSeasons": {
         "description": "Error when every season is already requested or available"
     },

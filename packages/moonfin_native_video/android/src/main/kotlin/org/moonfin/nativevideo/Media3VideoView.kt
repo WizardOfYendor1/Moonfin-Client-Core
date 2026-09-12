@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.ContextWrapper
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
 import android.media.AudioDeviceCallback
@@ -18,6 +19,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
+import android.view.PixelCopy
 import android.view.Display
 import android.view.Surface
 import android.view.SurfaceView
@@ -725,8 +727,8 @@ class Media3VideoView(
     // Recreated alongside the player in createPlayer(). A TrackSelector must not
     // be shared across ExoPlayer instances: it binds to the playback thread of
     // the player it is built with, so reusing it after the player is released
-    // and rebuilt throws "DefaultTrackSelector is accessed on the wrong thread" 
-    // on the new player's  playback thread, killing that thread and freezing 
+    // and rebuilt throws "DefaultTrackSelector is accessed on the wrong thread"
+    // on the new player's  playback thread, killing that thread and freezing
     // playback.
     private lateinit var trackSelector: DefaultTrackSelector
     private val audioPipeline = ExoPlayerAudioPipeline()
@@ -863,6 +865,76 @@ class Media3VideoView(
     private val audioClockListener: (Long) -> Unit = { maybeRecoverAudioClock(it) }
     private var isPlayerReleased = false
     private var firstFrameRendered = false
+
+    // Picture sampling. A tuner's failover placeholder is a black video that
+    // decodes, renders and runs its clock like any channel; only the pixels
+    // say there is nothing to see. A thumbnail of the surface is read about
+    // once a second while a live channel plays, every five once a picture
+    // has been seen; tunneled playback and old APIs cannot be read, and
+    // then a drawn frame is taken on trust. Only live is sampled: nothing
+    // else asks.
+    private var pictureBlack: Boolean? = null
+    private var pictureSamplingUnavailable = false
+    private var pictureSampleInFlight = false
+    private var lastPictureSampleMs = 0L
+    private val pictureSampleBitmap: Bitmap by lazy {
+        Bitmap.createBitmap(PICTURE_SAMPLE_W, PICTURE_SAMPLE_H, Bitmap.Config.ARGB_8888)
+    }
+    private val pictureSamplePixels = IntArray(PICTURE_SAMPLE_W * PICTURE_SAMPLE_H)
+
+    /** The inverse of [revealVideo]: a new source hides the video until its first frame. */
+    private fun hideVideoUntilFirstFrame() {
+        firstFrameRendered = false
+        firstFrameCover.visibility = View.VISIBLE
+        pictureBlack = null
+        pictureSamplingUnavailable = false
+        lastPictureSampleMs = 0L
+    }
+
+    /** True while the picture is black, null before a frame or where the pixels cannot be read. */
+    private fun pictureBlackWire(): Boolean? = when {
+        !firstFrameRendered || pictureSamplingUnavailable -> null
+        else -> pictureBlack ?: true
+    }
+
+    private fun samplePicture() {
+        if (!firstFrameRendered || !currentIsLive || isDisposed || pictureSamplingUnavailable) return
+        val now = SystemClock.elapsedRealtime()
+        val interval =
+            if (pictureBlack == false) PICTURE_SAMPLE_SHOWN_INTERVAL_MS else PICTURE_SAMPLE_INTERVAL_MS
+        if (pictureSampleInFlight || now - lastPictureSampleMs < interval) return
+        val view = videoView as? SurfaceView
+        if (view == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.N || tunnelingActive) {
+            pictureSamplingUnavailable = true
+            return
+        }
+        if (player.playbackState != Player.STATE_READY || !player.playWhenReady) return
+        if (view.width == 0 || view.height == 0 || view.holder.surface?.isValid != true) return
+        pictureSampleInFlight = true
+        lastPictureSampleMs = now
+        try {
+            PixelCopy.request(view, pictureSampleBitmap, { result ->
+                pictureSampleInFlight = false
+                if (isDisposed) return@request
+                if (result != PixelCopy.SUCCESS) {
+                    pictureSamplingUnavailable = true
+                    return@request
+                }
+                pictureSampleBitmap.getPixels(
+                    pictureSamplePixels, 0, PICTURE_SAMPLE_W, 0, 0, PICTURE_SAMPLE_W, PICTURE_SAMPLE_H,
+                )
+                var brightest = 0
+                for (p in pictureSamplePixels) {
+                    val m = maxOf(Color.red(p), Color.green(p), Color.blue(p))
+                    if (m > brightest) brightest = m
+                }
+                pictureBlack = brightest < PICTURE_BLACK_LEVEL
+            }, mainHandler)
+        } catch (e: Exception) {
+            pictureSampleInFlight = false
+            pictureSamplingUnavailable = true
+        }
+    }
     private val externalSubtitleConfigurations = mutableListOf<MediaItem.SubtitleConfiguration>()
 
     /**
@@ -1374,8 +1446,7 @@ class Media3VideoView(
         if (!isPlayerReleased) return
         isPlayerReleased = false
         isDisposed = false
-        firstFrameRendered = false
-        firstFrameCover.visibility = View.VISIBLE
+        hideVideoUntilFirstFrame()
         recreateVideoView()
         player = createPlayer()
         playerHasLoadedSource = false
@@ -2258,7 +2329,7 @@ class Media3VideoView(
         }
     }
 
-    fun stateSnapshot(): Map<String, Any> = stateMap()
+    fun stateSnapshot(): Map<String, Any?> = stateMap()
 
     fun trackSnapshot(): Map<String, Any?> = trackStateMap()
 
@@ -2371,8 +2442,7 @@ class Media3VideoView(
             ?.toInt()
             ?.takeIf { it > 0 }
         pendingClosedCaptionId = null
-        firstFrameRendered = false
-        firstFrameCover.visibility = View.VISIBLE
+        hideVideoUntilFirstFrame()
         cancelPendingSubtitleCue(clearView = true)
         clearAssSubtitleScript()
         applyTrackSelectorForCurrentSource()
@@ -3832,6 +3902,27 @@ class Media3VideoView(
             ?.startsWith("audio/") == true
     }
 
+    private fun errorIsNoValidVarintLengthMaskFound(error: PlaybackException): Boolean {
+        val exo = error as? ExoPlaybackException ?: return false
+        if (exo.type != ExoPlaybackException.TYPE_SOURCE) return false
+
+        var cause: Throwable? = exo.sourceException
+        var depth = 0
+
+        while (cause != null && depth < 3) {
+            if (cause is IllegalStateException &&
+                cause.message == "No valid varint length mask found"
+            ) {
+                return true
+            }
+
+            cause = cause.cause
+            depth++
+        }
+
+        return false
+    }
+
     private fun emitRecoverablePlayerError(
         error: PlaybackException,
         audioOffloadRetryTriggered: Boolean,
@@ -3858,6 +3949,20 @@ class Media3VideoView(
             PlaybackException.ERROR_CODE_DECODING_FAILED ->
                 if (errorIsFromAudioRenderer(error)) "unsupported_audio" else null
 
+            // Some MKVs carry zero padding after the last real cluster while
+            // the Segment size runs to EOF. Media3 reads a 0x00 there as an
+            // EBML length byte, which has no leading 1-bit and so no valid
+            // varint length mask. The container is the malformed part, and any
+            // server transcode rewrites it without the tail.
+            PlaybackException.ERROR_CODE_IO_UNSPECIFIED ->
+                if (!containerFallbackAttempted &&
+                    errorIsNoValidVarintLengthMaskFound(error)
+                ) {
+                    "unsupported_container"
+                } else {
+                    null
+                }
+
             else -> null
         }
 
@@ -3878,6 +3983,7 @@ class Media3VideoView(
                 "kind" to recoverableKind,
                 "code" to error.errorCode,
                 "message" to (error.localizedMessage ?: ""),
+                "cause" to describeCauseChain(error),
                 "audioOffloadRetryTriggered" to audioOffloadRetryTriggered,
             ),
         )
@@ -4296,7 +4402,7 @@ class Media3VideoView(
         return names
     }
 
-    private fun stateMap(): Map<String, Any> {
+    private fun stateMap(): Map<String, Any?> {
         val duration = player.duration
         val bufferedPosition = player.bufferedPosition
         val videoSize = player.videoSize
@@ -4316,6 +4422,7 @@ class Media3VideoView(
             "volumeBoostLevel" to userVolumeBoostLevel,
             "subtitleRendererMode" to activeSubtitleRendererMode.wireValue,
             "subtitleRendererModeRequested" to requestedSubtitleRendererMode.wireValue,
+            "pictureBlack" to pictureBlackWire(),
         )
     }
 
@@ -4334,6 +4441,7 @@ class Media3VideoView(
     private fun startTicker() {
         val runnable = object : Runnable {
             override fun run() {
+                samplePicture()
                 emitState()
                 mainHandler.postDelayed(this, 250L)
             }
@@ -4361,3 +4469,10 @@ class Media3VideoView(
         }
     }
 }
+
+private const val PICTURE_SAMPLE_W = 32
+private const val PICTURE_SAMPLE_H = 18
+private const val PICTURE_SAMPLE_INTERVAL_MS = 1000L
+private const val PICTURE_SAMPLE_SHOWN_INTERVAL_MS = 5000L
+// Brightest channel of any sampled pixel below this is a black picture.
+private const val PICTURE_BLACK_LEVEL = 24

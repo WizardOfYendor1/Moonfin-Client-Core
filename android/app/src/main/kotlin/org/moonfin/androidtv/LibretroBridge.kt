@@ -30,6 +30,10 @@ class LibretroBridge(
   // Same shape: lets the input layer drop held buttons immediately before the
   // core starts running again. See the "resume" branch below.
   private val onBeforeResume: () -> Unit = {},
+  // Same shape again: retro_set_controller_port_device makes the host forget
+  // which ports it has seen a stick read on, and the input layer polls that
+  // answer rather than being told, so this asks it to poll now.
+  private val onControllerTypeChanged: () -> Unit = {},
 ) {
   private val control = MethodChannel(
     flutterEngine.dartExecutor.binaryMessenger, "moonfin/native_game_control")
@@ -222,6 +226,7 @@ class LibretroBridge(
 
     @Suppress("UNCHECKED_CAST")
     val options = (args["options"] as? Map<String, String>) ?: emptyMap()
+    val hardwareRenderingEnabled = args["hardwareRenderingEnabled"] as? Boolean ?: true
     val keys = options.keys.toTypedArray()
     val values = keys.map { options[it]!! }.toTypedArray()
 
@@ -243,7 +248,9 @@ class LibretroBridge(
       }
     })
 
-    val av = nativeLoad(core, corePath, romPath, systemDir, saveDir, gameId, keys, values)
+    val av = nativeLoad(
+      core, corePath, romPath, systemDir, saveDir, gameId, keys, values,
+      hardwareRenderingEnabled)
     if (av == null) {
       // Handle load failures more gracefully.
       // SurfaceTextureSurfaceProducer.release() unconditionally calls
@@ -736,6 +743,7 @@ class LibretroBridge(
       // scheme switch); refresh the cache immediately rather than leaving it
       // stale until the next lazy read.
       refreshInputDescriptors()
+      onControllerTypeChanged()
       result.success(null)
     }
   }
@@ -775,7 +783,7 @@ class LibretroBridge(
   private external fun nativeLoad(
     core: String, corePath: String, romPath: String, systemDir: String,
     saveDir: String, gameId: String, optKeys: Array<String>,
-    optVals: Array<String>): DoubleArray?
+    optVals: Array<String>, hardwareRenderingEnabled: Boolean): DoubleArray?
 
   private external fun nativeSetSurface(surface: Surface?)
   private external fun nativeHwRenderSize(): IntArray?

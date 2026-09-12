@@ -192,7 +192,7 @@
   "@detailScreenStyle": {
     "description": "Label for the media detail screen layout style setting"
   },
-  "detailScreenStyleSubtitle": "Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards.",
+  "detailScreenStyleSubtitle": "Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards. Nouveau is a full-screen layout with sections stacked down the page.",
   "@detailScreenStyleSubtitle": {
     "description": "Explanation under the detail screen style setting"
   },
@@ -208,7 +208,7 @@
   "@detailScreenStyleSpotlight": {
     "description": "Detail screen style option: the hero-first layout with summary cards that open grid modals"
   },
-  "spotlightMoreActions": "More actions",
+  "spotlightMoreActions": "More Actions",
   "@spotlightMoreActions": {
     "description": "Tooltip/semantics of the spotlight ellipsis button and the title of the overflow actions menu it opens"
   },
@@ -373,6 +373,10 @@
       }
     }
   },
+  "detailScreenStyleNouveau": "Nouveau",
+  "@detailScreenStyleNouveau": {
+    "description": "Detail screen style option: nouveau full-screen layout with integrated sections"
+  },
   "expandedTabs": "Expanded Tabs",
   "@expandedTabs": {
     "description": "Label for the detail screen expanded tabs setting"
@@ -393,13 +397,17 @@
   "@recommendationSystem": {
     "description": "Label for the Recommendation System setting"
   },
-  "recommendationSystemSubtitle": "Use the Moonfin Recommends local-library algorithm or the online TMDb's Similarity Metrics. Note: Online recommendations require Seerr integration.",
+  "recommendationSystemSubtitle": "Use the Moonfin Recommends local-library algorithm, Jellyfin Recommends server engine, or the online TMDb's Similarity Metrics. Note: Online recommendations require Seerr integration.",
   "@recommendationSystemSubtitle": {
     "description": "Explanation under the recommendation system setting"
   },
   "recommendationSystemMoonfin": "Moonfin Recommends",
   "@recommendationSystemMoonfin": {
     "description": "Recommendation system option: Moonfin Recommends"
+  },
+  "recommendationSystemJellyfin": "Jellyfin Recommends",
+  "@recommendationSystemJellyfin": {
+    "description": "Recommendation system option: Jellyfin Recommends"
   },
   "recommendationSystemTmdb": "TMDb Similarity",
   "@recommendationSystemTmdb": {
@@ -2557,6 +2565,210 @@
   "hideMpvStats": "Hide mpv Statistics (Shift+I)",
   "@hideMpvStats": {
     "description": "Button in the stream info sheet that hides mpv's own statistics overlay; Shift+I is the keyboard shortcut"
+  },
+  "keyboardShortcutsTitle": "Keyboard shortcuts",
+  "@keyboardShortcutsTitle": {
+    "description": "Title of the screen and dialog that list every keyboard shortcut"
+  },
+  "keyboardShortcutsSubtitle": "Keys for the app, video player and reader",
+  "@keyboardShortcutsSubtitle": {
+    "description": "Subtitle of the About tile that opens the keyboard shortcut list"
+  },
+  "keyboardShortcutsPlayerHint": "Press ? or F1 while a video plays to see this list without leaving the player.",
+  "@keyboardShortcutsPlayerHint": {
+    "description": "Footnote on the keyboard shortcuts settings screen"
+  },
+  "keyboardShortcutsSectionApp": "Everywhere",
+  "@keyboardShortcutsSectionApp": {
+    "description": "Keyboard shortcut section for keys that work on every screen"
+  },
+  "keyboardShortcutsSectionAppScope": "On any screen",
+  "@keyboardShortcutsSectionAppScope": {
+    "description": "Under the Everywhere section title: when those keys apply"
+  },
+  "keyboardShortcutsSectionPlayer": "Video player",
+  "@keyboardShortcutsSectionPlayer": {
+    "description": "Keyboard shortcut section for the video player"
+  },
+  "keyboardShortcutsSectionPlayerScope": "While a video is open, playing or paused",
+  "@keyboardShortcutsSectionPlayerScope": {
+    "description": "Under the Video player section title: when those keys apply"
+  },
+  "keyboardShortcutsSectionReader": "Book and comic reader",
+  "@keyboardShortcutsSectionReader": {
+    "description": "Keyboard shortcut section for the ebook and comic reader"
+  },
+  "keyboardShortcutsSectionReaderScope": "While reading a book or comic",
+  "@keyboardShortcutsSectionReaderScope": {
+    "description": "Under the reader section title: when those keys apply"
+  },
+  "keyNameArrowKeys": "Arrow keys",
+  "@keyNameArrowKeys": {
+    "description": "Key cap label standing for the four arrow keys"
+  },
+  "keyNameSpace": "Space",
+  "@keyNameSpace": {
+    "description": "Key cap label for the space bar"
+  },
+  "keyNameEnter": "Enter",
+  "@keyNameEnter": {
+    "description": "Key cap label for the Enter key"
+  },
+  "keyNameEsc": "Esc",
+  "@keyNameEsc": {
+    "description": "Key cap label for the Escape key"
+  },
+  "keyNameBackspace": "Backspace",
+  "@keyNameBackspace": {
+    "description": "Key cap label for the Backspace key"
+  },
+  "keyNamePageUp": "Page Up",
+  "@keyNamePageUp": {
+    "description": "Key cap label for the Page Up key"
+  },
+  "keyNamePageDown": "Page Down",
+  "@keyNamePageDown": {
+    "description": "Key cap label for the Page Down key"
+  },
+  "keyNameHome": "Home",
+  "@keyNameHome": {
+    "description": "Key cap label for the Home key"
+  },
+  "keyNameEnd": "End",
+  "@keyNameEnd": {
+    "description": "Key cap label for the End key"
+  },
+  "keyNameShift": "Shift",
+  "@keyNameShift": {
+    "description": "Key cap label for the Shift modifier"
+  },
+  "keyNameCtrl": "Ctrl",
+  "@keyNameCtrl": {
+    "description": "Key cap label for the Control modifier"
+  },
+  "keyNameAlt": "Alt",
+  "@keyNameAlt": {
+    "description": "Key cap label for the Alt modifier"
+  },
+  "keyNameScrollWheel": "Scroll wheel",
+  "@keyNameScrollWheel": {
+    "description": "Key cap label standing for the mouse scroll wheel"
+  },
+  "shortcutMoveFocus": "Move between items",
+  "@shortcutMoveFocus": {
+    "description": "What the arrow keys do outside the player"
+  },
+  "shortcutActivate": "Open the selected item",
+  "@shortcutActivate": {
+    "description": "What Enter does outside the player"
+  },
+  "shortcutGoBack": "Go back",
+  "@shortcutGoBack": {
+    "description": "What Esc and Backspace do outside the player"
+  },
+  "shortcutToggleFullscreen": "Fullscreen on or off",
+  "@shortcutToggleFullscreen": {
+    "description": "F11 and Alt+Enter anywhere, F in the player"
+  },
+  "shortcutQuit": "Quit Moonfin",
+  "@shortcutQuit": {
+    "description": "What Ctrl+Q does on desktop"
+  },
+  "shortcutPlayPause": "Play or pause",
+  "@shortcutPlayPause": {
+    "description": "Player shortcut action"
+  },
+  "shortcutShowControlsOrPlayPause": "Show controls, or play/pause if shown",
+  "@shortcutShowControlsOrPlayPause": {
+    "description": "What Enter does in the player"
+  },
+  "shortcutSeekBack": "Seek back (hold for bigger jumps)",
+  "@shortcutSeekBack": {
+    "description": "Player shortcut action. The step is the skip back length from settings"
+  },
+  "shortcutSeekForward": "Seek forward (hold for bigger jumps)",
+  "@shortcutSeekForward": {
+    "description": "Player shortcut action. The step is the skip forward length from settings"
+  },
+  "shortcutVolumeUp": "Volume up",
+  "@shortcutVolumeUp": {
+    "description": "Player shortcut action"
+  },
+  "shortcutVolumeDown": "Volume down",
+  "@shortcutVolumeDown": {
+    "description": "Player shortcut action"
+  },
+  "shortcutMute": "Mute or unmute",
+  "@shortcutMute": {
+    "description": "Player shortcut action"
+  },
+  "shortcutToggleSubtitles": "Subtitles on or off",
+  "@shortcutToggleSubtitles": {
+    "description": "Player shortcut action"
+  },
+  "shortcutSlower": "Slow down",
+  "@shortcutSlower": {
+    "description": "Player shortcut action"
+  },
+  "shortcutFaster": "Speed up",
+  "@shortcutFaster": {
+    "description": "Player shortcut action"
+  },
+  "shortcutPlaybackInfo": "Show playback information",
+  "@shortcutPlaybackInfo": {
+    "description": "Player shortcut action"
+  },
+  "shortcutMpvStats": "mpv statistics on or off",
+  "@shortcutMpvStats": {
+    "description": "Player shortcut action, Windows only"
+  },
+  "shortcutLeaveFullscreenOrStop": "Exit fullscreen, or stop if not fullscreen",
+  "@shortcutLeaveFullscreenOrStop": {
+    "description": "What Esc does in the player"
+  },
+  "shortcutStopPlayback": "Stop playback",
+  "@shortcutStopPlayback": {
+    "description": "Player shortcut action"
+  },
+  "shortcutNextItem": "Next item",
+  "@shortcutNextItem": {
+    "description": "Player shortcut action for the next-track media key"
+  },
+  "shortcutPreviousItem": "Previous item",
+  "@shortcutPreviousItem": {
+    "description": "Player shortcut action for the previous-track media key"
+  },
+  "shortcutShowShortcuts": "Show this list",
+  "@shortcutShowShortcuts": {
+    "description": "What ? and F1 do in the player"
+  },
+  "shortcutNextPage": "Next page",
+  "@shortcutNextPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutPreviousPage": "Previous page",
+  "@shortcutPreviousPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutScrollPage": "Scroll the page (ebooks)",
+  "@shortcutScrollPage": {
+    "description": "What the up and down arrows do in the ebook reader"
+  },
+  "shortcutFirstPage": "First page, or start of chapter",
+  "@shortcutFirstPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutLastPage": "Last page, or end of chapter",
+  "@shortcutLastPage": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutZoom": "Zoom in or out (comics)",
+  "@shortcutZoom": {
+    "description": "Reader shortcut action"
+  },
+  "shortcutResetZoom": "Reset zoom (comics)",
+  "@shortcutResetZoom": {
+    "description": "Reader shortcut action"
   },
   "playback": "Playback",
   "@playback": {
@@ -4987,6 +5199,10 @@
   "@showFavoritesButton": {
     "description": "Setting for showing favorites button"
   },
+  "showLiveTvButton": "Show Live TV Button",
+  "@showLiveTvButton": {
+    "description": "Setting for showing live TV button"
+  },
   "showDownloadsButton": "Show Downloads Button",
   "@showDownloadsButton": {
     "description": "Setting for showing downloads button"
@@ -5896,6 +6112,14 @@
   "showMissingCollectionItemsDesc": "Include missing items on Collection pages",
   "@showMissingCollectionItemsDesc": {
     "description": "Setting subtitle explaining that missing items will be included on Collection pages"
+  },
+  "showSeerrAvailabilityBadges": "Show Seerr Availability Badges",
+  "@showSeerrAvailabilityBadges": {
+    "description": "Setting title for showing Seerr availability badges on media details pages"
+  },
+  "showSeerrAvailabilityBadgesDescription": "Show season availability badges on media details pages",
+  "@showSeerrAvailabilityBadgesDescription": {
+    "description": "Setting description for showing Seerr availability badges on media details pages"
   },
   "seerrNotificationsSection": "Notifications",
   "@seerrNotificationsSection": {
@@ -8934,6 +9158,7 @@
   "settingsShowShuffleButtonInNavigation": "Show the shuffle button in the navigation bar",
   "settingsShowGenresButtonInNavigation": "Show the genres button in the navigation bar",
   "settingsShowFavoritesButtonInNavigation": "Show the favorites button in the navigation bar",
+  "settingsShowLiveTvButtonInNavigation": "Show the Live TV button in the navigation bar when the server has a Live TV library",
   "settingsShowLibrariesButtonInNavigation": "Show the libraries button in the navigation bar",
   "settingsShowSeerrButtonInNavigation": "Show the Seerr button in the navigation bar",
   "settingsAlwaysExpandNavbarLabels": "Always show text labels in the top navigation bar",
@@ -9378,6 +9603,8 @@
   "homeRowTogglesDescription": "Enable the following toggles to display the rows in Home Sections.",
   "rowsType": "Row Type",
   "rowsTypeDescription": "Classic keeps per-row image type and info overlay. Modern uses portrait-to-backdrop rows.",
+  "modernCardsOnMyMediaRow": "Modern cards on My Media row",
+  "modernCardsOnMyMediaRowDescription": "Display customizable posters that expand on focus. Disable to always show landscape thumbnail.",
   "sortOrder": "Sort Order",
   "ascending": "Ascending",
   "descending": "Descending",
@@ -9759,6 +9986,7 @@
   "audiobookTimeline": "Timeline",
   "audiobookTimelineEmpty": "Timeline is empty",
   "audiobookFocusedTimeline": "Focused Timeline",
+  "audiobookFullTimeline": "Full Timeline",
   "audiobookExportBookmarks": "Export Bookmarks",
   "audiobookExportNotes": "Export Notes",
   "audiobookExportAll": "Export All",
@@ -9922,6 +10150,47 @@
   "transcodeVideoBitrateExceedsLimit": "Video bitrate exceeds streaming limit.",
   "transcodeAudioBitrateExceedsLimit": "Audio bitrate exceeds streaming limit.",
   "transcodeAudioChannelsNotSupported": "Number of audio channels is not supported.",
+  "transcodeAudioCodecWithCodec": "Audio codec ({codec}) is not supported directly.",
+  "@transcodeAudioCodecWithCodec": {
+    "placeholders": { "codec": { "type": "String" } }
+  },
+  "transcodeAudioCodecHintPassthrough": "Tip: If your audio receiver or soundbar supports {codec}, enable Audio Passthrough in Audio settings.",
+  "@transcodeAudioCodecHintPassthrough": {
+    "placeholders": { "codec": { "type": "String" } }
+  },
+  "transcodeAudioChannelsExceeded": "Audio channel count ({channels}ch) exceeds the player limit.",
+  "@transcodeAudioChannelsExceeded": {
+    "placeholders": { "channels": { "type": "int" } }
+  },
+  "transcodeAudioChannelsHint": "Tip: Adjust 'Max Audio Channels' or multichannel downmixing in Audio settings.",
+  "transcodeSubtitleBurnInAssDisabled": "ASS/SSA subtitles require transcoding because direct play is turned off.",
+  "transcodeSubtitleBurnInAssHint": "Tip: Enable 'ASS/SSA Direct Play' in Playback settings to play directly without transcoding.",
+  "transcodeSubtitleBurnInPgsDisabled": "PGS subtitles require transcoding because direct play is turned off.",
+  "transcodeSubtitleBurnInPgsHint": "Tip: Enable 'PGS Direct Play' in Playback settings to play directly without transcoding.",
+  "transcodeSubtitleNotSupportedWithCodec": "Subtitle format ({codec}) is not supported directly and must be burned in.",
+  "@transcodeSubtitleNotSupportedWithCodec": {
+    "placeholders": { "codec": { "type": "String" } }
+  },
+  "transcodeBitrateExceededWithValues": "File bitrate ({fileBitrate}) exceeds the configured streaming limit ({maxBitrate}).",
+  "@transcodeBitrateExceededWithValues": {
+    "placeholders": { "fileBitrate": { "type": "String" }, "maxBitrate": { "type": "String" } }
+  },
+  "transcodeBitrateHint": "Tip: Increase 'Maximum Bitrate' in Playback settings to allow direct streaming.",
+  "transcodeResolutionHint": "Tip: Increase 'Maximum Resolution' in Playback settings to allow direct streaming.",
+  "transcodeVideoRangeNotSupported": "Video dynamic range (e.g. Dolby Vision / HDR) is not supported by this display.",
+  "transcodeDolbyVisionProfile7ElDisabled": "Dolby Vision Profile 7 enhancement layer direct play is disabled.",
+  "transcodeDolbyVisionProfile7ElHint": "Tip: Enable 'Dolby Vision Profile 7 Direct Play' in Playback settings if your display supports it.",
+  "transcodeDolbyVisionFallbackPreferenceTranscode": "Transcoding is preferred for Dolby Vision fallback per user settings.",
+  "transcodeDolbyVisionFallbackHint": "Tip: Set 'Dolby Vision Fallback' to 'Play as HDR10' in Playback settings to avoid transcoding.",
+  "transcodeDisplayReportsNoHdr": "Connected display does not report support for HDR or Dolby Vision.",
+  "transcodeDisplayLacksHdr10ForFallback": "Connected display lacks HDR10 support needed for Dolby Vision fallback.",
+  "transcodeAudioSampleRateNotSupported": "Audio sample rate is not supported.",
+  "transcodeAudioBitDepthNotSupported": "Audio bit depth is not supported.",
+  "transcodeRefFramesNotSupported": "Video reference frames exceed player limits.",
+  "transcodeAnamorphicVideoNotSupported": "Anamorphic video is not supported.",
+  "transcodeInterlacedVideoNotSupported": "Interlaced video is not supported.",
+  "transcodeSecondaryAudioNotSupported": "Secondary audio stream requires transcoding.",
+  "transcodeDirectPlayError": "Direct play is not supported for this media format.",
   "sortAlphabetical": "Alphabetical",
   "sortReleaseAscending": "Release Order (Ascending)",
   "sortReleaseDescending": "Release Order (Descending)",
@@ -10447,6 +10716,14 @@
   "@setupDetailSpotlightHint": {
     "description": "What the spotlight detail screen style gives you"
   },
+  "setupStyleNouveau": "Nouveau",
+  "@setupStyleNouveau": {
+    "description": "Name of the full-screen stacked detail layout, offered in the setup wizard"
+  },
+  "setupDetailNouveauHint": "Full-screen, with sections stacked instead of tabs.",
+  "@setupDetailNouveauHint": {
+    "description": "What the nouveau detail screen style gives you"
+  },
   "setupPickALook": "Pick a look",
   "@setupPickALook": {
     "description": "Label above the theme swatches on the final setup screen"
@@ -10824,5 +11101,105 @@
         "type": "String"
       }
     }
+  },
+  "settingsAnimationSpeed": "Animation Speed",
+  "@settingsAnimationSpeed": {
+    "description": "Section header in General Style settings for configuring motion and transition speeds"
+  },
+  "pageTransitions": "Page Transitions",
+  "@pageTransitions": {
+    "description": "Setting title for adjusting the speed of page navigation transitions"
+  },
+  "pageTransitionsSubtitle": "Adjusts fade time when navigating between pages",
+  "@pageTransitionsSubtitle": {
+    "description": "Description for the page transitions animation speed setting"
+  },
+  "navigationSpeed": "Navigation Speed",
+  "@navigationSpeed": {
+    "description": "Setting title for adjusting the speed of focus movement and row scrolling"
+  },
+  "navigationSpeedSubtitle": "Adjusts how quickly the focus indicator moves between items and rows",
+  "@navigationSpeedSubtitle": {
+    "description": "Description for the navigation animation speed setting"
+  },
+  "modernCardsTransitionSpeed": "Modern Cards Transition Speed",
+  "@modernCardsTransitionSpeed": {
+    "description": "Setting title for adjusting animation speed of modern card expansions"
+  },
+  "modernCardsTransitionSpeedSubtitle": "Adjusts animation speed when expanding focused modern cards",
+  "@modernCardsTransitionSpeedSubtitle": {
+    "description": "Description for modern cards transition speed setting"
+  },
+  "delayCardExpansionOnRapidScroll": "Delay Card Expansion on Rapid Scroll",
+  "@delayCardExpansionOnRapidScroll": {
+    "description": "Setting title for debouncing modern card expansion during rapid D-pad scrolling"
+  },
+  "delayCardExpansionOnRapidScrollSubtitle": "Waits for focus movement to pause before expanding modern cards",
+  "@delayCardExpansionOnRapidScrollSubtitle": {
+    "description": "Description for debouncing modern card expansion setting"
+  },
+  "animationSpeedExtraSlow": "Extra Slow",
+  "@animationSpeedExtraSlow": {
+    "description": "Option label for extra slow animation speed"
+  },
+  "animationSpeedSlow": "Slow",
+  "@animationSpeedSlow": {
+    "description": "Option label for slow animation speed"
+  },
+  "animationSpeedMedium": "Medium",
+  "@animationSpeedMedium": {
+    "description": "Option label for medium/normal animation speed"
+  },
+  "animationSpeedFast": "Fast",
+  "@animationSpeedFast": {
+    "description": "Option label for fast animation speed"
+  },
+  "animationSpeedOff": "Off",
+  "@animationSpeedOff": {
+    "description": "Option label for turning animations off / instant transitions"
+  },
+  "pageTransitionFadeNone": "No Fade",
+  "@pageTransitionFadeNone": {
+    "description": "Option label for instant page transition with no fade"
+  },
+  "pageTransitionFadeShort": "Short Fade",
+  "@pageTransitionFadeShort": {
+    "description": "Option label for short fade page transition"
+  },
+  "pageTransitionFadeMedium": "Medium Fade",
+  "@pageTransitionFadeMedium": {
+    "description": "Option label for medium fade page transition"
+  },
+  "pageTransitionFadeLong": "Long Fade",
+  "@pageTransitionFadeLong": {
+    "description": "Option label for long fade page transition"
+  },
+  "liveTvConnecting": "Connecting to channel…",
+  "@liveTvConnecting": {
+    "description": "Live TV player status while a channel is being tuned"
+  },
+  "liveTvTunerStillTrying": "The tuner is still trying to get this channel…",
+  "@liveTvTunerStillTrying": {
+    "description": "Live TV player status when the server has kept a channel request open for several seconds, meaning the tuner is retrying its source"
+  },
+  "liveTvReconnecting": "Signal lost. The tuner is reconnecting…",
+  "@liveTvReconnecting": {
+    "description": "Live TV player status when a playing channel stops receiving data"
+  },
+  "liveTvChannelUnavailableTitle": "Channel unavailable",
+  "@liveTvChannelUnavailableTitle": {
+    "description": "Title shown when a live TV channel could not be started"
+  },
+  "liveTvChannelUnavailableBody": "The server could not get this channel from the tuner. The source may be down, or the tuner gave up after retrying.",
+  "@liveTvChannelUnavailableBody": {
+    "description": "Explanation shown when a live TV channel could not be started"
+  },
+  "liveTvChannelLostTitle": "Channel lost",
+  "@liveTvChannelLostTitle": {
+    "description": "Title shown when a playing live TV channel stopped and did not recover"
+  },
+  "liveTvChannelLostBody": "The stream stopped and the tuner did not bring it back. Try again or pick another channel.",
+  "@liveTvChannelLostBody": {
+    "description": "Explanation shown when a playing live TV channel stopped and did not recover"
   }
 }

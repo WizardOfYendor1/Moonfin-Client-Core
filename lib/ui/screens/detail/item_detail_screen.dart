@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import '../../theme/focus_foreground.dart';
 import '../../widgets/bounded_network_image.dart';
 import '../../widgets/offline_aware_image.dart';
 import '../../widgets/identify_dialog.dart';
@@ -37,8 +38,12 @@ import '../../navigation/home_refresh_bus.dart';
 import '../../navigation/app_router.dart';
 import '../../navigation/playback_launcher.dart';
 import 'detail_buttons.dart';
+import 'nouveau/nouveau_detail_content.dart';
+import 'nouveau/hero/nouveau_action_buttons.dart';
 import 'modern/modern_detail_content.dart';
 import 'spotlight/spotlight_detail_content.dart';
+import '../../widgets/skeleton/skeleton_detail_screen.dart';
+import '../../widgets/skeleton/skeleton_shimmer.dart';
 import '../../../data/repositories/seerr_repository.dart';
 import '../../../data/services/seerr/seerr_api_models.dart';
 import '../../../l10n/app_localizations.dart';
@@ -89,7 +94,6 @@ import '../../widgets/focus/dpad_list_tile.dart';
 import '../../widgets/focus/focusable_button.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/overlay_sheet.dart';
-import '../../widgets/playback/player_loading_overlay.dart';
 import '../../../playback/hdr_stream_capability.dart';
 import '../../../playback/known_defects.dart';
 import '../../../syncplay/syncplay_manager.dart';
@@ -285,6 +289,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
   Timer? _focusedBackdropDebounce;
   String? _lastFocusedBackdropItemId;
   String? _lastDetailBackdropItemId;
+  final GlobalKey<NouveauDetailContentState> _nouveauContentKey =
+      GlobalKey<NouveauDetailContentState>();
   final Map<String, String> _focusedPrimaryBackdropUrlCache =
       <String, String>{};
   FocusNode? _initialContentFocusNode;
@@ -344,29 +350,46 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
   @override
   void didPopNext() {
     super.didPopNext();
+
     unawaited(_viewModel.syncUserDataIfStale());
-    final item = _viewModel.item;
-    if (item != null) {
-      _backgroundService.setBackground(item, context: BlurContext.details);
-      final nextUrl = _backgroundService.currentUrl;
-      // Keep the last good backdrop if the service has none to give (e.g. after
-      // returning from a child with no backdrop that cleared the shared service).
-      if (nextUrl != null && nextUrl != _backdropUrl.value) {
-        _backdropUrl.value = nextUrl;
+
+    // Every style needs this cleared, not just Nouveau. The card focused on the
+    // way out never got its backdrop applied, and _onBackdropItemFocused turns
+    // away a repeat of the same id.
+    _lastFocusedBackdropItemId = null;
+
+    final nouveauState = _nouveauContentKey.currentState;
+    final nouveauHandled =
+        nouveauState?.restoreBackdropAfterResume() ?? false;
+
+    if (!nouveauHandled) {
+      final item = _viewModel.item;
+      if (item != null) {
+        _backgroundService.setBackground(item, context: BlurContext.details);
+        final nextUrl = _backgroundService.currentUrl;
+
+        // Keep the last good backdrop if the service has none to give (e.g. after
+        // returning from a child with no backdrop that cleared the shared service).
+        if (nextUrl != null && nextUrl != _backdropUrl.value) {
+          _backdropUrl.value = nextUrl;
+        }
       }
     }
+
     // A pushed child screen (e.g. a similar item) clears the shared play-button
     // notifier on its way out; reclaim it so focus restoration finds this screen.
     if (PlatformDetection.isTV && _initialContentFocusNode != null) {
       NavigationLayout.focusDetailsPlayButtonNotifier.value =
           _initialContentFocusNode;
     }
+
     _resumeThemeMusicIfEligible();
   }
 
   @override
   void didPushNext() {
     super.didPushNext();
+    _focusedBackdropDebounce?.cancel();
     // This screen stays mounted under the pushed route, so dispose does not run.
     // Stop the theme so it does not keep playing over the screen on top; the
     // paired didPopNext resumes it on return.
@@ -637,8 +660,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
 
   Widget _buildBody(BuildContext context) {
     return switch (_viewModel.state) {
-      ItemDetailState.loading => const Center(
-        child: PlayerLoadingOverlay(customSize: 120),
+      ItemDetailState.loading => DetailScreenSkeleton(
+        style: _prefs.get(UserPreferences.detailScreenStyle),
+        prefs: _prefs,
       ),
       ItemDetailState.error => Center(
         child: Column(
@@ -663,9 +687,23 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           ],
         ),
       ),
-      ItemDetailState.ready => switch (_prefs.get(
-        UserPreferences.detailScreenStyle,
-      )) {
+      ItemDetailState.ready => switch (
+      _prefs.get(UserPreferences.detailScreenStyle)
+      ) {
+        DetailScreenStyle.classic => _DetailContent(
+          viewModel: _viewModel,
+          prefs: _prefs,
+          backdropUrl: _backdropUrl,
+          selectedMediaSourceId: _selectedMediaSourceId,
+          initialFocusNode: _ensureInitialFocusNode(),
+          onSelectedMediaSourceChanged: (id) {
+            setState(() => _selectedMediaSourceId = id);
+            _viewModel.load(mediaSourceId: id);
+          },
+          onBackdropItemFocused: _onBackdropItemFocused,
+          autoPlay: widget.autoPlay,
+        ),
+
         DetailScreenStyle.modern => ModernDetailContent(
           viewModel: _viewModel,
           prefs: _prefs,
@@ -692,6 +730,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
               setState(() => _actionsExpanded = val),
           onCollapseBiography: () => setState(() {}),
         ),
+
         DetailScreenStyle.spotlight => SpotlightDetailContent(
           viewModel: _viewModel,
           prefs: _prefs,
@@ -718,7 +757,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
               setState(() => _actionsExpanded = val),
           onCollapseBiography: () => setState(() {}),
         ),
-        DetailScreenStyle.classic => _DetailContent(
+
+        DetailScreenStyle.nouveau => NouveauDetailContent(
+          key: _nouveauContentKey,
           viewModel: _viewModel,
           prefs: _prefs,
           backdropUrl: _backdropUrl,
@@ -730,6 +771,17 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           },
           onBackdropItemFocused: _onBackdropItemFocused,
           autoPlay: widget.autoPlay,
+          onPlayFromChapter: (position) => unawaited(
+            _playFromChapter(
+              context,
+              _viewModel.item!,
+              position,
+              _selectedMediaSourceId,
+            ),
+          ),
+          actionsExpanded: _actionsExpanded,
+          onActionsExpandedChanged: (val) =>
+              setState(() => _actionsExpanded = val),
         ),
       },
     };
@@ -4832,6 +4884,10 @@ class DetailActionButtons extends StatefulWidget {
   /// secondary icon buttons. Defaults to the classic square layout.
   final bool modernStyle;
 
+  /// Renders the "nouveau" detail style: a dedicated cinematic action layout
+  /// with Nouveau-specific overflow, progress, and directional focus behavior.
+  final bool nouveauStyle;
+
   /// In modern style, render the primary Play as a full-width pill (portrait).
   /// When false the pill is content-width and sits inline with the secondary
   /// circular buttons (landscape).
@@ -4856,6 +4912,7 @@ class DetailActionButtons extends StatefulWidget {
   final ValueChanged<bool>? onActionsExpandedChanged;
 
   const DetailActionButtons({
+    super.key,
     required this.viewModel,
     this.itemId,
     this.selectedMediaSourceId,
@@ -4868,6 +4925,7 @@ class DetailActionButtons extends StatefulWidget {
     this.maxVisibleButtonsOverride,
     this.onArrowRightAtEnd,
     this.modernStyle = false,
+    this.nouveauStyle = false,
     this.fullWidthPrimary = false,
     this.overflowAsMenu = false,
     this.rowMaxWidth,
@@ -5198,8 +5256,11 @@ class _BookAuthorDetailScreenState extends State<_BookAuthorDetailScreen> {
       ),
       body: SafeArea(
         child: _loading && data == null
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF32B9E8)),
+            ? _buildSkeleton(
+                context,
+                horizontalPadding,
+                crossAxisCount,
+                gridSpacing,
               )
             : data == null
             ? Center(
@@ -5284,6 +5345,105 @@ class _BookAuthorDetailScreenState extends State<_BookAuthorDetailScreen> {
                   ],
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildSkeleton(
+    BuildContext context,
+    double horizontalPadding,
+    int crossAxisCount,
+    double gridSpacing,
+  ) {
+    return SkeletonShimmer(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          8,
+          horizontalPadding,
+          24,
+        ),
+        physics: const NeverScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SkeletonBox(
+                  width: 84,
+                  height: 84,
+                  borderRadius: BorderRadius.circular(42),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      SkeletonBox(
+                        width: 200,
+                        height: 24,
+                        borderRadius: BorderRadius.all(Radius.circular(4)),
+                      ),
+                      SizedBox(height: 8),
+                      SkeletonBox(
+                        width: 110,
+                        height: 14,
+                        borderRadius: BorderRadius.all(Radius.circular(4)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const SkeletonBox(
+              width: 100,
+              height: 18,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 10),
+            const SkeletonBox(
+              width: double.infinity,
+              height: 13,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 6),
+            const SkeletonBox(
+              width: double.infinity,
+              height: 13,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 6),
+            const SkeletonBox(
+              width: 240,
+              height: 13,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 32),
+            const SkeletonBox(
+              width: 80,
+              height: 18,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
+            ),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: gridSpacing,
+                mainAxisSpacing: gridSpacing,
+                childAspectRatio: 2 / 3,
+              ),
+              itemCount: crossAxisCount * 2,
+              itemBuilder: (_, _) => const SkeletonBox(
+                width: double.infinity,
+                height: double.infinity,
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -5852,6 +6012,37 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     return button;
   }
 
+  NouveauAction _toNouveauAction(
+    _DetailActionButton button, {
+    FocusNode? focusNode,
+    VoidCallback? onFocused,
+    VoidCallback? onArrowUp,
+    VoidCallback? onArrowDown,
+    VoidCallback? onArrowLeft,
+    VoidCallback? onArrowRight,
+    double? progress,
+    String? trailingLabel,
+  }) {
+    return NouveauAction(
+      label: button.label,
+      icon: button.icon,
+      iconBuilder: button.iconBuilder,
+      onPressed: button.onPressed,
+      onLongPress: button.onLongPress,
+      onFocused: onFocused ?? button.onFocused,
+      onArrowUp: onArrowUp ?? button.onArrowUp,
+      onArrowDown: onArrowDown ?? button.onArrowDown,
+      onArrowLeft: onArrowLeft ?? button.onArrowLeft,
+      onArrowRight: onArrowRight ?? button.onArrowRight,
+      focusNode: focusNode ?? button.focusNode,
+      autofocus: button.autofocus,
+      isActive: button.isActive,
+      activeColor: button.activeColor,
+      progress: progress,
+      trailingLabel: trailingLabel,
+    );
+  }
+
   bool _tryFocusSidebar() {
     if (GetIt.instance<UserPreferences>().get(UserPreferences.navbarPosition) !=
         NavbarPosition.left) {
@@ -6080,7 +6271,10 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     List<Widget> extraButtons,
   ) async {
     final l10n = AppLocalizations.of(context);
-    final actions = extraButtons.whereType<_DetailActionButton>().toList();
+    final actions = <_DetailActionButton>[
+      for (final btn in extraButtons)
+        ?_actionForOverflow(context, btn),
+    ];
     if (actions.isEmpty) return;
     final selected = await showStyledPlayerDialog<VoidCallback>(
       context,
@@ -6090,27 +6284,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         itemCount: actions.length,
         itemBuilder: (rowContext, index) {
           final action = actions[index];
-          final tint = action.isActive
-              ? (action.activeColor ?? AppColorScheme.accent)
-              : Colors.white;
-          return DpadListTile(
+          return _SpotlightOverflowTile(
+            action: action,
             autofocus: index == 0,
-            leading: action.iconBuilder != null
-                ? action.iconBuilder!(22, tint)
-                : (action.icon != null
-                      ? AdaptiveIcon(action.icon!, color: tint, size: 22)
-                      : null),
-            title: Text(
-              action.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: tint,
-                fontWeight: action.isActive
-                    ? FontWeight.w600
-                    : FontWeight.w400,
-              ),
-            ),
             onTap: () => Navigator.pop(rowContext, action.onPressed),
             onLongPress: action.onLongPress == null
                 ? null
@@ -6124,6 +6300,121 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
       // immediately open a dialog of their own.
       WidgetsBinding.instance.addPostFrameCallback((_) => selected());
     }
+  }
+
+  _DetailActionButton? _actionForOverflow(
+    BuildContext context,
+    Widget button,
+  ) {
+    if (button is _DetailActionButton) {
+      return button;
+    }
+    if (button is _DownloadButton) {
+      return _buildDownloadDetailAction(context, button.item);
+    }
+    if (button is _DeleteDownloadButton) {
+      return _buildDeleteDetailAction(context, button.item);
+    }
+    return null;
+  }
+
+  _DetailActionButton _buildDownloadDetailAction(
+    BuildContext context,
+    AggregatedItem item,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final downloadService = GetIt.instance.isRegistered<DownloadService>()
+        ? GetIt.instance<DownloadService>()
+        : null;
+    final progress = downloadService?.activeDownloads[item.id];
+    final isMulti = _DownloadButtonState._isBatchType(item.type);
+    final isBatch = downloadService?.isBatchDownloading ?? false;
+
+    if (progress != null && !progress.isComplete && progress.error == null) {
+      final label = progress.isFinalizing
+          ? l10n.finalizingDownload
+          : progress.isQueued
+          ? l10n.queuedDownload
+          : progress.progress >= 0
+          ? '${(progress.progress * 100).toInt()}%'
+          : progress.bytesReceived > 0
+          ? '${(progress.bytesReceived / 1048576).toStringAsFixed(1)} MB'
+          : '…';
+      return _DetailActionButton(
+        label: label,
+        icon: Icons.close,
+        onPressed: () => downloadService?.cancelDownload(item.id),
+        isActive: true,
+        activeColor: AppColorScheme.accent,
+      );
+    }
+
+    if (isBatch && isMulti && downloadService != null) {
+      final done = downloadService.completedCount;
+      final total = downloadService.totalQueued;
+      var pct = '';
+      for (final p in downloadService.activeDownloads.values) {
+        if (!p.isComplete && p.error == null) {
+          if (p.progress >= 0) {
+            pct = '${(p.progress * 100).toInt()}%';
+          }
+          break;
+        }
+      }
+      return _DetailActionButton(
+        label: '${done + 1}/$total${pct.isNotEmpty ? ' · $pct' : ''}',
+        icon: Icons.close,
+        onPressed: () => downloadService.cancelAll(),
+        isActive: true,
+        activeColor: AppColorScheme.accent,
+      );
+    }
+
+    if (_availableOffline || (progress != null && progress.isComplete)) {
+      return _DetailActionButton(
+        label: l10n.downloaded,
+        icon: Icons.download_done,
+        isActive: true,
+        activeColor: const Color(0xFF4CAF50),
+        onPressed: () {
+          if (downloadService != null) {
+            _DownloadButton.showDownloadOptions(context, item, downloadService);
+          }
+        },
+      );
+    }
+
+    return _DetailActionButton(
+      label: l10n.download,
+      icon: Icons.download_for_offline,
+      onPressed: () {
+        if (downloadService != null) {
+          _DownloadButton.showDownloadOptions(context, item, downloadService);
+        }
+      },
+    );
+  }
+
+  _DetailActionButton _buildDeleteDetailAction(
+    BuildContext context,
+    AggregatedItem item,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    return _DetailActionButton(
+      label: l10n.deleteDownloadedFiles,
+      icon: Icons.delete_outline,
+      onPressed: () => _DeleteDownloadButton.confirmDelete(
+        context,
+        item,
+        onDeleted: () {
+          if (mounted) {
+            setState(() => _availableOffline = false);
+          }
+        },
+      ),
+      isActive: true,
+      activeColor: const Color(0xFFFF4757),
+    );
   }
 
   /// The count-based overflow decision, extracted pure so the Spotlight cap
@@ -6718,7 +7009,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         ),
       if (!isBook && shows(DetailButton.playlist))
         DetailButton.playlist: _DetailActionButton(
-          label: l10n.playlist,
+          label: l10n.addToPlaylist,
           icon: Icons.playlist_add,
           onPressed: () => AddToPlaylistDialog.show(
             context,
@@ -6735,7 +7026,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           shows(DetailButton.deleteFiles) &&
           _availableOffline)
         DetailButton.deleteFiles: _DeleteDownloadButton(item: item),
-      if (item.type == 'Episode' &&
+      if ((item.type == 'Episode' || item.type == 'Season') &&
           item.seriesId != null &&
           shows(DetailButton.goToSeries))
         DetailButton.goToSeries: _DetailActionButton(
@@ -6761,7 +7052,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         ),
       if (seerr != null && shows(DetailButton.seerrWatchlist))
         DetailButton.seerrWatchlist: _DetailActionButton(
-          label: onWatchlist ? l10n.onWatchlist : l10n.watchlist,
+          label: onWatchlist ? l10n.removeFromWatchlist : l10n.addToWatchlist,
           icon: onWatchlist ? Icons.bookmark : Icons.bookmark_border,
           onPressed: () => seerr.toggleWatchlist(),
           isActive: onWatchlist,
@@ -6773,8 +7064,14 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         DetailButton.seerrReportIssue: _DetailActionButton(
           label: l10n.reportIssue,
           icon: Icons.report_problem_outlined,
-          onPressed: () =>
-              showSeerrReportIssueDialog(context: context, vm: seerr),
+          onPressed: () => showSeerrReportIssueDialog(
+            context: context,
+            vm: seerr,
+            initialSeason: item.type == 'Episode'
+                ? item.parentIndexNumber
+                : (item.type == 'Season' ? item.indexNumber : null),
+            initialEpisode: item.type == 'Episode' ? item.indexNumber : null,
+          ),
         ),
       if (seerr != null &&
           seerr.canManageRequests &&
@@ -6908,6 +7205,145 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
           suppressAutoScrollToTop: widget.suppressAutoScrollToTop,
         );
       }).toList();
+    }
+
+    if (widget.nouveauStyle) {
+      final orderedSecondaryButtons = <_DetailActionButton>[
+        for (final detailButton in detailButtonLayout.ordered(
+          DetailButton.values,
+          (button) => button.id,
+          prefs,
+        )) ...[
+          if (byButton[detailButton] case final btn?)
+            ?_actionForOverflow(context, btn),
+          if (cancelByButton[detailButton] case final btn?)
+            ?_actionForOverflow(context, btn),
+        ],
+      ];
+
+      // A null primary only means there is nothing to play, and the secondary
+      // actions still stand on their own. NouveauActionButtons shrinks itself
+      // when every slot is empty.
+      final primaryButton = primaryAction is _DetailActionButton
+          ? primaryAction
+          : null;
+
+      final primaryFocusNode =
+          widget.tvPlayFocusNode ?? _primaryFocusNode(0);
+
+      final runtime = item.runtime;
+      final playbackPosition =
+          item.playbackPosition ?? Duration.zero;
+
+      double? playbackProgress;
+      String? remainingLabel;
+
+      if (runtime != null &&
+          runtime.inMilliseconds > 0 &&
+          playbackPosition.inMilliseconds > 0 &&
+          playbackPosition < runtime) {
+        playbackProgress =
+            (playbackPosition.inMilliseconds /
+                runtime.inMilliseconds)
+                .clamp(0.0, 1.0);
+
+        final remaining = runtime - playbackPosition;
+
+        final remainingMinutes =
+        (remaining.inSeconds / 60).ceil();
+
+        if (remainingMinutes >= 60) {
+          final hours = remainingMinutes ~/ 60;
+          final minutes = remainingMinutes % 60;
+
+          final formatted = minutes > 0
+              ? '${hours}h ${minutes}m'
+              : '${hours}h';
+
+          remainingLabel = l10n.timeRemaining(formatted);
+        } else if (remainingMinutes > 0) {
+          remainingLabel =
+              l10n.timeRemaining('${remainingMinutes}m');
+        }
+      }
+
+      final nouveauPrimaryAction = primaryButton == null
+          ? null
+          : _toNouveauAction(
+              primaryButton,
+              focusNode: primaryFocusNode,
+              progress: playbackProgress,
+              trailingLabel: remainingLabel,
+              onArrowUp:
+                  NavigationLayout.focusNavbarNotifier.value != null ||
+                      widget.upTarget != null
+                  ? _focusUpTarget
+                  : null,
+              onArrowDown: widget.downTarget != null
+                  ? _focusDownTarget
+                  : null,
+              onArrowLeft: _focusSidebar,
+              onArrowRight: orderedSecondaryButtons.isNotEmpty
+                  ? () => _primaryFocusNode(1).requestFocus()
+                  : widget.onArrowRightAtEnd,
+            );
+
+      final secondaryActions = orderedSecondaryButtons.asMap().entries.map((
+        entry,
+      ) {
+        final index = entry.key;
+        final button = entry.value;
+        final focusIndex = index + 1;
+
+        return _toNouveauAction(
+          button,
+          focusNode: _primaryFocusNode(focusIndex),
+          onArrowUp:
+              NavigationLayout.focusNavbarNotifier.value != null ||
+                  widget.upTarget != null
+              ? _focusUpTarget
+              : null,
+          onArrowDown: widget.downTarget != null
+              ? _focusDownTarget
+              : null,
+          // With no primary button there is nothing to the left of the first
+          // secondary, so fall back to the sidebar the primary would have used.
+          onArrowLeft: index == 0
+              ? (primaryButton == null
+                    ? _focusSidebar
+                    : () => primaryFocusNode.requestFocus())
+              : () => _primaryFocusNode(focusIndex - 1).requestFocus(),
+          onArrowRight: index == orderedSecondaryButtons.length - 1
+              ? widget.onArrowRightAtEnd
+              : () => _primaryFocusNode(focusIndex + 1).requestFocus(),
+        );
+      }).toList();
+
+      final rowContent = NouveauActionButtons(
+        primaryAction: nouveauPrimaryAction,
+        secondaryActions: secondaryActions,
+      );
+
+      final downloads = seerrItemDownloads(viewModel);
+
+      final withDownloads = downloads == null
+          ? rowContent
+          : Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          rowContent,
+          SeerrItemDownloadBars(
+            state: downloads,
+          ),
+        ],
+      );
+
+      return Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        child: withDownloads,
+      );
     }
 
     final compact =
@@ -7906,7 +8342,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     );
   }
 
-  void _play(
+  Future<void> _play(
     BuildContext context,
     AggregatedItem item, {
     bool resume = false,
@@ -7938,6 +8374,18 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     } finally {
       _playLaunchInFlight = false;
     }
+  }
+
+  Future<void> playItem(
+      BuildContext context,
+      AggregatedItem item, {
+        bool resume = false,
+      }) {
+    return _play(
+      context,
+      item,
+      resume: resume,
+    );
   }
 
   void _shuffle(BuildContext context, AggregatedItem item) async {
@@ -10301,6 +10749,12 @@ class _DownloadButton extends StatefulWidget {
     this.suppressAutoScrollToTop = false,
   });
 
+  static void showDownloadOptions(
+    BuildContext context,
+    AggregatedItem item,
+    DownloadService service,
+  ) => _DownloadButtonState._showDownloadOptionsFor(context, item, service);
+
   @override
   State<_DownloadButton> createState() => _DownloadButtonState();
 }
@@ -10309,7 +10763,8 @@ class _DownloadButtonState extends State<_DownloadButton> {
   bool _isOffline = false;
   DownloadService? _downloadService;
 
-  String _originalQualitySubtitle(
+  static String _originalQualitySubtitle(
+    BuildContext context,
     AggregatedItem item, {
     required bool isMulti,
     List<AggregatedItem> batchItems = const [],
@@ -10317,6 +10772,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
     final l10n = AppLocalizations.of(context);
     if (isMulti) {
       final sizeLabel = _batchSizeLabel(
+        context,
         batchItems,
         sourceSizeBytes,
         l10n.downloadSizeTotal,
@@ -10356,7 +10812,8 @@ class _DownloadButtonState extends State<_DownloadButton> {
     return details.join(' • ');
   }
 
-  String _qualitySubtitle(
+  static String _qualitySubtitle(
+    BuildContext context,
     AggregatedItem item,
     DownloadQuality quality, {
     required bool supportsTranscoding,
@@ -10365,6 +10822,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
   }) {
     if (!quality.isTranscoded || !supportsTranscoding) {
       return _originalQualitySubtitle(
+        context,
         item,
         isMulti: isMulti,
         batchItems: batchItems,
@@ -10373,6 +10831,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
 
     final estimate = isMulti
         ? _batchSizeLabel(
+            context,
             batchItems,
             (batchItem) => estimateTranscodedSizeBytes(batchItem, quality),
             AppLocalizations.of(context).downloadEstimateTotal,
@@ -10387,7 +10846,8 @@ class _DownloadButtonState extends State<_DownloadButton> {
   /// Sums [bytesOf] over [items], skipping items whose size is unknown, and
   /// formats the total with [label]. Notes how many items were skipped.
   /// Null when no item had a size.
-  String? _batchSizeLabel(
+  static String? _batchSizeLabel(
+    BuildContext context,
     List<AggregatedItem> items,
     int? Function(AggregatedItem item) bytesOf,
     String Function(String size) label,
@@ -10559,7 +11019,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
       type == 'Season' || type == 'Series' || type == 'BoxSet';
 
   /// One line of context under a sheet title.
-  Widget _sheetNote(BuildContext sheetContext, String text) => Padding(
+  static Widget _sheetNote(BuildContext sheetContext, String text) => Padding(
     padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
     child: Text(
       text,
@@ -10572,7 +11032,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
     ),
   );
 
-  Widget _sheetTitle(BuildContext sheetContext, String text) => Padding(
+  static Widget _sheetTitle(BuildContext sheetContext, String text) => Padding(
     padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
     child: Text(
       text,
@@ -10583,25 +11043,33 @@ class _DownloadButtonState extends State<_DownloadButton> {
     ),
   );
 
+  void _showDownloadOptions(BuildContext context, DownloadService service) {
+    _showDownloadOptionsFor(context, widget.item, service);
+  }
+
   /// Entry point for the download button. Series, seasons and collections
   /// first ask whether to download everything or only unwatched items; single
   /// items go straight to the quality picker.
-  void _showDownloadOptions(BuildContext context, DownloadService service) {
-    if (_isBatchType(widget.item.type)) {
-      _showScopePicker(context, service);
+  static void _showDownloadOptionsFor(
+    BuildContext context,
+    AggregatedItem item,
+    DownloadService service,
+  ) {
+    if (_isBatchType(item.type)) {
+      _showScopePicker(context, item, service);
     } else {
-      _showQualityPicker(context, service);
+      _showQualityPicker(context, item, service);
     }
   }
 
   /// Asks whether to download all items or only unwatched ones, then opens
   /// the quality picker for the chosen list. The list is resolved once here
   /// so the counts, the size estimates and the queued downloads all agree.
-  Future<void> _showScopePicker(
+  static Future<void> _showScopePicker(
     BuildContext context,
+    AggregatedItem item,
     DownloadService service,
   ) async {
-    final item = widget.item;
     final isCollection = item.type == 'BoxSet';
     final seriesId = item.seriesId;
 
@@ -10688,6 +11156,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
                         children: [
                           _scopeRow(
                             sheetContext,
+                            item: item,
                             autofocus: true,
                             icon: Icons.download_for_offline,
                             label: isCollection
@@ -10698,6 +11167,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
                           ),
                           _scopeRow(
                             sheetContext,
+                            item: item,
                             autofocus: false,
                             icon: Icons.visibility_off_outlined,
                             label: isCollection
@@ -10713,6 +11183,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
                   if (autoDownloads != null)
                     _autoDownloadRow(
                       sheetContext,
+                      item,
                       autoDownloads,
                       initial: subscription,
                       onSubscription: (current) => subscription = current,
@@ -10729,26 +11200,27 @@ class _DownloadButtonState extends State<_DownloadButton> {
         );
     // Opened only after the scope sheet is gone, so the quality picker
     // restores focus to the Download button rather than to a disposed row.
-    if (!mounted) return;
+    if (!context.mounted) return;
     if (autoChosen) {
-      await _toggleAutoDownload(autoDownloads!, existing: subscription);
+      await _toggleAutoDownload(context, item, autoDownloads!, existing: subscription);
       return;
     }
     if (chosen == null) return;
-    _showQualityPicker(this.context, service, items: chosen);
+    _showQualityPicker(context, item, service, items: chosen);
   }
 
   /// Follows or unfollows the series. Following asks for a quality first so
   /// the subscription records one.
-  Future<void> _toggleAutoDownload(
+  static Future<void> _toggleAutoDownload(
+    BuildContext context,
+    AggregatedItem item,
     AutoDownloadService autoDownloads, {
     required AutoDownloadSubscription? existing,
   }) async {
-    final item = widget.item;
     final l10n = AppLocalizations.of(context);
     if (existing != null) {
       await autoDownloads.unsubscribe(item.id);
-      if (!mounted) return;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.autoDownloadStoppedFor(item.name))),
       );
@@ -10756,10 +11228,11 @@ class _DownloadButtonState extends State<_DownloadButton> {
     }
     final quality = await _pickQuality(
       context,
+      item,
       title: l10n.autoDownloadQualityTitle,
       note: l10n.autoDownloadTranscodedForegroundNote,
     );
-    if (quality == null || !mounted) return;
+    if (quality == null || !context.mounted) return;
     unawaited(autoDownloads.subscribe(item, quality: quality));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(l10n.autoDownloadEnabledFor(item.name))),
@@ -10769,8 +11242,9 @@ class _DownloadButtonState extends State<_DownloadButton> {
   /// Third row of a series' scope sheet: subscribe to new episodes, or stop.
   /// Reports the current subscription through [onSubscription] so the
   /// caller knows which of the two [onTap] meant.
-  Widget _autoDownloadRow(
+  static Widget _autoDownloadRow(
     BuildContext sheetContext,
+    AggregatedItem item,
     AutoDownloadService autoDownloads, {
     required AutoDownloadSubscription? initial,
     required void Function(AutoDownloadSubscription?) onSubscription,
@@ -10783,7 +11257,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
     );
     return StreamBuilder<AutoDownloadSubscription?>(
       initialData: initial,
-      stream: autoDownloads.watchSubscription(widget.item.id),
+      stream: autoDownloads.watchSubscription(item.id),
       builder: (_, snapshot) {
         final subscription = snapshot.data;
         onSubscription(subscription);
@@ -10818,8 +11292,9 @@ class _DownloadButtonState extends State<_DownloadButton> {
     );
   }
 
-  Widget _scopeRow(
+  static Widget _scopeRow(
     BuildContext sheetContext, {
+    required AggregatedItem item,
     required bool autofocus,
     required IconData icon,
     required String label,
@@ -10831,7 +11306,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
     final enabled = loading || items.isNotEmpty;
     final subtitle = loading
         ? l10n.downloadScopeLoading
-        : widget.item.type == 'BoxSet'
+        : item.type == 'BoxSet'
         ? l10n.itemCountLabel(items.length)
         : l10n.episodeCount(items.length);
     return DpadListTile(
@@ -10862,26 +11337,27 @@ class _DownloadButtonState extends State<_DownloadButton> {
   /// Shows the quality picker and queues the download. For series, seasons
   /// and collections [items] is the list resolved by the scope picker and
   /// drives both the size estimate and what gets queued.
-  Future<void> _showQualityPicker(
+  static Future<void> _showQualityPicker(
     BuildContext context,
+    AggregatedItem item,
     DownloadService service, {
     List<AggregatedItem>? items,
   }) async {
-    final item = widget.item;
     final isMulti = _isBatchType(item.type);
     if (!isMulti && !_supportsTranscoding(item.type)) {
-      _startDownload(context, service, DownloadQuality.original);
+      _startDownload(context, item, service, DownloadQuality.original);
       return;
     }
     final quality = await _pickQuality(
       context,
+      item,
       title: isMulti
           ? AppLocalizations.of(context).downloadAllQuality
           : AppLocalizations.of(context).downloadQuality,
       items: items ?? const [],
     );
-    if (quality == null || !mounted) return;
-    _startDownload(this.context, service, quality, items: items);
+    if (quality == null || !context.mounted) return;
+    _startDownload(context, item, service, quality, items: items);
   }
 
   static bool _supportsTranscoding(String? type) =>
@@ -10894,13 +11370,13 @@ class _DownloadButtonState extends State<_DownloadButton> {
   /// [items] for batches. Null when the sheet is dismissed.
   /// [note] is shown once under the title, for callers where the choice has
   /// a consequence worth stating.
-  Future<DownloadQuality?> _pickQuality(
-    BuildContext context, {
+  static Future<DownloadQuality?> _pickQuality(
+    BuildContext context,
+    AggregatedItem item, {
     required String title,
     List<AggregatedItem> items = const [],
     String? note,
   }) {
-    final item = widget.item;
     final isMulti = _isBatchType(item.type);
     final supportsTranscoding = isMulti || _supportsTranscoding(item.type);
     final batchItems = items;
@@ -10928,6 +11404,7 @@ class _DownloadButtonState extends State<_DownloadButton> {
     final subtitles = {
       for (final quality in availableQualities)
         quality: _qualitySubtitle(
+          context,
           item,
           quality,
           supportsTranscoding: supportsTranscoding,
@@ -11023,13 +11500,13 @@ class _DownloadButtonState extends State<_DownloadButton> {
 
   /// Queues the download. [items] is the list chosen in the scope sheet for
   /// series, seasons and collections; single items leave it null.
-  void _startDownload(
+  static void _startDownload(
     BuildContext context,
+    AggregatedItem item,
     DownloadService service,
     DownloadQuality quality, {
     List<AggregatedItem>? items,
   }) {
-    final item = widget.item;
     final l10n = AppLocalizations.of(context);
     final String message;
     if (items != null) {
@@ -11077,6 +11554,16 @@ class _DeleteDownloadButton extends StatefulWidget {
     this.suppressAutoScrollToTop = false,
   });
 
+  static Future<void> confirmDelete(
+    BuildContext context,
+    AggregatedItem item, {
+    VoidCallback? onDeleted,
+  }) => _DeleteDownloadButtonState._confirmDelete(
+    context,
+    item,
+    onDeleted: onDeleted,
+  );
+
   @override
   State<_DeleteDownloadButton> createState() => _DeleteDownloadButtonState();
 }
@@ -11120,9 +11607,17 @@ class _DeleteDownloadButtonState extends State<_DeleteDownloadButton> {
     if (_checking || !_hasFiles) return const SizedBox.shrink();
 
     return _DetailActionButton(
-      label: AppLocalizations.of(context).deleteFiles,
+      label: AppLocalizations.of(context).deleteDownloadedFiles,
       icon: Icons.delete_outline,
-      onPressed: () => _confirmDelete(context),
+      onPressed: () => _confirmDelete(
+        context,
+        widget.item,
+        onDeleted: () {
+          if (mounted) {
+            setState(() => _hasFiles = false);
+          }
+        },
+      ),
       isActive: true,
       activeColor: const Color(0xFFFF4757),
       focusNode: widget.focusNode,
@@ -11135,8 +11630,11 @@ class _DeleteDownloadButtonState extends State<_DeleteDownloadButton> {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final item = widget.item;
+  static Future<void> _confirmDelete(
+    BuildContext context,
+    AggregatedItem item, {
+    VoidCallback? onDeleted,
+  }) async {
     final l10n = AppLocalizations.of(context);
     final typeLabel = switch (item.type) {
       'Series' => l10n.deleteSeriesFiles(item.seriesName ?? item.name),
@@ -11185,7 +11683,7 @@ class _DeleteDownloadButtonState extends State<_DeleteDownloadButton> {
           ),
         );
         if (success) {
-          setState(() => _hasFiles = false);
+          onDeleted?.call();
         }
       }
     }
@@ -11210,31 +11708,13 @@ class _PersonalRatingActionIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (style) {
-      PersonalRatingStyle.thumbs =>
+      PersonalRatingStyle.thumbs => Icon(
         likes == null
-            ? Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.thumb_up_outlined,
-                      color: color,
-                      size: size * 0.5,
-                    ),
-                    SizedBox(width: size * 0.08),
-                    Icon(
-                      Icons.thumb_down_outlined,
-                      color: color,
-                      size: size * 0.5,
-                    ),
-                  ],
-                ),
-              )
-            : Icon(
-                likes! ? Icons.thumb_up : Icons.thumb_down,
-                color: color,
-                size: size * 0.72,
-              ),
+            ? Icons.thumb_up_outlined
+            : (likes! ? Icons.thumb_up : Icons.thumb_down),
+        color: color,
+        size: size * 0.85,
+      ),
       PersonalRatingStyle.stars => _StarFillIcon(
         fill: ((rating ?? 0).clamp(0, 10) / 10).toDouble(),
         size: size * 0.82,
@@ -11883,6 +12363,167 @@ class _DetailActionButtonState extends State<_DetailActionButton>
                     ],
                   ),
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpotlightOverflowTile extends StatefulWidget {
+  final _DetailActionButton action;
+  final bool autofocus;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  const _SpotlightOverflowTile({
+    required this.action,
+    this.autofocus = false,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  @override
+  State<_SpotlightOverflowTile> createState() => _SpotlightOverflowTileState();
+}
+
+class _SpotlightOverflowTileState extends State<_SpotlightOverflowTile> {
+  final _focusNode = FocusNode();
+  bool _isFocused = false;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (mounted) {
+        final hasFocus = _focusNode.hasFocus;
+        setState(() => _isFocused = hasFocus);
+        if (hasFocus) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Scrollable.ensureVisible(
+                context,
+                alignment: 0.5,
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final action = widget.action;
+    final isTv = PlatformDetection.isTV;
+    final showHighlight = _isFocused || _isHovered;
+
+    final focusBg = AppColorScheme.buttonFocused;
+    final focusedFg = readableOnFocusFill(focusBg);
+
+    final textColor = showHighlight
+        ? (isTv ? focusedFg : Colors.white)
+        : Colors.white;
+
+    final iconColor = showHighlight
+        ? (isTv ? focusedFg : AppColorScheme.accent)
+        : (action.isActive
+            ? (action.activeColor ?? AppColorScheme.accent)
+            : Colors.white.withValues(alpha: 0.85));
+
+    // The plain icon first. The builders draw for the button row, where the
+    // rating one pairs a thumb up and down and the star one part fills, and
+    // both come out a smudge at 22. The label carries the rating anyway.
+    final Widget? leadingWidget;
+    if (action.icon != null) {
+      leadingWidget = AdaptiveIcon(action.icon!, color: iconColor, size: 22);
+    } else if (action.iconBuilder != null) {
+      leadingWidget = action.iconBuilder!(22, iconColor);
+    } else {
+      leadingWidget = null;
+    }
+
+    final focusColor = Color(
+      GetIt.instance<UserPreferences>()
+          .get(UserPreferences.focusColor)
+          .colorValue,
+    );
+
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: widget.autofocus,
+      onKeyEvent: (_, event) {
+        if (!event.logicalKey.isSelectKey) return KeyEventResult.ignored;
+        if (event is KeyDownEvent) {
+          widget.onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 90),
+              curve: Curves.easeOut,
+              decoration: BoxDecoration(
+                color: showHighlight
+                    ? (isTv
+                        ? focusBg
+                        : AppColorScheme.accent.withValues(alpha: 0.16))
+                    : Colors.transparent,
+                borderRadius: AppRadius.circular(10),
+                border: Border.all(
+                  color: showHighlight
+                      ? (isTv
+                          ? focusColor
+                          : AppColorScheme.accent.withValues(alpha: 0.6))
+                      : Colors.white.withValues(alpha: 0.15),
+                  width: showHighlight ? 1.5 : 1.0,
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  if (leadingWidget != null) ...[
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Center(child: leadingWidget),
+                    ),
+                    const SizedBox(width: 14),
+                  ],
+                  Expanded(
+                    child: Text(
+                      action.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: action.isActive ? FontWeight.w600 : FontWeight.w500,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -13342,8 +13983,11 @@ class DetailSeasonsRow extends StatelessWidget {
             SizedBox(width: isMobile ? 8 : 12 * desktopScale),
         itemBuilder: (context, index) {
           final season = seasons[index];
+          final showAvailabilityBadges =
+              prefs.get(UserPreferences.showSeerrAvailabilityBadges);
           final seerrStatus = seerrSeasonStatus?[season.indexNumber];
-          final hasSeerrDot = SeerrMediaStatus.hasDot(seerrStatus);
+          final hasSeerrDot =
+              showAvailabilityBadges && SeerrMediaStatus.hasDot(seerrStatus);
           return MediaCard(
             title: season.name,
             subtitle: _progressText(season),

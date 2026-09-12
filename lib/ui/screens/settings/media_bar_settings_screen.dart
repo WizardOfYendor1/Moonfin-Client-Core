@@ -5,6 +5,7 @@ import 'package:moonfin_design/moonfin_design.dart';
 import 'package:jellyfin_preference/jellyfin_preference.dart';
 import 'package:server_core/server_core.dart';
 
+import '../../../data/repositories/media_bar_repository.dart';
 import '../../../data/services/plugin_sync_service.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/focus/dpad_keys.dart';
@@ -119,10 +120,10 @@ class _MediaBarSettingsScreenState extends State<MediaBarSettingsScreen> {
       final response = await client.userViewsApi.getUserViews();
       final items = (response['Items'] as List? ?? [])
           .cast<Map<String, dynamic>>()
-          .where((item) {
-            final type = item['CollectionType'] as String?;
-            return type == 'movies' || type == 'tvshows' || type == null;
-          })
+          .where(
+            (item) =>
+                supportsMediaBarLibrary(item, const ['movies', 'tvshows']),
+          )
           .toList();
 
       await _pickSources(

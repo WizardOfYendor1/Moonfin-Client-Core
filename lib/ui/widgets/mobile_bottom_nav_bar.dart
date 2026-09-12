@@ -17,6 +17,7 @@ import '../../preference/seerr_preferences.dart';
 import '../../preference/user_preferences.dart';
 import '../../util/overlay_color_palette.dart';
 import '../../util/game_library.dart';
+import '../../util/live_tv_library.dart';
 import '../navigation/destinations.dart';
 import '../navigation/home_refresh_bus.dart';
 import '../screens/downloads/downloads_panel.dart';
@@ -169,6 +170,13 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
     return true;
   }
 
+  bool get _showLiveTvButton =>
+      _prefs.get(UserPreferences.showLiveTvButton) &&
+      _libraries.any(isLiveTvLibrary);
+
+  List<AggregatedLibrary> get _navLibraries =>
+      librariesForNav(_libraries, _showLiveTvButton);
+
   bool _isActive(String route) => widget.activeRoute == route;
 
   List<_BottomNavAction> _contentActions(
@@ -245,6 +253,20 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
       );
     }
 
+    if (_showLiveTvButton) {
+      actions.add(
+        _BottomNavAction(
+          icon: Icons.live_tv_rounded,
+          label: l10n.liveTv,
+          isActive: _isActive(Destinations.liveTvGuide),
+          onTap: () {
+            if (_isActive(Destinations.liveTvGuide)) return;
+            context.navigateTopLevel(Destinations.liveTvGuide);
+          },
+        ),
+      );
+    }
+
     if (_prefs.get(UserPreferences.enableFolderView)) {
       actions.add(
         _BottomNavAction(
@@ -294,7 +316,7 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
 
     final activeRoute = widget.activeRoute ?? '';
     if (_prefs.get(UserPreferences.showLibrariesInToolbar) &&
-        _libraries.isNotEmpty) {
+        _navLibraries.isNotEmpty) {
       actions.add(
         _BottomNavAction(
           iconBuilder: (size, color) => Image.asset(
@@ -492,7 +514,7 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
                     shrinkWrap: true,
                     padding: const EdgeInsets.only(bottom: 8),
                     children: [
-                      for (final lib in _libraries)
+                      for (final lib in _navLibraries)
                         ListTile(
                           leading: Image.asset(
                             'assets/icons/clapperboard.png',

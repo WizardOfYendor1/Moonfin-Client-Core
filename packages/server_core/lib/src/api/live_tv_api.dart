@@ -9,10 +9,20 @@ abstract class LiveTvApi {
     String? userId,
   });
 
+  /// A genre flag ([isMovie], [isSeries], [isSports], [isNews], [isKids]) makes
+  /// the server return only that genre's programs for the given [channelIds],
+  /// so the guide's category chips can walk the lineup in large batches
+  /// without pulling every program. Omitting [channelIds] searches every
+  /// channel; the guide does not use that form.
   Future<Map<String, dynamic>> getGuide({
     DateTime? startDate,
     DateTime? endDate,
     List<String>? channelIds,
+    bool? isMovie,
+    bool? isSeries,
+    bool? isSports,
+    bool? isNews,
+    bool? isKids,
     String? fields,
     bool? enableTotalRecordCount,
     bool? enableImages,

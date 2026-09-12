@@ -65,6 +65,20 @@ void main() {
       expect((body['ChannelIds'] as List).length, 60);
     });
 
+    test('a genre flag with no channel list searches the whole lineup', () async {
+      final cap = _Capture();
+      final api = EmbyLiveTvApi(Dio()..interceptors.add(cap));
+
+      await api.getGuide(isSports: true);
+
+      expect(cap.last!.method, 'GET');
+      expect(cap.last!.queryParameters['IsSports'], true);
+      expect(cap.last!.queryParameters.containsKey('ChannelIds'), isFalse);
+      // Unset flags must be omitted, not sent as null/false.
+      expect(cap.last!.queryParameters.containsKey('IsKids'), isFalse);
+      expect(cap.last!.queryParameters.containsKey('IsMovie'), isFalse);
+    });
+
     test('forwards EnableImages/EnableUserData to keep the payload small', () async {
       final cap = _Capture();
       final api = EmbyLiveTvApi(Dio()..interceptors.add(cap));

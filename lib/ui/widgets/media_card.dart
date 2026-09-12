@@ -11,6 +11,8 @@ import '../../preference/preference_constants.dart';
 import '../../util/platform_detection.dart';
 import '../../util/focus/dpad_keys.dart';
 import '../../util/focus/key_event_utils.dart';
+import '../../util/item_watch_state.dart';
+import '../../util/focus/scroll_utils.dart';
 import 'bounded_network_image.dart';
 import 'focus/glass_focus_halo.dart';
 import 'marquee_text.dart';
@@ -340,7 +342,7 @@ class _MediaCardState extends State<MediaCard> with FocusStateMixin {
           active: cardActive,
           child: AnimatedScale(
             scale: cardActive ? MediaCard.focusScale : 1.0,
-            duration: const Duration(milliseconds: 150),
+            duration: navigationAnimationDuration,
             curve: PlatformDetection.isAppleTV
                 ? Curves.easeOutCubic
                 : Curves.linear,
@@ -850,19 +852,12 @@ class _CardImage extends StatelessWidget {
     );
   }
 
-  bool get _showWatchedIndicator {
-    switch (watchedBehavior) {
-      case WatchedIndicatorBehavior.always:
-        return isPlayed || (unplayedCount != null && unplayedCount! > 0);
-      case WatchedIndicatorBehavior.hideUnwatched:
-        return isPlayed;
-      case WatchedIndicatorBehavior.episodesOnly:
-        return itemType == 'Episode' &&
-            (isPlayed || (unplayedCount != null && unplayedCount! > 0));
-      case WatchedIndicatorBehavior.never:
-        return false;
-    }
-  }
+  bool get _showWatchedIndicator => showsWatchedIndicator(
+    behavior: watchedBehavior,
+    isPlayed: isPlayed,
+    itemType: itemType,
+    unplayedCount: unplayedCount,
+  );
 
   bool get _showSeerrMediaTypeBadge {
     final type = seerrMediaType?.toLowerCase();

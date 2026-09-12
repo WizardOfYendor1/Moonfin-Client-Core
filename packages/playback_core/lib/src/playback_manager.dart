@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'live_source_probe.dart';
 import 'media_stream_resolver.dart';
 import 'playback_arbiter.dart';
 import 'player_backend.dart';
@@ -184,6 +185,9 @@ class PlaybackManager implements AudioOwnable {
   final _bringupStateController =
       StreamController<PlaybackBringupState>.broadcast();
   final _sessionEndedController = StreamController<void>.broadcast();
+  final _pictureShownController = StreamController<bool>.broadcast();
+  bool _pictureShown = true;
+  bool _backendPictureShown = false;
   PlaybackBringupState _bringupState = const PlaybackBringupState.idle();
 
   PlayerBackend? get backend => _backend;
@@ -216,6 +220,19 @@ class PlaybackManager implements AudioOwnable {
   Stream<PlaybackBringupState> get bringupStateStream =>
       _bringupStateController.stream;
   Stream<void> get sessionEndedStream => _sessionEndedController.stream;
+
+  /// Whether there is a picture to see. False from the start of a bringup
+  /// until the backend has drawn a frame with something in it, on the
+  /// backends that can tell ([PlayerBackend.pictureShownStream]); true from
+  /// ready on the others, and for a source without video.
+  bool get pictureShown => _pictureShown;
+  Stream<bool> get pictureShownStream => _pictureShownController.stream;
+
+  void _setPictureShown(bool shown, {bool force = false}) {
+    if (!force && shown == _pictureShown) return;
+    _pictureShown = shown;
+    _pictureShownController.add(shown);
+  }
   StreamResolutionResult? get currentResolution => _currentResolution;
 
   /// Item that gained a stream on the server after this session resolved. The
@@ -742,6 +759,17 @@ class PlaybackManager implements AudioOwnable {
         errorStream.listen(_onBackendErrorEvent, onError: (_) {}),
       );
     }
+    final pictureShownStream = backend.pictureShownStream;
+    if (pictureShownStream != null) {
+      _streamSubs.add(
+        pictureShownStream.listen((shown) {
+          _backendPictureShown = shown;
+          if (_bringupState.phase == PlaybackBringupPhase.ready) {
+            _setPictureShown(shown);
+          }
+        }),
+      );
+    }
   }
 
   void _disposeStreamSubs() {
@@ -1041,15 +1069,24 @@ class PlaybackManager implements AudioOwnable {
       return;
     }
 
+    // Deliberately not gated on _waitingForMedia. A container the player can't
+    // parse fails before it ever reaches a ready state, so that gate left the
+    // sources this recovery exists for sitting on a spinner. The re-resolve
+    // takes the next session token, and the startup still running behind it
+    // compares tokens and hands off to _cleanupPreemptedSession.
     bool canReResolve() =>
         resolution != null &&
         resolution.playMethod != StreamPlayMethod.transcode &&
         !_isOfflinePlayback &&
-        !_waitingForMedia &&
         !_unsupportedAudioRecoveryInFlight;
 
     Future<void> recoverViaTranscode() async {
       _unsupportedAudioRecoveryInFlight = true;
+      // The stop below lets a startup still inside play() return, and the
+      // next token is only taken after that stop. Retire the startup here or
+      // it finishes as a normal start and reports a start for a session whose
+      // stop already went out.
+      ++_playbackSessionToken;
       try {
         await _reResolveAtCurrentPosition(
           forceTranscode: true,
@@ -1256,6 +1293,8 @@ class PlaybackManager implements AudioOwnable {
         backend: _traceBackendName(_backend),
       ),
     );
+    _backendPictureShown = false;
+    _setPictureShown(false);
     await _stopAndReportCurrent();
     _resetBackendSelectionLock();
     _audioStreamIndex = audioStreamIndex;
@@ -1316,20 +1355,28 @@ class PlaybackManager implements AudioOwnable {
     );
   }
 
-  bool _isPreroll(dynamic item) {
-    if (item == null) return false;
+  /// The server item behind a queue entry, whichever shape it arrived in:
+  /// a raw map, or anything carrying one as `rawData`.
+  Map? _rawDataOf(dynamic item) {
+    if (item == null) return null;
+    if (item is Map) return item;
     try {
-      if (item is Map) {
-        return item['__moonfinIsPreroll'] == true;
-      }
       final dynamic dynItem = item;
       final rawData = dynItem.rawData;
-      if (rawData is Map) {
-        return rawData['__moonfinIsPreroll'] == true;
-      }
-    } catch (_) {}
-    return false;
+      return rawData is Map ? rawData : null;
+    } catch (_) {
+      return null;
+    }
   }
+
+  /// Whether a queue item is a live TV channel.
+  bool _isLiveTvItem(dynamic item) {
+    final type = _rawDataOf(item)?['Type']?.toString();
+    return type == 'TvChannel' || type == 'LiveTvChannel';
+  }
+
+  bool _isPreroll(dynamic item) =>
+      _rawDataOf(item)?['__moonfinIsPreroll'] == true;
 
   Future<void> _playCurrentItem({
     Duration startPosition = Duration.zero,
@@ -1430,21 +1477,63 @@ class PlaybackManager implements AudioOwnable {
       }
     }
 
-    final resolution = await _resolver!.resolve(
-      item,
-      deviceProfile: profile,
-      maxStreamingBitrate: maxBitrate,
-      audioStreamIndex: _audioStreamIndex,
-      subtitleStreamIndex: _subtitleStreamIndex,
-      startTimeTicks: startTicks,
-      mediaSourceId: _mediaSourceId,
-      enableDirectPlay: enableDirectPlay,
-      enableDirectStream: enableDirectStream,
-      enableTranscoding: enableTranscoding,
-    );
+    final StreamResolutionResult resolution;
+    try {
+      resolution = await _resolver!.resolve(
+        item,
+        deviceProfile: profile,
+        maxStreamingBitrate: maxBitrate,
+        audioStreamIndex: _audioStreamIndex,
+        subtitleStreamIndex: _subtitleStreamIndex,
+        startTimeTicks: startTicks,
+        mediaSourceId: _mediaSourceId,
+        enableDirectPlay: enableDirectPlay,
+        enableDirectStream: enableDirectStream,
+        enableTranscoding: enableTranscoding,
+      );
+    } catch (_) {
+      // A channel the server refuses outright (no tuner has it, every tuner
+      // slot is busy, the tuner host is down) fails here with a server error.
+      // The exception still reaches the caller, but the bringup state names
+      // the failure so the live player can say the channel is unavailable
+      // instead of showing the raw exception text.
+      if (sessionToken == _playbackSessionToken && _isLiveTvItem(item)) {
+        _setBringupState(
+          PlaybackBringupState(
+            phase: PlaybackBringupPhase.failed,
+            sessionToken: sessionToken,
+            itemId: itemId,
+            backend: _traceBackendName(_backend),
+            error: liveChannelUnavailableError,
+          ),
+        );
+      }
+      rethrow;
+    }
 
     if (sessionToken != _playbackSessionToken) {
       _cleanupPreemptedSession(item, resolution);
+      return;
+    }
+
+    // The server opened the tuner stream but its probe found nothing in it,
+    // and it answered with a placeholder source anyway. The tuner has already
+    // given up on the channel by then, so the player is not started on a
+    // manifest that can only fail. The live session the server opened for the
+    // probe is released the same way a stopped stream would release it.
+    if (resolution.liveStreamId != null &&
+        liveSourceProbeFailed(resolution.mediaStreams)) {
+      unawaited(_service?.closeLiveStream(resolution.liveStreamId!));
+      _setBringupState(
+        PlaybackBringupState(
+          phase: PlaybackBringupPhase.failed,
+          sessionToken: sessionToken,
+          itemId: itemId,
+          backend: _traceBackendName(_backend),
+          playMethod: resolution.playMethod.name,
+          error: liveChannelUnavailableError,
+        ),
+      );
       return;
     }
 
@@ -1742,7 +1831,9 @@ class PlaybackManager implements AudioOwnable {
       startupError = e;
       startupStackTrace = st;
     } finally {
-      _waitingForMedia = false;
+      if (sessionToken == _playbackSessionToken) {
+        _waitingForMedia = false;
+      }
     }
 
     if (sessionToken != _playbackSessionToken) {
@@ -1932,6 +2023,14 @@ class PlaybackManager implements AudioOwnable {
         backend: _traceBackendName(_backend),
         playMethod: resolution.playMethod.name,
       ),
+    );
+    // Said again after ready even when unchanged, so a listener that starts
+    // a session on ready hears the picture that belongs to it.
+    _setPictureShown(
+      _backend?.pictureShownStream == null || !resolution.hasVideoStream
+          ? true
+          : _backendPictureShown,
+      force: true,
     );
   }
 
@@ -3113,6 +3212,7 @@ class PlaybackManager implements AudioOwnable {
     _backendChangedController.close();
     _bringupStateController.close();
     _sessionEndedController.close();
+    _pictureShownController.close();
     for (final backend in _retainedBackends.toList()) {
       backend.dispose();
     }

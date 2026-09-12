@@ -77,6 +77,8 @@ import '../../widgets/playback/skip_segment_overlay.dart';
 import '../../widgets/playback/next_up_overlay.dart';
 import '../../widgets/playback/still_watching_dialog.dart';
 import '../../widgets/playback/stream_info_dialog.dart';
+import '../../widgets/keyboard_shortcuts/keyboard_shortcut_reference.dart';
+import '../../../playback/player_key_bindings.dart';
 import '../../widgets/syncplay/syncplay_player_button.dart';
 import '../../../syncplay/syncplay_manager.dart';
 import '../../../l10n/app_localizations.dart';
@@ -136,6 +138,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final backend = _activeBackend;
     return backend is MediaKitPlayerBackend ? backend : null;
   }
+
+  /// The key table the handler and the shortcut list share. Only the
+  /// defaults exist today. A user-editable table plugs in here.
+  PlayerKeyBindings get _keyBindings => PlayerKeyBindings.defaults;
 
   /// The backend whose mpv statistics overlay this screen can toggle, or null
   /// where that libmpv build has none. Resolved like [_hdrBackend].
@@ -3683,119 +3689,101 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     }
 
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.space:
-      case LogicalKeyboardKey.mediaPlayPause:
+    // The keys themselves live in PlayerKeyBindings, shared with the shortcut
+    // list, so this only decides what each action does.
+    final action = _keyBindings.actionFor(
+      event.logicalKey,
+      shift: HardwareKeyboard.instance.isShiftPressed,
+    );
+    switch (action) {
+      case null:
+        return KeyEventResult.ignored;
+      case PlayerAction.playPause:
         _togglePlayPause();
         _showControls();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaPlay:
+      case PlayerAction.play:
         unawaited(_resumeWithConfiguredRewind());
         _showControls();
         _focusTvPrimaryButton();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaPause:
+      case PlayerAction.pause:
         _manager.pause();
         _showControls();
         _focusTvPrimaryButton();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaStop:
-        _exitPlayback();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaTrackNext:
-        unawaited(_manager.next());
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaTrackPrevious:
-        unawaited(_manager.previous());
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaFastForward:
-        _seekRelative(_prefs.get(UserPreferences.skipForwardLength));
-        _showControls(focusSeekbar: PlatformDetection.isTV);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.mediaRewind:
-        _seekRelative(-_prefs.get(UserPreferences.skipBackLength));
-        _showControls(focusSeekbar: PlatformDetection.isTV);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowLeft:
-        _seekRelative(
-          -_accelerateSeekStep(
-            _prefs.get(UserPreferences.skipBackLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowRight:
-        _seekRelative(
-          _accelerateSeekStep(
-            _prefs.get(UserPreferences.skipForwardLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowUp:
-        _changeVolumeBy(0.05);
-        _showControls();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowDown:
-        _changeVolumeBy(-0.05);
-        _showControls();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyK:
-        _togglePlayPause();
-        _showControls();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyJ:
-        _seekRelative(
-          -_accelerateSeekStep(
-            _prefs.get(UserPreferences.skipBackLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyL:
-        _seekRelative(
-          _accelerateSeekStep(
-            _prefs.get(UserPreferences.skipForwardLength),
-            event,
-          ),
-        );
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyH:
+      case PlayerAction.stop:
         if (event is! KeyRepeatEvent) {
           _exitPlayback();
         }
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyF:
+      case PlayerAction.next:
+        unawaited(_manager.next());
+        return KeyEventResult.handled;
+      case PlayerAction.previous:
+        unawaited(_manager.previous());
+        return KeyEventResult.handled;
+      case PlayerAction.skipForward:
+        _seekRelative(_prefs.get(UserPreferences.skipForwardLength));
+        _showControls(focusSeekbar: PlatformDetection.isTV);
+        return KeyEventResult.handled;
+      case PlayerAction.skipBack:
+        _seekRelative(-_prefs.get(UserPreferences.skipBackLength));
+        _showControls(focusSeekbar: PlatformDetection.isTV);
+        return KeyEventResult.handled;
+      case PlayerAction.seekBack:
+        _seekRelative(
+          -_accelerateSeekStep(
+            _prefs.get(UserPreferences.skipBackLength),
+            event,
+          ),
+        );
+        return KeyEventResult.handled;
+      case PlayerAction.seekForward:
+        _seekRelative(
+          _accelerateSeekStep(
+            _prefs.get(UserPreferences.skipForwardLength),
+            event,
+          ),
+        );
+        return KeyEventResult.handled;
+      case PlayerAction.volumeUp:
+        _changeVolumeBy(0.05);
+        _showControls();
+        return KeyEventResult.handled;
+      case PlayerAction.volumeDown:
+        _changeVolumeBy(-0.05);
+        _showControls();
+        return KeyEventResult.handled;
+      case PlayerAction.toggleFullscreen:
         if (PlatformDetection.useDesktopUi) {
           unawaited(_toggleDesktopFullscreen());
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
-      case LogicalKeyboardKey.keyM:
+      case PlayerAction.mute:
         _toggleMute();
         _showControls();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyC:
+      case PlayerAction.toggleSubtitles:
         unawaited(_toggleSubtitlesQuick());
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.comma:
+      case PlayerAction.slowDown:
         _stepPlaybackSpeed(-1);
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.period:
+      case PlayerAction.speedUp:
         _stepPlaybackSpeed(1);
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.keyI:
-        if (HardwareKeyboard.instance.isShiftPressed) {
-          // Shift+I: mpv's own statistics overlay, same key as in mpv.
-          final backend = _mpvStatsBackend;
-          if (backend == null) return KeyEventResult.ignored;
-          if (event is! KeyRepeatEvent) unawaited(backend.toggleMpvStats());
-          return KeyEventResult.handled;
-        }
+      case PlayerAction.mpvStats:
+        final backend = _mpvStatsBackend;
+        if (backend == null) return KeyEventResult.ignored;
+        if (event is! KeyRepeatEvent) unawaited(backend.toggleMpvStats());
+        return KeyEventResult.handled;
+      case PlayerAction.playbackInfo:
         _showStreamInfo();
         _showControls();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.escape:
+      case PlayerAction.escape:
         // A held Escape would leave fullscreen and then stop playback on the
         // repeat.
         if (event is KeyRepeatEvent) {
@@ -3807,16 +3795,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         }
         _exitPlayback();
         return KeyEventResult.handled;
-      case LogicalKeyboardKey.select:
-      case LogicalKeyboardKey.enter:
+      case PlayerAction.showControlsOrPlayPause:
         if (_controlsVisible) {
           _togglePlayPause();
         } else {
           _showControls();
         }
         return KeyEventResult.handled;
-      default:
-        return KeyEventResult.ignored;
     }
   }
 
@@ -7609,19 +7594,32 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         context: context,
         title: l10n.playbackInformation,
         streamInfoSections: streamInfoSections,
-        action: mediaKit == null
-            ? null
-            : (
-                label: mediaKit.mpvStatsVisible
-                    ? l10n.hideMpvStats
-                    : l10n.showMpvStats,
-                onPressed: () {
-                  // Close first: in the overlay-capture arrangement a route
-                  // above the player stands the video down.
-                  Navigator.of(context, rootNavigator: true).pop();
-                  unawaited(mediaKit.toggleMpvStats());
-                },
-              ),
+        actions: [
+          if (mediaKit != null)
+            (
+              label: mediaKit.mpvStatsVisible
+                  ? l10n.hideMpvStats
+                  : l10n.showMpvStats,
+              icon: Icons.query_stats_rounded,
+              onPressed: () {
+                // Close first: in the overlay-capture arrangement a route
+                // above the player stands the video down.
+                Navigator.of(context, rootNavigator: true).pop();
+                unawaited(mediaKit.toggleMpvStats());
+              },
+            ),
+          // The same list ? and F1 open, for whoever does not know those keys.
+          if (!PlatformDetection.isTV)
+            (
+              label: l10n.keyboardShortcutsTitle,
+              icon: Icons.keyboard_outlined,
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).pop();
+                unawaited(showKeyboardShortcutsDialog(context));
+                _showControls();
+              },
+            ),
+        ],
       ),
     );
     _showControls();

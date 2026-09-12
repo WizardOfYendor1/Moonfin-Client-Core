@@ -256,16 +256,20 @@ enum VisualThemeId {
 /// cinematic layout (landscape two-pane / portrait stack) and is the default.
 /// [spotlight] is the hero-first layout: Play plus at most three action
 /// buttons with the rest behind an ellipsis menu, and summary cards that open
-/// sectioned grid modals. Stored per server and user.
+/// sectioned grid modals. [nouveau] is the full-screen layout, with every
+/// section stacked down the page rather than behind tabs or cards. Stored per
+/// server and user.
 enum DetailScreenStyle {
   classic,
   modern,
-  spotlight;
+  spotlight,
+  nouveau;
 }
 
 /// Selectable algorithm source for similarity recommendation system.
 enum RecommendationSystemSource {
   local,
+  server,
   online;
 }
 
@@ -857,9 +861,14 @@ enum ScreensaverTimeout {
 
 enum SinceYouWatchedSource {
   local,
+  server,
   online;
 
-  String get displayName => this == local ? 'Local' : 'Online';
+  String get displayName => switch (this) {
+    SinceYouWatchedSource.local => 'Moonfin Recommends',
+    SinceYouWatchedSource.server => 'Jellyfin Recommends',
+    SinceYouWatchedSource.online => 'TMDb Similarity',
+  };
 }
 
 enum SinceYouWatchedSourceType {
@@ -956,3 +965,33 @@ enum LoadingAnimationSpeed {
   ultra,
 }
 
+enum PageTransitionSpeed {
+  slow(Duration(milliseconds: 450)),
+  medium(Duration(milliseconds: 300)),
+  fast(Duration(milliseconds: 150)),
+  off(Duration.zero);
+
+  const PageTransitionSpeed(this.duration);
+  final Duration duration;
+}
+
+enum NavigationAnimationSpeed {
+  extraSlow(Duration(milliseconds: 400)),
+  slow(Duration(milliseconds: 250)),
+  medium(Duration(milliseconds: 150)),
+  fast(Duration(milliseconds: 80));
+
+  const NavigationAnimationSpeed(this.duration);
+  final Duration duration;
+}
+
+enum ModernCardTransitionSpeed {
+  extraSlow(Duration(milliseconds: 450)),
+  slow(Duration(milliseconds: 300)),
+  medium(Duration(milliseconds: 180)),
+  fast(Duration(milliseconds: 90)),
+  off(Duration.zero);
+
+  const ModernCardTransitionSpeed(this.duration);
+  final Duration duration;
+}

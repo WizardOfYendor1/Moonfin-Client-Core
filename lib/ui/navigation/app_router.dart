@@ -483,6 +483,7 @@ final appRouter = GoRouter(
         final startFresh = state.uri.queryParameters['fresh'] == '1';
         final forceEmulatorJs =
             state.uri.queryParameters['backend'] == 'emulatorjs';
+        final hardwareRenderingEnabled = state.uri.queryParameters['hw'] != '0';
         return _opaqueFullScreenPage<void>(
           state: state,
           // Native libretro or the EmulatorJS WebView: forced where only one
@@ -496,6 +497,7 @@ final appRouter = GoRouter(
                   core: core,
                   gameName: state.uri.queryParameters['name'],
                   startFresh: startFresh,
+                  hardwareRenderingEnabled: hardwareRenderingEnabled,
                 )
               : GameEmulatorScreen(
                   libraryId: libraryId,
@@ -854,12 +856,7 @@ class PlayerRouteObserver extends NavigatorObserver {
 
   bool _isPlayer(Route<dynamic> route) {
     final name = route.settings.name;
-    return name != null &&
-        (name.startsWith('/player/') ||
-         name.startsWith('/game-player/') ||
-         name == '/live-tv/player' ||
-         name == Destinations.audioPlayer ||
-         name == Destinations.videoPlayer);
+    return name != null && Destinations.isPlayerRoute(name);
   }
 
   @override

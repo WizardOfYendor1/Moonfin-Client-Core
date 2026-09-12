@@ -590,12 +590,17 @@ void main() {
       final startPos = tester.getTopLeft(finder);
       final buildsAfterStart = builds;
 
-      for (var i = 0; i < 30; i++) {
+      const frames = 30;
+      for (var i = 0; i < frames; i++) {
         await tester.pump(const Duration(milliseconds: 16));
       }
 
       expect(tester.getTopLeft(finder), isNot(equals(startPos)));
-      expect(builds, buildsAfterStart);
+      // The box starts somewhere random heading a random way, so it can reach a
+      // side wall inside these frames, and turning is meant to rebuild the
+      // child. Counting against the frames catches a rebuild riding along with
+      // every position update while leaving room for a turn.
+      expect(builds - buildsAfterStart, lessThan(frames ~/ 10));
     });
 
     testWidgets('a plain child still renders and moves', (tester) async {

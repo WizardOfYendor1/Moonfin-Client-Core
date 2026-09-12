@@ -12,15 +12,95 @@ class _MockLiveTvApi extends Mock implements LiveTvApi {}
 
 class _MockUserLibraryApi extends Mock implements UserLibraryApi {}
 
-Map<String, dynamic> _channel(String id) => {'Id': id, 'Name': 'Ch $id'};
-
-Map<String, dynamic> _program(String id, String channelId, DateTime start) => {
+Map<String, dynamic> _channel(String id, {String? number}) => {
   'Id': id,
-  'ChannelId': channelId,
-  'Name': id,
-  'StartDate': start.toIso8601String(),
-  'EndDate': start.add(const Duration(minutes: 30)).toIso8601String(),
+  'Name': 'Ch $id',
+  'ChannelNumber': ?number,
 };
+
+Map<String, dynamic> _program(
+  String id,
+  String channelId, {
+  DateTime? start,
+  bool isMovie = false,
+  bool isSeries = false,
+  bool isSports = false,
+  bool isNews = false,
+  bool isKids = false,
+  bool isPremiere = false,
+}) {
+  final programStart = start ?? DateTime.utc(2026, 9, 11, 10);
+  return {
+    'Id': id,
+    'ChannelId': channelId,
+    'Name': 'Program $id',
+    'StartDate': programStart.toIso8601String(),
+    'EndDate': programStart.add(const Duration(minutes: 30)).toIso8601String(),
+    'IsMovie': isMovie,
+    'IsSeries': isSeries,
+    'IsSports': isSports,
+    'IsNews': isNews,
+    'IsKids': isKids,
+    'IsPremiere': isPremiere,
+  };
+}
+
+/// The ChannelIds a stubbed getGuide call was made with.
+List<String> _requestedIds(Invocation inv) =>
+    (inv.namedArguments[#channelIds] as List<String>?) ?? const [];
+
+/// Answers a sports request with one sports program per channel in the batch
+/// that [isSports] says is a sports channel, mimicking a server-side flag.
+Future<Map<String, dynamic>> Function(Invocation) _serverFiltered(
+  bool Function(String id) isSports,
+) =>
+    (inv) async => {
+      'Items': [
+        for (final id in _requestedIds(inv))
+          if (isSports(id)) _program('p-$id', id, isSports: true),
+      ],
+    };
+
+/// A getGuide matcher. With no [category] every argument is wild-carded. With
+/// one, the request must carry exactly that chip's genre flag and none of the
+/// others (Premiere has no flag, so all five must be null).
+Future<Map<String, dynamic>> _guide(
+  LiveTvApi api, {
+  GuideFilter? category,
+  bool captureChannelIds = false,
+}) {
+  bool? flag(GuideFilter f, String name) =>
+      category == null ? any(named: name) : (category == f ? true : null);
+  return api.getGuide(
+    startDate: any(named: 'startDate'),
+    endDate: any(named: 'endDate'),
+    channelIds: captureChannelIds
+        ? captureAny(named: 'channelIds')
+        : any(named: 'channelIds'),
+    isMovie: flag(GuideFilter.movies, 'isMovie'),
+    isSeries: flag(GuideFilter.series, 'isSeries'),
+    isSports: flag(GuideFilter.sports, 'isSports'),
+    isNews: flag(GuideFilter.news, 'isNews'),
+    isKids: flag(GuideFilter.kids, 'isKids'),
+    fields: any(named: 'fields'),
+    enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+    enableImages: any(named: 'enableImages'),
+    enableUserData: any(named: 'enableUserData'),
+    userId: any(named: 'userId'),
+  );
+}
+
+void _stubChannels(LiveTvApi liveTv, List<Map<String, dynamic>> channels) {
+  when(
+    () => liveTv.getChannels(
+      sortBy: any(named: 'sortBy'),
+      sortOrder: any(named: 'sortOrder'),
+      fields: any(named: 'fields'),
+      enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+      userId: any(named: 'userId'),
+    ),
+  ).thenAnswer((_) async => {'Items': channels});
+}
 
 Map<String, dynamic> _span(
   String id,
@@ -44,18 +124,7 @@ void main() {
     liveTv = _MockLiveTvApi();
     when(() => client.liveTvApi).thenReturn(liveTv);
     when(() => client.userId).thenReturn('user');
-    when(
-      () => liveTv.getGuide(
-        startDate: any(named: 'startDate'),
-        endDate: any(named: 'endDate'),
-        channelIds: any(named: 'channelIds'),
-        fields: any(named: 'fields'),
-        enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-        enableImages: any(named: 'enableImages'),
-        enableUserData: any(named: 'enableUserData'),
-        userId: any(named: 'userId'),
-      ),
-    ).thenAnswer((_) async => {'Items': <dynamic>[]});
+    when(() => _guide(liveTv)).thenAnswer((_) async => {'Items': <dynamic>[]});
   });
 
   test('load() fetches only the first batch; loadMorePrograms() paginates the rest', () async {
@@ -80,6 +149,11 @@ void main() {
         startDate: any(named: 'startDate'),
         endDate: any(named: 'endDate'),
         channelIds: captureAny(named: 'channelIds'),
+        isMovie: any(named: 'isMovie'),
+        isSeries: any(named: 'isSeries'),
+        isSports: any(named: 'isSports'),
+        isNews: any(named: 'isNews'),
+        isKids: any(named: 'isKids'),
         fields: any(named: 'fields'),
         enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
         enableImages: any(named: 'enableImages'),
@@ -112,6 +186,11 @@ void main() {
         startDate: any(named: 'startDate'),
         endDate: any(named: 'endDate'),
         channelIds: any(named: 'channelIds'),
+        isMovie: any(named: 'isMovie'),
+        isSeries: any(named: 'isSeries'),
+        isSports: any(named: 'isSports'),
+        isNews: any(named: 'isNews'),
+        isKids: any(named: 'isKids'),
         fields: any(named: 'fields'),
         enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
         enableImages: any(named: 'enableImages'),
@@ -143,12 +222,12 @@ void main() {
 
     expect(pending.length, 2);
     pending[1].complete({
-      'Items': [_program('current', 'c1', later)],
+      'Items': [_program('current', 'c1', start: later)],
     });
     await current;
     // The first window's reply lands last and must not overwrite the second.
     pending[0].complete({
-      'Items': [_program('stale', 'c1', early)],
+      'Items': [_program('stale', 'c1', start: early)],
     });
     await superseded;
 
@@ -175,6 +254,11 @@ void main() {
         startDate: any(named: 'startDate'),
         endDate: any(named: 'endDate'),
         channelIds: any(named: 'channelIds'),
+        isMovie: any(named: 'isMovie'),
+        isSeries: any(named: 'isSeries'),
+        isSports: any(named: 'isSports'),
+        isNews: any(named: 'isNews'),
+        isKids: any(named: 'isKids'),
         fields: any(named: 'fields'),
         enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
         enableImages: any(named: 'enableImages'),
@@ -197,11 +281,11 @@ void main() {
 
     expect(pending, hasLength(2));
     pending[1].complete({
-      'Items': [_program('current', 'c1', later)],
+      'Items': [_program('current', 'c1', start: later)],
     });
     await current;
     pending[0].complete({
-      'Items': [_program('stale', 'c1', early)],
+      'Items': [_program('stale', 'c1', start: early)],
     });
     await superseded;
 
@@ -231,6 +315,11 @@ void main() {
           startDate: any(named: 'startDate'),
           endDate: any(named: 'endDate'),
           channelIds: any(named: 'channelIds'),
+          isMovie: any(named: 'isMovie'),
+          isSeries: any(named: 'isSeries'),
+          isSports: any(named: 'isSports'),
+          isNews: any(named: 'isNews'),
+          isKids: any(named: 'isKids'),
           fields: any(named: 'fields'),
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           enableImages: any(named: 'enableImages'),
@@ -240,7 +329,9 @@ void main() {
       ).thenAnswer((invocation) async {
         final ids = invocation.namedArguments[#channelIds] as List<String>;
         return {
-          'Items': [for (final id in ids) _program('$prefix-$id', id, start)],
+          'Items': [
+            for (final id in ids) _program('$prefix-$id', id, start: start),
+          ],
         };
       });
     }
@@ -282,6 +373,11 @@ void main() {
         startDate: any(named: 'startDate'),
         endDate: any(named: 'endDate'),
         channelIds: captureAny(named: 'channelIds'),
+        isMovie: any(named: 'isMovie'),
+        isSeries: any(named: 'isSeries'),
+        isSports: any(named: 'isSports'),
+        isNews: any(named: 'isNews'),
+        isKids: any(named: 'isKids'),
         fields: any(named: 'fields'),
         enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
         enableImages: any(named: 'enableImages'),
@@ -321,6 +417,11 @@ void main() {
           startDate: any(named: 'startDate'),
           endDate: any(named: 'endDate'),
           channelIds: any(named: 'channelIds'),
+          isMovie: any(named: 'isMovie'),
+          isSeries: any(named: 'isSeries'),
+          isSports: any(named: 'isSports'),
+          isNews: any(named: 'isNews'),
+          isKids: any(named: 'isKids'),
           fields: any(named: 'fields'),
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           enableImages: any(named: 'enableImages'),
@@ -331,12 +432,11 @@ void main() {
         call++;
         if (call == 1) {
           return Future.value({
-            'Items': [_program('old', 'c0', firstStart)],
+            'Items': [_program('old', 'c0', start: firstStart)],
           });
         }
         return replacement.future;
       });
-
       final vm = LiveTvGuideViewModel(client);
       await vm.load(windowStart: firstStart);
       final moving = vm.setWindowStart(secondStart);
@@ -347,7 +447,7 @@ void main() {
       expect(vm.programsForChannel('c0').single.id, 'old');
 
       replacement.complete({
-        'Items': [_program('new', 'c0', secondStart)],
+        'Items': [_program('new', 'c0', start: secondStart)],
       });
       await moving;
       expect(vm.programsForChannel('c0').single.id, 'new');
@@ -392,6 +492,11 @@ void main() {
           startDate: any(named: 'startDate'),
           endDate: any(named: 'endDate'),
           channelIds: any(named: 'channelIds'),
+          isMovie: any(named: 'isMovie'),
+          isSeries: any(named: 'isSeries'),
+          isSports: any(named: 'isSports'),
+          isNews: any(named: 'isNews'),
+          isKids: any(named: 'isKids'),
           fields: any(named: 'fields'),
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           enableImages: any(named: 'enableImages'),
@@ -588,6 +693,11 @@ void main() {
             startDate: any(named: 'startDate'),
             endDate: any(named: 'endDate'),
             channelIds: any(named: 'channelIds'),
+            isMovie: any(named: 'isMovie'),
+            isSeries: any(named: 'isSeries'),
+            isSports: any(named: 'isSports'),
+            isNews: any(named: 'isNews'),
+            isKids: any(named: 'isKids'),
             fields: any(named: 'fields'),
             enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
             enableImages: any(named: 'enableImages'),
@@ -614,6 +724,11 @@ void main() {
           startDate: any(named: 'startDate'),
           endDate: any(named: 'endDate'),
           channelIds: any(named: 'channelIds'),
+          isMovie: any(named: 'isMovie'),
+          isSeries: any(named: 'isSeries'),
+          isSports: any(named: 'isSports'),
+          isNews: any(named: 'isNews'),
+          isKids: any(named: 'isKids'),
           fields: any(named: 'fields'),
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           enableImages: any(named: 'enableImages'),
@@ -657,6 +772,11 @@ void main() {
           startDate: liveStart,
           endDate: any(named: 'endDate'),
           channelIds: any(named: 'channelIds'),
+          isMovie: any(named: 'isMovie'),
+          isSeries: any(named: 'isSeries'),
+          isSports: any(named: 'isSports'),
+          isNews: any(named: 'isNews'),
+          isKids: any(named: 'isKids'),
           fields: any(named: 'fields'),
           enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
           enableImages: any(named: 'enableImages'),
@@ -706,45 +826,291 @@ void main() {
     );
   });
 
-  test('favoriting re-sorts only when the sort reads the favorite flag', () async {
-    final channels = [
-      {'Id': 'c1', 'Name': 'Ch 1', 'ChannelNumber': '1'},
-      {'Id': 'c2', 'Name': 'Ch 2', 'ChannelNumber': '2'},
-      {'Id': 'c3', 'Name': 'Ch 3', 'ChannelNumber': '3'},
-    ];
-    when(
-      () => liveTv.getChannels(
-        sortBy: any(named: 'sortBy'),
-        sortOrder: any(named: 'sortOrder'),
-        fields: any(named: 'fields'),
-        enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
-        userId: any(named: 'userId'),
-      ),
-    ).thenAnswer((_) async => {'Items': channels});
-    final userLibrary = _MockUserLibraryApi();
-    when(() => client.userLibraryApi).thenReturn(userLibrary);
-    when(() => userLibrary.markFavorite(any())).thenAnswer((_) async {});
+  test(
+    'favoriting re-sorts only when the sort reads the favorite flag',
+    () async {
+      final channels = [
+        {'Id': 'c1', 'Name': 'Ch 1', 'ChannelNumber': '1'},
+        {'Id': 'c2', 'Name': 'Ch 2', 'ChannelNumber': '2'},
+        {'Id': 'c3', 'Name': 'Ch 3', 'ChannelNumber': '3'},
+      ];
+      when(
+        () => liveTv.getChannels(
+          sortBy: any(named: 'sortBy'),
+          sortOrder: any(named: 'sortOrder'),
+          fields: any(named: 'fields'),
+          enableTotalRecordCount: any(named: 'enableTotalRecordCount'),
+          userId: any(named: 'userId'),
+        ),
+      ).thenAnswer((_) async => {'Items': channels});
+      final userLibrary = _MockUserLibraryApi();
+      when(() => client.userLibraryApi).thenReturn(userLibrary);
+      when(() => userLibrary.markFavorite(any())).thenAnswer((_) async {});
 
-    final byNumber = LiveTvGuideViewModel(
-      client,
-      initialSortBy: ChannelSortBy.number,
-    );
-    await byNumber.load();
-    await byNumber.toggleChannelFavorite('c3');
-    expect(
-      byNumber.filteredChannels.map((c) => c.id),
-      ['c1', 'c2', 'c3'],
+      final byNumber = LiveTvGuideViewModel(
+        client,
+        initialSortBy: ChannelSortBy.number,
+      );
+      await byNumber.load();
+      await byNumber.toggleChannelFavorite('c3');
+      expect(byNumber.filteredChannels.map((c) => c.id), ['c1', 'c2', 'c3']);
+
+      final favoritesFirst = LiveTvGuideViewModel(
+        client,
+        initialSortBy: ChannelSortBy.favoritesFirst,
+      );
+      await favoritesFirst.load();
+      await favoritesFirst.toggleChannelFavorite('c3');
+      expect(favoritesFirst.filteredChannels.map((c) => c.id), [
+        'c3',
+        'c1',
+        'c2',
+      ]);
+    },
+  );
+
+  group('category filters', () {
+    test(
+      'a category chip asks the server for the lineup in flagged batches',
+      () async {
+        final channels = List.generate(
+          120,
+          (i) => _channel('c$i', number: '$i'),
+        );
+        _stubChannels(liveTv, channels);
+        // Sports on channels well past the All view's first batch of 50, plus
+        // a server that ignores the flag and returns a kids program.
+        when(() => _guide(liveTv, category: GuideFilter.sports)).thenAnswer(
+          (inv) async => {
+            'Items': [
+              for (final id in _requestedIds(inv))
+                if (const {'c110', 'c7', 'c60'}.contains(id))
+                  _program('p-$id', id, isSports: true),
+              _program('p4', 'c8', isKids: true),
+            ],
+          },
+        );
+
+        final vm = LiveTvGuideViewModel(client);
+        await vm.load();
+        expect(vm.programsHighWater, 50);
+
+        vm.setFilter(GuideFilter.sports);
+        expect(vm.state, GuideState.loading);
+        await Future<void>.delayed(Duration.zero);
+        expect(vm.state, GuideState.ready);
+
+        // 120 channels fit in one 200-channel batch: one request with every
+        // channel id and only the sports flag set.
+        final captured = verify(
+          () => _guide(
+            liveTv,
+            category: GuideFilter.sports,
+            captureChannelIds: true,
+          ),
+        ).captured;
+        expect((captured.single as List).length, 120);
+
+        // Channel-number order is kept (not response order), and c110 (row
+        // 111) shows up even though only the first 50 channels had programs
+        // loaded for the All view. The off-category kids program is dropped.
+        expect(vm.filteredChannels.map((c) => c.id), ['c7', 'c60', 'c110']);
+        expect(vm.hasProgramsFor('c110'), isTrue);
+        expect(vm.programsForChannel('c110').single.id, 'p-c110');
+        expect(vm.programsHighWater, 3);
+        expect(vm.hasMorePrograms, isFalse);
+      },
     );
 
-    final favoritesFirst = LiveTvGuideViewModel(
-      client,
-      initialSortBy: ChannelSortBy.favoritesFirst,
+    test('scrolling a category pulls the next batch of channels', () async {
+      // 500 channels, every 10th one sports → 50 matching rows, 20 per batch.
+      _stubChannels(
+        liveTv,
+        List.generate(500, (i) => _channel('c$i', number: '$i')),
+      );
+      when(() => _guide(liveTv, category: GuideFilter.sports)).thenAnswer(
+        _serverFiltered((id) => int.parse(id.substring(1)) % 10 == 0),
+      );
+
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load();
+      vm.setFilter(GuideFilter.sports);
+      await Future<void>.delayed(Duration.zero);
+
+      // The first page keeps walking until it has at least 24 rows: batch one
+      // (c0–c199) gives 20, batch two (c200–c399) brings it to 40.
+      final ids = vm.filteredChannels.map((c) => c.id).toList();
+      expect(ids.length, 40);
+      expect(ids.first, 'c0');
+      expect(ids.last, 'c390');
+      expect(vm.programsHighWater, 40);
+      expect(vm.hasMorePrograms, isTrue);
+
+      // Scrolling near the end asks for the rest of the lineup.
+      await vm.loadMorePrograms();
+      expect(vm.filteredChannels.length, 50);
+      expect(vm.filteredChannels.last.id, 'c490');
+      expect(vm.hasMorePrograms, isFalse);
+
+      await vm.loadMorePrograms();
+      expect(vm.filteredChannels.length, 50);
+      verify(() => _guide(liveTv, category: GuideFilter.sports)).called(3);
+    });
+
+    test(
+      're-sorting keeps category rows and only asks about unseen channels',
+      () async {
+        _stubChannels(
+          liveTv,
+          List.generate(500, (i) => _channel('c$i', number: '$i')),
+        );
+        when(() => _guide(liveTv, category: GuideFilter.sports)).thenAnswer(
+          _serverFiltered((id) => int.parse(id.substring(1)) % 10 == 0),
+        );
+
+        final vm = LiveTvGuideViewModel(client);
+        await vm.load();
+        vm.setFilter(GuideFilter.sports);
+        await Future<void>.delayed(Duration.zero);
+        expect(vm.filteredChannels.length, 40); // c0–c399 walked
+        clearInteractions(liveTv);
+
+        vm.setSortBy(ChannelSortBy.name);
+        await Future<void>.delayed(Duration.zero);
+
+        // The 40 rows survive in the new order, and the walk that follows only
+        // requests the 100 channels (c400–c499) it had not asked about yet.
+        expect(vm.filteredChannels.length, 50);
+        expect(vm.filteredChannels.first.name, 'Ch c0');
+        expect(vm.hasMorePrograms, isFalse);
+        final captured = verify(
+          () => _guide(
+            liveTv,
+            category: GuideFilter.sports,
+            captureChannelIds: true,
+          ),
+        ).captured;
+        final requested = captured.expand((ids) => ids as List<String>).toSet();
+        expect(requested.length, 100);
+        expect(
+          requested.every((id) => int.parse(id.substring(1)) >= 400),
+          isTrue,
+        );
+      },
     );
-    await favoritesFirst.load();
-    await favoritesFirst.toggleChannelFavorite('c3');
-    expect(
-      favoritesFirst.filteredChannels.map((c) => c.id),
-      ['c3', 'c1', 'c2'],
-    );
+
+    test('a sparse category keeps walking until it finds rows', () async {
+      // Only the very last channel of 1000 is sports.
+      _stubChannels(
+        liveTv,
+        List.generate(1000, (i) => _channel('c$i', number: '$i')),
+      );
+      when(() => _guide(liveTv, category: GuideFilter.sports))
+          .thenAnswer(_serverFiltered((id) => id == 'c999'));
+
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load();
+      vm.setFilter(GuideFilter.sports);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(vm.state, GuideState.ready);
+      expect(vm.filteredChannels.map((c) => c.id), ['c999']);
+      expect(vm.hasMorePrograms, isFalse);
+      verify(() => _guide(liveTv, category: GuideFilter.sports)).called(5);
+    });
+
+    test('premiere has no server flag, so it matches client-side', () async {
+      _stubChannels(
+        liveTv,
+        List.generate(120, (i) => _channel('c$i', number: '$i')),
+      );
+      // Unflagged requests return every program; only c100's is a premiere.
+      when(() => _guide(liveTv, category: GuideFilter.premiere)).thenAnswer(
+        (inv) async => {
+          'Items': [
+            for (final id in _requestedIds(inv))
+              _program('p-$id', id, isPremiere: id == 'c100'),
+          ],
+        },
+      );
+
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load();
+      vm.setFilter(GuideFilter.premiere);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(vm.filteredChannels.map((c) => c.id), ['c100']);
+      expect(vm.programsForChannel('c100').single.id, 'p-c100');
+      expect(vm.hasMorePrograms, isFalse);
+    });
+
+    test('switching chips drops a stale in-flight category response', () async {
+      _stubChannels(liveTv, List.generate(10, (i) => _channel('c$i')));
+      final sports = Completer<Map<String, dynamic>>();
+      when(() => _guide(liveTv, category: GuideFilter.sports))
+          .thenAnswer((_) => sports.future);
+      when(() => _guide(liveTv, category: GuideFilter.kids)).thenAnswer(
+        (_) async => {
+          'Items': [_program('k1', 'c3', isKids: true)],
+        },
+      );
+
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load();
+
+      vm.setFilter(GuideFilter.sports);
+      vm.setFilter(GuideFilter.kids);
+      await Future<void>.delayed(Duration.zero);
+      expect(vm.state, GuideState.ready);
+      expect(vm.filteredChannels.map((c) => c.id), ['c3']);
+
+      // The slow sports response lands late and must not clobber Kids.
+      sports.complete({
+        'Items': [_program('s1', 'c1', isSports: true)],
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(vm.filter, GuideFilter.kids);
+      expect(vm.filteredChannels.map((c) => c.id), ['c3']);
+    });
+
+    test('backing out of a pending category returns to the All view', () async {
+      _stubChannels(liveTv, List.generate(10, (i) => _channel('c$i')));
+      final sports = Completer<Map<String, dynamic>>();
+      when(() => _guide(liveTv, category: GuideFilter.sports))
+          .thenAnswer((_) => sports.future);
+
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load();
+
+      vm.setFilter(GuideFilter.sports);
+      expect(vm.state, GuideState.loading);
+      vm.setFilter(GuideFilter.all);
+      expect(vm.state, GuideState.ready);
+      expect(vm.filteredChannels.length, 10);
+
+      sports.complete({'Items': <dynamic>[]});
+      await Future<void>.delayed(Duration.zero);
+      expect(vm.state, GuideState.ready);
+      expect(vm.filteredChannels.length, 10);
+    });
+
+    test('shifting the window re-fetches the active category', () async {
+      _stubChannels(liveTv, List.generate(10, (i) => _channel('c$i')));
+      when(() => _guide(liveTv, category: GuideFilter.kids)).thenAnswer(
+        (_) async => {
+          'Items': [_program('k1', 'c5', isKids: true)],
+        },
+      );
+
+      final vm = LiveTvGuideViewModel(client);
+      await vm.load();
+      vm.setFilter(GuideFilter.kids);
+      await Future<void>.delayed(Duration.zero);
+
+      await vm.shiftWindow(const Duration(hours: 3));
+
+      verify(() => _guide(liveTv, category: GuideFilter.kids)).called(2);
+      expect(vm.filteredChannels.map((c) => c.id), ['c5']);
+    });
   });
 }

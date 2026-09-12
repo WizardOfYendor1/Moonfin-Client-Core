@@ -20,6 +20,7 @@ import '../../preference/seerr_preferences.dart';
 import '../../preference/user_preferences.dart';
 import '../../util/clock_format.dart';
 import '../../util/game_library.dart';
+import '../../util/live_tv_library.dart';
 import '../../util/overlay_color_palette.dart';
 import '../../util/platform_detection.dart';
 import '../navigation/destinations.dart';
@@ -361,6 +362,13 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     }
     return true;
   }
+
+  bool get _showLiveTvButton =>
+      _prefs.get(UserPreferences.showLiveTvButton) &&
+      _libraries.any(isLiveTvLibrary);
+
+  List<AggregatedLibrary> get _navLibraries =>
+      librariesForNav(_libraries, _showLiveTvButton);
 
   void _trackPreviousFocus() {
     final primary = FocusManager.instance.primaryFocus;
@@ -915,6 +923,8 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     final showShuffle = _prefs.get(UserPreferences.showShuffleButton);
     final showGenres = _prefs.get(UserPreferences.showGenresButton);
     final showFavorites = _prefs.get(UserPreferences.showFavoritesButton);
+    final showLiveTv = _showLiveTvButton;
+    final navLibraries = _navLibraries;
     final showLibraries = _prefs.get(UserPreferences.showLibrariesInToolbar);
     final alwaysExpanded = _prefs.get(UserPreferences.navbarAlwaysExpanded);
     final showFolders = _prefs.get(UserPreferences.enableFolderView);
@@ -1041,6 +1051,23 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                   ),
                 ),
               ],
+              if (showLiveTv) ...[
+                _gap(),
+                _orderButton(
+                  order: (order++).toDouble(),
+                  child: ExpandableIconButton(
+                    key: const ValueKey('toolbar_livetv'),
+                    forceExpanded: alwaysExpanded,
+                    icon: Icons.live_tv_rounded,
+                    label: l10n.liveTv,
+                    baseColor: nextNavColor(),
+                    onPressed: () {
+                      if (_isActive(Destinations.liveTvGuide)) return;
+                      context.navigateTopLevel(Destinations.liveTvGuide);
+                    },
+                  ),
+                ),
+              ],
               if (showFolders) ...[
                 _gap(),
                 _orderButton(
@@ -1095,7 +1122,7 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                   ),
                 ),
               ],
-              if (showLibraries && _libraries.isNotEmpty) ...[
+              if (showLibraries && navLibraries.isNotEmpty) ...[
                 _gap(),
                 _orderButton(
                   order: (order++).toDouble(),
@@ -1167,7 +1194,7 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                         event.logicalKey == inwardKey &&
                         useInlineLibraries &&
                         showLibraries &&
-                        _libraries.isNotEmpty) {
+                        navLibraries.isNotEmpty) {
                       _inlineLibrariesTriggerFocus.requestFocus();
                       return KeyEventResult.handled;
                     }
@@ -1228,7 +1255,7 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     return _LibrariesDropdown(
       key: const ValueKey('toolbar_libraries'),
       activeRoute: widget.activeRoute,
-      libraries: _libraries,
+      libraries: _navLibraries,
       surfaceColor: _toolbarSurfaceColor(),
       iconColor: iconColor,
       alwaysExpanded: alwaysExpanded,
@@ -1267,7 +1294,7 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     return _AndroidTvExpandableLibrariesButton(
       key: const ValueKey('toolbar_libraries_inline_tv'),
       activeRoute: widget.activeRoute,
-      libraries: _libraries,
+      libraries: _navLibraries,
       label: l10n.libraries,
       iconColor: iconColor,
       alwaysExpanded: alwaysExpanded,
@@ -2502,18 +2529,57 @@ class _TopMusicBarState extends State<TopMusicBar> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Focusable, not just tappable: a remote cannot tap, and
+                  // this title is the only way back to the player. Same focus
+                  // treatment as the transport buttons beside it.
                   Flexible(
-                    child: GestureDetector(
-                      onTap: () => appRouter.push(Destinations.audioPlayer),
-                      child: Text(
-                        displayText,
-                        style: TextStyle(
-                          color: AppColorScheme.onSurface,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    child: Focus(
+                      onKeyEvent: (node, event) {
+                        if (isActivateKey(event)) {
+                          appRouter.push(Destinations.audioPlayer);
+                          return KeyEventResult.handled;
+                        }
+                        return KeyEventResult.ignored;
+                      },
+                      child: Builder(
+                        builder: (context) {
+                          final focused = InputModeTracker.showFocusVisuals(
+                            context,
+                            Focus.of(context).hasFocus,
+                          );
+                          return MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () =>
+                                  appRouter.push(Destinations.audioPlayer),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 90),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: AppRadius.circular(12),
+                                  color: focused
+                                      ? AppColorScheme.onSurface.withValues(
+                                          alpha: 0.22,
+                                        )
+                                      : Colors.transparent,
+                                ),
+                                child: Text(
+                                  displayText,
+                                  style: TextStyle(
+                                    color: AppColorScheme.onSurface,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
