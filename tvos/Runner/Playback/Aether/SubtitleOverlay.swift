@@ -51,6 +51,14 @@ final class SubtitleOverlay: PlatformView {
         return rect
     }
 
+    /// ASS positions are authored against the picture, so libass draws into the
+    /// video rect. Clamping it to the view leaves fill mode, where the picture runs
+    /// past the edges, drawing across the whole view.
+    var assCanvas: CGRect {
+        let canvas = videoBox.intersection(bounds)
+        return canvas.isEmpty ? bounds : canvas
+    }
+
     /// The user facing size on the 24 based scale, and the 40 to 100 position.
     /// Both stay raw and become points at layout time, as a fraction of the
     /// view height, so a phone in landscape and a 1080pt TV canvas end up
@@ -174,7 +182,7 @@ final class SubtitleOverlay: PlatformView {
         }
         layoutTextLabel()
         layoutBitmapView()
-        assImageView.frame = bounds
+        assImageView.frame = assCanvas
     }
 
     private func requestLayout() {
@@ -209,6 +217,9 @@ final class SubtitleOverlay: PlatformView {
 
     func showAssImage(_ image: CGImage?) {
         if let image {
+            // A zoom change moves the picture without a layout pass, so the frame
+            // follows each render instead of waiting for one.
+            assImageView.frame = assCanvas
             assImageView.image = Self.platformImage(image)
             assImageView.isHidden = false
         } else {

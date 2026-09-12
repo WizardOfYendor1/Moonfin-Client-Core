@@ -192,7 +192,7 @@
   "@detailScreenStyle": {
     "description": "Label for the media detail screen layout style setting"
   },
-  "detailScreenStyleSubtitle": "Classic is the original centered moonfin layout. Modern is a responsive cinematic layout.",
+  "detailScreenStyleSubtitle": "Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards.",
   "@detailScreenStyleSubtitle": {
     "description": "Explanation under the detail screen style setting"
   },
@@ -203,6 +203,175 @@
   "detailScreenStyleModern": "Modern",
   "@detailScreenStyleModern": {
     "description": "Detail screen style option: the responsive cinematic layout"
+  },
+  "detailScreenStyleSpotlight": "Spotlight",
+  "@detailScreenStyleSpotlight": {
+    "description": "Detail screen style option: the hero-first layout with summary cards that open grid modals"
+  },
+  "spotlightMoreActions": "More actions",
+  "@spotlightMoreActions": {
+    "description": "Tooltip/semantics of the spotlight ellipsis button and the title of the overflow actions menu it opens"
+  },
+  "spotlightCastCrewStudios": "Cast, Crew, and Studios",
+  "@spotlightCastCrewStudios": {
+    "description": "Title of the spotlight summary card that opens the people and studios modal"
+  },
+  "spotlightChaptersExtras": "Chapters and Extras",
+  "@spotlightChaptersExtras": {
+    "description": "Title of the spotlight summary card that opens the chapters and special features modal"
+  },
+  "spotlightSimilarRecommendations": "Similar and Recommendations",
+  "@spotlightSimilarRecommendations": {
+    "description": "Title of the spotlight summary card that opens the similar titles and recommendations modal"
+  },
+  "spotlightSeasonsEpisodes": "Seasons and Episodes",
+  "@spotlightSeasonsEpisodes": {
+    "description": "Title of the spotlight summary card that opens the seasons grid modal for a series"
+  },
+  "spotlightMoreEpisodes": "More Episodes",
+  "@spotlightMoreEpisodes": {
+    "description": "Title of the spotlight summary card listing the other episodes of the season"
+  },
+  "spotlightFilmography": "Filmography",
+  "@spotlightFilmography": {
+    "description": "Title of the spotlight summary card that opens a person's filmography modal"
+  },
+  "spotlightCollectionsCard": "Collections",
+  "@spotlightCollectionsCard": {
+    "description": "Title of the spotlight summary card that opens the parent collections modal"
+  },
+  "spotlightPlaylistOrder": "Playlist Order",
+  "@spotlightPlaylistOrder": {
+    "description": "Title of the spotlight summary card that opens the ordered box set playlist modal"
+  },
+  "spotlightMoviesAndShows": "Movies & Shows",
+  "@spotlightMoviesAndShows": {
+    "description": "Subtitle of the spotlight similar and recommendations card"
+  },
+  "spotlightSimilarSeerr": "Similar (Seerr)",
+  "@spotlightSimilarSeerr": {
+    "description": "Header of the Seerr similar-titles section when it appears beside the library's own similar section"
+  },
+  "spotlightRecommendationsSeerr": "Recommendations (Seerr)",
+  "@spotlightRecommendationsSeerr": {
+    "description": "Header of the Seerr recommendations section when it appears in the Spotlight recommendations modal"
+  },
+  "spotlightPeopleCount": "{count, plural, =1{1 person} other{{count} people}}",
+  "@spotlightPeopleCount": {
+    "description": "Count fragment on spotlight summary cards: people",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightStudiosCount": "{count, plural, =1{1 studio} other{{count} studios}}",
+  "@spotlightStudiosCount": {
+    "description": "Count fragment on spotlight summary cards: studios",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightChaptersCount": "{count, plural, =1{1 chapter} other{{count} chapters}}",
+  "@spotlightChaptersCount": {
+    "description": "Count fragment on spotlight summary cards: chapters",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightExtrasCount": "{count, plural, =1{1 extra} other{{count} extras}}",
+  "@spotlightExtrasCount": {
+    "description": "Count fragment on spotlight summary cards: extras/special features",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightSeasonsCount": "{count, plural, =1{1 season} other{{count} seasons}}",
+  "@spotlightSeasonsCount": {
+    "description": "Count fragment on spotlight summary cards: seasons",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightEpisodesCount": "{count, plural, =1{1 episode} other{{count} episodes}}",
+  "@spotlightEpisodesCount": {
+    "description": "Count fragment on spotlight summary cards: episodes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightMoviesCount": "{count, plural, =1{1 movie} other{{count} movies}}",
+  "@spotlightMoviesCount": {
+    "description": "Count fragment on spotlight summary cards: movies",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightShowsCount": "{count, plural, =1{1 show} other{{count} shows}}",
+  "@spotlightShowsCount": {
+    "description": "Count fragment on spotlight summary cards: series/shows",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightTracksCount": "{count, plural, =1{1 track} other{{count} tracks}}",
+  "@spotlightTracksCount": {
+    "description": "Count fragment on spotlight summary cards: audio tracks",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightItemsCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@spotlightItemsCount": {
+    "description": "Count fragment on spotlight summary cards: generic items",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightAlbumsCount": "{count, plural, =1{1 album} other{{count} albums}}",
+  "@spotlightAlbumsCount": {
+    "description": "Count fragment on spotlight summary cards: albums",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightCollectionsCount": "{count, plural, =1{1 collection} other{{count} collections}}",
+  "@spotlightCollectionsCount": {
+    "description": "Count fragment on spotlight summary cards: collections",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spotlightTitlesCount": "{count, plural, =1{1 title} other{{count} titles}}",
+  "@spotlightTitlesCount": {
+    "description": "Count fragment on the spotlight similar card: titles across the library and Seerr sections",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "expandedTabs": "Expanded Tabs",
   "@expandedTabs": {
@@ -5720,6 +5889,14 @@
   "@hideAdultContent": {
     "description": "Description for NSFW filter"
   },
+  "showMissingCollectionItems": "Show Missing Collection Items",
+  "@showMissingCollectionItems": {
+    "description": "Setting title to show missing items from Seerr on Collection pages"
+  },
+  "showMissingCollectionItemsDesc": "Include missing items on Collection pages",
+  "@showMissingCollectionItemsDesc": {
+    "description": "Setting subtitle explaining that missing items will be included on Collection pages"
+  },
   "seerrNotificationsSection": "Notifications",
   "@seerrNotificationsSection": {
     "description": "Header for the Seerr notifications settings section"
@@ -10261,6 +10438,14 @@
   "setupDetailModernHint": "Cinematic, with tabs for cast and extras.",
   "@setupDetailModernHint": {
     "description": "What the modern detail screen style gives you"
+  },
+  "setupStyleSpotlight": "Spotlight",
+  "@setupStyleSpotlight": {
+    "description": "Name of the hero-first detail layout, offered in the setup wizard"
+  },
+  "setupDetailSpotlightHint": "Hero-first, with pop-up cards for cast and extras.",
+  "@setupDetailSpotlightHint": {
+    "description": "What the spotlight detail screen style gives you"
   },
   "setupPickALook": "Pick a look",
   "@setupPickALook": {

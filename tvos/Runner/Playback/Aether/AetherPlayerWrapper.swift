@@ -1028,9 +1028,10 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
             #else
                 let scale = view.window?.screen?.backingScaleFactor ?? 1
             #endif
+            let canvas = subtitleOverlay.assCanvas
             assRenderer.setFrameSize(
-                width: Int32(view.bounds.width * scale),
-                height: Int32(view.bounds.height * scale))
+                width: Int32(canvas.width * scale),
+                height: Int32(canvas.height * scale))
             switch assRenderer.render(atTimeMs: Int64((seconds * 1000).rounded())) {
             case .unchanged:
                 break

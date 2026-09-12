@@ -469,7 +469,7 @@ abstract class AppLocalizations {
   /// Explanation under the detail screen style setting
   ///
   /// In en, this message translates to:
-  /// **'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout.'**
+  /// **'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards.'**
   String get detailScreenStyleSubtitle;
 
   /// Detail screen style option: the classic centered layout
@@ -483,6 +483,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Modern'**
   String get detailScreenStyleModern;
+
+  /// Detail screen style option: the hero-first layout with summary cards that open grid modals
+  ///
+  /// In en, this message translates to:
+  /// **'Spotlight'**
+  String get detailScreenStyleSpotlight;
+
+  /// Tooltip/semantics of the spotlight ellipsis button and the title of the overflow actions menu it opens
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get spotlightMoreActions;
+
+  /// Title of the spotlight summary card that opens the people and studios modal
+  ///
+  /// In en, this message translates to:
+  /// **'Cast, Crew, and Studios'**
+  String get spotlightCastCrewStudios;
+
+  /// Title of the spotlight summary card that opens the chapters and special features modal
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters and Extras'**
+  String get spotlightChaptersExtras;
+
+  /// Title of the spotlight summary card that opens the similar titles and recommendations modal
+  ///
+  /// In en, this message translates to:
+  /// **'Similar and Recommendations'**
+  String get spotlightSimilarRecommendations;
+
+  /// Title of the spotlight summary card that opens the seasons grid modal for a series
+  ///
+  /// In en, this message translates to:
+  /// **'Seasons and Episodes'**
+  String get spotlightSeasonsEpisodes;
+
+  /// Title of the spotlight summary card listing the other episodes of the season
+  ///
+  /// In en, this message translates to:
+  /// **'More Episodes'**
+  String get spotlightMoreEpisodes;
+
+  /// Title of the spotlight summary card that opens a person's filmography modal
+  ///
+  /// In en, this message translates to:
+  /// **'Filmography'**
+  String get spotlightFilmography;
+
+  /// Title of the spotlight summary card that opens the parent collections modal
+  ///
+  /// In en, this message translates to:
+  /// **'Collections'**
+  String get spotlightCollectionsCard;
+
+  /// Title of the spotlight summary card that opens the ordered box set playlist modal
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist Order'**
+  String get spotlightPlaylistOrder;
+
+  /// Subtitle of the spotlight similar and recommendations card
+  ///
+  /// In en, this message translates to:
+  /// **'Movies & Shows'**
+  String get spotlightMoviesAndShows;
+
+  /// Header of the Seerr similar-titles section when it appears beside the library's own similar section
+  ///
+  /// In en, this message translates to:
+  /// **'Similar (Seerr)'**
+  String get spotlightSimilarSeerr;
+
+  /// Header of the Seerr recommendations section when it appears in the Spotlight recommendations modal
+  ///
+  /// In en, this message translates to:
+  /// **'Recommendations (Seerr)'**
+  String get spotlightRecommendationsSeerr;
+
+  /// Count fragment on spotlight summary cards: people
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 person} other{{count} people}}'**
+  String spotlightPeopleCount(int count);
+
+  /// Count fragment on spotlight summary cards: studios
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 studio} other{{count} studios}}'**
+  String spotlightStudiosCount(int count);
+
+  /// Count fragment on spotlight summary cards: chapters
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 chapter} other{{count} chapters}}'**
+  String spotlightChaptersCount(int count);
+
+  /// Count fragment on spotlight summary cards: extras/special features
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 extra} other{{count} extras}}'**
+  String spotlightExtrasCount(int count);
+
+  /// Count fragment on spotlight summary cards: seasons
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 season} other{{count} seasons}}'**
+  String spotlightSeasonsCount(int count);
+
+  /// Count fragment on spotlight summary cards: episodes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 episode} other{{count} episodes}}'**
+  String spotlightEpisodesCount(int count);
+
+  /// Count fragment on spotlight summary cards: movies
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 movie} other{{count} movies}}'**
+  String spotlightMoviesCount(int count);
+
+  /// Count fragment on spotlight summary cards: series/shows
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 show} other{{count} shows}}'**
+  String spotlightShowsCount(int count);
+
+  /// Count fragment on spotlight summary cards: audio tracks
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 track} other{{count} tracks}}'**
+  String spotlightTracksCount(int count);
+
+  /// Count fragment on spotlight summary cards: generic items
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item} other{{count} items}}'**
+  String spotlightItemsCount(int count);
+
+  /// Count fragment on spotlight summary cards: albums
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 album} other{{count} albums}}'**
+  String spotlightAlbumsCount(int count);
+
+  /// Count fragment on spotlight summary cards: collections
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 collection} other{{count} collections}}'**
+  String spotlightCollectionsCount(int count);
+
+  /// Count fragment on the spotlight similar card: titles across the library and Seerr sections
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 title} other{{count} titles}}'**
+  String spotlightTitlesCount(int count);
 
   /// Label for the detail screen expanded tabs setting
   ///
@@ -3640,6 +3796,12 @@ abstract class AppLocalizations {
   /// **'No channels found'**
   String get noChannelsFound;
 
+  /// Guide cell label for a real EPG schedule gap, not a genre-filtered program
+  ///
+  /// In en, this message translates to:
+  /// **'No program data'**
+  String get noProgramData;
+
   /// Badge label shown on currently airing programs
   ///
   /// In en, this message translates to:
@@ -3765,6 +3927,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Watch'**
   String get watch;
+
+  /// Button label to tune a channel live when the selected program is not the one that will play (ended or upcoming)
+  ///
+  /// In en, this message translates to:
+  /// **'Watch channel live'**
+  String get watchChannelLive;
 
   /// Button label to close a dialog
   ///
@@ -7731,6 +7899,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide adult content in results'**
   String get hideAdultContent;
+
+  /// Setting title to show missing items from Seerr on Collection pages
+  ///
+  /// In en, this message translates to:
+  /// **'Show Missing Collection Items'**
+  String get showMissingCollectionItems;
+
+  /// Setting subtitle explaining that missing items will be included on Collection pages
+  ///
+  /// In en, this message translates to:
+  /// **'Include missing items on Collection pages'**
+  String get showMissingCollectionItemsDesc;
 
   /// Header for the Seerr notifications settings section
   ///
@@ -20367,6 +20547,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cinematic, with tabs for cast and extras.'**
   String get setupDetailModernHint;
+
+  /// Name of the hero-first detail layout, offered in the setup wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Spotlight'**
+  String get setupStyleSpotlight;
+
+  /// What the spotlight detail screen style gives you
+  ///
+  /// In en, this message translates to:
+  /// **'Hero-first, with pop-up cards for cast and extras.'**
+  String get setupDetailSpotlightHint;
 
   /// Label above the theme swatches on the final setup screen
   ///

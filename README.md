@@ -28,7 +28,7 @@ Moonfin is a media client for Jellyfin and Emby servers, built with Flutter. One
 | Linux               | [![Arch Linux](https://img.shields.io/badge/Arch%20Linux-1793D1?logo=arch-linux\&logoColor=fff)](https://aur.archlinux.org/packages/moonfin-bin)<br>[![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux\&logoColor=black)](https://github.com/Moonfin-Client/Moonfin-Core/releases) |
 | macOS               | [![App Store](https://img.shields.io/badge/App_Store-0D96F6?logo=app-store\&logoColor=white)](https://apps.apple.com/app/moonfin/id6761283970)<br>[![Homebrew](https://img.shields.io/badge/Homebrew-FBB040?logo=homebrew\&logoColor=fff)](https://formulae.brew.sh/cask/moonfin)              |
 | tvOS                | [![App Store](https://img.shields.io/badge/App_Store-0D96F6?logo=app-store\&logoColor=white)](https://apps.apple.com/app/moonfin/id6761283970)                                                                                                                                                 |
-| Windows             | [![Release](https://img.shields.io/github/v/release/Moonfin-Client/Moonfin-Core?label=Release\&logo=github\&logoColor=white)](https://github.com/Moonfin-Client/Moonfin-Core/releases)                                                                                                         |
+| Windows             | [![Release](https://img.shields.io/github/v/release/Moonfin-Client/Moonfin-Core?label=Release\&logo=github\&logoColor=white)](https://github.com/Moonfin-Client/Moonfin-Core/releases)<br>or `winget install Moonfin.Moonfin`                                                                                                         |
 
 ## Supported Servers
 
@@ -104,11 +104,11 @@ The store links above are the easy route. To install a file yourself, download i
 
 On Arch Linux, install from the AUR with `yay -S moonfin` (or `paru`, `pamac build`).
 
-Per-platform notes are on [Installation](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Installation).
+Click-by-click steps for every platform are on [Installation](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Installation), and [Getting Started](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Getting-Started) covers connecting to your server for the first time.
 
 ## Building
 
-Flutter stable 3.47+ and Dart 3.13+ are the only prerequisites.
+Flutter stable 3.47 or newer is the one thing every platform needs (Dart 3.13 comes with it). Each target also needs its own toolchain: Android Studio with the SDK and NDK for Android, Xcode and CocoaPods for iOS and macOS, the flutter-tvos toolchain for Apple TV, Visual Studio and vcpkg for Windows, and a handful of development packages on Linux. Every Android command also takes a `--flavor`.
 
 ```bash
 git clone https://github.com/Moonfin-Client/Moonfin-Core.git
@@ -128,11 +128,14 @@ The deeper reference material lives in the [Wiki](https://github.com/Moonfin-Cli
 | [Playback and Codecs](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Playback-and-Codecs) | The backend per platform, the codec table, HDR, and audio passthrough |
 | [Downloads](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Downloads) | Original and transcoded downloads, quality presets, and storage paths |
 | [Retro Games](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Retro-Games) | Playing server game libraries in-app, cores, controllers, and save states |
-| [Installation](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Installation) | Which release file to pick, and the AUR package |
+| [Installation](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Installation) | App store links first, then installing a release file by hand on every platform, and how updates work |
+| [Getting Started](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Getting-Started) | Connecting to your server, Quick Connect, the setup wizard, and the settings worth a look on day one |
+| [User Guide](https://github.com/Moonfin-Client/Moonfin-Core/wiki/User-Guide) | The player on touch, remote and keyboard, casting, Seerr requests, downloads, themes and parental controls |
+| [Common Problems](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Common-Problems) | Plain fixes for connection, login, playback, sound, subtitle, download and casting trouble |
 | [User Guide](https://github.com/Moonfin-Client/Moonfin-Core/wiki/User-Guide) | Keyboard shortcuts, subtitle downloads, and remote device control |
 | [Collecting Logs](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Collecting-Logs) | Capturing a diagnostic report for a bug report |
 | [Custom mpv Configuration](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Custom-mpv-Configuration) | Tuning playback with your own `mpv.conf`, allowed options, and SVP on Windows |
-| [Building from Source](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Building-from-Source) | Toolchain versions, quick start, and per-platform build commands |
+| [Building from Source](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Building-from-Source) | Toolchain versions, step by step setup, and the build commands for every platform |
 | [Development](https://github.com/Moonfin-Client/Moonfin-Core/wiki/Development) | Developer notes, contributing guidelines, and the pull request process |
 
 ## Contributing

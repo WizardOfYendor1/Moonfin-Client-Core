@@ -223,10 +223,13 @@ private class MoonfinRenderersFactory(
         // Some TV HALs never resume a paused bitstream track and hand back a
         // dead replacement when one is rebuilt too quickly. The recovery
         // wrapper watches for that and rebuilds with a short write hold, and
-        // it stays inert until a dead track has actually been seen.
+        // it stays inert until a dead track has actually been seen. It also
+        // holds a bitstream track through an HDMI route flap so a link
+        // renegotiating mid-playback never lands the track on a decoder.
         val recovering = PassthroughRecoveryAudioSink(
             delegate = sink,
             recovery = PassthroughSilenceRecovery(),
+            flap = RouteFlapHold(),
             onRecoveryNeeded = onPassthroughRecoveryNeeded,
         )
         // Auto skips the policy veto so the platform's own format probe
@@ -542,6 +545,10 @@ class Media3VideoView(
         // surface more than once, so one retry is not always enough. The
         // recovery window is what stops this running on.
         private const val DISPLAY_MODE_SWITCH_MAX_RETRIES = 3
+        // An HDMI route flap pauses the player through the becoming-noisy
+        // broadcast or an audio focus loss. The sink coming back inside this
+        // window undoes that pause, past it the pause is left as it is.
+        private const val ROUTE_FLAP_RESUME_MS = 10_000L
         private const val MAX_TARGET_BUFFER_BYTES = 384L * 1024 * 1024
         // A misread wrap jumps the head clock six hours or more, so an hour
         // of slack can never swallow one.
@@ -746,6 +753,11 @@ class Media3VideoView(
     // headphones invalidates the "stereo only" conclusion.
     private var deviceRequiresStereoDownmix = false
     private var tunnelingRetryAttemptedForCurrentSource = false
+    // When the system last paused the player on its own, and why. Zero once
+    // the user or the route flap resume has had their say.
+    private var systemPausedAtMs = 0L
+    private var systemPauseReason = 0
+
 
     // AudioDeviceCallback needs API 23, and minSdk is 21. The guard keeps the
     // anonymous subclass from ever loading on older devices.
@@ -754,6 +766,7 @@ class Media3VideoView(
             object : AudioDeviceCallback() {
                 override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
                     onAudioOutputDevicesChanged()
+                    maybeResumeAfterRouteFlap(addedDevices)
                 }
 
                 override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
@@ -1002,6 +1015,17 @@ class Media3VideoView(
                     wasPlayingBeforeDisplayModeSwitch = true
                 }
             }
+            // A route flap pauses the player on its own too, through the
+            // becoming-noisy broadcast or an audio focus loss, and outside a
+            // mode switch nothing resumed it. Remember that so the sink
+            // coming back can undo it. Any other change is the user's and
+            // clears the mark, so a resume never overrides them.
+            if (!playWhenReady && isSystemPauseReason(reason)) {
+                systemPausedAtMs = SystemClock.elapsedRealtime()
+                systemPauseReason = reason
+            } else {
+                systemPausedAtMs = 0L
+            }
             emitState()
         }
 
@@ -1209,10 +1233,16 @@ class Media3VideoView(
                     ),
                 )
             } else {
+                // A track the route killed is held and rebuilt by the sink
+                // wrapper, so Dart reads the tag and keeps it out of the
+                // tunneling fallback count.
+                val deadObject = audioSinkError is AudioSink.WriteException &&
+                    RouteFlapHold.isDeadObjectCode(audioSinkError.errorCode)
                 Media3Bridge.emitEvent(
                     mapOf(
                         "event" to "audioSinkError",
                         "message" to (audioSinkError.message ?: audioSinkError.toString()),
+                        "deadObject" to deadObject,
                     ),
                 )
             }
@@ -1890,6 +1920,7 @@ class Media3VideoView(
         Media3SessionController.releaseForPlayer(player)
         player.stop()
         player.clearMediaItems()
+        disableCapabilityReselection()
         firstFrameCover.visibility = View.VISIBLE
         emitState()
     }
@@ -2531,6 +2562,7 @@ class Media3VideoView(
         lastPlaybackPositionMs = 0L
         player.stop()
         player.clearMediaItems()
+        disableCapabilityReselection()
         restorePreferredDisplayMode()
         firstFrameCover.visibility = View.VISIBLE
         emitState()
@@ -2741,6 +2773,17 @@ class Media3VideoView(
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !subtitleTrackEnabled)
 
         trackSelector.setParameters(parametersBuilder)
+    }
+
+    // An idle player still hears the audio route change that restoring the
+    // display mode sets off, and Media3 answers a capabilities change with a
+    // reselect-and-seek that reads a playing period it no longer has. The
+    // next source re-arms this through applyTrackSelectorForCurrentSource.
+    private fun disableCapabilityReselection() {
+        trackSelector.setParameters(
+            trackSelector.buildUponParameters()
+                .setAllowInvalidateSelectionsOnRendererCapabilitiesChange(false),
+        )
     }
 
     private fun updateSubtitleRendererMode(arguments: Any?) {
@@ -3532,6 +3575,46 @@ class Media3VideoView(
                 "reason" to "audioRouteChanged",
             ),
         )
+    }
+
+    /**
+     * The HDMI sink is back after a flap that paused the player through the
+     * system. Only an HDMI class device counts, so headphones pulled on a TV
+     * still leave playback paused, and only inside the window, so a pause
+     * that has stood for a while is left alone.
+     */
+    private fun maybeResumeAfterRouteFlap(addedDevices: Array<out AudioDeviceInfo>) {
+        if (isDisposed || isPlayerReleased) return
+        val pausedAtMs = systemPausedAtMs
+        if (pausedAtMs == 0L) return
+        if (SystemClock.elapsedRealtime() - pausedAtMs > ROUTE_FLAP_RESUME_MS) {
+            systemPausedAtMs = 0L
+            return
+        }
+        if (addedDevices.none { isHdmiDevice(it.type) }) return
+        systemPausedAtMs = 0L
+        Media3Bridge.emitEvent(
+            mapOf(
+                "event" to "routeFlapResume",
+                "reason" to pauseReasonName(systemPauseReason),
+            ),
+        )
+        player.playWhenReady = true
+    }
+
+    private fun isHdmiDevice(type: Int): Boolean =
+        type == AudioDeviceInfo.TYPE_HDMI ||
+            type == AudioDeviceInfo.TYPE_HDMI_ARC ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && type == AudioDeviceInfo.TYPE_HDMI_EARC)
+
+    private fun isSystemPauseReason(reason: Int): Boolean =
+        reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY ||
+            reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS
+
+    private fun pauseReasonName(reason: Int): String = when (reason) {
+        Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY -> "becomingNoisy"
+        Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> "audioFocusLoss"
+        else -> "reason$reason"
     }
 
     /**

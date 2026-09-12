@@ -48,6 +48,8 @@ class _DetailsScreenSettingsScreenState
                       DetailScreenStyle.classic =>
                         l10n.detailScreenStyleMoonfin,
                       DetailScreenStyle.modern => l10n.detailScreenStyleModern,
+                      DetailScreenStyle.spotlight =>
+                        l10n.detailScreenStyleSpotlight,
                     },
                   ),
                   EnumPreferenceTile<PersonalRatingStyle>(
@@ -65,7 +67,7 @@ class _DetailsScreenSettingsScreenState
                       PersonalRatingStyle.numeric => l10n.personalRatingNumeric,
                     },
                   ),
-                  if (prefs.get(UserPreferences.detailScreenStyle) != DetailScreenStyle.modern)
+                  if (prefs.get(UserPreferences.detailScreenStyle) == DetailScreenStyle.classic)
                     SliderPreferenceTile(
                       preference: UserPreferences.detailsBackgroundBlurAmount,
                       title: l10n.detailsBackgroundBlur,

@@ -58,6 +58,7 @@ import 'util/http_overrides_stub.dart'
 import 'util/game_core_licenses.dart';
 import 'util/device_performance.dart';
 import 'util/platform_detection.dart';
+import 'util/system_ui.dart';
 import 'util/tv_image_cache_stub.dart'
     if (dart.library.io) 'util/tv_image_cache_io.dart';
 
@@ -852,11 +853,7 @@ void main() async {
   }
 
   if (PlatformDetection.isMobile) {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      systemNavigationBarColor: Colors.transparent,
-    ));
+    SystemUi.install();
 
     // Registered before runApp so a background/terminated push can be handled.
     // The handler itself is a no-op; the OS draws these notifications.

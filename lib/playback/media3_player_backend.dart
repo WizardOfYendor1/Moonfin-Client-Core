@@ -330,11 +330,21 @@ class Media3PlayerBackend extends PlayerBackend {
           level: LogLevel.warning,
         );
       case 'audioSinkError':
+        final deadObject = map['deadObject'] == true;
         _diag(
-          'Media3: audio sink error: ${map['message'] ?? ''}',
+          'Media3: audio sink error: ${map['message'] ?? ''}'
+          '${deadObject ? ' (the route dropped the track)' : ''}',
           level: LogLevel.warning,
         );
-        _onAudioSinkError();
+        // A track the route killed is a route event, not a tunneling fault,
+        // so it must not count toward disabling tunneling for the session.
+        if (!deadObject) _onAudioSinkError();
+      case 'routeFlapResume':
+        _diag(
+          'Media3: resumed after the audio route came back '
+          '(the system had paused for ${map['reason'] ?? ''})',
+          level: LogLevel.warning,
+        );
       case 'passthroughSilenceRecovery':
         _diag(
           'Media3: bitstream audio went silent (${map['reason']}), '

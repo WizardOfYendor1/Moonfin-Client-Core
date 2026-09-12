@@ -324,6 +324,7 @@ class UserPreferences extends ChangeNotifier {
     'imdb_top_250_tv_shows_enabled',
     'imdb_top_english_movies_enabled',
     'live_tv_channel_sort_by',
+    'live_tv_last_channel_id',
     'music_playback_time_display',
     'osdButtonOrderDesktop',
     'osdButtonOrderMobile',
@@ -548,6 +549,7 @@ class UserPreferences extends ChangeNotifier {
     'pref_personal_rating_style',
     'tmdbApiKey',
     'seerrBlockNsfw',
+    'seerrShowMissingCollectionItems',
     'enabledRatings',
     'home_sections_config',
     'pref_audio_display_latest',
@@ -2755,6 +2757,13 @@ class UserPreferences extends ChangeNotifier {
     values: ChannelSortBy.values,
   );
 
+  /// Last Live TV channel watched on this server/account. Channel IDs are
+  /// scoped to the active server and user, so this preference is scoped too.
+  static final liveTvLastChannelId = Preference(
+    key: 'live_tv_last_channel_id',
+    defaultValue: '',
+  );
+
   static EnumPreference<LibrarySortBy> librarySortBy(String libraryId) =>
       EnumPreference(
         key: 'library_sort_by_$libraryId',
@@ -2901,6 +2910,11 @@ class UserPreferences extends ChangeNotifier {
   static final seerrBlockNsfw = Preference(
     key: 'seerrBlockNsfw',
     defaultValue: false,
+  );
+
+  static final seerrShowMissingCollectionItems = Preference(
+    key: 'seerrShowMissingCollectionItems',
+    defaultValue: true,
   );
 
   static final defaultDownloadQuality = Preference(

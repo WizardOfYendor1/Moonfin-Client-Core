@@ -811,11 +811,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: Destinations.seerrMediaDetail,
       builder: (context, state) {
-        final tmdbId = state.pathParameters['itemId']!;
+        final rawId = state.pathParameters['itemId']!;
         final kind = state.uri.queryParameters['mediaType'] == 'tv'
             ? TmdbItemKind.tv
             : TmdbItemKind.movie;
-        final ref = TmdbItemRef(kind, tmdbId);
+        final ref = TmdbItemRef.tryParse(rawId) ?? TmdbItemRef(kind, rawId);
         return ItemDetailScreen(
           key: ValueKey(ref.itemId),
           itemId: ref.itemId,
@@ -835,7 +835,7 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final personId = state.pathParameters['personId']!;
         final prefs = GetIt.instance<UserPreferences>();
-        if (prefs.get(UserPreferences.detailScreenStyle) == DetailScreenStyle.modern) {
+        if (prefs.get(UserPreferences.detailScreenStyle) != DetailScreenStyle.classic) {
           return ItemDetailScreen(
             key: ValueKey('tmdb:$personId'),
             itemId: 'tmdb:$personId',

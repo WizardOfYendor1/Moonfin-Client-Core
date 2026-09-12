@@ -651,6 +651,12 @@ class _CardImage extends StatelessWidget {
     this.isGenreFallback = false,
   });
 
+  /// How far the focus ring sits outside the artwork. The ring is 3px thick
+  /// and drawn inside its own box, so this also decides the gap between the
+  /// two. Too small a gap and an antialiased poster corner bleeds over the
+  /// ring, which reads as the image escaping its rounded container.
+  static const _focusRingInset = 5.0;
+
   @override
   Widget build(BuildContext context) {
     final radius = isCircular ? 999.0 : 8.0;
@@ -672,16 +678,17 @@ class _CardImage extends StatelessWidget {
         children: [
           if (showGlow)
             Positioned(
-              top: -3.5,
-              bottom: -3.5,
-              left: -3.5,
-              right: -3.5,
+              top: -_focusRingInset,
+              bottom: -_focusRingInset,
+              left: -_focusRingInset,
+              right: -_focusRingInset,
               child: IgnorePointer(
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: isCircular
-                        ? AppRadius.circular(radius + 3.5)
-                        : borders.cardRadius + AppRadius.circular(3.5),
+                        ? AppRadius.circular(radius + _focusRingInset)
+                        : borders.cardRadius +
+                              AppRadius.circular(_focusRingInset),
                     boxShadow: borders.focusGlow,
                   ),
                 ),
@@ -817,16 +824,17 @@ class _CardImage extends StatelessWidget {
           ),
           if (showBorder)
             Positioned(
-              top: -3.5,
-              bottom: -3.5,
-              left: -3.5,
-              right: -3.5,
+              top: -_focusRingInset,
+              bottom: -_focusRingInset,
+              left: -_focusRingInset,
+              right: -_focusRingInset,
               child: IgnorePointer(
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: isCircular
-                        ? AppRadius.circular(radius + 3.5)
-                        : borders.cardRadius + AppRadius.circular(3.5),
+                        ? AppRadius.circular(radius + _focusRingInset)
+                        : borders.cardRadius +
+                              AppRadius.circular(_focusRingInset),
                     border: Border.fromBorderSide(
                       borders.focusBorder.copyWith(
                         color: borderColor,

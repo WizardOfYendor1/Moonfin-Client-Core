@@ -15,8 +15,10 @@ final class SubtitleOverlayTests: XCTestCase {
             bitmap: nil, bitmapWidth: 0, bitmapHeight: 0)
     }
 
+    private let overlayBounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+
     private func makeOverlay() -> SubtitleOverlay {
-        SubtitleOverlay(frame: CGRect(x: 0, y: 0, width: 1920, height: 1080))
+        SubtitleOverlay(frame: overlayBounds)
     }
 
     // MARK: - Selection
@@ -88,5 +90,45 @@ final class SubtitleOverlayTests: XCTestCase {
 
         overlay.clear()
         XCTAssertEqual(overlay.activeText, "")
+    }
+
+    // MARK: - ASS canvas
+
+    // Only a picture that fits inside the overlay moves the canvas, every other
+    // case lands on the bounds.
+
+    private func canvas(forVideoRect rect: CGRect?) -> CGRect {
+        let overlay = makeOverlay()
+        if let rect {
+            overlay.videoRectProvider = { rect }
+        }
+        return overlay.assCanvas
+    }
+
+    func testLetterboxedPictureIsTheCanvas() {
+        let picture = CGRect(x: 0, y: 135, width: 1920, height: 810)
+        XCTAssertEqual(canvas(forVideoRect: picture), picture)
+    }
+
+    func testPillarboxedPictureIsTheCanvas() {
+        let picture = CGRect(x: 240, y: 0, width: 1440, height: 1080)
+        XCTAssertEqual(canvas(forVideoRect: picture), picture)
+    }
+
+    func testFillModeStaysOnTheBounds() {
+        let picture = CGRect(x: -480, y: 0, width: 2880, height: 1080)
+        XCTAssertEqual(canvas(forVideoRect: picture), overlayBounds)
+    }
+
+    func testStretchStaysOnTheBounds() {
+        XCTAssertEqual(canvas(forVideoRect: overlayBounds), overlayBounds)
+    }
+
+    func testNoMeasuredPictureStaysOnTheBounds() {
+        XCTAssertEqual(canvas(forVideoRect: .zero), overlayBounds)
+    }
+
+    func testNoProviderStaysOnTheBounds() {
+        XCTAssertEqual(canvas(forVideoRect: nil), overlayBounds)
     }
 }

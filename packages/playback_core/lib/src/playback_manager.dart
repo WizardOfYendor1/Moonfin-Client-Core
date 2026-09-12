@@ -112,6 +112,7 @@ class PlaybackManager implements AudioOwnable {
   )?
   _startupRecoveryDecider;
   void Function(PlaybackDecisionContext context)? _playbackDecisionLogger;
+  void Function(String message)? _diagnosticLogger;
   int? Function(List<Map<String, dynamic>> audioStreams, int? explicitIndex)? audioTrackSelector;
   int? Function(List<Map<String, dynamic>> subtitleStreams, List<Map<String, dynamic>> audioStreams, int? explicitIndex)? subtitleTrackSelector;
   final QueueService queueService = QueueService();
@@ -673,6 +674,12 @@ class PlaybackManager implements AudioOwnable {
     _playbackDecisionLogger = logger;
   }
 
+  /// Receives one-line notes about decisions that leave no other trace, such
+  /// as an event that was deliberately dropped.
+  void setDiagnosticLogger(void Function(String message)? logger) {
+    _diagnosticLogger = logger;
+  }
+
   void _resetBackendSelectionLock() {
     _backendSelectionLockedForSession = false;
     _sessionLockedBackend = null;
@@ -923,6 +930,23 @@ class PlaybackManager implements AudioOwnable {
     // The old player is being stopped for a track-switch restart; its dying
     // error events are noise (the new stream's own failures still surface).
     if (_teardownForReResolve) {
+      return;
+    }
+
+    // A player can keep talking after a stop, and by then the resolutions
+    // are gone, so a failed bring-up would put a warning in the log and a
+    // snackbar on a screen that is already leaving. Nothing legitimate is
+    // lost: the backend is only asked to play once _currentResolution is
+    // set, and a resolve failure is reported by _playCurrentItem itself.
+    if (!_isOfflinePlayback &&
+        _currentResolution == null &&
+        _lastPlaybackResolution == null) {
+      final message = event['message']?.toString();
+      _diagnosticLogger?.call(
+        'Dropped a late ${event['event']} from '
+        '${_traceBackendName(_backend)} with no active session'
+        '${message == null || message.isEmpty ? '' : ': $message'}',
+      );
       return;
     }
 

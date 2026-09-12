@@ -255,6 +255,20 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
     setState(() {});
   }
 
+  /// Kept in [UserPreferences] alone. That is the store the profile sync
+  /// carries, and a second copy in [SeerrPreferences] would never hear about
+  /// a change made on another device.
+  Future<void> _setShowMissingCollectionItems(bool value) async {
+    await GetIt.instance<UserPreferences>().set(
+      UserPreferences.seerrShowMissingCollectionItems,
+      value,
+    );
+    if (mounted) setState(() {});
+    // Pushed even after a quick back-navigation, or the next pull would
+    // quietly undo the change.
+    await _pushSync();
+  }
+
   Future<void> _setNotifyOnNewRequests(bool value) async {
     await _seerrPrefs.setNotifyOnNewRequests(value);
     if (mounted) setState(() {});
@@ -515,6 +529,38 @@ class _SeerrConfigScreenState extends State<SeerrConfigScreen> {
               ),
               value: _seerrPrefs.blockNsfw,
               onChanged: _setBlockNsfw,
+            ),
+          ),
+        if (showSeerrSettings)
+          TvFocusHighlight(
+            builder: (context, focused) => SwitchListTile.adaptive(
+              secondary: Icon(
+                Icons.video_collection_outlined,
+                color: focused ? AppColors.black.withValues(alpha: 0.54) : null,
+              ),
+              title: Text(
+                l10n.showMissingCollectionItems,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: focused
+                      ? AppColors.black.withValues(alpha: 0.87)
+                      : AppColorScheme.onSurface,
+                ),
+              ),
+              subtitle: Text(
+                l10n.showMissingCollectionItemsDesc,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: focused
+                      ? AppColors.black.withValues(alpha: 0.54)
+                      : AppColorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              value: GetIt.instance<UserPreferences>().get(
+                UserPreferences.seerrShowMissingCollectionItems,
+              ),
+              onChanged: _setShowMissingCollectionItems,
             ),
           ),
         if (showSeerrSettings) ...[

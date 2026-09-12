@@ -497,6 +497,9 @@ void registerPlaybackModule() {
     if (startPosition <= rewind) return Duration.zero;
     return startPosition - rewind;
   });
+  manager.setDiagnosticLogger(
+    (message) => _getIt<LogService>().log(LogCategory.playback, message),
+  );
   manager.setPlaybackDecisionLogger((context) {
     final audioCapabilityProfile = prefs.detectedAudioCapabilities;
 

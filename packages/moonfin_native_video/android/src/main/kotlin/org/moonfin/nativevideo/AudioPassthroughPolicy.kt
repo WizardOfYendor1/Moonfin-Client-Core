@@ -46,9 +46,10 @@ data class AudioPassthroughPolicy(
          * key. AC4 is bitstream-only surround with no toggle of its own, so it
          * maps to a key never present in [KNOWN_CODECS] and disabled and manual
          * modes block it. Null means the mime is not passthrough audio at all,
-         * and the policy stays out of the way.
+         * and the policy stays out of the way. The recovery sink asks the
+         * same question to tell a bitstream track from offloaded music.
          */
-        private fun codecKeyForMime(mimeType: String?): String? = when (mimeType) {
+        internal fun codecKeyForMime(mimeType: String?): String? = when (mimeType) {
             MimeTypes.AUDIO_AC3 -> "ac3"
             MimeTypes.AUDIO_E_AC3, MimeTypes.AUDIO_E_AC3_JOC -> "eac3"
             MimeTypes.AUDIO_DTS, MimeTypes.AUDIO_DTS_EXPRESS -> "dts"

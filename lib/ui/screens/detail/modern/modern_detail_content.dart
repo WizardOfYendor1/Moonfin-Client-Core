@@ -19,6 +19,7 @@ import '../../../../data/viewmodels/item_detail_view_model.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../preference/user_preferences.dart';
 import '../../../../preference/preference_constants.dart';
+import '../../../../util/seerr_credits.dart';
 import '../../../../util/detail_track_highlight.dart';
 import '../../../../util/episode_playability.dart';
 import '../../../../util/overview_text.dart';
@@ -386,23 +387,11 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       await repo.ensureInitialized();
       final personId = int.tryParse(tmdbId);
       if (personId != null) {
-        final credits = await repo.getPersonCombinedCredits(personId);
-        const excludedJobs = {'thanks', 'special thanks'};
-        final castWithPosters =
-            credits.cast.where((i) => i.posterPath != null).toList()
-              ..sort((a, b) => a.displayTitle.compareTo(b.displayTitle));
-        final crewWithPosters = credits.crew
-            .where(
-              (i) =>
-                  i.posterPath != null &&
-                  !excludedJobs.contains(i.job?.toLowerCase()),
-            )
-            .toList()
-          ..sort((a, b) => a.displayTitle.compareTo(b.displayTitle));
+        final credits = await loadSeerrPersonCredits(repo, personId);
         if (mounted) {
           setState(() {
-            _seerrAppearances = castWithPosters;
-            _seerrCrewCredits = crewWithPosters;
+            _seerrAppearances = credits.cast;
+            _seerrCrewCredits = credits.crew;
           });
         }
       }
@@ -434,84 +423,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   }
 
   List<SeerrDiscoverItem> _groupSeerrItems(List<SeerrDiscoverItem> list, bool isCrew) {
-    final groupOpt = widget.prefs.get(UserPreferences.personPageGroupItems);
-    if (!groupOpt) return list;
-    final grouped = <int, List<SeerrDiscoverItem>>{};
-    for (final item in list) {
-      grouped.putIfAbsent(item.id, () => []).add(item);
-    }
-
-    final result = <SeerrDiscoverItem>[];
-    for (final entries in grouped.values) {
-      final first = entries.first;
-      if (entries.length == 1) {
-        result.add(first);
-        continue;
-      }
-
-      if (isCrew) {
-        final jobs = entries
-            .map((e) => e.job ?? e.department)
-            .where((j) => j != null && j.isNotEmpty)
-            .map((j) => j!)
-            .toSet();
-        final combinedJobs = jobs.join(', ');
-        result.add(SeerrDiscoverItem(
-          id: first.id,
-          mediaType: first.mediaType,
-          title: first.title,
-          name: first.name,
-          originalTitle: first.originalTitle,
-          originalName: first.originalName,
-          posterPath: first.posterPath,
-          backdropPath: first.backdropPath,
-          overview: first.overview,
-          releaseDate: first.releaseDate,
-          firstAirDate: first.firstAirDate,
-          originalLanguage: first.originalLanguage,
-          genreIds: first.genreIds,
-          voteAverage: first.voteAverage,
-          voteCount: first.voteCount,
-          popularity: first.popularity,
-          adult: first.adult,
-          mediaInfo: first.mediaInfo,
-          character: first.character,
-          job: combinedJobs.isNotEmpty ? combinedJobs : null,
-          department: first.department,
-        ));
-      } else {
-        final characters = entries
-            .map((e) => e.character)
-            .where((c) => c != null && c.isNotEmpty)
-            .map((c) => c!)
-            .toSet();
-        final combinedCharacters = characters.join(', ');
-        result.add(SeerrDiscoverItem(
-          id: first.id,
-          mediaType: first.mediaType,
-          title: first.title,
-          name: first.name,
-          originalTitle: first.originalTitle,
-          originalName: first.originalName,
-          posterPath: first.posterPath,
-          backdropPath: first.backdropPath,
-          overview: first.overview,
-          releaseDate: first.releaseDate,
-          firstAirDate: first.firstAirDate,
-          originalLanguage: first.originalLanguage,
-          genreIds: first.genreIds,
-          voteAverage: first.voteAverage,
-          voteCount: first.voteCount,
-          popularity: first.popularity,
-          adult: first.adult,
-          mediaInfo: first.mediaInfo,
-          character: combinedCharacters.isNotEmpty ? combinedCharacters : null,
-          job: first.job,
-          department: first.department,
-        ));
-      }
-    }
-    return result;
+    if (!widget.prefs.get(UserPreferences.personPageGroupItems)) return list;
+    return groupSeerrCredits(list, isCrew: isCrew);
   }
 
   List<SeerrDiscoverItem> _sortSeerrItems(List<SeerrDiscoverItem> list) {

@@ -625,6 +625,7 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
     details.leaf('pref_detail_screen_style', l10n.detailScreenStyle, keywords: [
       'classic',
       'modern',
+      'spotlight',
     ]),
     details.leaf('detailsBackgroundBlurAmount', l10n.detailsBackgroundBlur),
     details.leaf(

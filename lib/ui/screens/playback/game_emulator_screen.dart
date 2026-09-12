@@ -22,6 +22,7 @@ import '../../../util/desktop_emulator_gamepad.dart';
 import '../../../util/emulator_host_messages.dart';
 import '../../../util/insecure_certificates.dart';
 import '../../../util/webview_environment.dart';
+import '../../../util/system_ui.dart';
 import '../../screensaver/screensaver_controller.dart';
 import 'game_playback_ui.dart';
 import 'playback_takeover.dart';
@@ -69,7 +70,7 @@ class GameEmulatorScreen extends StatefulWidget {
 }
 
 class _GameEmulatorScreenState extends State<GameEmulatorScreen>
-    with GameAudioOwner {
+    with GameAudioOwner, ImmersiveSystemUi {
   final MediaServerClient _client = GetIt.instance<MediaServerClient>();
   InAppWebViewController? _controller;
 
@@ -361,13 +362,14 @@ class _GameEmulatorScreenState extends State<GameEmulatorScreen>
 
   void _enterImmersive() {
     GamePlaybackSystemUi.enter(
+      this,
       immersive: true,
       lockLandscape: !PlatformDetection.isTV,
     );
   }
 
   Future<void> _restoreSystemUi() =>
-      GamePlaybackSystemUi.restore(immersive: true);
+      GamePlaybackSystemUi.restore(this, immersive: true);
 
   void _onPlayerMessage(List<dynamic> args) {
     if (args.isEmpty) return;

@@ -2,14 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moonfin/data/models/download_quality.dart';
 import 'package:moonfin/data/services/download_service.dart';
 
-/// Tests for the per-download engine choice. Android TV must keep transcoded
-/// downloads on the in-process legacy engine: Jellyfin transcodes are chunked
-/// responses with no content length, which the native engine cancels after
-/// its nine-minute WorkManager limit. Original quality downloads are finite
-/// responses, so every platform — TV included — runs them natively.
+/// Tests for the per-download engine choice. Android must keep transcoded
+/// downloads on the in-process engines, the only ones that hold a foreground
+/// notification for a chunked response the native engine cannot measure.
 void main() {
   bool choose({
-    required bool isAndroidTv,
+    required bool isAndroid,
     required DownloadQuality quality,
     bool pluginEngineSupported = true,
     bool serverNeedsLegacyTls = false,
@@ -18,28 +16,25 @@ void main() {
     return downloadUsesPluginEngine(
       pluginEngineSupported: pluginEngineSupported,
       serverNeedsLegacyTls: serverNeedsLegacyTls,
-      isAndroidTv: isAndroidTv,
+      isAndroid: isAndroid,
       qualityTranscoded: quality.isTranscoded,
       destinationOnRemovableStorage: destinationOnRemovableStorage,
     );
   }
 
-  test('Android TV runs original quality on the native engine', () {
-    expect(
-      choose(isAndroidTv: true, quality: DownloadQuality.original),
-      isTrue,
-    );
+  test('Android runs original quality on the native engine', () {
+    expect(choose(isAndroid: true, quality: DownloadQuality.original), isTrue);
   });
 
-  test('Android TV keeps every transcoded quality on the legacy engine', () {
+  test('Android keeps every transcoded quality off the native engine', () {
     for (final quality in DownloadQuality.values.where((q) => q.isTranscoded)) {
-      expect(choose(isAndroidTv: true, quality: quality), isFalse);
+      expect(choose(isAndroid: true, quality: quality), isFalse);
     }
   });
 
-  test('non-TV platforms run transcoded downloads natively as before', () {
+  test('other platforms still run transcoded downloads natively', () {
     expect(
-      choose(isAndroidTv: false, quality: DownloadQuality.high1080p),
+      choose(isAndroid: false, quality: DownloadQuality.high1080p),
       isTrue,
     );
   });
@@ -47,7 +42,7 @@ void main() {
   test('a server that refused the native TLS handshake stays on legacy', () {
     expect(
       choose(
-        isAndroidTv: false,
+        isAndroid: true,
         quality: DownloadQuality.original,
         serverNeedsLegacyTls: true,
       ),
@@ -58,7 +53,7 @@ void main() {
   test('an unsupported platform or missing coordinator stays on legacy', () {
     expect(
       choose(
-        isAndroidTv: false,
+        isAndroid: true,
         quality: DownloadQuality.original,
         pluginEngineSupported: false,
       ),
@@ -72,7 +67,7 @@ void main() {
     () {
       expect(
         choose(
-          isAndroidTv: false,
+          isAndroid: false,
           quality: DownloadQuality.original,
           destinationOnRemovableStorage: true,
         ),
@@ -80,7 +75,7 @@ void main() {
       );
       expect(
         choose(
-          isAndroidTv: true,
+          isAndroid: true,
           quality: DownloadQuality.original,
           destinationOnRemovableStorage: true,
         ),
@@ -143,13 +138,11 @@ void main() {
       );
     });
 
-    test('the plugin engine choice is unaffected', () {
+    test('a transcoded Android download never falls to the native engine', () {
       expect(
-        choose(isAndroidTv: false, quality: DownloadQuality.high1080p),
-        isTrue,
+        choose(isAndroid: true, quality: DownloadQuality.high1080p),
+        isFalse,
       );
-      expect(choose(isAndroidTv: true, quality: DownloadQuality.high1080p),
-          isFalse);
     });
   });
 }

@@ -27,6 +27,7 @@ import '../../../util/subtitle_track_logic.dart';
 import '../../../util/play_method_label.dart';
 import '../../../util/platform_detection.dart';
 import '../../../util/playback_time_label.dart';
+import '../../../util/system_ui.dart';
 import '../../widgets/adaptive/sf_symbol.dart';
 import '../../widgets/aether_video_view.dart';
 import '../../widgets/playback/stream_info_dialog.dart';
@@ -57,7 +58,7 @@ class LiveTvPlayerScreen extends StatefulWidget {
 }
 
 class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, ImmersiveSystemUi {
   final _manager = GetIt.instance<PlaybackManager>();
   // media_kit isn't registered on platforms that run a different backend, so
   // ask the container rather than listing them.
@@ -88,7 +89,6 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   bool _infoVisible = true;
   Timer? _hideTimer;
   bool _isStopping = false;
-  bool _didRestoreSystemUiOnExit = false;
   bool _isSwitching = false;
   bool _isGuidePickerOpen = false;
   bool _isCarouselOpen = false;
@@ -248,7 +248,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     if (!_isStopping) {
       _manager.stop(userInitiated: false);
     }
-    unawaited(_restoreSystemUiForExit());
+    unawaited(_releasePlayerDisplayMode());
     super.dispose();
   }
 
@@ -630,6 +630,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     // remembered has to be put back once this one reports its own captions.
     _captionTrackApplied = false;
     final channel = _currentChannel;
+    unawaited(_prefs.set(UserPreferences.liveTvLastChannelId, channel.id));
     final item = AggregatedItem(
       id: channel.id,
       serverId: _client.baseUrl,
@@ -969,7 +970,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   }
 
   void _applyPlayerDisplayMode() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    setImmersive(true);
     if (_forcedLandscape && !PlatformDetection.isTV) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
@@ -981,8 +982,8 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     SystemChrome.setPreferredOrientations([]);
   }
 
-  Future<void> _applyGuideDisplayMode() async {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  Future<void> _releasePlayerDisplayMode() async {
+    setImmersive(false);
     await SystemChrome.setPreferredOrientations([]);
   }
 
@@ -1398,7 +1399,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _hideTimer?.cancel();
     _suppressBackNavigation();
     setState(() => _isGuidePickerOpen = true);
-    await _applyGuideDisplayMode();
+    await _releasePlayerDisplayMode();
   }
 
   void _closeGuideOverlay() {
@@ -1432,15 +1433,8 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     if (_isStopping) return;
     _isStopping = true;
     await _manager.stop(userInitiated: false);
-    await _restoreSystemUiForExit();
+    await _releasePlayerDisplayMode();
     if (mounted) Navigator.of(context).pop();
-  }
-
-  Future<void> _restoreSystemUiForExit() async {
-    if (_didRestoreSystemUiOnExit) return;
-    _didRestoreSystemUiOnExit = true;
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    await SystemChrome.setPreferredOrientations([]);
   }
 
   void _applySubtitleStyle() {

@@ -60,9 +60,11 @@
                 android:name="flutter_deeplinking_enabled"
                 android:value="false" />
         </activity>
-        <!-- background_downloader: WorkManager foreground service so media
-             downloads (notably long server transcodes) are not killed at the
-             9-minute background work limit. -->
+        <!-- background_downloader: WorkManager foreground service so a media
+             download whose length the server declared is not killed at the
+             9-minute background work limit. A transcode has no declared
+             length, so it runs on an in-process engine under Moonfin's own
+             foreground notification instead. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"

@@ -34,6 +34,7 @@ import '../../../util/platform_detection.dart';
 import '../../../util/insecure_certificates.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/current_app_localizations.dart';
+import '../../../util/system_ui.dart';
 import '../../widgets/adaptive/sf_symbol.dart';
 import '../../widgets/reader/reader_chrome_bar.dart';
 import '../../widgets/reader/reader_contents_hub.dart';
@@ -64,7 +65,7 @@ enum _ComicLayout { single, double, vertical }
 enum _ComicDirection { ltr, rtl }
 
 class _BookReaderScreenState extends State<BookReaderScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, ImmersiveSystemUi {
   AggregatedItem? _item;
   String? _extension;
   String? _error;
@@ -317,7 +318,6 @@ class _BookReaderScreenState extends State<BookReaderScreen>
     WidgetsBinding.instance.removeObserver(this);
     _comicStateSaveDebounce?.cancel();
     _pdfPageSaveDebounce?.cancel();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _pageController.dispose();
     _comicTransformController.dispose();
     _comicVerticalController.dispose();
@@ -430,7 +430,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
       _epubThemeCache.clear();
     });
 
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    setImmersive(false);
     _resetComicZoom();
 
     try {
@@ -928,11 +928,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
     setState(() {
       _overlayVisible = !_overlayVisible;
     });
-    if (_overlayVisible) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    }
+    setImmersive(!_overlayVisible);
   }
 
   Future<Uri> _resolveReadableUri(

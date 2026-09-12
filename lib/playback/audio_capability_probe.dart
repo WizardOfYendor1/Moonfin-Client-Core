@@ -29,6 +29,16 @@ class AudioCapabilityProbe {
   static const _tvosMethodChannel = MethodChannel('moonfin/appletv_audio');
   static const _tvosEventChannel = EventChannel('moonfin/appletv_audio_events');
 
+  static StreamSubscription<dynamic>? _subscription;
+  static Timer? _settleTimer;
+  static AudioCapabilityProfile? _pendingDowngrade;
+
+  /// How long a downgrade waits before it lands. The native side swallows
+  /// the flaps shorter than its own debounce, so what reaches here can still
+  /// be the two halves of a slower one, and the window has to outlast the
+  /// slowest handshake a TV or AVR is likely to take.
+  static const settleWindow = Duration(seconds: 6);
+
   /// Whether the running platform exposes a native probe.
   static bool get isSupported =>
       (PlatformDetection.isAndroid && PlatformDetection.isTV) ||
@@ -116,7 +126,14 @@ class AudioCapabilityProbe {
   /// so it leaves whatever was detected before in place. Clearing it would
   /// drop the app onto the fallback, which reports no route and no
   /// passthrough, and every playback would transcode until a restart.
-  static void apply(AudioCapabilityProfile? profile) {
+  ///
+  /// Raising capabilities lands at once. Lowering them is what a route
+  /// mid-renegotiation looks like, the box falling back to a phantom
+  /// speaker, so a downgrade waits out [settleWindow] and any answer that is
+  /// not a downgrade cancels it. A real unplug still lands, just later, and
+  /// is still cached. [immediate] skips the wait for an answer the user
+  /// asked for and is watching the screen for.
+  static void apply(AudioCapabilityProfile? profile, {bool immediate = false}) {
     if (profile == null ||
         (looksEmpty(profile) && PlatformDetection.hasAudioCapabilities)) {
       _log(
@@ -127,6 +144,52 @@ class AudioCapabilityProbe {
       );
       return;
     }
+    // With no snapshot yet there is nothing to protect.
+    if (!immediate && PlatformDetection.hasAudioCapabilities) {
+      final current = AudioCapabilityProfile.fromMap(
+        PlatformDetection.audioCapabilitiesSnapshot,
+      );
+      if (profile.isDowngradeFrom(current)) {
+        _holdDowngrade(profile, current);
+        return;
+      }
+    }
+    _cancelPendingDowngrade();
+    _publish(profile);
+  }
+
+  static void _holdDowngrade(
+    AudioCapabilityProfile profile,
+    AudioCapabilityProfile current,
+  ) {
+    // A later downgrade replaces the payload but never restarts the window,
+    // so a route that keeps reporting the phantom speaker can't starve a
+    // genuine unplug.
+    _pendingDowngrade = profile;
+    _settleTimer ??= Timer(settleWindow, _landPendingDowngrade);
+    _log(
+      'audio probe: route=${profile.activeRouteType.name} '
+      'maxPcmChannels=${profile.maxPcmChannels} reads as a downgrade from '
+      'route=${current.activeRouteType.name}, holding it for '
+      '${settleWindow.inSeconds}s',
+      level: LogLevel.info,
+    );
+  }
+
+  static void _landPendingDowngrade() {
+    final pending = _pendingDowngrade;
+    _pendingDowngrade = null;
+    _settleTimer = null;
+    if (pending != null) _publish(pending);
+  }
+
+  static void _cancelPendingDowngrade() {
+    _settleTimer?.cancel();
+    _settleTimer = null;
+    _pendingDowngrade = null;
+  }
+
+  static void _publish(AudioCapabilityProfile profile) {
     final values = profile.toMap();
     PlatformDetection.setAudioCapabilities(values);
     if (!looksEmpty(profile)) {
@@ -151,17 +214,18 @@ class AudioCapabilityProbe {
   }
 
   /// Subscribes to native route-change events (HDMI/ARC/eARC connect/disconnect)
-  /// and re-applies capabilities on each change. The subscription lives for the
-  /// app's lifetime.
+  /// and re-applies capabilities on each change. Idempotent, and the
+  /// subscription lives for the app's lifetime.
   static StreamSubscription<dynamic>? listenForRouteChanges() {
     final channel = _eventChannel;
     if (channel == null) return null;
-    return channel.receiveBroadcastStream().listen((event) {
+    if (_subscription != null) return _subscription;
+    _subscription = channel.receiveBroadcastStream().listen((event) {
       if (event is Map) {
-        // A route flap can transiently enumerate to "nothing connected".
-        // The guard inside apply keeps that from clobbering a good
-        // snapshot, while a genuine downgrade like unplugging an AVR
-        // reports a real route such as speaker and still lands.
+        // A route flap can transiently enumerate to "nothing connected", or
+        // to the box's phantom speaker. The guards inside apply keep either
+        // from clobbering a good snapshot on the spot, while a genuine
+        // downgrade like unplugging an AVR still lands once it has held.
         apply(
           AudioCapabilityProfile.fromMap(
             event.map((key, value) => MapEntry(key.toString(), value)),
@@ -169,5 +233,14 @@ class AudioCapabilityProbe {
         );
       }
     }, onError: (_) {});
+    return _subscription;
+  }
+
+  /// Drops the subscription and any downgrade still waiting, so a test starts
+  /// from nothing.
+  static void resetForTesting() {
+    _subscription?.cancel();
+    _subscription = null;
+    _cancelPendingDowngrade();
   }
 }

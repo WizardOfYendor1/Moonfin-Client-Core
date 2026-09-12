@@ -22,6 +22,7 @@ class DpadListTile extends StatelessWidget {
     this.outerPadding,
     this.useSettingsIconShell = false,
     this.onTap,
+    this.onLongPress,
   });
 
   final FocusNode? focusNode;
@@ -41,6 +42,7 @@ class DpadListTile extends StatelessWidget {
   /// platforms always retain the native [ListTile] leading widget.
   final bool useSettingsIconShell;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +81,7 @@ class DpadListTile extends StatelessWidget {
             trailing: trailing,
             contentPadding: contentPadding,
             onTap: enabled ? onTap : null,
+            onLongPress: enabled ? onLongPress : null,
           ),
         ),
       );
@@ -92,6 +95,7 @@ class DpadListTile extends StatelessWidget {
       trailing: trailing,
       contentPadding: contentPadding,
       onTap: enabled ? onTap : null,
+      onLongPress: enabled ? onLongPress : null,
     );
   }
 }

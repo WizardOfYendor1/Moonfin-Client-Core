@@ -129,13 +129,18 @@ class DownloadNotificationService {
     await _showSimple(_completionNotificationId, title, body);
   }
 
+  /// [transfersRemain] keeps the foreground service up when other downloads
+  /// are still running. Android refuses to start one again from the
+  /// background, so taking it down for one failure would drop the rest to
+  /// ordinary background work and lose them too.
   Future<void> showError({
     required String itemName,
     required String error,
+    bool transfersRemain = false,
   }) async {
     if (!_initialized) return;
     _lastProgressSignature = null;
-    await _stopForegroundService();
+    if (!transfersRemain) await _stopForegroundService();
     final l10n = currentAppLocalizations();
     await _showSimple(
       _completionNotificationId,

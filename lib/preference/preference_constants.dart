@@ -254,10 +254,13 @@ enum VisualThemeId {
 ///
 /// [classic] is the original centered-stack layout. [modern] is the responsive
 /// cinematic layout (landscape two-pane / portrait stack) and is the default.
-/// Stored per server and user.
+/// [spotlight] is the hero-first layout: Play plus at most three action
+/// buttons with the rest behind an ellipsis menu, and summary cards that open
+/// sectioned grid modals. Stored per server and user.
 enum DetailScreenStyle {
   classic,
-  modern;
+  modern,
+  spotlight;
 }
 
 /// Selectable algorithm source for similarity recommendation system.

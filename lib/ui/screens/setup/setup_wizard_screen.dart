@@ -488,7 +488,7 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
     final selected =
         _detailStyle ?? _prefs.get(UserPreferences.detailScreenStyle);
     return _OptionLayout(
-      columns: 2,
+      columns: 3,
       children: [
         _OptionCard(
           order: 0,
@@ -496,7 +496,9 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           hint: l10n.setupDetailClassicHint,
           selected: selected == DetailScreenStyle.classic,
           autofocus: selected == DetailScreenStyle.classic,
-          preview: SetupPreview(child: detailStylePreview(modern: false)),
+          preview: SetupPreview(
+            child: detailStylePreview(DetailScreenStyle.classic),
+          ),
           onPressed: () =>
               setState(() => _detailStyle = DetailScreenStyle.classic),
         ),
@@ -506,9 +508,23 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           hint: l10n.setupDetailModernHint,
           selected: selected == DetailScreenStyle.modern,
           autofocus: selected == DetailScreenStyle.modern,
-          preview: SetupPreview(child: detailStylePreview(modern: true)),
+          preview: SetupPreview(
+            child: detailStylePreview(DetailScreenStyle.modern),
+          ),
           onPressed: () =>
               setState(() => _detailStyle = DetailScreenStyle.modern),
+        ),
+        _OptionCard(
+          order: 2,
+          label: l10n.setupStyleSpotlight,
+          hint: l10n.setupDetailSpotlightHint,
+          selected: selected == DetailScreenStyle.spotlight,
+          autofocus: selected == DetailScreenStyle.spotlight,
+          preview: SetupPreview(
+            child: detailStylePreview(DetailScreenStyle.spotlight),
+          ),
+          onPressed: () =>
+              setState(() => _detailStyle = DetailScreenStyle.spotlight),
         ),
       ],
     );

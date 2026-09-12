@@ -163,21 +163,21 @@ void main() {
     return vm;
   }
 
-  testWidgets('overlay header waits until 300 ms after scrolling ends', (
+  testWidgets('overlay header waits until 200 ms after scrolling ends', (
     tester,
   ) async {
     await pumpOverlay(tester);
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('Show ch10 (S6:E19)'), findsOneWidget);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
+    expect(find.text('Show ch10 (S6:E19)'), findsNothing);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Show ch11 (S6:E19)'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 299));
+    await tester.pump(const Duration(milliseconds: 199));
     expect(find.text('Show ch11 (S6:E19)'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(seconds: 2));
     expect(find.text('Show ch11 (S6:E19)'), findsOneWidget);
     expect(find.text('Overview ch11'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -187,7 +187,7 @@ void main() {
     tester,
   ) async {
     await pumpOverlay(tester);
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 200));
     final description = tester.getRect(find.text('Overview ch10'));
     final stripTop = tester.getRect(find.byType(ChannelCarousel)).top;
     // The header reserves both overview lines so the strip holds still as the
@@ -261,13 +261,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 299));
+      await tester.pump(const Duration(milliseconds: 199));
       expect(vm.requests, hasLength(1));
       await tester.pump(const Duration(milliseconds: 1));
       expect(vm.requests, hasLength(2));
       expect(vm.requests.last, contains('ch12'));
       vm.changeProgram();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 200));
       expect(find.text('Show ch12 updated (S6:E19)'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -313,12 +313,12 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 200));
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
     setHostState(() => selectionRevision++);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Show ch10 (S6:E19)'), findsOneWidget);
     final selected = find.byWidgetPredicate(

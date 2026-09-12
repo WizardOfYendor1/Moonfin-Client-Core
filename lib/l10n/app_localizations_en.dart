@@ -146,13 +146,195 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get detailScreenStyleSubtitle =>
-      'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout.';
+      'Classic is the original centered moonfin layout. Modern is a responsive cinematic layout. Spotlight is a hero-first layout with pop-up content cards.';
 
   @override
   String get detailScreenStyleMoonfin => 'Classic';
 
   @override
   String get detailScreenStyleModern => 'Modern';
+
+  @override
+  String get detailScreenStyleSpotlight => 'Spotlight';
+
+  @override
+  String get spotlightMoreActions => 'More actions';
+
+  @override
+  String get spotlightCastCrewStudios => 'Cast, Crew, and Studios';
+
+  @override
+  String get spotlightChaptersExtras => 'Chapters and Extras';
+
+  @override
+  String get spotlightSimilarRecommendations => 'Similar and Recommendations';
+
+  @override
+  String get spotlightSeasonsEpisodes => 'Seasons and Episodes';
+
+  @override
+  String get spotlightMoreEpisodes => 'More Episodes';
+
+  @override
+  String get spotlightFilmography => 'Filmography';
+
+  @override
+  String get spotlightCollectionsCard => 'Collections';
+
+  @override
+  String get spotlightPlaylistOrder => 'Playlist Order';
+
+  @override
+  String get spotlightMoviesAndShows => 'Movies & Shows';
+
+  @override
+  String get spotlightSimilarSeerr => 'Similar (Seerr)';
+
+  @override
+  String get spotlightRecommendationsSeerr => 'Recommendations (Seerr)';
+
+  @override
+  String spotlightPeopleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightStudiosCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count studios',
+      one: '1 studio',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightChaptersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count chapters',
+      one: '1 chapter',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightExtrasCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count extras',
+      one: '1 extra',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightSeasonsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count seasons',
+      one: '1 season',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightEpisodesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count episodes',
+      one: '1 episode',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightMoviesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count movies',
+      one: '1 movie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightShowsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shows',
+      one: '1 show',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightTracksCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tracks',
+      one: '1 track',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightAlbumsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count albums',
+      one: '1 album',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightCollectionsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count collections',
+      one: '1 collection',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightTitlesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count titles',
+      one: '1 title',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get expandedTabs => 'Expanded Tabs';
@@ -2002,6 +2184,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noChannelsFound => 'No channels found';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'LIVE';
 
   @override
@@ -2073,6 +2258,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get watch => 'Watch';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'Close';
@@ -4235,6 +4423,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hideAdultContent => 'Hide adult content in results';
+
+  @override
+  String get showMissingCollectionItems => 'Show Missing Collection Items';
+
+  @override
+  String get showMissingCollectionItemsDesc =>
+      'Include missing items on Collection pages';
 
   @override
   String get seerrNotificationsSection => 'Notifications';
@@ -11359,6 +11554,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Cinematic, with tabs for cast and extras.';
 
   @override
+  String get setupStyleSpotlight => 'Spotlight';
+
+  @override
+  String get setupDetailSpotlightHint =>
+      'Hero-first, with pop-up cards for cast and extras.';
+
+  @override
   String get setupPickALook => 'Pick a look';
 
   @override
@@ -12138,16 +12340,16 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   }
 
   @override
-  String get failedToLoadFavorites => 'Failed to load favorites';
+  String get failedToLoadFavorites => 'Failed to load favourites';
 
   @override
   String get retry => 'Retry';
 
   @override
-  String get noFavoritesYet => 'No favorites yet';
+  String get noFavoritesYet => 'No favourites yet';
 
   @override
-  String get favorites => 'Favorites';
+  String get favorites => 'Favourites';
 
   @override
   String totalCountItems(int count) {
@@ -12334,7 +12536,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get bookHighlightsDescription =>
-      'Your books with highlights, favorites, or reading progress.';
+      'Your books with highlights, favourites, or reading progress.';
 
   @override
   String get handPickedFromLibrary => 'Hand-picked from your library.';
@@ -12345,7 +12547,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get booksWithHighlights =>
-      'Books with highlights, favorites, or reading progress.';
+      'Books with highlights, favourites, or reading progress.';
 
   @override
   String get jumpBackNarration =>
@@ -12788,10 +12990,10 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get finished => 'Finished';
 
   @override
-  String get favorited => 'Favorited';
+  String get favorited => 'Favourited';
 
   @override
-  String get favorite => 'Favorite';
+  String get favorite => 'Favourite';
 
   @override
   String get playlist => 'Playlist';
@@ -13595,20 +13797,20 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get movie => 'Movie';
 
   @override
-  String get removedFromFavoriteChannels => 'Removed from favorite channels';
+  String get removedFromFavoriteChannels => 'Removed from favourite channels';
 
   @override
-  String get addedToFavoriteChannels => 'Added to favorite channels';
+  String get addedToFavoriteChannels => 'Added to favourite channels';
 
   @override
   String get failedToUpdateFavoriteChannel =>
-      'Failed to update favorite channel';
+      'Failed to update favourite channel';
 
   @override
-  String get unfavoriteChannel => 'Unfavorite Channel';
+  String get unfavoriteChannel => 'Unfavourite Channel';
 
   @override
-  String get favoriteChannel => 'Favorite Channel';
+  String get favoriteChannel => 'Favourite Channel';
 
   @override
   String get record => 'Record';
@@ -13965,7 +14167,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
       'Server settings, users, libraries';
 
   @override
-  String get customization => 'Customization';
+  String get customization => 'Customisation';
 
   @override
   String get themeAndLayout => 'Theme and layout';
@@ -14698,11 +14900,11 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get textStrokeColor => 'Text Stroke Color';
 
   @override
-  String get subtitleCustomization => 'Subtitle Customization';
+  String get subtitleCustomization => 'Subtitle Customisation';
 
   @override
   String get subtitleCustomizationDescription =>
-      'Customize subtitle appearance';
+      'Customise subtitle appearance';
 
   @override
   String get subtitleMode => 'Subtitle Mode';
@@ -14816,7 +15018,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   }
 
   @override
-  String get customizationProfile => 'Customization Profile';
+  String get customizationProfile => 'Customisation Profile';
 
   @override
   String get customizationProfileDescription =>
@@ -14996,7 +15198,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get showGenresButton => 'Show Genres Button';
 
   @override
-  String get showFavoritesButton => 'Show Favorites Button';
+  String get showFavoritesButton => 'Show Favourites Button';
 
   @override
   String get showLibrariesInToolbar => 'Show Libraries in Toolbar';
@@ -15578,7 +15780,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get syncControlsDescription =>
-      'Sync only controls whether plugin-backed settings are pushed to and pulled from the server. Profile selection and profile sync actions are in Customization settings when plugin sync is enabled.';
+      'Sync only controls whether plugin-backed settings are pushed to and pulled from the server. Profile selection and profile sync actions are in Customisation settings when plugin sync is enabled.';
 
   @override
   String get recentRequests => 'Recent Requests';
@@ -17014,7 +17216,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get adminLibSeasonZeroName => 'Season zero display name';
 
   @override
-  String get adminLibLufsScan => 'Enable LUFS scan for audio normalization';
+  String get adminLibLufsScan => 'Enable LUFS scan for audio normalisation';
 
   @override
   String get adminLibPreferNonstandardArtist =>
@@ -20181,10 +20383,10 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get trackActionMoveDown => 'Move Down';
 
   @override
-  String get trackActionRemoveFromFavorites => 'Remove from Favorites';
+  String get trackActionRemoveFromFavorites => 'Remove from Favourites';
 
   @override
-  String get trackActionAddToFavorites => 'Add to Favorites';
+  String get trackActionAddToFavorites => 'Add to Favourites';
 
   @override
   String get trackActionGoToAlbum => 'Go to Album';
@@ -20349,10 +20551,10 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get contextMenuMarkUnwatched => 'Mark as Unwatched';
 
   @override
-  String get contextMenuAddToFavorites => 'Add to Favorites';
+  String get contextMenuAddToFavorites => 'Add to Favourites';
 
   @override
-  String get contextMenuRemoveFromFavorites => 'Remove from Favorites';
+  String get contextMenuRemoveFromFavorites => 'Remove from Favourites';
 
   @override
   String get contextMenuGoToSeries => 'Go to Series';
@@ -20379,7 +20581,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
       'Authentication, PIN code, and parental controls';
 
   @override
-  String get settingsPersonalization => 'Personalization';
+  String get settingsPersonalization => 'Personalisation';
 
   @override
   String get settingsPersonalizationSubtitle =>
@@ -20476,7 +20678,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get settingsShowFavoritesButtonInNavigation =>
-      'Show the favorites button in the navigation bar';
+      'Show the favourites button in the navigation bar';
 
   @override
   String get settingsShowLibrariesButtonInNavigation =>
@@ -20697,7 +20899,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get settingsSyncplaySubtitle =>
-      'Synchronization logic for group sessions';
+      'Synchronisation logic for group sessions';
 
   @override
   String get settingsAdvancedOptionsSubtitle =>
@@ -21162,18 +21364,18 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   String get descending => 'Descending';
 
   @override
-  String get displayFavoritesRows => 'Display Favorites Rows';
+  String get displayFavoritesRows => 'Display Favourites Rows';
 
   @override
   String get displayFavoritesRowsSubtitle =>
-      'Show Favorite Movies, Series, and other favorite rows in Home Sections.';
+      'Show Favourite Movies, Series, and other favourite rows in Home Sections.';
 
   @override
-  String get favoritesRowSorting => 'Favorites Row Sorting';
+  String get favoritesRowSorting => 'Favourites Row Sorting';
 
   @override
   String get favoritesRowSortingDescription =>
-      'Sort Favorites rows by date added, release date, alphabetically, and more.';
+      'Sort Favourites rows by date added, release date, alphabetically, and more.';
 
   @override
   String get favoritesRowSortOrderDescription =>
@@ -21505,7 +21707,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get webDiagnosticsCorsChecklistItem2 =>
-      '• Include Authorization, X-Emby-Authorization, and X-Emby-Token in Access-Control-Allow-Headers.';
+      '• Include Authorisation, X-Emby-Authorisation, and X-Emby-Token in Access-Control-Allow-Headers.';
 
   @override
   String get webDiagnosticsCorsChecklistItem3 =>

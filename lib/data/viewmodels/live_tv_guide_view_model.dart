@@ -121,7 +121,8 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   final MediaServerClient _client;
   bool _disposed = false;
 
-  // The guide renders a fixed 2.5-hour span; see GuideLayoutProfile.
+  // The smallest responsive guide span; wider landscape surfaces replace it
+  // through setWindow after GuideLayoutProfile measures their available area.
   static const _defaultGuideWindow = Duration(minutes: 150);
   // Programs only need the synopsis; channel logos come from the separate
   // /LiveTv/Channels fetch, so we don't request ImageTags here. OfficialRating

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
+import '../../../../widgets/marquee_text.dart';
 import '../epg_genre.dart';
 
 /// A single program in the guide grid. Pure presentation: the host positions it
@@ -33,8 +34,9 @@ class EpgProgramCell extends StatelessWidget {
   final bool failed;
   final double textLeftPadding;
 
-  /// Programme started before the visible window's left edge; shows a `<<`
-  /// marker that survives even when the title has no room at all.
+  /// Programme started before the visible window's left edge; shows a compact
+  /// double-chevron continuation marker that survives even when the title has
+  /// no room at all.
   final bool startsBeforeWindow;
 
   /// Official rating (`TV-G`, `PG-13`); first item of the metadata line.
@@ -160,7 +162,8 @@ class EpgProgramCell extends StatelessWidget {
             ),
           LayoutBuilder(
             builder: (context, cell) {
-              // A marker cell this narrow gives up its inset so `<<` still fits.
+              // A marker cell this narrow gives up its inset so the continuation
+              // glyph still fits.
               final padding = showMarker && cell.maxWidth < 48
                   ? EdgeInsets.fromLTRB(2 + textLeftPadding, 4, 2, 4)
                   : EdgeInsets.fromLTRB(
@@ -210,7 +213,7 @@ class EpgProgramCell extends StatelessWidget {
                       : MainAxisAlignment.start,
                   children: [
                     showMarker
-                        ? _markerRow(context, titleStyle, markerStyle)
+                        ? _markerRow(titleStyle, markerStyle)
                         : Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -222,12 +225,21 @@ class EpgProgramCell extends StatelessWidget {
                                 const SizedBox(width: 6),
                               ],
                               Flexible(
-                                child: Text(
-                                  placeholderLabel ?? title,
-                                  maxLines: wrapTitle ? 2 : 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: titleStyle,
-                                ),
+                                child:
+                                    focused &&
+                                        !wrapTitle &&
+                                        placeholderLabel == null
+                                    ? MarqueeText(
+                                        text: title,
+                                        style: titleStyle,
+                                        showDotSeparator: false,
+                                      )
+                                    : Text(
+                                        placeholderLabel ?? title,
+                                        maxLines: wrapTitle ? 2 : 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: titleStyle,
+                                      ),
                               ),
                               if (hasTimer && showOrnaments) ...[
                                 const SizedBox(width: 6),
@@ -285,15 +297,10 @@ class EpgProgramCell extends StatelessWidget {
       const Icon(Icons.fiber_manual_record, size: 9, color: Color(0xFFE0685C));
 
   /// Width-priority title row for a programme that started before the window:
-  /// every slot is measured and allotted in order, so the `<<` marker is served
-  /// before the title and cannot be squeezed out or overflow the row.
-  Widget _markerRow(
-    BuildContext context,
-    TextStyle titleStyle,
-    TextStyle markerStyle,
-  ) {
-    final scaler = MediaQuery.textScalerOf(context);
-    final markerWidth = _textWidth('<<', markerStyle, scaler);
+  /// every slot is measured and allotted in order, so the continuation marker
+  /// is served before the title and cannot be squeezed out or overflow the row.
+  Widget _markerRow(TextStyle titleStyle, TextStyle markerStyle) {
+    const markerWidth = 16.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -321,22 +328,27 @@ class EpgProgramCell extends StatelessWidget {
               ),
             SizedBox(
               width: marker,
-              child: Text(
-                '<<',
-                maxLines: 1,
-                softWrap: false,
-                style: markerStyle,
+              child: Icon(
+                Icons.keyboard_double_arrow_left_rounded,
+                size: 15,
+                color: markerStyle.color,
               ),
             ),
             SizedBox(width: gap),
             SizedBox(
               width: titleWidth,
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: titleStyle,
-              ),
+              child: focused
+                  ? MarqueeText(
+                      text: title,
+                      style: titleStyle,
+                      showDotSeparator: false,
+                    )
+                  : Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
+                    ),
             ),
             if (hasTimer)
               SizedBox(

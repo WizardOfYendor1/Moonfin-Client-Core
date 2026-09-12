@@ -155,6 +155,188 @@ class AppLocalizationsAr extends AppLocalizations {
   String get detailScreenStyleModern => 'حديث';
 
   @override
+  String get detailScreenStyleSpotlight => 'Spotlight';
+
+  @override
+  String get spotlightMoreActions => 'More actions';
+
+  @override
+  String get spotlightCastCrewStudios => 'Cast, Crew, and Studios';
+
+  @override
+  String get spotlightChaptersExtras => 'Chapters and Extras';
+
+  @override
+  String get spotlightSimilarRecommendations => 'Similar and Recommendations';
+
+  @override
+  String get spotlightSeasonsEpisodes => 'Seasons and Episodes';
+
+  @override
+  String get spotlightMoreEpisodes => 'More Episodes';
+
+  @override
+  String get spotlightFilmography => 'Filmography';
+
+  @override
+  String get spotlightCollectionsCard => 'Collections';
+
+  @override
+  String get spotlightPlaylistOrder => 'Playlist Order';
+
+  @override
+  String get spotlightMoviesAndShows => 'Movies & Shows';
+
+  @override
+  String get spotlightSimilarSeerr => 'Similar (Seerr)';
+
+  @override
+  String get spotlightRecommendationsSeerr => 'Recommendations (Seerr)';
+
+  @override
+  String spotlightPeopleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightStudiosCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count studios',
+      one: '1 studio',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightChaptersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count chapters',
+      one: '1 chapter',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightExtrasCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count extras',
+      one: '1 extra',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightSeasonsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count seasons',
+      one: '1 season',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightEpisodesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count episodes',
+      one: '1 episode',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightMoviesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count movies',
+      one: '1 movie',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightShowsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shows',
+      one: '1 show',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightTracksCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tracks',
+      one: '1 track',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightAlbumsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count albums',
+      one: '1 album',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightCollectionsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count collections',
+      one: '1 collection',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String spotlightTitlesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count titles',
+      one: '1 title',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get expandedTabs => 'علامات تبويب موسّعة';
 
   @override
@@ -216,10 +398,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get interfaceLayoutAutomatic => 'أوتوماتيك';
 
   @override
-  String get interfaceLayoutTv => 'TV';
+  String get interfaceLayoutTv => 'وضع التلفاز';
 
   @override
-  String get interfaceLayoutDesktop => 'Desktop';
+  String get interfaceLayoutDesktop => 'وضع سطح المكتب';
 
   @override
   String get interfaceLayoutPhone => 'واجهة الهاتف';
@@ -235,10 +417,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'خلّي اللون الأسود أغمق والصور أوضح وأجمل. يُفضّل استخدامه على شاشات OLED.';
 
   @override
-  String get oledModeSubtle => 'Subtle';
+  String get oledModeSubtle => 'خفيف';
 
   @override
-  String get oledModeVivid => 'Vivid';
+  String get oledModeVivid => 'ديناميكي';
 
   @override
   String get glassQualitySubtitle =>
@@ -261,13 +443,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'يحدد إمكانيات جهازك تلقائيًا ويخفف الإعدادات إذا كانت الذاكرة محدودة، مع الاحتفاظ بعدد أقل من الصور وعرض المقاطع الدعائية كصور ثابتة. أعد تشغيل التطبيق لتطبيق التغييرات.';
 
   @override
-  String get performanceModeAuto => 'Auto';
+  String get performanceModeAuto => 'اوتوماتيكي';
 
   @override
-  String get performanceModeStandard => 'Standard';
+  String get performanceModeStandard => 'اعتيادي';
 
   @override
-  String get performanceModeReduced => 'Reduced';
+  String get performanceModeReduced => 'منخفض';
 
   @override
   String get trailerPreviewHeldBack =>
@@ -840,7 +1022,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get latestAudiobooks => 'أحدث الكتب الصوتية';
 
   @override
-  String get latestComics => 'Latest Comics';
+  String get latestComics => 'أحدث القصص المصورة';
 
   @override
   String get comics => 'Comics';
@@ -874,7 +1056,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noBooksFoundDescription =>
-      'This library does not contain any books, audiobooks, or comics yet.';
+      'لا تحتوي هذه المكتبة على أي كتب أو كتب صوتية أو قصص مصورة حتى الآن.';
 
   @override
   String bookPercentRead(int percent) {
@@ -1365,49 +1547,49 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noEpisodesLoaded => 'لم يتم تحميل أي حلقات';
 
   @override
-  String get downloadScopeTitle => 'What to download';
+  String get downloadScopeTitle => 'ما الذي تريد تنزيله';
 
   @override
-  String get downloadAllEpisodes => 'All episodes';
+  String get downloadAllEpisodes => 'جميع الحلقات';
 
   @override
-  String get downloadUnwatchedEpisodes => 'All unwatched episodes';
+  String get downloadUnwatchedEpisodes => 'كل الحلقات غير المشاهدة';
 
   @override
-  String get downloadAllMovies => 'All movies';
+  String get downloadAllMovies => 'كل الأفلام';
 
   @override
-  String get downloadUnwatchedMovies => 'All unwatched movies';
+  String get downloadUnwatchedMovies => 'كل الأفلام غير المشاهدة';
 
   @override
-  String get downloadScopeLoading => 'Loading items...';
+  String get downloadScopeLoading => 'جاري تحميل المحتوى...';
 
   @override
-  String get downloadScopeLoadFailed => 'Could not load items to download';
+  String get downloadScopeLoadFailed => 'تعذر تحميل الملفات للتنزيل';
 
   @override
   String downloadEstimateTotal(String size) {
-    return '~$size total';
+    return '~$size الإجمالي';
   }
 
   @override
   String downloadBytesOfTotal(String received, String total) {
-    return '$received of $total';
+    return '$received من $total';
   }
 
   @override
   String downloadSpeed(String speed) {
-    return '$speed/s';
+    return '$speed/ث';
   }
 
   @override
   String downloadSizeTotal(String size) {
-    return '$size total';
+    return '$size الإجمالي';
   }
 
   @override
   String downloadEstimateUnknownCount(int count) {
-    return '$count unknown';
+    return '$count غير معروف';
   }
 
   @override
@@ -1420,7 +1602,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String deleteLocalFilesMessage(String typeLabel) {
-    return 'هل تريد حذف الملفات المحلية لـ $typeLabel؟\n\nسيؤدي هذا إلى تحرير مساحة التخزين. يمكنك إعادة التحميل لاحقا.';
+    return 'هل تريد حذف الملفات المحلية لـ $typeLabel؟\n\nسيؤدي هذا إلى إخلاء مساحة التخزين. يمكنك إعادة التنزيل لاحقاً.';
   }
 
   @override
@@ -1797,7 +1979,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get hdrOutputFailed =>
-      'Inactive — could not start, using the standard path';
+      'غير نشط — لم يتمكن من البدء، جاري استخدام المسار الافتراضي';
 
   @override
   String get nativeHdrOutput => 'Native HDR output';
@@ -2023,6 +2205,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noChannelsFound => 'لم يتم العثور على قنوات';
 
   @override
+  String get noProgramData => 'No program data';
+
+  @override
   String get liveBadge => 'يعيش';
 
   @override
@@ -2093,6 +2278,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get watch => 'مشاهدة';
+
+  @override
+  String get watchChannelLive => 'Watch channel live';
 
   @override
   String get close => 'إغلاق';
@@ -2491,7 +2679,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get seriesThumbnailsDescription =>
-      'الحلقات فقط: استخدم الأعمال الفنية المتسلسلة التي تتطابق مع كل نوع صورة صف';
+      'للمسلسلات: استخدام بوستر المسلسل بدلاً من صورة الحلقة.';
 
   @override
   String get homeRowInfoOverlay => 'تراكب معلومات الصف الرئيسي';
@@ -4263,6 +4451,13 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get hideAdultContent => 'إخفاء محتوى البالغين في النتائج';
+
+  @override
+  String get showMissingCollectionItems => 'Show Missing Collection Items';
+
+  @override
+  String get showMissingCollectionItemsDesc =>
+      'Include missing items on Collection pages';
 
   @override
   String get seerrNotificationsSection => 'الإشعارات';
@@ -11425,6 +11620,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'Cinematic, with tabs for cast and extras.';
 
   @override
+  String get setupStyleSpotlight => 'Spotlight';
+
+  @override
+  String get setupDetailSpotlightHint =>
+      'Hero-first, with pop-up cards for cast and extras.';
+
+  @override
   String get setupPickALook => 'Pick a look';
 
   @override
@@ -11670,7 +11872,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get downloadNotificationFailedTitle => 'Download failed';
+  String get downloadNotificationFailedTitle => 'فشل التنزيل';
 
   @override
   String downloadNotificationFailedBody(String name, String error) {
@@ -11678,7 +11880,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get serverMessagesNotificationTitle => 'Remote message';
+  String get serverMessagesNotificationTitle => 'رسالة من السيرفر';
 
   @override
   String get serverMessagesNotificationReceived => 'Message received';

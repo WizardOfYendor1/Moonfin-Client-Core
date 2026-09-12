@@ -145,12 +145,15 @@ class _MediaDownloadContext {
 
 /// Whether one media download should run on the native background engine.
 ///
-/// Android TV keeps transcoded downloads on the in-process legacy engine:
-/// Jellyfin transcodes are chunked responses with no content length, which
-/// the native Android engine cannot move to its foreground worker and
-/// therefore cancels after its nine-minute WorkManager limit. Original
-/// quality downloads are ordinary finite responses, so TV takes the native
-/// engine for them like every other platform.
+/// Android keeps transcoded downloads off it. A server transcode is a chunked
+/// response with no content length, and the native engine only moves a task
+/// into its foreground service once it knows that length. Without that the
+/// transcode runs as ordinary background work, so backgrounding the app or
+/// locking the screen ends it at the nine-minute limit or as soon as the
+/// system reclaims the process. The in-process engines post Moonfin's own
+/// foreground notification instead, which holds the process for the whole
+/// transfer. Original quality downloads are finite responses, so Android
+/// takes the native engine for them like every other platform.
 ///
 /// Destinations on removable storage also stay on the legacy engine: the
 /// native engine stages its temp file on internal storage and its completing
@@ -160,13 +163,13 @@ class _MediaDownloadContext {
 bool downloadUsesPluginEngine({
   required bool pluginEngineSupported,
   required bool serverNeedsLegacyTls,
-  required bool isAndroidTv,
+  required bool isAndroid,
   required bool qualityTranscoded,
   required bool destinationOnRemovableStorage,
 }) {
   if (!pluginEngineSupported) return false;
   if (serverNeedsLegacyTls) return false;
-  if (isAndroidTv && qualityTranscoded) return false;
+  if (isAndroid && qualityTranscoded) return false;
   if (destinationOnRemovableStorage) return false;
   return true;
 }
@@ -380,6 +383,15 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
         episode: item.indexNumber,
       );
 
+  Future<void> _notifyDownloadError(String label, String error) =>
+      _notificationService.showError(
+        itemName: label,
+        error: error,
+        transfersRemain: _activeDownloads.values.any(
+          (download) => !download.isComplete && download.error == null,
+        ),
+      );
+
   /// Batches still awaiting completion. Counters reset only when the last
   /// one finishes, so an automatic batch can run beside a manual one.
   int _openBatches = 0;
@@ -454,7 +466,7 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
   }) => downloadUsesPluginEngine(
     pluginEngineSupported: _pluginEngineSupported,
     serverNeedsLegacyTls: _serverNeedsLegacyTls,
-    isAndroidTv: PlatformDetection.isAndroid && PlatformDetection.isTV,
+    isAndroid: PlatformDetection.isAndroid,
     qualityTranscoded: quality.isTranscoded,
     destinationOnRemovableStorage: destinationOnRemovableStorage,
   );
@@ -2273,14 +2285,9 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
           quality: quality,
         );
         _emitError('${item.name}: $refusal');
-        // Nothing reaches the native engine, so no notification would
-        // come from there; say it here, for a queue nobody is watching.
-        unawaited(
-          _notificationService.showError(
-            itemName: _notificationLabel(item),
-            error: refusal,
-          ),
-        );
+        // Nothing reaches the native engine, so no notification would come
+        // from there. Say it here, for a queue nobody is watching.
+        unawaited(_notifyDownloadError(_notificationLabel(item), refusal));
         notifyListeners();
         return;
       }
@@ -2669,10 +2676,7 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
           error: friendlyError,
         );
         if (!pluginOwnsNotifications()) {
-          await _notificationService.showError(
-            itemName: item.name,
-            error: friendlyError,
-          );
+          await _notifyDownloadError(item.name, friendlyError);
         }
         _emitError('${item.name}: $friendlyError');
       }
@@ -2689,10 +2693,7 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
       );
       await _offlineRepo.updateDownloadStatus(item.id, 3, error: friendlyError);
       if (!pluginOwnsNotifications()) {
-        await _notificationService.showError(
-          itemName: item.name,
-          error: friendlyError,
-        );
+        await _notifyDownloadError(item.name, friendlyError);
       }
       _emitError('${item.name}: $friendlyError');
     } catch (e) {
@@ -2712,10 +2713,7 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
       );
       await _offlineRepo.updateDownloadStatus(item.id, 3, error: friendlyError);
       if (!pluginOwnsNotifications()) {
-        await _notificationService.showError(
-          itemName: item.name,
-          error: friendlyError,
-        );
+        await _notifyDownloadError(item.name, friendlyError);
       }
       _emitError('${item.name}: $friendlyError');
     } finally {
@@ -3620,9 +3618,7 @@ class DownloadService extends ChangeNotifier implements AutoDownloadDownloader {
       await _offlineRepo.updateDownloadStatus(entry.key, 3, error: refusal);
       final label = record.task.displayName;
       _emitError('$label: $refusal');
-      unawaited(
-        _notificationService.showError(itemName: label, error: refusal),
-      );
+      unawaited(_notifyDownloadError(label, refusal));
       refused.add(entry.key);
     }
     return refused;
