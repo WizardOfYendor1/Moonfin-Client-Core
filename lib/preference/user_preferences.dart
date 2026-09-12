@@ -324,6 +324,7 @@ class UserPreferences extends ChangeNotifier {
     'imdb_top_250_tv_shows_enabled',
     'imdb_top_english_movies_enabled',
     'live_tv_channel_sort_by',
+    'live_tv_last_channel_id',
     'music_playback_time_display',
     'osdButtonOrderDesktop',
     'osdButtonOrderMobile',
@@ -2754,6 +2755,14 @@ class UserPreferences extends ChangeNotifier {
     key: 'live_tv_channel_sort_by',
     defaultValue: ChannelSortBy.number,
     values: ChannelSortBy.values,
+  );
+
+  /// Last Live TV channel watched on this server/account. This is navigation
+  /// state rather than a server setting, but it still needs the same scope as
+  /// channel IDs so another server cannot claim the value.
+  static final liveTvLastChannelId = Preference(
+    key: 'live_tv_last_channel_id',
+    defaultValue: '',
   );
 
   static EnumPreference<LibrarySortBy> librarySortBy(String libraryId) =>

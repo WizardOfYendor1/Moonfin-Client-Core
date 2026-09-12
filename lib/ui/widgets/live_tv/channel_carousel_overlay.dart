@@ -158,7 +158,7 @@ class ChannelCarouselOverlay extends StatefulWidget {
 
 class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  static const _debounce = Duration(milliseconds: 300);
+  static const _debounce = Duration(milliseconds: 200);
 
   /// How often live progress and the current programme are re-evaluated.
   static const _clockTick = Duration(seconds: 15);
@@ -421,8 +421,17 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
 
   void _centered(int index) {
     _centeredId = _channels[index].id;
+    _clearHeader();
     _scheduleHeader();
     _scheduleVisibleLoad();
+  }
+
+  void _clearHeader() {
+    if (!mounted || (_headerChannel == null && _headerProgram == null)) return;
+    setState(() {
+      _headerChannel = null;
+      _headerProgram = null;
+    });
   }
 
   /// A hold repeats faster than [_debounce], so a sustained one would never
@@ -501,6 +510,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
     if (notification.metrics.axis != Axis.horizontal) return false;
     if (notification is ScrollStartNotification) {
       _scrolling = true;
+      _clearHeader();
       _scheduleHeader();
     } else if (notification is ScrollEndNotification) {
       _scrolling = false;
@@ -747,10 +757,7 @@ class _ChannelCarouselOverlayState extends State<ChannelCarouselOverlay>
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    height: _headerExtent(context),
-                    child: _header(),
-                  ),
+                  SizedBox(height: _headerExtent(context), child: _header()),
                   const SizedBox(height: 12),
                   if (_ready && _channels.isNotEmpty)
                     NotificationListener<ScrollNotification>(

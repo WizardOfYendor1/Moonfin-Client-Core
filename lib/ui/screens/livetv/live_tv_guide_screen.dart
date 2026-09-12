@@ -164,6 +164,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   final ValueNotifier<GuideProgram?> _focusedProgram = ValueNotifier(null);
   final ValueNotifier<GuideChannel?> _focusedChannel = ValueNotifier(null);
   bool _didInitializeMiniPlayerMode = false;
+  bool _didRestoreInitialChannelFocus = false;
   late EpgMobileView _mobileView;
   GuideLayoutProfile _layoutProfile = GuideLayoutProfile.fromAvailableArea(
     availableWidth: 960,
@@ -325,6 +326,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         if (mounted) _rebindSelectionAfterLineupChange();
       });
     }
+    _scheduleInitialChannelFocus();
     if (_pendingVerticalMove == null) return;
     // The target row can only be focused once the notification's rebuild has
     // mounted it, so resolve the intent after this frame.
@@ -389,6 +391,31 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _focusChannelRow(initialIndex);
+    });
+  }
+
+  void _scheduleInitialChannelFocus() {
+    if (widget.miniPlayerMode ||
+        _didRestoreInitialChannelFocus ||
+        _vm.state != GuideState.ready ||
+        _vm.filteredChannels.isEmpty) {
+      return;
+    }
+
+    final preferredId = _prefs.get(UserPreferences.liveTvLastChannelId).trim();
+    final preferredIndex = _vm.filteredChannels.indexWhere(
+      (channel) => channel.id == preferredId,
+    );
+    final index = preferredIndex >= 0 ? preferredIndex : 0;
+    _didRestoreInitialChannelFocus = true;
+
+    // RequestInitialFocus also schedules a post-frame focus. Defer one extra
+    // frame so the restored row wins that initial traversal race.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusChannelRow(index);
+      });
     });
   }
 
@@ -788,16 +815,26 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             preview != null &&
             now.isAfter(preview.startDate) &&
             now.isBefore(preview.endDate);
+        final isChannelPreview = program == null && channel != null;
+        final channelLogoUrl = isChannelPreview && channel.imageTag != null
+            ? _vm.imageApi.getPrimaryImageUrl(
+                channel.id,
+                maxHeight: 110,
+                tag: channel.imageTag,
+              )
+            : null;
         return EpgHeroPreview(
           title:
-              program?.name ??
               channel?.name ??
+              program?.name ??
               AppLocalizations.of(context).guideTimeline,
+          programTitle: isChannelPreview ? preview?.name : null,
+          channelLogoUrl: channelLogoUrl,
           timeLabel: preview == null
               ? null
               : '${_formatTime(preview.startDate)} - ${_formatTime(preview.endDate)}',
           genreLabel: preview == null ? null : epgGenreFor(preview).label,
-          synopsis: program != null ? program.overview : preview?.name,
+          synopsis: preview?.overview,
           isLive: isLive,
           apple: _apple,
           compact: true,
@@ -1156,9 +1193,11 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           _windowBarButton(
             _kWindowBarPrevious,
             icon: Icons.chevron_left,
-            onPressed: () =>
-                _shiftGuideWindow(-_vm.guideWindow,
-                    focusGrid: false, allowPast: true),
+            onPressed: () => _shiftGuideWindow(
+              -_vm.guideWindow,
+              focusGrid: false,
+              allowPast: true,
+            ),
           ),
           const SizedBox(width: 4),
           _windowBarButton(
@@ -1656,8 +1695,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     // return toward live after paging ahead.
     final backFloor = liveStart.subtract(_kMaxGuideHistory);
     final floor = allowPast ? backFloor : liveStart;
-    final clamped =
-        amount.isNegative && target.isBefore(floor) ? floor : target;
+    final clamped = amount.isNegative && target.isBefore(floor)
+        ? floor
+        : target;
     if (clamped == oldStart) return;
 
     try {
@@ -1862,6 +1902,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   }
 
   Future<void> _watchChannel(String channelId) async {
+    unawaited(_prefs.set(UserPreferences.liveTvLastChannelId, channelId));
     if (widget.embedded && widget.onChannelSelected != null) {
       widget.onChannelSelected!(channelId);
       return;
@@ -1884,7 +1925,12 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       window: _layoutProfile.guideWindow,
       windowStart: guideLeftEdge(DateTime.now()),
     );
-    if (mounted) _vm.scheduleBoundaryRefresh();
+    if (!mounted) return;
+    _vm.scheduleBoundaryRefresh();
+    final restoredIndex = _vm.filteredChannels.indexWhere(
+      (channel) => channel.id == channelId,
+    );
+    if (restoredIndex >= 0) _focusChannelRow(restoredIndex);
   }
 
   void _showProgramDetails(GuideProgram program) {
@@ -1924,201 +1970,212 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           });
         }
         return AlertDialog.adaptive(
-        backgroundColor: AppColorScheme.surface,
-        title: Text(program.name, style: const TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${_formatTime(program.startDate)} – ${_formatTime(program.endDate)}',
-                style: const TextStyle(color: Colors.white70),
-              ),
-              if (program.episodeTitle != null) ...[
-                const SizedBox(height: 8),
+          backgroundColor: AppColorScheme.surface,
+          title: Text(
+            program.name,
+            style: const TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  program.episodeTitle!,
+                  '${_formatTime(program.startDate)} – ${_formatTime(program.endDate)}',
                   style: const TextStyle(color: Colors.white70),
                 ),
-              ],
-              if (program.overview != null && program.overview!.isNotEmpty) ...[
+                if (program.episodeTitle != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    program.episodeTitle!,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
+                if (program.overview != null &&
+                    program.overview!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    program.overview!,
+                    style: const TextStyle(color: Colors.white60, fontSize: 13),
+                  ),
+                ],
                 const SizedBox(height: 12),
-                Text(
-                  program.overview!,
-                  style: const TextStyle(color: Colors.white60, fontSize: 13),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    if (program.isMovie)
+                      Chip(
+                        label: Text(l10n.movie),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (program.isSeries)
+                      Chip(
+                        label: Text(l10n.series),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (program.isSports)
+                      Chip(
+                        label: Text(l10n.sports),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (program.isNews)
+                      Chip(
+                        label: Text(l10n.news),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (program.isKids)
+                      Chip(
+                        label: Text(l10n.kids),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    if (program.isPremiere)
+                      Chip(
+                        label: Text(l10n.premiere),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
                 ),
               ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                children: [
-                  if (program.isMovie)
-                    Chip(
-                      label: Text(l10n.movie),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (program.isSeries)
-                    Chip(
-                      label: Text(l10n.series),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (program.isSports)
-                    Chip(
-                      label: Text(l10n.sports),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (program.isNews)
-                    Chip(
-                      label: Text(l10n.news),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (program.isKids)
-                    Chip(
-                      label: Text(l10n.kids),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  if (program.isPremiere)
-                    Chip(
-                      label: Text(l10n.premiere),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
-        actions: [
-          // That airing is over; single-episode recording no longer applies.
-          if (!isEnded)
-            adaptiveDialogAction(
-              autofocus: isRecordingNow,
-              focusNode: isRecordingNow ? defaultActionFocusNode : null,
-              onPressed: () async {
-                if (dialogActionInProgress) return;
-                dialogActionInProgress = true;
-                try {
-                  await _vm.toggleProgramRecording(program);
-                  if (!pageContext.mounted || !dialogContext.mounted) return;
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(pageContext).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        hasTimer
-                            ? l10n.recordingCancelled
-                            : l10n.programSetToRecord,
+          actions: [
+            // That airing is over; single-episode recording no longer applies.
+            if (!isEnded)
+              adaptiveDialogAction(
+                autofocus: isRecordingNow,
+                focusNode: isRecordingNow ? defaultActionFocusNode : null,
+                onPressed: () async {
+                  if (dialogActionInProgress) return;
+                  dialogActionInProgress = true;
+                  try {
+                    await _vm.toggleProgramRecording(program);
+                    if (!pageContext.mounted || !dialogContext.mounted) return;
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(pageContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          hasTimer
+                              ? l10n.recordingCancelled
+                              : l10n.programSetToRecord,
+                        ),
                       ),
-                    ),
-                  );
-                } catch (_) {
-                  dialogActionInProgress = false;
-                  if (!pageContext.mounted) return;
-                  ScaffoldMessenger.of(pageContext).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        hasTimer
-                            ? l10n.failedToCancelRecording
-                            : l10n.unableToCreateRecording,
+                    );
+                  } catch (_) {
+                    dialogActionInProgress = false;
+                    if (!pageContext.mounted) return;
+                    ScaffoldMessenger.of(pageContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          hasTimer
+                              ? l10n.failedToCancelRecording
+                              : l10n.unableToCreateRecording,
+                        ),
                       ),
-                    ),
-                  );
-                }
-              },
-              child: Text(hasTimer ? l10n.cancelRecordingAction : l10n.record),
-            ),
-          if (program.isSeries)
-            adaptiveDialogAction(
-              onPressed: () async {
-                if (dialogActionInProgress) return;
-                dialogActionInProgress = true;
-                try {
-                  await _vm.toggleSeriesRecording(program);
-                  if (!pageContext.mounted || !dialogContext.mounted) return;
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(pageContext).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        hasSeriesTimer
-                            ? l10n.seriesRecordingCancelled
-                            : l10n.seriesSetToRecord,
-                      ),
-                    ),
-                  );
-                } catch (_) {
-                  dialogActionInProgress = false;
-                  if (!pageContext.mounted) return;
-                  ScaffoldMessenger.of(pageContext).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        hasSeriesTimer
-                            ? l10n.failedToCancelSeriesRecording
-                            : l10n.unableToCreateSeriesRecording,
-                      ),
-                    ),
-                  );
-                }
-              },
-              child: Text(
-                hasSeriesTimer ? l10n.cancelSeriesRecording : l10n.recordSeries,
+                    );
+                  }
+                },
+                child: Text(
+                  hasTimer ? l10n.cancelRecordingAction : l10n.record,
+                ),
               ),
-            ),
-          adaptiveDialogAction(
-            onPressed: channel == null
-                ? null
-                : () async {
-                    if (dialogActionInProgress) return;
-                    dialogActionInProgress = true;
-                    try {
-                      await _vm.toggleChannelFavorite(program.channelId);
-                      if (!pageContext.mounted || !dialogContext.mounted) return;
-                      Navigator.of(dialogContext).pop();
-                      ScaffoldMessenger.of(pageContext).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isFavoriteChannel
-                                ? l10n.removedFromFavoriteChannels
-                                : l10n.addedToFavoriteChannels,
+            if (program.isSeries)
+              adaptiveDialogAction(
+                onPressed: () async {
+                  if (dialogActionInProgress) return;
+                  dialogActionInProgress = true;
+                  try {
+                    await _vm.toggleSeriesRecording(program);
+                    if (!pageContext.mounted || !dialogContext.mounted) return;
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(pageContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          hasSeriesTimer
+                              ? l10n.seriesRecordingCancelled
+                              : l10n.seriesSetToRecord,
+                        ),
+                      ),
+                    );
+                  } catch (_) {
+                    dialogActionInProgress = false;
+                    if (!pageContext.mounted) return;
+                    ScaffoldMessenger.of(pageContext).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          hasSeriesTimer
+                              ? l10n.failedToCancelSeriesRecording
+                              : l10n.unableToCreateSeriesRecording,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Text(
+                  hasSeriesTimer
+                      ? l10n.cancelSeriesRecording
+                      : l10n.recordSeries,
+                ),
+              ),
+            adaptiveDialogAction(
+              onPressed: channel == null
+                  ? null
+                  : () async {
+                      if (dialogActionInProgress) return;
+                      dialogActionInProgress = true;
+                      try {
+                        await _vm.toggleChannelFavorite(program.channelId);
+                        if (!pageContext.mounted || !dialogContext.mounted)
+                          return;
+                        Navigator.of(dialogContext).pop();
+                        ScaffoldMessenger.of(pageContext).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isFavoriteChannel
+                                  ? l10n.removedFromFavoriteChannels
+                                  : l10n.addedToFavoriteChannels,
+                            ),
                           ),
-                        ),
-                      );
-                    } catch (_) {
-                      dialogActionInProgress = false;
-                      if (!pageContext.mounted) return;
-                      ScaffoldMessenger.of(pageContext).showSnackBar(
-                        SnackBar(
-                          content: Text(l10n.failedToUpdateFavoriteChannel),
-                        ),
-                      );
-                    }
-                  },
-            child: Text(
-              isFavoriteChannel ? l10n.unfavoriteChannel : l10n.favoriteChannel,
+                        );
+                      } catch (_) {
+                        dialogActionInProgress = false;
+                        if (!pageContext.mounted) return;
+                        ScaffoldMessenger.of(pageContext).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.failedToUpdateFavoriteChannel),
+                          ),
+                        );
+                      }
+                    },
+              child: Text(
+                isFavoriteChannel
+                    ? l10n.unfavoriteChannel
+                    : l10n.favoriteChannel,
+              ),
             ),
-          ),
-          adaptiveDialogAction(
-            autofocus: !isRecordingNow,
-            focusNode: isRecordingNow ? null : defaultActionFocusNode,
-            onPressed: () {
-              if (dialogActionInProgress) return;
-              dialogActionInProgress = true;
-              Navigator.of(dialogContext).pop();
-              _watchChannel(program.channelId);
-            },
-            // A future or ended showing will not itself play; the label says so.
-            child: Text(
-              isEnded || isFuture ? l10n.watchChannelLive : l10n.watch,
+            adaptiveDialogAction(
+              autofocus: !isRecordingNow,
+              focusNode: isRecordingNow ? null : defaultActionFocusNode,
+              onPressed: () {
+                if (dialogActionInProgress) return;
+                dialogActionInProgress = true;
+                Navigator.of(dialogContext).pop();
+                _watchChannel(program.channelId);
+              },
+              // A future or ended showing will not itself play; the label says so.
+              child: Text(
+                isEnded || isFuture ? l10n.watchChannelLive : l10n.watch,
+              ),
             ),
-          ),
-          adaptiveDialogAction(
-            onPressed: () {
-              if (dialogActionInProgress) return;
-              dialogActionInProgress = true;
-              Navigator.of(dialogContext).pop();
-            },
-            child: Text(l10n.close),
-          ),
-        ],
-      );
+            adaptiveDialogAction(
+              onPressed: () {
+                if (dialogActionInProgress) return;
+                dialogActionInProgress = true;
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text(l10n.close),
+            ),
+          ],
+        );
       },
     ).whenComplete(defaultActionFocusNode.dispose);
   }
@@ -2597,7 +2654,9 @@ class _GuideProgramRowState extends State<_GuideProgramRow> {
         builder: (_, _) => EpgProgramCell(
           title: program?.name ?? '',
           rating: program?.officialRating,
-          tags: program?.categoryTags.map(widget.filterLabel).toList() ?? const [],
+          tags:
+              program?.categoryTags.map(widget.filterLabel).toList() ??
+              const [],
           // The geometry clips a cell to the window, so the programme's own
           // start is the only thing that says it began before the left edge.
           startsBeforeWindow:

@@ -39,6 +39,7 @@ import 'live_tv_guide_screen.dart';
 import '../../screensaver/screensaver_controller.dart';
 
 const _kGuideResizeDuration = Duration(milliseconds: 250);
+const _kProgressSeekStep = Duration(seconds: 10);
 // PlaybackManager permits a 15-second ready wait and can retry once through a
 // server transcode. Leave enough room for both attempts plus their handoff.
 const _kChannelTuneTimeout = Duration(seconds: 35);
@@ -150,6 +151,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   final _tvSubtitleFocus = FocusNode(debugLabel: 'LiveTvSubtitle');
   final _tvBitrateFocus = FocusNode(debugLabel: 'LiveTvBitrate');
   final _tvPlaybackInfoFocus = FocusNode(debugLabel: 'LiveTvPlaybackInfo');
+  final _tvProgressFocus = FocusNode(debugLabel: 'LiveTvProgress');
   // Index of the currently focused OSD control within _osdFocusOrder. Tracked
   // explicitly so arrow navigation never depends on FocusManager.primaryFocus
   // matching one of these exact nodes.
@@ -178,6 +180,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _tvSubtitleFocus.addListener(_onControlFocusChanged);
     _tvBitrateFocus.addListener(_onControlFocusChanged);
     _tvPlaybackInfoFocus.addListener(_onControlFocusChanged);
+    _tvProgressFocus.addListener(_onProgressFocusChanged);
     _playCurrentChannel();
     _scheduleHide();
     _startProgramRefresh();
@@ -238,6 +241,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _tvSubtitleFocus.removeListener(_onControlFocusChanged);
     _tvBitrateFocus.removeListener(_onControlFocusChanged);
     _tvPlaybackInfoFocus.removeListener(_onControlFocusChanged);
+    _tvProgressFocus.removeListener(_onProgressFocusChanged);
     _overlayFocus.dispose();
     _tvPlayPauseFocus.dispose();
     _tvChannelsFocus.dispose();
@@ -245,6 +249,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _tvSubtitleFocus.dispose();
     _tvBitrateFocus.dispose();
     _tvPlaybackInfoFocus.dispose();
+    _tvProgressFocus.dispose();
     if (!_isStopping) {
       _manager.stop(userInitiated: false);
     }
@@ -630,6 +635,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     // remembered has to be put back once this one reports its own captions.
     _captionTrackApplied = false;
     final channel = _currentChannel;
+    unawaited(_prefs.set(UserPreferences.liveTvLastChannelId, channel.id));
     final item = AggregatedItem(
       id: channel.id,
       serverId: _client.baseUrl,
@@ -810,6 +816,30 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       }
       _scheduleHide();
     }
+  }
+
+  void _onProgressFocusChanged() {
+    if (!mounted || !PlatformDetection.isTV) {
+      return;
+    }
+    final hasFocus = _tvProgressFocus.hasFocus;
+    setState(() {
+      if (hasFocus && !_infoVisible) _infoVisible = true;
+    });
+    if (hasFocus) _scheduleHide();
+  }
+
+  void _seekProgress(Duration delta) {
+    final duration = _state.duration;
+    if (duration <= Duration.zero) return;
+    final target = _state.position + delta;
+    final clamped = target < Duration.zero
+        ? Duration.zero
+        : target > duration
+        ? duration
+        : target;
+    unawaited(_manager.seekTo(clamped));
+    _scheduleHide();
   }
 
   bool get _isBackNavigationSuppressed {
@@ -1519,8 +1549,16 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
 
     switch (event.logicalKey) {
       case LogicalKeyboardKey.arrowUp:
-        if (PlatformDetection.isTV) {
+        if (PlatformDetection.isTV && _tvProgressFocus.hasFocus) {
           _showChannelCarousel();
+          return KeyEventResult.handled;
+        }
+        if (PlatformDetection.isTV) {
+          if (_infoVisible) {
+            _tvProgressFocus.requestFocus();
+          } else {
+            _showInfo();
+          }
           return KeyEventResult.handled;
         }
         if (!_infoVisible) {
@@ -1529,6 +1567,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         }
         return KeyEventResult.ignored;
       case LogicalKeyboardKey.arrowDown:
+        if (PlatformDetection.isTV && _tvProgressFocus.hasFocus) {
+          _tvPlayPauseFocus.requestFocus();
+          return KeyEventResult.handled;
+        }
         if (!_infoVisible) {
           _showInfo();
           return KeyEventResult.handled;
@@ -1559,6 +1601,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
           return KeyEventResult.handled;
         }
         if (PlatformDetection.isTV) {
+          if (_tvProgressFocus.hasFocus) {
+            _seekProgress(-_kProgressSeekStep);
+            return KeyEventResult.handled;
+          }
           _moveControlFocus(-1);
           return KeyEventResult.handled;
         }
@@ -1570,6 +1616,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
           return KeyEventResult.handled;
         }
         if (PlatformDetection.isTV) {
+          if (_tvProgressFocus.hasFocus) {
+            _seekProgress(_kProgressSeekStep);
+            return KeyEventResult.handled;
+          }
           _moveControlFocus(1);
           return KeyEventResult.handled;
         }
@@ -2056,13 +2106,18 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ClipRRect(
-                  borderRadius: AppRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.white24,
-                    valueColor: AlwaysStoppedAnimation(AppColorScheme.accent),
-                    minHeight: 3,
+                Focus(
+                  focusNode: PlatformDetection.isTV ? _tvProgressFocus : null,
+                  canRequestFocus: PlatformDetection.isTV,
+                  onKeyEvent: _handleKeyEvent,
+                  child: ClipRRect(
+                    borderRadius: AppRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.white24,
+                      valueColor: AlwaysStoppedAnimation(AppColorScheme.accent),
+                      minHeight: _tvProgressFocus.hasFocus ? 5 : 3,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.spaceXs),
