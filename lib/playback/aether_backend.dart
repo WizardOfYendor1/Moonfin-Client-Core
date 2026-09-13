@@ -354,9 +354,6 @@ class AetherBackend implements PlayerBackend {
   Stream<bool> get bufferingStream => _bufferingStream.stream;
 
   @override
-  Stream<bool>? get pictureShownStream => null;
-
-  @override
   Stream<bool> get completedStream => _completedStream.stream;
 
   @override

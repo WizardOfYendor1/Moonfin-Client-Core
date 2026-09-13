@@ -49,9 +49,6 @@ class _TestBackend extends Fake implements PlayerBackend {
   @override
   Stream<bool> get bufferingStream => const Stream<bool>.empty();
   @override
-  Stream<bool>? get pictureShownStream => null;
-
-  @override
   Stream<bool> get completedStream => const Stream<bool>.empty();
   @override
   Stream<Map<String, dynamic>>? get errorStream => null;
