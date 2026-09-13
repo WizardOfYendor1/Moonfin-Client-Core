@@ -3038,6 +3038,13 @@ class AppLocalizationsBn extends AppLocalizations {
   String get autoCrop => 'অটো ক্রপ';
 
   @override
+  String get cropBlackBars => 'Crop black bars';
+
+  @override
+  String get settingsCropBlackBarsDescription =>
+      'Detect encoded letterbox bars, crop them, then fill the screen.';
+
+  @override
   String get stretch => 'প্রসারিত';
 
   @override
@@ -3139,6 +3146,61 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get detailButtonsSectionDescription =>
       'Play is always first and the locked buttons are always shown. Everything else is up to you, and each kind of device keeps its own list.';
+
+  @override
+  String get detailMetadata => 'Metadata Row';
+
+  @override
+  String get detailMetadataDescription =>
+      'Choose and reorder what metadata the details screen shows';
+
+  @override
+  String get detailMetadataSectionDescription =>
+      'Turn metadata items on or off, and arrange the order they appear on the details screen. Each kind of device keeps its own list.';
+
+  @override
+  String get detailMetadataYear => 'Release Year';
+
+  @override
+  String get detailMetadataParentalRating => 'Parental Rating';
+
+  @override
+  String get detailMetadataRuntimeAndSeasons => 'Runtime & Seasons';
+
+  @override
+  String get detailMetadataStatus => 'Series Status';
+
+  @override
+  String get detailMetadataStatusSubtitle =>
+      'Shows whether the series is continuing, ended, or returning';
+
+  @override
+  String get detailMetadataGenres => 'Genres';
+
+  @override
+  String get detailMetadataSeerrAvailability => 'Seerr Availability';
+
+  @override
+  String get detailMetadataSeerrAvailabilitySubtitle =>
+      'Shows request and media availability status from Seerr';
+
+  @override
+  String get detailMetadataUpcomingEpisodeDate => 'Upcoming Episodes';
+
+  @override
+  String get detailMetadataUpcomingEpisodeDateSubtitle =>
+      'Uses Sonarr and TMDB to show upcoming release dates';
+
+  @override
+  String upcomingEpisodeNext(String date, int season, int episode) {
+    return 'Next: $date (S$season:E$episode)';
+  }
+
+  @override
+  String get upcomingEpisodeToday => 'Today';
+
+  @override
+  String get upcomingEpisodeTomorrow => 'Tomorrow';
 
   @override
   String get moveUp => 'Move Up';
@@ -12272,28 +12334,4 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get pageTransitionFadeLong => 'Long Fade';
-
-  @override
-  String get liveTvConnecting => 'Connecting to channel…';
-
-  @override
-  String get liveTvTunerStillTrying =>
-      'The tuner is still trying to get this channel…';
-
-  @override
-  String get liveTvReconnecting => 'Signal lost. The tuner is reconnecting…';
-
-  @override
-  String get liveTvChannelUnavailableTitle => 'Channel unavailable';
-
-  @override
-  String get liveTvChannelUnavailableBody =>
-      'The server could not get this channel from the tuner. The source may be down, or the tuner gave up after retrying.';
-
-  @override
-  String get liveTvChannelLostTitle => 'Channel lost';
-
-  @override
-  String get liveTvChannelLostBody =>
-      'The stream stopped and the tuner did not bring it back. Try again or pick another channel.';
 }

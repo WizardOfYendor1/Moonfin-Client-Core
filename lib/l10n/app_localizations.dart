@@ -5344,6 +5344,18 @@ abstract class AppLocalizations {
   /// **'Auto Crop'**
   String get autoCrop;
 
+  /// Setting to detect and crop encoded letterbox/pillarbox bars
+  ///
+  /// In en, this message translates to:
+  /// **'Crop black bars'**
+  String get cropBlackBars;
+
+  /// Description for the crop black bars playback setting
+  ///
+  /// In en, this message translates to:
+  /// **'Detect encoded letterbox bars, crop them, then fill the screen.'**
+  String get settingsCropBlackBarsDescription;
+
   /// Zoom mode: stretch
   ///
   /// In en, this message translates to:
@@ -5529,6 +5541,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Play is always first and the locked buttons are always shown. Everything else is up to you, and each kind of device keeps its own list.'**
   String get detailButtonsSectionDescription;
+
+  /// Settings screen for choosing and reordering details screen metadata items
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata Row'**
+  String get detailMetadata;
+
+  /// Subtitle for the details metadata settings tile
+  ///
+  /// In en, this message translates to:
+  /// **'Choose and reorder what metadata the details screen shows'**
+  String get detailMetadataDescription;
+
+  /// Explains how to customize and reorder details screen metadata items
+  ///
+  /// In en, this message translates to:
+  /// **'Turn metadata items on or off, and arrange the order they appear on the details screen. Each kind of device keeps its own list.'**
+  String get detailMetadataSectionDescription;
+
+  /// Item label for release or production year in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Release Year'**
+  String get detailMetadataYear;
+
+  /// Item label for parental content rating in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Parental Rating'**
+  String get detailMetadataParentalRating;
+
+  /// Item label for runtime or season/episode counts in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime & Seasons'**
+  String get detailMetadataRuntimeAndSeasons;
+
+  /// Item label for series status badge in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Series Status'**
+  String get detailMetadataStatus;
+
+  /// Subtitle explaining the series status metadata badge
+  ///
+  /// In en, this message translates to:
+  /// **'Shows whether the series is continuing, ended, or returning'**
+  String get detailMetadataStatusSubtitle;
+
+  /// Item label for genre tags in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Genres'**
+  String get detailMetadataGenres;
+
+  /// Item label for Seerr request and availability badge in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Seerr Availability'**
+  String get detailMetadataSeerrAvailability;
+
+  /// Subtitle explaining the Seerr availability metadata badge
+  ///
+  /// In en, this message translates to:
+  /// **'Shows request and media availability status from Seerr'**
+  String get detailMetadataSeerrAvailabilitySubtitle;
+
+  /// Item label for upcoming episode air date badge in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming Episodes'**
+  String get detailMetadataUpcomingEpisodeDate;
+
+  /// Subtitle describing data sources for upcoming episode air dates in metadata row
+  ///
+  /// In en, this message translates to:
+  /// **'Uses Sonarr and TMDB to show upcoming release dates'**
+  String get detailMetadataUpcomingEpisodeDateSubtitle;
+
+  /// Formatted badge text for an upcoming episode release date
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {date} (S{season}:E{episode})'**
+  String upcomingEpisodeNext(String date, int season, int episode);
+
+  /// Upcoming episode airs today
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get upcomingEpisodeToday;
+
+  /// Upcoming episode airs tomorrow
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get upcomingEpisodeTomorrow;
 
   /// Moves a button one place earlier in its row
   ///
@@ -21592,48 +21700,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Long Fade'**
   String get pageTransitionFadeLong;
-
-  /// Live TV player status while a channel is being tuned
-  ///
-  /// In en, this message translates to:
-  /// **'Connecting to channel…'**
-  String get liveTvConnecting;
-
-  /// Live TV player status when the server has kept a channel request open for several seconds, meaning the tuner is retrying its source
-  ///
-  /// In en, this message translates to:
-  /// **'The tuner is still trying to get this channel…'**
-  String get liveTvTunerStillTrying;
-
-  /// Live TV player status when a playing channel stops receiving data
-  ///
-  /// In en, this message translates to:
-  /// **'Signal lost. The tuner is reconnecting…'**
-  String get liveTvReconnecting;
-
-  /// Title shown when a live TV channel could not be started
-  ///
-  /// In en, this message translates to:
-  /// **'Channel unavailable'**
-  String get liveTvChannelUnavailableTitle;
-
-  /// Explanation shown when a live TV channel could not be started
-  ///
-  /// In en, this message translates to:
-  /// **'The server could not get this channel from the tuner. The source may be down, or the tuner gave up after retrying.'**
-  String get liveTvChannelUnavailableBody;
-
-  /// Title shown when a playing live TV channel stopped and did not recover
-  ///
-  /// In en, this message translates to:
-  /// **'Channel lost'**
-  String get liveTvChannelLostTitle;
-
-  /// Explanation shown when a playing live TV channel stopped and did not recover
-  ///
-  /// In en, this message translates to:
-  /// **'The stream stopped and the tuner did not bring it back. Try again or pick another channel.'**
-  String get liveTvChannelLostBody;
 }
 
 class _AppLocalizationsDelegate
