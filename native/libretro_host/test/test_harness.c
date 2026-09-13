@@ -1088,8 +1088,8 @@ static void test_format(const char *core_path, const char *rom_path,
 
   if (fmt == LH_FORMAT_RGBA8888) {
     // stub_speed, stub_pattern, stub_rotation, stub_format, stub_huge_frame,
-    // stub_bad_pitch, stub_vfs_dir_check, stub_analog_check,
-    // stub_analog_query, stub_hw, stub_repeat_geometry, stub_unserved,
+    // stub_bad_pitch, stub_vfs_dir_check, stub_analog_check, stub_hw,
+    // stub_analog_query, stub_repeat_geometry, stub_unserved,
     // stub_input_thread, stub_no_poll, stub_waits_report.
     CHECK(lh_option_count(host) == 15, "fifteen core options");
     lh_option opt;

@@ -11,8 +11,10 @@ import '../util/loggable_url.dart';
 import '../util/platform_detection.dart';
 
 import 'device_profile_builder.dart';
+import 'dolby_vision_av1.dart';
 import 'engine_trust.dart';
 import 'known_defects.dart';
+import 'letterbox_croppers.dart';
 import 'server_transcode_capabilities.dart';
 
 class AppleTvBackend implements PlayerBackend {
@@ -313,6 +315,7 @@ class AppleTvBackend implements PlayerBackend {
       'videoRangeType': payload['videoRangeType']?.toString(),
       'videoCodec': payload['videoCodec']?.toString(),
       'videoDvProfile': payload['videoDvProfile'],
+      'dolbyVisionBaseLayerOnly': needsBaseLayerOnlyForDolbyVisionAv1(payload),
       'videoFrameRate': payload['videoFrameRate'],
       'videoWidth': payload['videoWidth'],
       'videoHeight': payload['videoHeight'],
@@ -451,6 +454,7 @@ class AppleTvBackend implements PlayerBackend {
       supportsAv1DolbyVision: PlatformDetection.supportsAv1DolbyVision,
       supportsAv1Hdr10: PlatformDetection.supportsAv1Hdr10,
       supportsAv1Hdr10Plus: PlatformDetection.supportsAv1Hdr10Plus,
+      rendersAv1DoviViaHdr10BaseLayer: true,
       supportsVc1: PlatformDetection.supportsVc1,
       maxResolutionAvcWidth: PlatformDetection.maxResolutionAvcWidth,
       maxResolutionAvcHeight: PlatformDetection.maxResolutionAvcHeight,
@@ -798,6 +802,12 @@ class AppleTvBackend implements PlayerBackend {
 
   @override
   bool get supportsRuntimeTrackSelection => true;
+
+  @override
+  LetterboxCropper get letterboxCropper => const AppleTvLetterboxCropper();
+
+  @override
+  bool get supportsLetterboxCrop => letterboxCropper.isSupported;
 
   @override
   bool get supportsDirectPlayAudioSwitch => false;

@@ -541,8 +541,11 @@ Future<void> _detectAndSetAetherCapabilities() async {
           'supportsDvP5': true,
           'supportsDvP7': true,
           'supportsDvP8': true,
+          'supportsAv1': true,
+          'supportsAv1Main10': true,
           'maxResolutionAvc': {'width': 3840, 'height': 2160},
           'maxResolutionHevc': {'width': 3840, 'height': 2160},
+          'maxResolutionAv1': {'width': 1920, 'height': 1080},
         },
   );
 }

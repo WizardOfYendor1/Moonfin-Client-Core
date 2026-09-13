@@ -12,8 +12,10 @@ import '../util/loggable_url.dart';
 import '../util/platform_detection.dart';
 
 import 'device_profile_builder.dart';
+import 'dolby_vision_av1.dart';
 import 'engine_trust.dart';
 import 'known_defects.dart';
+import 'letterbox_croppers.dart';
 import 'server_transcode_capabilities.dart';
 
 /// Playback backend driving the native AetherEngine wrapper over a method
@@ -240,6 +242,7 @@ class AetherBackend implements PlayerBackend {
       'forceSubtitlesDisabledOnStart':
           payload['mediaType']?.toString() != 'audio' &&
           _prefs.get(UserPreferences.subtitleMode) == SubtitleMode.none,
+      'dolbyVisionBaseLayerOnly': needsBaseLayerOnlyForDolbyVisionAv1(payload),
     });
   }
 
@@ -399,6 +402,7 @@ class AetherBackend implements PlayerBackend {
       supportsAv1DolbyVision: PlatformDetection.supportsAv1DolbyVision,
       supportsAv1Hdr10: PlatformDetection.supportsAv1Hdr10,
       supportsAv1Hdr10Plus: PlatformDetection.supportsAv1Hdr10Plus,
+      rendersAv1DoviViaHdr10BaseLayer: true,
       supportsVc1: PlatformDetection.supportsVc1,
       maxResolutionAvcWidth: PlatformDetection.maxResolutionAvcWidth,
       maxResolutionAvcHeight: PlatformDetection.maxResolutionAvcHeight,
@@ -578,6 +582,12 @@ class AetherBackend implements PlayerBackend {
 
   @override
   bool get supportsRuntimeTrackSelection => true;
+
+  @override
+  LetterboxCropper get letterboxCropper => const AetherLetterboxCropper();
+
+  @override
+  bool get supportsLetterboxCrop => letterboxCropper.isSupported;
 
   @override
   bool get supportsDirectPlayAudioSwitch => false;

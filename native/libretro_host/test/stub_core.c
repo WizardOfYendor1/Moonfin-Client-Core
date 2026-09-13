@@ -50,6 +50,34 @@ static int32_t bad_pitch_mode;
 // and id mapping, derivation from the digital mask), which the frame-snapshot
 // test hooks (lh_test_read_analog/lh_test_read_trigger) intentionally bypass.
 static int32_t analog_check_mode;
+// stub_hw drives RETRO_ENVIRONMENT_SET_HW_RENDER so the host's hardware path
+// can be exercised end to end with no GPU: when the host accepts, retro_run
+// passes RETRO_HW_FRAME_BUFFER_VALID instead of a pixel pointer, exactly as a
+// real GPU core does. hw_reset_count/hw_destroy_count are published through
+// SET_MESSAGE so the harness can see the frontend honoured the call order.
+static int32_t hw_mode;            // 0 off, 1 accepted, -1 asked and refused
+static int32_t hw_reset_count;
+static int32_t hw_destroy_count;
+static int32_t hw_fb_queries;
+static struct retro_hw_render_callback hw_cb;
+// GET_PREFERRED_HW_RENDER: PPSSPP uses this to pick which backend to try, and
+// libretro says the frontend writes the out-param even when it returns false.
+// Seeded with a sentinel so "the host never touched it" is distinguishable
+// from "the host wrote NONE".
+#define STUB_PREF_SENTINEL 999u
+static unsigned hw_pref_value;
+static int hw_pref_rc;
+
+static void stub_context_reset(void) {
+  hw_reset_count++;
+  // A real core creates its GL objects here. All we need is proof that the
+  // frontend handed us a usable framebuffer name at the right moment.
+  if (hw_cb.get_current_framebuffer) {
+    hw_cb.get_current_framebuffer();
+    hw_fb_queries++;
+  }
+}
+static void stub_context_destroy(void) { hw_destroy_count++; }
 // Drives the "core actually read a stick" half of lh_analog_stick_ports per
 // port. 0 off, 1 p0, 2 p1, 3 p0p1, 4 p1btn, 5 p2.
 static int32_t analog_query_mode;
@@ -263,6 +291,7 @@ void retro_set_environment(retro_environment_t cb) {
       {"stub_bad_pitch", "Bad pitch; off|on"},
       {"stub_vfs_dir_check", "VFS dir check; off|on"},
       {"stub_analog_check", "Analog check; off|on"},
+      {"stub_hw", "Hardware render; off|gles3|gles2|vulkan"},
       {"stub_analog_query", "Analog query ports; off|p0|p1|p0p1|p1btn|p2"},
       {"stub_hw", "Hardware render; off|gles3|gles2|vulkan"},
       {"stub_repeat_geometry", "Repeat geometry; off|on"},

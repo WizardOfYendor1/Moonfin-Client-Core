@@ -16,6 +16,7 @@ import '../services/user_data_sync.dart';
 import '../services/user_ratings_api.dart';
 import '../utils/alphabet_bucket.dart';
 import '../utils/bounded_concurrency.dart';
+import '../utils/genre_browse_utils.dart';
 import '../utils/playlist_utils.dart';
 
 enum LibraryBrowseState { loading, ready, error }
@@ -749,10 +750,25 @@ class LibraryBrowseViewModel extends ChangeNotifier {
       sortBy = 'IsFolder,$sortBy';
     }
 
-    if (genreId != null &&
-        _collectionType == 'music' &&
-        includeItemTypes == null) {
-      includeTypes = ['MusicAlbum'];
+    // A genre tag sits on anything the tree holds, so an unscoped browse comes
+    // back with the seasons, episodes, playlists and folder rows that the genre
+    // tile never counted. Libraries whose genres aren't browsable this way keep
+    // whatever their own branch above chose.
+    if (isGenreBrowse && includeItemTypes == null) {
+      final genreTypes = switch (_collectionType) {
+        'music' => const ['MusicAlbum'],
+        'movies' => const ['Movie'],
+        'tvshows' => const ['Series'],
+        null || '' => const ['Movie', 'Series'],
+        _ => null,
+      };
+
+      if (genreTypes != null) {
+        final collapses = groupCollections && _collectionType != 'music';
+        includeTypes = collapses ? [...genreTypes, 'BoxSet'] : [...genreTypes];
+        collapseBoxSets = collapses;
+        excludeTypes = kNonRootBrowseItemTypes;
+      }
     }
 
     if (isStudioBrowse && includeItemTypes == null) {
@@ -763,7 +779,7 @@ class LibraryBrowseViewModel extends ChangeNotifier {
         includeTypes = ['Movie', 'Series'];
         collapseBoxSets = false;
       }
-      excludeTypes = ['Playlist', 'Episode', 'Season'];
+      excludeTypes = kNonRootBrowseItemTypes;
     }
 
     if (isFilterBrowse && includeItemTypes == null) {

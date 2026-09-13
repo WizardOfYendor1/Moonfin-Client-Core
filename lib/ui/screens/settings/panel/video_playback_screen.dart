@@ -34,6 +34,13 @@ class _VideoPlaybackScreen extends StatelessWidget {
                   ZoomMode.stretch => l10n.stretch,
                 },
               ),
+              if (letterboxCropSettingVisible())
+                SwitchPreferenceTile(
+                  preference: UserPreferences.cropBlackBars,
+                  title: l10n.cropBlackBars,
+                  subtitle: l10n.settingsCropBlackBarsDescription,
+                  icon: Icons.crop_16_9_outlined,
+                ),
               _TvSettingsListTile(
                 leading: const Icon(Icons.timer_outlined),
                 title: Text(l10n.playbackTimeDisplay),

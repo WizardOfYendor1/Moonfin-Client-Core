@@ -374,6 +374,9 @@ void main() {
 
       expect(find.text('Hardware rendering'), findsOneWidget);
       expect(find.text('ON'), findsOneWidget);
+      final labelBounds = tester.getRect(find.text('Hardware rendering'));
+      final switchBounds = tester.getRect(find.byType(Switch));
+      expect(switchBounds.left - labelBounds.right, lessThanOrEqualTo(12));
       expect(
         find.text(
           'EXPERIMENTAL · OFF disables the EGL hardware path. Hardware-only cores may not start.',

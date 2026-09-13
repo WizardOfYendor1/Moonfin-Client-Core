@@ -17,8 +17,10 @@ import '../../../mixins/focus_state_mixin.dart';
 import '../../../../data/models/aggregated_item.dart';
 import '../../../../data/viewmodels/item_detail_view_model.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../preference/detail_metadata_layout.dart';
 import '../../../../preference/user_preferences.dart';
 import '../../../../preference/preference_constants.dart';
+import '../upcoming_episode_badge.dart';
 import '../../../../util/seerr_credits.dart';
 import '../../../../util/detail_playback_info.dart';
 import '../../../../util/detail_track_highlight.dart';
@@ -4436,78 +4438,103 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     final muted = AppColorScheme.onBackground.withValues(alpha: 0.75);
     final style = textTheme.bodyMedium?.copyWith(color: muted);
 
+    final prefs = GetIt.instance<UserPreferences>();
+    final hidden = detailMetadataLayout.hidden(prefs);
+    final ordered = detailMetadataLayout.ordered(
+      DetailMetadataItem.values,
+      (entry) => entry.id,
+      prefs,
+    );
+
     final pieces = <Widget>[];
     void addText(String? value) {
       if (value == null || value.isEmpty) return;
       pieces.add(Text(value, style: style));
     }
 
-    addText(item.productionYear?.toString());
-    addText(item.officialRating);
-    if (item.type == 'Series' && item.childCount != null) {
-      addText(l10n.seasonCount(item.childCount!));
-    }
-    if (item.type == 'Season') {
-      final epCount = _vm.episodes.isNotEmpty ? _vm.episodes.length : (item.childCount ?? 0);
-      if (epCount > 0) {
-        addText(l10n.episodeCount(epCount));
+    for (final entry in ordered) {
+      if (hidden.contains(entry.id)) continue;
+      switch (entry) {
+        case DetailMetadataItem.year:
+          addText(item.productionYear?.toString());
+        case DetailMetadataItem.parentalRating:
+          addText(item.officialRating);
+        case DetailMetadataItem.runtimeAndSeasons:
+          if (item.type == 'Series' && item.childCount != null) {
+            addText(l10n.seasonCount(item.childCount!));
+          }
+          if (item.type == 'Season') {
+            final epCount = _vm.episodes.isNotEmpty ? _vm.episodes.length : (item.childCount ?? 0);
+            if (epCount > 0) {
+              addText(l10n.episodeCount(epCount));
+            }
+          }
+          if (item.type == 'Episode') {
+            final s = item.parentIndexNumber;
+            final e = item.indexNumber;
+            if (s != null && e != null) {
+              addText('S$s:E$e');
+            }
+          }
+          var runtime = _runtimeForItem(item, selectedMediaSource);
+          if (runtime == null && item.type == 'Season' && _vm.episodes.isNotEmpty) {
+            var totalMs = 0;
+            for (final ep in _vm.episodes) {
+              totalMs += ep.runtime?.inMilliseconds ?? 0;
+            }
+            if (totalMs > 0) {
+              runtime = Duration(milliseconds: totalMs);
+            }
+          }
+          if (runtime != null && item.type != 'Series') {
+            pieces.add(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.schedule, size: 14, color: muted),
+                  const SizedBox(width: 4),
+                  Text(formatRuntimeShort(runtime), style: style),
+                ],
+              ),
+            );
+            final position = item.playbackPosition ?? Duration.zero;
+            var remaining = runtime - position;
+            if (remaining.isNegative || remaining == Duration.zero) {
+              remaining = runtime;
+            }
+            final use24 = prefs.get(UserPreferences.use24HourClock);
+            final end = _endsAt(item, runtime, use24Hour: use24);
+            if (end != null && item.type != 'Series') {
+              addText(l10n.endsAt(end));
+            }
+          }
+        case DetailMetadataItem.status:
+          final status = item.status;
+          if (item.type == 'Series' && status != null && status.isNotEmpty) {
+            pieces.add(_statusBadge(context, status));
+          }
+        case DetailMetadataItem.upcomingEpisodeDate:
+          if (item.type == 'Series' && _vm.upcomingEpisode != null) {
+            pieces.add(
+              UpcomingEpisodeBadge(
+                text: _vm.upcomingEpisode!.format(context),
+                borderRadius: JellyfinTokens.shapes.smallRadius,
+              ),
+            );
+          }
+        case DetailMetadataItem.genres:
+          if (item.genres.isNotEmpty) {
+            addText(item.genres.take(3).join(' · '));
+          }
+        case DetailMetadataItem.seerrAvailability:
+          final seerrStatus = seerrItemStatus(_vm);
+          if (seerrStatus != null) {
+            pieces.add(SeerrStatusPills(state: seerrStatus, onlyNoteworthy: true));
+          }
       }
     }
-    if (item.type == 'Episode') {
-      final s = item.parentIndexNumber;
-      final e = item.indexNumber;
-      if (s != null && e != null) {
-        addText('S$s:E$e');
-      }
-    }
-    final status = item.status;
-    if (item.type == 'Series' && status != null && status.isNotEmpty) {
-      pieces.add(_statusBadge(context, status));
-    }
-    var runtime = _runtimeForItem(item, selectedMediaSource);
-    if (runtime == null && item.type == 'Season' && _vm.episodes.isNotEmpty) {
-      var totalMs = 0;
-      for (final ep in _vm.episodes) {
-        totalMs += ep.runtime?.inMilliseconds ?? 0;
-      }
-      if (totalMs > 0) {
-        runtime = Duration(milliseconds: totalMs);
-      }
-    }
-    if (runtime != null && item.type != 'Series') {
-      pieces.add(
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.schedule, size: 14, color: muted),
-            const SizedBox(width: 4),
-            Text(formatRuntimeShort(runtime), style: style),
-          ],
-        ),
-      );
-      final position = item.playbackPosition ?? Duration.zero;
-      var remaining = runtime - position;
-      if (remaining.isNegative || remaining == Duration.zero) {
-        remaining = runtime;
-      }
-      final use24 = GetIt.instance<UserPreferences>().get(
-        UserPreferences.use24HourClock,
-      );
-      final end = _endsAt(item, runtime, use24Hour: use24);
-      if (end != null && item.type != 'Series') {
-        addText(l10n.endsAt(end));
-      }
-    }
-    if (item.genres.isNotEmpty) {
-      addText(item.genres.take(3).join(' · '));
-    }
-    // A badge rather than another word in the line, so it sits outside the
-    // dot separators.
-    final seerrStatus = seerrItemStatus(_vm);
-    final seerrPills = seerrStatus == null
-        ? null
-        : SeerrStatusPills(state: seerrStatus, onlyNoteworthy: true);
-    if (pieces.isEmpty) return seerrPills ?? const SizedBox.shrink();
+
+    if (pieces.isEmpty) return const SizedBox.shrink();
 
     final separated = <Widget>[];
     for (var i = 0; i < pieces.length; i++) {
@@ -4516,7 +4543,6 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
       }
       separated.add(pieces[i]);
     }
-    if (seerrPills != null) separated.add(seerrPills);
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 8,

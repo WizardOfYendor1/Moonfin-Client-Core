@@ -19,6 +19,7 @@ import '../../data/repositories/item_mutation_repository.dart';
 import '../../util/game_library.dart';
 import '../../data/services/background_service.dart';
 import '../../data/services/app_update_service.dart';
+import '../../data/services/upcoming_episode_service.dart';
 import '../../data/services/cast/airplay_provider.dart';
 import '../../data/services/cast/airplay_command_bridge.dart';
 import '../../data/services/cast/cast_service.dart';
@@ -73,6 +74,7 @@ void resetUserScopedSingletons() {
   unregister<SearchRepository>();
   unregister<UserViewsRepository>();
   unregister<GameLibraryRegistry>();
+  unregister<UpcomingEpisodeService>();
   // Watched state is per user, so the next account must not inherit it.
   userDataSync.reset();
 
@@ -176,6 +178,10 @@ void _registerUserScopedSingletons() {
   _getIt.registerLazySingleton(() => ItemMutationRepository(_getIt()));
   _getIt.registerLazySingleton(
     () => RowDataSource(_getIt<MediaServerClient>()),
+  );
+  _getIt.registerLazySingleton(
+    () => UpcomingEpisodeService(),
+    dispose: (service) => service.dispose(),
   );
   _getIt.registerLazySingleton(
     () => MdbListRepository(

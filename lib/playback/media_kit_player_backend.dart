@@ -16,6 +16,8 @@ import '../util/platform_detection.dart';
 import 'device_profile_builder.dart';
 import 'hdr_output_controller.dart';
 import 'known_defects.dart';
+import 'letterbox_croppers.dart';
+import 'mpv_letterbox_crop.dart';
 import 'server_transcode_capabilities.dart';
 
 class _ParsedMpvConfCacheEntry {
@@ -191,6 +193,7 @@ class MediaKitPlayerBackend extends PlayerBackend {
   bool _audioPassthroughApplyInProgress = false;
   bool _audioPassthroughApplyQueued = false;
   bool _isDisposed = false;
+  late final MpvLetterboxCropper _letterboxCropper;
   String? _appliedCustomMpvConfPath;
   DateTime? _appliedCustomMpvConfMtime;
   static final Map<String, _ParsedMpvConfCacheEntry> _parsedMpvConfCache =
@@ -419,6 +422,10 @@ class MediaKitPlayerBackend extends PlayerBackend {
     this._onNativeHandleReady,
     this._hwDecodingEnabled,
   ) {
+    _letterboxCropper = MpvLetterboxCropper(
+      _MediaKitLetterboxHost(this),
+      supported: letterboxCropAvailable(),
+    );
     _prefs.addListener(_onPreferencesChanged);
     _ccTracksSub = _player.stream.tracks.listen(
       (_) => unawaited(_refreshEmbeddedCaptionTracks()),
@@ -542,6 +549,9 @@ class MediaKitPlayerBackend extends PlayerBackend {
 
   @override
   bool get supportsRuntimeTrackSelection => true;
+
+  @override
+  LetterboxCropper get letterboxCropper => _letterboxCropper;
 
   @override
   bool get requiresStartupMediaReadyCheck => true;
@@ -681,6 +691,12 @@ class MediaKitPlayerBackend extends PlayerBackend {
       _enableNativeSubtitleRendering();
     }
     await _maybeEngageNativeHdr();
+    unawaited(() async {
+      await _letterboxCropper.setEnabled(
+        _prefs.get(UserPreferences.cropBlackBars),
+      );
+      await _letterboxCropper.onSourceOpened(url);
+    }());
   }
 
   /// Gives mpv its own D3D11 window when the content is HDR and the display is
@@ -1344,6 +1360,10 @@ class MediaKitPlayerBackend extends PlayerBackend {
     if (_isDisposed) {
       return;
     }
+
+    unawaited(
+      _letterboxCropper.setEnabled(_prefs.get(UserPreferences.cropBlackBars)),
+    );
 
     if (_audioPassthroughApplyInProgress) {
       _audioPassthroughApplyQueued = true;
@@ -2407,10 +2427,64 @@ class MediaKitPlayerBackend extends PlayerBackend {
   @override
   void dispose() {
     _isDisposed = true;
+    _letterboxCropper.cancel();
     _prefs.removeListener(_onPreferencesChanged);
     _ccTracksSub?.cancel();
     _videoParamsSub?.cancel();
     _tracksChangedController.close();
     _player.dispose();
   }
+}
+
+class _MediaKitLetterboxHost implements MpvLetterboxHost {
+  _MediaKitLetterboxHost(this._backend);
+
+  final MediaKitPlayerBackend _backend;
+
+  NativePlayer? get _native {
+    final platform = _backend._player.platform;
+    return platform is NativePlayer ? platform : null;
+  }
+
+  @override
+  bool get hasNativePlayer => _native != null;
+
+  @override
+  Future<String?> getProperty(String key) async {
+    final native = _native;
+    if (native == null) return null;
+    return _backend._tryNativeGetProperty(native, key);
+  }
+
+  @override
+  Future<void> setProperty(String key, String value) async {
+    final native = _native;
+    if (native == null) return;
+    await MediaKitPlayerBackend._nativeSetProperty(native, key, value);
+  }
+
+  @override
+  Future<bool> command(List<String> args) async {
+    final native = _native;
+    if (native == null) return false;
+    return MediaKitPlayerBackend._tryNativeCommand(native, args);
+  }
+
+  @override
+  bool get isPlaying => _backend._player.state.playing;
+
+  @override
+  Duration get position => _backend._player.state.position;
+
+  @override
+  Duration get duration => _backend._player.state.duration;
+
+  @override
+  Stream<bool> get playingStream => _backend._player.stream.playing;
+
+  @override
+  String? get currentUrl => _backend._currentUrl;
+
+  @override
+  bool get isDisposed => _backend._isDisposed;
 }

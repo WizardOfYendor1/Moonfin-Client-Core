@@ -1452,25 +1452,15 @@ class _HardwareRenderingToggle extends StatelessWidget {
             children: [
               Icon(Icons.memory_rounded, color: statusColor, size: 20),
               const SizedBox(width: 9),
-              const Expanded(
-                child: Text(
-                  'Hardware rendering',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                status,
+              const Text(
+                'Hardware rendering',
                 style: TextStyle(
-                  color: statusColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               ExcludeSemantics(
                 child: IgnorePointer(
                   child: Switch(
@@ -1482,6 +1472,15 @@ class _HardwareRenderingToggle extends StatelessWidget {
                     inactiveTrackColor: const Color(0x66FF9F43),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                status,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],

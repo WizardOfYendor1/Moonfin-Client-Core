@@ -303,6 +303,9 @@ class UserPreferences extends ChangeNotifier {
     'detailButtonOrderDesktop',
     'detailButtonOrderMobile',
     'detailButtonOrderTv',
+    'detailMetadataOrderDesktop',
+    'detailMetadataOrderMobile',
+    'detailMetadataOrderTv',
     'download_default_quality',
     'auto_download_enabled',
     'auto_download_keep_unwatched',
@@ -314,6 +317,9 @@ class UserPreferences extends ChangeNotifier {
     'hiddenDetailButtonsDesktop',
     'hiddenDetailButtonsMobile',
     'hiddenDetailButtonsTv',
+    'hiddenDetailMetadataDesktop',
+    'hiddenDetailMetadataMobile',
+    'hiddenDetailMetadataTv',
     'hiddenOsdButtonsDesktop',
     'hiddenOsdButtonsMobile',
     'hiddenOsdButtonsTv',
@@ -1813,6 +1819,14 @@ class UserPreferences extends ChangeNotifier {
     values: ZoomMode.values,
   );
 
+  /// One-shot encoded-letterbox crop. libmpv on Linux/Windows; Media3
+  /// (and libmpv if selected) on Android phone and TV. Hidden on iOS,
+  /// macOS, web, and tvOS.
+  static final cropBlackBars = Preference(
+    key: 'crop_black_bars',
+    defaultValue: false,
+  );
+
   static final desktopScrollWheelAction = EnumPreference(
     key: 'desktop_scroll_wheel_action',
     defaultValue: DesktopScrollWheelAction.volume,
@@ -2239,6 +2253,30 @@ class UserPreferences extends ChangeNotifier {
   );
   static final hiddenDetailButtonsDesktop = Preference(
     key: 'hiddenDetailButtonsDesktop',
+    defaultValue: '',
+  );
+  static final detailMetadataOrderTv = Preference(
+    key: 'detailMetadataOrderTv',
+    defaultValue: '',
+  );
+  static final detailMetadataOrderMobile = Preference(
+    key: 'detailMetadataOrderMobile',
+    defaultValue: '',
+  );
+  static final detailMetadataOrderDesktop = Preference(
+    key: 'detailMetadataOrderDesktop',
+    defaultValue: '',
+  );
+  static final hiddenDetailMetadataTv = Preference(
+    key: 'hiddenDetailMetadataTv',
+    defaultValue: '',
+  );
+  static final hiddenDetailMetadataMobile = Preference(
+    key: 'hiddenDetailMetadataMobile',
+    defaultValue: '',
+  );
+  static final hiddenDetailMetadataDesktop = Preference(
+    key: 'hiddenDetailMetadataDesktop',
     defaultValue: '',
   );
   static final hiddenOsdButtonsTv = Preference(
