@@ -211,6 +211,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen>
   String _controllerMappingExitWarning = '';
   int _selected = 0;
   int _settingsSelected = 0;
+  int? _controllerMappingReturnSelection;
   int _fastForward = 1;
   List<GameCoreOption> _options = const [];
 
@@ -804,8 +805,26 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen>
       _cancelControllerMappingExitConfirmation();
     } else if (_pickerOpen) {
       setState(() => _pickerOption = null);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _settingsOpen) {
+          centerGamePlaybackMenuSelection(
+            _settingsScroll,
+            _settingsSelected,
+            rowExtent: _rowExtent,
+          );
+        }
+      });
     } else if (_settingsOpen) {
       setState(() => _settingsOpen = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _overlayOpen) {
+          centerGamePlaybackMenuSelection(
+            _overlayScroll,
+            _selected,
+            rowExtent: _rowExtent,
+          );
+        }
+      });
     } else if (_controllerMappingOpen) {
       // The mapping screen has its own levels (armed capture, player and
       // controller-type pickers, copy confirmation). Let it step back through
@@ -1478,6 +1497,15 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen>
     if (index == null) return;
     _applyOption(index, _options[index].choices[_pickerSelected]);
     setState(() => _pickerOption = null);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _settingsOpen) {
+        centerGamePlaybackMenuSelection(
+          _settingsScroll,
+          _settingsSelected,
+          rowExtent: _rowExtent,
+        );
+      }
+    });
   }
 
   void _applyOption(int optionIndex, String value) {
@@ -1945,11 +1973,22 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen>
 
   void _closeControllerMapping() {
     if (!mounted) return;
+    final returnSelection = _controllerMappingReturnSelection;
     setState(() {
       _controllerMappingOpen = false;
       _confirmingControllerMappingExit = false;
       _controllerMappingExitWarning = '';
-      _selected = 0;
+      if (returnSelection != null) _selected = returnSelection;
+    });
+    _controllerMappingReturnSelection = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _overlayOpen) {
+        centerGamePlaybackMenuSelection(
+          _overlayScroll,
+          _selected,
+          rowExtent: _rowExtent,
+        );
+      }
     });
   }
 
@@ -2320,6 +2359,7 @@ class _NativeGamePlayerScreenState extends State<NativeGamePlayerScreen>
 
   void _openControllerMapping() {
     setState(() {
+      _controllerMappingReturnSelection = _selected;
       _controllerMappingOpen = true;
       _settingsOpen = false;
       _pickerOption = null;
