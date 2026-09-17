@@ -879,8 +879,15 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                 tag: channelWithLogo.imageTag,
               )
             : null;
-        if (channelLogoUrl != null) {
-          _precacheGuideLogoUrl(channelLogoUrl, layoutWidth: 100);
+        final programImageUrl = preview?.imageTag != null
+            ? _vm.imageApi.getPrimaryImageUrl(
+                preview!.id,
+                maxHeight: EpgHeroPreview.compactHeight.toInt(),
+                tag: preview.imageTag,
+              )
+            : null;
+        for (final url in [channelLogoUrl, programImageUrl]) {
+          if (url != null) _precacheGuideLogoUrl(url, layoutWidth: 100);
         }
         return EpgHeroPreview(
           title:
@@ -889,6 +896,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
               AppLocalizations.of(context).guideTimeline,
           programTitle: channel == null ? null : preview?.name,
           channelLogoUrl: channelLogoUrl,
+          programImageUrl: programImageUrl,
           timeLabel: preview == null
               ? null
               : '${_formatTime(preview.startDate)} - ${_formatTime(preview.endDate)}',

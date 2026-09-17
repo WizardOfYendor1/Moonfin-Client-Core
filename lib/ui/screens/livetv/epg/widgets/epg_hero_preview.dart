@@ -19,6 +19,11 @@ class EpgHeroPreview extends StatelessWidget {
   /// channel rail rather than a program cell.
   final String? programTitle;
   final String? channelLogoUrl;
+
+  /// The focused program's own artwork, when the server matched it to a
+  /// recognised episode or movie. Takes the channel logo's place in the
+  /// plate when present; the channel logo remains the fallback.
+  final String? programImageUrl;
   final String? timeLabel;
   final String? genreLabel;
   final String? synopsis;
@@ -31,6 +36,7 @@ class EpgHeroPreview extends StatelessWidget {
     required this.title,
     this.programTitle,
     this.channelLogoUrl,
+    this.programImageUrl,
     required this.timeLabel,
     required this.genreLabel,
     required this.synopsis,
@@ -141,9 +147,10 @@ class EpgHeroPreview extends StatelessWidget {
       ],
     );
 
+    final plateImageUrl = programImageUrl ?? channelLogoUrl;
     final inner = Padding(
       padding: EdgeInsets.fromLTRB(12, compact ? 4 : 8, 12, compact ? 4 : 8),
-      child: channelLogoUrl != null
+      child: plateImageUrl != null
           ? Row(
               children: [
                 DecoratedBox(
@@ -160,7 +167,7 @@ class EpgHeroPreview extends StatelessWidget {
                       width: 100,
                       height: 108,
                       child: BoundedNetworkImage(
-                        imageUrl: channelLogoUrl!,
+                        imageUrl: plateImageUrl,
                         fit: BoxFit.contain,
                         fadeInDuration: Duration.zero,
                         maxWidth: 256,

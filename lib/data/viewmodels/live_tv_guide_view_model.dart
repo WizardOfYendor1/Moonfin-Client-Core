@@ -78,6 +78,10 @@ class GuideProgram {
   /// carries one.
   String? get officialRating => rawData['OfficialRating'] as String?;
 
+  /// Present only when the server matched this program to a recognised
+  /// episode or movie.
+  String? get imageTag => (rawData['ImageTags'] as Map?)?['Primary'] as String?;
+
   /// The program's categories in a fixed order, as the same [GuideFilter]
   /// values the guide's filter chips label, so callers localise them once.
   List<GuideFilter> get categoryTags => [
@@ -124,11 +128,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   // The smallest responsive guide span. Wider landscape surfaces replace it
   // through setWindow after GuideLayoutProfile measures their available area.
   static const _defaultGuideWindow = Duration(minutes: 150);
-  // Programs only need the synopsis; channel logos come from the separate
-  // /LiveTv/Channels fetch, so we don't request ImageTags here. OfficialRating
-  // needs no entry: it isn't an ItemFields value and the server returns it
-  // unconditionally.
-  static const _fields = 'Overview';
+  // OfficialRating needs no entry: it isn't an ItemFields value and the
+  // server returns it unconditionally.
+  static const _fields = 'Overview,ImageTags';
 
   // Programs are loaded lazily in batches of this many channels as the guide is
   // scrolled, instead of one giant all-channels request (issue #666 timeout).
