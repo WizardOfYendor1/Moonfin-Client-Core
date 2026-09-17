@@ -2381,6 +2381,9 @@ class AppLocalizationsKk extends AppLocalizations {
   String get premiere => 'Премьера';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Нұсқаулық хронологиясы';
 
   @override

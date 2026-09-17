@@ -2388,6 +2388,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get premiere => 'Premieră';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Cronologia ghidului';
 
   @override

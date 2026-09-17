@@ -2389,6 +2389,9 @@ class AppLocalizationsBe extends AppLocalizations {
   String get premiere => 'Прэм\'ера';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Храналогія кіраўніцтва';
 
   @override

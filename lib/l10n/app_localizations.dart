@@ -4156,6 +4156,12 @@ abstract class AppLocalizations {
   /// **'Premiere'**
   String get premiere;
 
+  /// Short badge label shown on a rerun in the guide hero band
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get guideRepeatBadge;
+
   /// Section title for the TV guide timeline
   ///
   /// In en, this message translates to:

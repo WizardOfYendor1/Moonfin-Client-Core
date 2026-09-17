@@ -2482,6 +2482,9 @@ class AppLocalizationsSr extends AppLocalizations {
   String get premiere => 'Премијера';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Временска линија водича';
 
   @override

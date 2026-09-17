@@ -2387,6 +2387,9 @@ class AppLocalizationsMl extends AppLocalizations {
   String get premiere => 'പ്രീമിയർ';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'ഗൈഡ് ടൈംലൈൻ';
 
   @override

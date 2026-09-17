@@ -2368,6 +2368,9 @@ class AppLocalizationsHe extends AppLocalizations {
   String get premiere => 'בְּכוֹרָה';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'ציר זמן מדריך';
 
   @override

@@ -2324,6 +2324,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get premiere => '首映';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => '节目指南时间轴';
 
   @override

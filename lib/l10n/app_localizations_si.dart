@@ -2371,6 +2371,9 @@ class AppLocalizationsSi extends AppLocalizations {
   String get premiere => 'මංගල දර්ශනය';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'මාර්ගෝපදේශ කාලරාමුව';
 
   @override

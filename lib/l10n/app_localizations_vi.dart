@@ -2383,6 +2383,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get premiere => 'Buổi ra mắt';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Dòng thời gian hướng dẫn';
 
   @override

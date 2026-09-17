@@ -2332,6 +2332,9 @@ class AppLocalizationsYue extends AppLocalizations {
   String get premiere => '首播';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => '指南時間表';
 
   @override
