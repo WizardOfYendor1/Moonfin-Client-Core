@@ -2011,7 +2011,24 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     final index = _vm.filteredChannels.indexWhere(
       (channel) => channel.id == entryId,
     );
-    if (index >= 0) _focusChannelRow(index);
+    if (index < 0) return;
+    // Set the tracked focus target directly instead of waiting on the
+    // channel row's own focus-change callback: the row can be scrolled many
+    // screens away, so its FocusNode isn't attached until the list has
+    // scrolled and rebuilt that far, which the requestFocus() below can't
+    // wait for. Without this, _isExploringAwayFromEntry() kept seeing the old
+    // focused channel after a "reset" that never visually landed, so every
+    // later back press re-triggered the same no-op reset instead of ever
+    // exiting.
+    _channelRailFocused.value = true;
+    _focusedProgram.value = null;
+    _focusedChannel.value = _vm.filteredChannels[index];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusChannelRow(index);
+      });
+    });
   }
 
   /// A back press resolves here first: if the grid has drifted from where the
