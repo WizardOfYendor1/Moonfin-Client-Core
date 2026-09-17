@@ -2396,6 +2396,9 @@ class AppLocalizationsGl extends AppLocalizations {
   String get premiere => 'Estrea';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Cronoloxía da guía';
 
   @override

@@ -2389,6 +2389,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get premiere => 'பிரீமியர்';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'வழிகாட்டி காலவரிசை';
 
   @override

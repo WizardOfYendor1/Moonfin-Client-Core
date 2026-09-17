@@ -2370,6 +2370,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get premiere => 'Premiere';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Guide Timeline';
 
   @override

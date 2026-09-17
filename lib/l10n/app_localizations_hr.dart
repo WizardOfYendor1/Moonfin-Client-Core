@@ -2471,6 +2471,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get premiere => 'Premijera';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Vremenska crta vodiča';
 
   @override

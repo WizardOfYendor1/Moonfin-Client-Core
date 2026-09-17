@@ -2391,6 +2391,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get premiere => 'العرض الأول';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'دليل الجدول الزمني';
 
   @override

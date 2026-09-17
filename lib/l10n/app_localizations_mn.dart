@@ -2376,6 +2376,9 @@ class AppLocalizationsMn extends AppLocalizations {
   String get premiere => 'Нээлтийн үзүүлбэр';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Хөтөч он цагийн хэлхээс';
 
   @override

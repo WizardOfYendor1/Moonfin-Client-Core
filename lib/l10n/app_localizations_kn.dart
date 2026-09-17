@@ -2384,6 +2384,9 @@ class AppLocalizationsKn extends AppLocalizations {
   String get premiere => 'ಪ್ರಥಮ ಪ್ರದರ್ಶನ';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'ಮಾರ್ಗದರ್ಶಿ ಟೈಮ್‌ಲೈನ್';
 
   @override

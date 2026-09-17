@@ -2342,6 +2342,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get premiere => '첫날';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => '가이드 타임라인';
 
   @override

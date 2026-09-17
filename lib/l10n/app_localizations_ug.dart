@@ -2376,6 +2376,9 @@ class AppLocalizationsUg extends AppLocalizations {
   String get premiere => 'تۇنجى قويۇلۇش';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'يېتەكچى ۋاقىت';
 
   @override

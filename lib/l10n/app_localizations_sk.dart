@@ -2395,6 +2395,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get premiere => 'Premiéra';
 
   @override
+  String get guideRepeatBadge => 'Repeat';
+
+  @override
   String get guideTimeline => 'Časová os sprievodcu';
 
   @override
