@@ -891,19 +891,21 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   /// server has one on file. This debounces a per-program re-fetch (see
   /// [LiveTvGuideViewModel.artworkSourceFor]) so scrolling through the
   /// channel column doesn't fire a request per row passed through, and skips
-  /// it entirely once cached or once the program has already aired past —
-  /// only currently-airing programs have been seen to carry artwork.
+  /// it entirely once cached. Not limited to currently-airing programs —
+  /// the official Jellyfin Android TV client's own guide does the exact same
+  /// per-selection re-fetch (`LiveTvGuideFragmentHelper.refreshSelectedProgram`,
+  /// 500 ms debounce) with no such restriction, and future programs carry
+  /// artwork just as often as live ones.
   void _scheduleArtworkLookup() {
     _artworkLookupDebounce?.cancel();
     final preview = _currentPreviewProgram();
     if (preview == null ||
         preview.artworkSource != null ||
-        _vm.hasArtworkResult(preview.id) ||
-        !preview.isLive) {
+        _vm.hasArtworkResult(preview.id)) {
       return;
     }
     final programId = preview.id;
-    _artworkLookupDebounce = Timer(const Duration(milliseconds: 300), () async {
+    _artworkLookupDebounce = Timer(const Duration(milliseconds: 500), () async {
       await _vm.artworkSourceFor(preview);
       if (mounted && _currentPreviewProgram()?.id == programId) {
         setState(() {});

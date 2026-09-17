@@ -204,22 +204,29 @@ class EpgHeroPreview extends StatelessWidget {
     );
 
     final plateImageUrl = programImageUrl ?? channelLogoUrl;
-    // Artwork covers and bleeds to the card's own edges, full band height —
-    // a channel logo instead stays contained (never cropped) at a narrower,
-    // more logo-shaped width.
+    // Program artwork arrives after the channel logo, via a debounced
+    // per-program lookup the bulk guide fetch can't carry (see
+    // LiveTvGuideScreen._scheduleArtworkLookup). The plate's own width and
+    // fit stay fixed regardless of which is showing, so that arrival is a
+    // crossfade rather than a resize — a shape change compounded with the
+    // content swap is what actually read as the jerky pop.
     final usingArtwork = programImageUrl != null;
-    final plateWidth = usingArtwork ? compactHeight * 2 / 3 : compactHeight * 0.9;
+    final plateWidth = compactHeight * 0.75;
     final imagePlate = plateImageUrl == null
         ? null
         : SizedBox(
             width: plateWidth,
             child: DecoratedBox(
               decoration: const BoxDecoration(color: _logoPlate),
-              child: BoundedNetworkImage(
-                imageUrl: plateImageUrl,
-                fit: usingArtwork ? BoxFit.cover : BoxFit.contain,
-                fadeInDuration: Duration.zero,
-                maxWidth: 256,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: BoundedNetworkImage(
+                  key: ValueKey(plateImageUrl),
+                  imageUrl: plateImageUrl,
+                  fit: usingArtwork ? BoxFit.cover : BoxFit.contain,
+                  fadeInDuration: Duration.zero,
+                  maxWidth: 256,
+                ),
               ),
             ),
           );
