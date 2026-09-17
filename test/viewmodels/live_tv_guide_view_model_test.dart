@@ -1201,4 +1201,36 @@ void main() {
       expect(vm.filteredChannels.map((c) => c.id), ['c5']);
     });
   });
+
+  test(
+    'artworkSourceFor evicts only the oldest entry past the cache cap',
+    () async {
+      when(
+        () => liveTv.getProgram(any(), userId: any(named: 'userId')),
+      ).thenAnswer(
+        (inv) async => _program(inv.positionalArguments[0] as String, 'c0'),
+      );
+
+      final vm = LiveTvGuideViewModel(client);
+      GuideProgram program(String id) => GuideProgram(
+        id: id,
+        channelId: 'c0',
+        name: id,
+        startDate: DateTime.parse('2026-09-11T10:00:00Z'),
+        endDate: DateTime.parse('2026-09-11T10:30:00Z'),
+        rawData: const {},
+      );
+
+      // One past the 500-entry cap: a clear-everything eviction would leave
+      // only p500 cached; the single-oldest eviction this guards leaves every
+      // entry but the very first.
+      for (var i = 0; i <= 500; i++) {
+        await vm.artworkSourceFor(program('p$i'));
+      }
+
+      expect(vm.hasArtworkResult('p0'), isFalse);
+      expect(vm.hasArtworkResult('p1'), isTrue);
+      expect(vm.hasArtworkResult('p500'), isTrue);
+    },
+  );
 }

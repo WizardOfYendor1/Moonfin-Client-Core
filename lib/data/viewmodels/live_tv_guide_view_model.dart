@@ -1299,6 +1299,11 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   /// confirmed there is none" (see [artworkSourceFor]) — negative results are
   /// cached exactly like positive ones, so a channel the user scrolls back
   /// and forth across never re-issues the same request.
+  ///
+  /// A plain map literal is a [LinkedHashMap], so insertion order survives:
+  /// past the cap, [artworkSourceFor] drops the oldest entry rather than the
+  /// whole cache, so one channel's worth of scrolling never costs every other
+  /// channel's already-resolved artwork.
   final Map<String, ({String itemId, String tag})?> _artworkCache = {};
   static const _artworkCacheCap = 500;
 
@@ -1332,7 +1337,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     } catch (_) {
       result = null;
     }
-    if (_artworkCache.length >= _artworkCacheCap) _artworkCache.clear();
+    if (_artworkCache.length >= _artworkCacheCap) {
+      _artworkCache.remove(_artworkCache.keys.first);
+    }
     _artworkCache[program.id] = result;
     _scheduleArtworkNotify();
     return result;
