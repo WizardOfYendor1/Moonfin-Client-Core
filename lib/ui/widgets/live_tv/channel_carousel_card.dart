@@ -8,8 +8,10 @@ import '../../screens/livetv/epg/epg_genre.dart';
 
 /// One channel in the quick channel carousel. Pure presentation: the host
 /// owns scrolling, focus, and data. This only renders what it is given.
-/// [centered] marks the card pinned at the viewport centre, which gets an
-/// accent border and focus glow instead of the plain card border.
+/// [centered] marks the channel logically pinned at the viewport centre, for
+/// the host and for tests; every card renders identically regardless of it.
+/// The focus look (accent border, glow) is drawn once by the strip's
+/// stationary `_CentreFocusFrame`, not per card — see `channel_carousel.dart`.
 ///
 /// The program block mirrors the guide cell: a top-aligned regular-weight
 /// title over a muted metadata line. The card is far taller than a guide row,
@@ -75,7 +77,9 @@ class ChannelCarouselCard extends StatelessWidget {
   /// the strip into a row of slivers.
   static const int _maxCardCount = 15;
 
-  static const double _radius = 10;
+  /// Corner radius, shared with the strip's stationary focus frame so the
+  /// two line up exactly.
+  static const double cardRadius = 10;
 
   /// Full-bleed genre bar down the leading edge.
   static const double _genreBarWidth = 4;
@@ -205,20 +209,21 @@ class ChannelCarouselCard extends StatelessWidget {
         decoration: BoxDecoration(
           // A hint of the program's genre over a dark base, so the card
           // carries a little colour without competing with its own text. A
-          // program with no genre falls back to plain dark grey.
+          // program with no genre falls back to plain dark grey. The focus
+          // treatment used to live here, keyed off [centered], but that made
+          // it pop instantly on whichever card the logical selection had
+          // already jumped to, ahead of the strip's own slide into place. A
+          // stationary frame drawn by the strip now owns that job instead
+          // (`_CentreFocusFrame` in `channel_carousel.dart`), so every card
+          // renders the same way regardless of [centered].
           color: Color.alphaBlend(
             (genre?.color ?? AppColorScheme.surfaceVariant).withValues(
-              alpha: centered ? 0.22 : 0.14,
+              alpha: 0.14,
             ),
             AppColorScheme.surface,
-          ).withValues(alpha: centered ? 0.88 : 0.74),
-          borderRadius: AppRadius.circular(_radius),
-          border: Border.fromBorderSide(
-            centered
-                ? borders.focusBorder.copyWith(color: accent)
-                : borders.cardBorder,
-          ),
-          boxShadow: centered ? borders.focusGlow : null,
+          ).withValues(alpha: 0.74),
+          borderRadius: AppRadius.circular(cardRadius),
+          border: Border.fromBorderSide(borders.cardBorder),
         ),
         child: Stack(
           children: [

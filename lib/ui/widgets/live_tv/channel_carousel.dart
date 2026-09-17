@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../util/focus/dpad_keys.dart';
 import '../../screens/livetv/epg/epg_genre.dart';
@@ -31,10 +32,10 @@ const double _cardSpacing = ChannelCarouselCard.cardSpacing;
 const int _seedLineups = 500;
 const int _totalLineups = _seedLineups * 2;
 
-/// One card's travel takes exactly one repeat interval, on a linear curve, so
-/// a repeat that lands mid-flight continues the same velocity instead of
-/// restarting the motion.
-const Duration _scrollDuration = kCarouselHoldRepeatInterval;
+/// A tap, or a hold reversing direction, gets one short, deliberately-eased
+/// slide rather than the flat constant-velocity cruise below — a single
+/// press should read as decisive, not as the first tick of a scroll.
+const Duration kCarouselStepDuration = Duration(milliseconds: 140);
 
 /// One channel's already-resolved presentation data. The strip does no
 /// fetching and no formatting: the host precomputes every field.
@@ -348,7 +349,7 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
     _pageStartTimer?.cancel();
     _pageRepeatTimer?.cancel();
     _holdDirection = direction;
-    _moveBy(direction);
+    _moveBy(direction, chained: false);
     _pageStartTimer = Timer(kCarouselHoldStartDelay, () {
       _stepFromTimer();
       _pageRepeatTimer = Timer.periodic(
@@ -371,14 +372,17 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
   /// Timer-driven movement. It must never touch [_refreshWatchdog].
   void _stepFromTimer() {
     if (!mounted || _holdDirection == 0) return;
-    _moveBy(_holdDirection * holdStep(_channelCount));
+    _moveBy(_holdDirection * holdStep(_channelCount), chained: true);
   }
 
   // ---------------------------------------------------------------------
   // Motion
   // ---------------------------------------------------------------------
 
-  void _moveBy(int delta) {
+  /// [chained] distinguishes a lone tap or a fresh reversal (`false`) from a
+  /// repeat within an already-running hold (`true`) — see
+  /// [_animateToCentred].
+  void _moveBy(int delta, {required bool chained}) {
     if (_channelCount <= 1 || delta == 0) return;
     final before = _centredChannelIndex;
     var target = _rawIndex + delta;
@@ -398,18 +402,44 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
 
     _rawIndex = target;
     _rawIndexListenable.value = target;
-    _animateToCentred();
+    _animateToCentred(chained: chained);
     if (_centredChannelIndex != before) {
       widget.onChannelCentered?.call(_centredChannelIndex);
     }
   }
 
-  void _animateToCentred() {
+  /// A tap or a reversal gets one short, eased slide ([kCarouselStepDuration],
+  /// `easeOutCubic`) — always exactly one card, so a fixed duration is fine.
+  ///
+  /// A repeat inside a hold instead holds a constant px/ms velocity and asks
+  /// for however much distance is *actually* left from the strip's current,
+  /// real position — not a flat [kCarouselHoldRepeatInterval] every time.
+  /// `Timer.periodic` isn't phase-locked to the animation's own ticker, so a
+  /// repeat firing a few ms early or late leaves the previous tween short of
+  /// or past its target; re-deriving the duration from the live position
+  /// keeps velocity constant across that seam instead of compounding the
+  /// jitter into a visible speed hiccup every ~110 ms, which is what read as
+  /// jerky under a slow-motion capture even though each step was individually
+  /// correct.
+  void _animateToCentred({required bool chained}) {
     final controller = _scrollController;
     if (controller == null || !controller.hasClients) return;
+    final target = _offsetFor(_rawIndex);
+    if (!chained) {
+      controller.animateTo(
+        target,
+        duration: kCarouselStepDuration,
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+    final distance = (target - controller.offset).abs();
+    if (distance == 0) return;
+    final velocity = _cardExtent / kCarouselHoldRepeatInterval.inMilliseconds;
+    final durationMs = (distance / velocity).round().clamp(1, 1000);
     controller.animateTo(
-      _offsetFor(_rawIndex),
-      duration: _scrollDuration,
+      target,
+      duration: Duration(milliseconds: durationMs),
       curve: Curves.linear,
     );
   }
@@ -556,11 +586,58 @@ class _ChannelCarouselState extends State<ChannelCarousel> {
             // symmetrically around the centred card.
             return ValueListenableBuilder<int>(
               valueListenable: _rawIndexListenable,
-              builder: (context, _, child) => _channelCount <= _visibleCards
-                  ? _buildFittingStrip(width)
-                  : _buildScrollingStrip(width),
+              // The frame never depends on which index is centred, so it's
+              // passed as `child` and never rebuilds with the strip.
+              child: _CentreFocusFrame(
+                width: _cardWidth,
+                height: _cardHeight,
+              ),
+              builder: (context, _, frame) => Stack(
+                fit: StackFit.expand,
+                alignment: Alignment.center,
+                children: [
+                  _channelCount <= _visibleCards
+                      ? _buildFittingStrip(width)
+                      : _buildScrollingStrip(width),
+                  frame!,
+                ],
+              ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// The focus look (accent border, glow) for whichever card the viewport
+/// centre lands on. Drawn once, fixed at the centre of the strip, on top of
+/// the scrolling cards beneath it — it never moves and never restyles, so
+/// there is nothing here to keep in sync with the scroll animation. A card
+/// simply looks focused because it has slid into the frame, exactly the
+/// design's "selection pinned at viewport centre, strip animating beneath
+/// it" — the frame just no longer commutes with the card's own decoration.
+class _CentreFocusFrame extends StatelessWidget {
+  final double width;
+  final double height;
+
+  const _CentreFocusFrame({required this.width, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    final borders = ThemeRegistry.active.borders;
+    return IgnorePointer(
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.circular(ChannelCarouselCard.cardRadius),
+            border: Border.fromBorderSide(
+              borders.focusBorder.copyWith(color: AppColorScheme.accent),
+            ),
+            boxShadow: borders.focusGlow,
+          ),
         ),
       ),
     );
