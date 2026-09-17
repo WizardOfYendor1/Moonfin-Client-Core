@@ -166,6 +166,11 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   final ValueNotifier<GuideProgram?> _focusedProgram = ValueNotifier(null);
   final ValueNotifier<GuideChannel?> _focusedChannel = ValueNotifier(null);
   final ValueNotifier<bool> _channelRailFocused = ValueNotifier(false);
+
+  /// Debounces the hero's per-program artwork lookup (see
+  /// [LiveTvGuideViewModel.artworkSourceFor]) so scrolling through the
+  /// channel column doesn't fire a request per row passed through.
+  Timer? _artworkLookupDebounce;
   bool _didInitializeMiniPlayerMode = false;
   bool _didRestoreInitialChannelFocus = false;
   late EpgMobileView _mobileView;
@@ -214,6 +219,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _vm.addListener(_onChanged);
     WidgetsBinding.instance.addObserver(this);
     _mobileView = _prefs.get(UserPreferences.epgMobileView);
+    _focusedProgram.addListener(_scheduleArtworkLookup);
+    _focusedChannel.addListener(_scheduleArtworkLookup);
+    _channelRailFocused.addListener(_scheduleArtworkLookup);
 
     _channelScrollController.addListener(_syncVerticalScroll);
     _programScrollController.addListener(_syncVerticalScroll);
@@ -649,10 +657,14 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   void dispose() {
     _reanchorTimer?.cancel();
     _displayClockTimer?.cancel();
+    _artworkLookupDebounce?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _vm.cancelBoundaryRefresh();
     _vm.removeListener(_onChanged);
     _vm.dispose();
+    _focusedProgram.removeListener(_scheduleArtworkLookup);
+    _focusedChannel.removeListener(_scheduleArtworkLookup);
+    _channelRailFocused.removeListener(_scheduleArtworkLookup);
     _channelScrollController.dispose();
     _programScrollController.dispose();
     _timeHeaderHorizontalScrollController.dispose();
@@ -862,6 +874,43 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
   }
 
+  /// The program the hero (and its artwork lookup) is currently previewing:
+  /// the focused program cell, or — when focus is on the channel column
+  /// instead — whatever that channel is airing now.
+  GuideProgram? _currentPreviewProgram() {
+    final program = _focusedProgram.value;
+    final channel = !_channelRailFocused.value && program != null
+        ? _vm.channelForId(program.channelId)
+        : _focusedChannel.value;
+    return program ??
+        (channel == null ? null : _vm.nowNextForChannel(channel.id).now);
+  }
+
+  /// The bulk guide fetch disables images to keep its payload small (issue
+  /// #666), so it never carries a program's own `ImageTags` even when the
+  /// server has one on file. This debounces a per-program re-fetch (see
+  /// [LiveTvGuideViewModel.artworkSourceFor]) so scrolling through the
+  /// channel column doesn't fire a request per row passed through, and skips
+  /// it entirely once cached or once the program has already aired past —
+  /// only currently-airing programs have been seen to carry artwork.
+  void _scheduleArtworkLookup() {
+    _artworkLookupDebounce?.cancel();
+    final preview = _currentPreviewProgram();
+    if (preview == null ||
+        preview.artworkSource != null ||
+        _vm.hasArtworkResult(preview.id) ||
+        !preview.isLive) {
+      return;
+    }
+    final programId = preview.id;
+    _artworkLookupDebounce = Timer(const Duration(milliseconds: 300), () async {
+      await _vm.artworkSourceFor(preview);
+      if (mounted && _currentPreviewProgram()?.id == programId) {
+        setState(() {});
+      }
+    });
+  }
+
   Widget _buildHero() {
     return ListenableBuilder(
       listenable: Listenable.merge([
@@ -874,11 +923,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         final channel = !_channelRailFocused.value && program != null
             ? _vm.channelForId(program.channelId)
             : _focusedChannel.value;
-        // Focus on the channel column has no program, so the band previews
-        // what that channel is airing now under the channel's name.
-        final preview =
-            program ??
-            (channel == null ? null : _vm.nowNextForChannel(channel.id).now);
+        final preview = _currentPreviewProgram();
         final now = DateTime.now();
         final isLive =
             preview != null &&
@@ -893,7 +938,9 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                 tag: channelWithLogo.imageTag,
               )
             : null;
-        final artwork = preview?.artworkSource;
+        final artwork = preview == null
+            ? null
+            : preview.artworkSource ?? _vm.cachedArtworkFor(preview.id);
         final programImageUrl = artwork == null
             ? null
             : _vm.imageApi.getPrimaryImageUrl(

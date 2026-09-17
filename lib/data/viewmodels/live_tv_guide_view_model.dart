@@ -1248,42 +1248,88 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     final items = (response['Items'] as List?) ?? [];
     final byChannel = <String, List<GuideProgram>>{};
     for (final raw in items.cast<Map<String, dynamic>>()) {
-      final channelId = raw['ChannelId']?.toString();
-      if (channelId == null) continue;
-
-      final startStr = raw['StartDate'] as String?;
-      final endStr = raw['EndDate'] as String?;
-      if (startStr == null || endStr == null) continue;
-
-      final program = GuideProgram(
-        id: raw['Id']?.toString() ?? '',
-        channelId: channelId,
-        name: raw['Name'] as String? ?? '',
-        startDate: DateTime.parse(startStr).toLocal(),
-        endDate: DateTime.parse(endStr).toLocal(),
-        overview: raw['Overview'] as String?,
-        // Some guide sources deliver EpisodeTitle with literal backslash-escaped
-        // quotes (`\"Raygun\"`) even though the same program's Overview does
-        // not, so this field alone needs unescaping.
-        episodeTitle: (raw['EpisodeTitle'] as String?)?.replaceAll(r'\"', '"'),
-        isMovie: raw['IsMovie'] == true,
-        isSeries: raw['IsSeries'] == true,
-        isSports: raw['IsSports'] == true,
-        isNews: raw['IsNews'] == true,
-        isKids: raw['IsKids'] == true,
-        isPremiere: raw['IsPremiere'] == true,
-        hasTimer: raw['TimerId'] != null,
-        hasSeriesTimer: raw['SeriesTimerId'] != null,
-        rawData: raw,
-      );
-
-      (byChannel[channelId] ??= <GuideProgram>[]).add(program);
+      final program = _programFromRaw(raw);
+      if (program == null) continue;
+      (byChannel[program.channelId] ??= <GuideProgram>[]).add(program);
     }
 
     for (final programs in byChannel.values) {
       programs.sort((a, b) => a.startDate.compareTo(b.startDate));
     }
     return byChannel;
+  }
+
+  /// Shared by the batch guide parser and the single-program artwork lookup.
+  /// Returns null when the raw item is missing what a [GuideProgram] needs.
+  GuideProgram? _programFromRaw(Map<String, dynamic> raw) {
+    final channelId = raw['ChannelId']?.toString();
+    if (channelId == null) return null;
+
+    final startStr = raw['StartDate'] as String?;
+    final endStr = raw['EndDate'] as String?;
+    if (startStr == null || endStr == null) return null;
+
+    return GuideProgram(
+      id: raw['Id']?.toString() ?? '',
+      channelId: channelId,
+      name: raw['Name'] as String? ?? '',
+      startDate: DateTime.parse(startStr).toLocal(),
+      endDate: DateTime.parse(endStr).toLocal(),
+      overview: raw['Overview'] as String?,
+      // Some guide sources deliver EpisodeTitle with literal backslash-escaped
+      // quotes (`\"Raygun\"`) even though the same program's Overview does
+      // not, so this field alone needs unescaping.
+      episodeTitle: (raw['EpisodeTitle'] as String?)?.replaceAll(r'\"', '"'),
+      isMovie: raw['IsMovie'] == true,
+      isSeries: raw['IsSeries'] == true,
+      isSports: raw['IsSports'] == true,
+      isNews: raw['IsNews'] == true,
+      isKids: raw['IsKids'] == true,
+      isPremiere: raw['IsPremiere'] == true,
+      hasTimer: raw['TimerId'] != null,
+      hasSeriesTimer: raw['SeriesTimerId'] != null,
+      rawData: raw,
+    );
+  }
+
+  /// Per-program artwork, keyed by program id. `null` means "looked up and
+  /// confirmed there is none" (see [artworkSourceFor]) — negative results are
+  /// cached exactly like positive ones, so a channel the user scrolls back
+  /// and forth across never re-issues the same request.
+  final Map<String, ({String itemId, String tag})?> _artworkCache = {};
+  static const _artworkCacheCap = 500;
+
+  bool hasArtworkResult(String programId) => _artworkCache.containsKey(programId);
+
+  ({String itemId, String tag})? cachedArtworkFor(String programId) =>
+      _artworkCache[programId];
+
+  /// [getGuide] disables images for its whole batch to keep the payload small
+  /// (issue #666), so a program's own `ImageTags` never comes back from the
+  /// bulk fetch even when the server has one on file — confirmed on a live
+  /// server: the same program id carries `ImageTags.Primary` through
+  /// `/LiveTv/Programs/Recommended` but not through `/LiveTv/Programs`. This
+  /// re-fetches that one program, images enabled, to get what the bulk fetch
+  /// can't — call sites must limit this to the currently-focused program,
+  /// debounced, since it's a full request per call.
+  Future<({String itemId, String tag})?> artworkSourceFor(
+    GuideProgram program,
+  ) async {
+    final cached = _artworkCache[program.id];
+    if (cached != null || _artworkCache.containsKey(program.id)) return cached;
+    ({String itemId, String tag})? result;
+    try {
+      final raw = await _client.liveTvApi.getProgram(
+        program.id,
+        userId: _client.userId,
+      );
+      result = _programFromRaw(raw)?.artworkSource;
+    } catch (_) {
+      result = null;
+    }
+    if (_artworkCache.length >= _artworkCacheCap) _artworkCache.clear();
+    _artworkCache[program.id] = result;
+    return result;
   }
 
   /// Fetches programs for one batch of channels over the current window and
