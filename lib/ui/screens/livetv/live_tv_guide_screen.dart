@@ -371,6 +371,17 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     }
   }
 
+  /// True while a grid cell (channel column or program row) actually holds
+  /// focus. A genre filter switch changes the lineup and would otherwise
+  /// yank focus back into the grid even while the user is still sitting on
+  /// a filter chip or the window bar.
+  bool get _gridHasFocus {
+    final label = FocusManager.instance.primaryFocus?.debugLabel;
+    return label != null &&
+        (label.startsWith('GuideChannel:') ||
+            label.startsWith('GuideProgramRow'));
+  }
+
   void _rebindSelectionAfterLineupChange() {
     final selection = _selection;
     final channels = _vm.filteredChannels;
@@ -395,7 +406,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     final cells = _cellsForChannel(rebound.channelId);
     if (cells.isEmpty) return;
     _scrollToRow(rowIndex);
-    _focusSelectedCell(rebound, cells);
+    // Keep the selection and scroll position correct either way, so the
+    // grid is ready if the user comes back to it — just don't steal focus
+    // away from wherever they actually are (a filter chip, the window bar).
+    if (_gridHasFocus) _focusSelectedCell(rebound, cells);
   }
 
   void _initializeMiniPlayerMode() {
@@ -879,19 +893,15 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                 tag: channelWithLogo.imageTag,
               )
             : null;
-        // A live TV program's own item rarely carries unique art, even when
-        // recognised; the art lives on the matched series instead.
-        final artworkTag = preview?.imageTag ?? preview?.seriesPrimaryImageTag;
-        final artworkItemId = preview?.imageTag != null
-            ? preview!.id
-            : preview?.seriesId;
-        final programImageUrl = artworkTag != null && artworkItemId != null
-            ? _vm.imageApi.getPrimaryImageUrl(
-                artworkItemId,
+        final artwork = preview?.artworkSource;
+        final programImageUrl = artwork == null
+            ? null
+            : _vm.imageApi.getPrimaryImageUrl(
+                artwork.itemId,
                 maxHeight: EpgHeroPreview.compactHeight.toInt(),
-                tag: artworkTag,
-              )
-            : null;
+                maxWidth: (EpgHeroPreview.compactHeight * 2 / 3).toInt(),
+                tag: artwork.tag,
+              );
         for (final url in [channelLogoUrl, programImageUrl]) {
           if (url != null) _precacheGuideLogoUrl(url, layoutWidth: 100);
         }
@@ -915,9 +925,8 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
             : null;
         return EpgHeroPreview(
           title: channel?.name ?? preview?.name ?? l10n.guideTimeline,
-          programTitle: channel == null || preview?.name == null
-              ? null
-              : '${preview!.name}$episodeSuffix$seasonEpisodeSuffix',
+          programTitle: channel == null ? null : preview?.name,
+          programSubtitle: '$episodeSuffix$seasonEpisodeSuffix',
           channelLogoUrl: channelLogoUrl,
           programImageUrl: programImageUrl,
           timeLabel: preview == null

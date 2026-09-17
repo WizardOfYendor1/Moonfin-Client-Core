@@ -18,11 +18,17 @@ class EpgHeroPreview extends StatelessWidget {
   /// Optional channel/program split used when the guide focus is on the
   /// channel rail rather than a program cell.
   final String? programTitle;
+
+  /// Episode title and/or `S6:E19`, appended after [programTitle] in a
+  /// lighter, smaller style so the show name still leads.
+  final String? programSubtitle;
   final String? channelLogoUrl;
 
-  /// The focused program's own artwork, when the server matched it to a
-  /// recognised episode or movie. Takes the channel logo's place in the
-  /// plate when present; the channel logo remains the fallback.
+  /// The focused program's own artwork (or its series' poster — see
+  /// [GuideProgram.artworkSource]), when available. Takes the channel
+  /// logo's place in the plate, full band height, cropped to fill rather
+  /// than letterboxed; the channel logo remains the fallback and stays
+  /// letterboxed so its wordmark isn't cropped.
   final String? programImageUrl;
   final String? timeLabel;
   final String? genreLabel;
@@ -48,6 +54,7 @@ class EpgHeroPreview extends StatelessWidget {
     super.key,
     required this.title,
     this.programTitle,
+    this.programSubtitle,
     this.channelLogoUrl,
     this.programImageUrl,
     required this.timeLabel,
@@ -73,6 +80,15 @@ class EpgHeroPreview extends StatelessWidget {
         (textTheme.headlineSmall ??
                 const TextStyle(fontSize: AppTypography.fontSize2xl))
             .copyWith(fontWeight: FontWeight.w600);
+    // Regular weight and a step down in size, so the episode title and
+    // S/E number read as secondary detail rather than competing with the
+    // show name for attention.
+    final programSubtitleStyle = programTitleStyle.copyWith(
+      fontWeight: FontWeight.w400,
+      fontSize:
+          (programTitleStyle.fontSize ?? AppTypography.fontSize2xl) - 4,
+      color: muted,
+    );
     final metaStyle =
         (textTheme.bodyMedium ??
                 const TextStyle(fontSize: AppTypography.fontSizeSm))
@@ -135,12 +151,27 @@ class EpgHeroPreview extends StatelessWidget {
           if (programTitle != null && programTitle!.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(top: compact ? 2 : 4),
-              child: Text(
-                programTitle!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: programTitleStyle,
-              ),
+              child: programSubtitle == null || programSubtitle!.isEmpty
+                  ? Text(
+                      programTitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: programTitleStyle,
+                    )
+                  : Text.rich(
+                      TextSpan(
+                        text: programTitle,
+                        style: programTitleStyle,
+                        children: [
+                          TextSpan(
+                            text: programSubtitle,
+                            style: programSubtitleStyle,
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
             ),
         ] else
           Text(
@@ -173,39 +204,41 @@ class EpgHeroPreview extends StatelessWidget {
     );
 
     final plateImageUrl = programImageUrl ?? channelLogoUrl;
-    final inner = Padding(
-      padding: EdgeInsets.fromLTRB(12, compact ? 4 : 8, 12, compact ? 4 : 8),
-      child: plateImageUrl != null
-          ? Row(
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: _logoPlate,
-                    borderRadius: AppRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: SizedBox(
-                      width: 100,
-                      height: 108,
-                      child: BoundedNetworkImage(
-                        imageUrl: plateImageUrl,
-                        fit: BoxFit.contain,
-                        fadeInDuration: Duration.zero,
-                        maxWidth: 256,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: text),
-              ],
-            )
-          : text,
+    // Artwork covers and bleeds to the card's own edges, full band height —
+    // a channel logo instead stays contained (never cropped) at a narrower,
+    // more logo-shaped width.
+    final usingArtwork = programImageUrl != null;
+    final plateWidth = usingArtwork ? compactHeight * 2 / 3 : compactHeight * 0.9;
+    final imagePlate = plateImageUrl == null
+        ? null
+        : SizedBox(
+            width: plateWidth,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(color: _logoPlate),
+              child: BoundedNetworkImage(
+                imageUrl: plateImageUrl,
+                fit: usingArtwork ? BoxFit.cover : BoxFit.contain,
+                fadeInDuration: Duration.zero,
+                maxWidth: 256,
+              ),
+            ),
+          );
+
+    final textPadding = EdgeInsets.fromLTRB(
+      imagePlate != null ? 8 : 12,
+      compact ? 2 : 6,
+      12,
+      compact ? 2 : 6,
     );
+    final inner = imagePlate == null
+        ? Padding(padding: textPadding, child: text)
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              imagePlate,
+              Expanded(child: Padding(padding: textPadding, child: text)),
+            ],
+          );
 
     final content = compact
         ? SizedBox(height: compactHeight, child: inner)
@@ -220,7 +253,8 @@ class EpgHeroPreview extends StatelessWidget {
             tint: Colors.white.withValues(alpha: 0.06),
             child: content,
           )
-        : DecoratedBox(
+        : Container(
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: AppColorScheme.surface.withValues(alpha: 0.45),
               borderRadius: AppRadius.circular(16),

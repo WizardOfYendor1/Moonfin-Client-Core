@@ -80,15 +80,36 @@ class GuideProgram {
 
   /// Present only when the server matched this program to a recognised
   /// episode or movie. Rare in practice: a live TV program's own item
-  /// usually carries no unique art of its own, even when recognised — the
-  /// art lives on the series instead ([seriesPrimaryImageTag]).
+  /// usually carries no unique art of its own, even when recognised.
   String? get imageTag => (rawData['ImageTags'] as Map?)?['Primary'] as String?;
 
   String? get seriesId => rawData['SeriesId']?.toString();
-
-  /// The matched series' poster tag. This, not [imageTag], is where a
-  /// recognised episode's artwork actually lives.
   String? get seriesPrimaryImageTag => rawData['SeriesPrimaryImageTag'] as String?;
+  String? get parentPrimaryImageItemId =>
+      rawData['ParentPrimaryImageItemId']?.toString();
+  String? get parentPrimaryImageTag => rawData['ParentPrimaryImageTag'] as String?;
+  String? get parentThumbItemId => rawData['ParentThumbItemId']?.toString();
+  String? get parentThumbImageTag => rawData['ParentThumbImageTag'] as String?;
+
+  /// The item id and tag for this program's own artwork, preferring (in
+  /// order) its own art, the matched series' poster, the parent item's
+  /// primary image, and finally the parent's landscape thumb — the same
+  /// fallback chain the home screen's "On Now" row already resolves
+  /// successfully for this same data, since a live TV program's own item
+  /// essentially never carries unique art of its own.
+  ({String itemId, String tag})? get artworkSource {
+    if (imageTag case final tag?) return (itemId: id, tag: tag);
+    if (seriesId case final sid?) {
+      if (seriesPrimaryImageTag case final tag?) return (itemId: sid, tag: tag);
+    }
+    if (parentPrimaryImageItemId case final pid?) {
+      if (parentPrimaryImageTag case final tag?) return (itemId: pid, tag: tag);
+    }
+    if (parentThumbItemId case final pid?) {
+      if (parentThumbImageTag case final tag?) return (itemId: pid, tag: tag);
+    }
+    return null;
+  }
 
   double? get communityRating => (rawData['CommunityRating'] as num?)?.toDouble();
 
@@ -150,7 +171,10 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   // OfficialRating, CommunityRating, IsPremiere and IsRepeat need no entry:
   // none of them are ItemFields values, so the server returns them
   // unconditionally.
-  static const _fields = 'Overview,ImageTags,SeriesId,SeriesPrimaryImageTag';
+  static const _fields =
+      'Overview,ImageTags,SeriesId,SeriesPrimaryImageTag,'
+      'ParentPrimaryImageItemId,ParentPrimaryImageTag,'
+      'ParentThumbItemId,ParentThumbImageTag';
 
   // Programs are loaded lazily in batches of this many channels as the guide is
   // scrolled, instead of one giant all-channels request (issue #666 timeout).
