@@ -879,28 +879,54 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                 tag: channelWithLogo.imageTag,
               )
             : null;
-        final programImageUrl = preview?.imageTag != null
+        // A live TV program's own item rarely carries unique art, even when
+        // recognised; the art lives on the matched series instead.
+        final artworkTag = preview?.imageTag ?? preview?.seriesPrimaryImageTag;
+        final artworkItemId = preview?.imageTag != null
+            ? preview!.id
+            : preview?.seriesId;
+        final programImageUrl = artworkTag != null && artworkItemId != null
             ? _vm.imageApi.getPrimaryImageUrl(
-                preview!.id,
+                artworkItemId,
                 maxHeight: EpgHeroPreview.compactHeight.toInt(),
-                tag: preview.imageTag,
+                tag: artworkTag,
               )
             : null;
         for (final url in [channelLogoUrl, programImageUrl]) {
           if (url != null) _precacheGuideLogoUrl(url, layoutWidth: 100);
         }
+        final episodeTitle = preview?.episodeTitle;
+        final episodeSuffix =
+            episodeTitle != null &&
+                episodeTitle.isNotEmpty &&
+                episodeTitle != preview?.name
+            ? ' - $episodeTitle'
+            : '';
+        final seasonEpisodeSuffix = preview?.seasonEpisodeLabel != null
+            ? ' (${preview!.seasonEpisodeLabel})'
+            : '';
+        final l10n = AppLocalizations.of(context);
+        final badgeLabel = preview == null
+            ? null
+            : preview.isPremiere
+            ? l10n.premiere
+            : preview.isRepeat
+            ? l10n.guideRepeatBadge
+            : null;
         return EpgHeroPreview(
-          title:
-              channel?.name ??
-              preview?.name ??
-              AppLocalizations.of(context).guideTimeline,
-          programTitle: channel == null ? null : preview?.name,
+          title: channel?.name ?? preview?.name ?? l10n.guideTimeline,
+          programTitle: channel == null || preview?.name == null
+              ? null
+              : '${preview!.name}$episodeSuffix$seasonEpisodeSuffix',
           channelLogoUrl: channelLogoUrl,
           programImageUrl: programImageUrl,
           timeLabel: preview == null
               ? null
               : '${_formatTime(preview.startDate)} - ${_formatTime(preview.endDate)}',
           genreLabel: preview == null ? null : epgGenreFor(preview).label,
+          officialRating: preview?.officialRating,
+          communityRating: preview?.communityRating,
+          badgeLabel: badgeLabel,
           synopsis: preview?.overview,
           isLive: isLive,
           apple: _apple,

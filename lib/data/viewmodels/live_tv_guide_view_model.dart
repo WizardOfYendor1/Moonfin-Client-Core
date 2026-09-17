@@ -79,8 +79,27 @@ class GuideProgram {
   String? get officialRating => rawData['OfficialRating'] as String?;
 
   /// Present only when the server matched this program to a recognised
-  /// episode or movie.
+  /// episode or movie. Rare in practice: a live TV program's own item
+  /// usually carries no unique art of its own, even when recognised — the
+  /// art lives on the series instead ([seriesPrimaryImageTag]).
   String? get imageTag => (rawData['ImageTags'] as Map?)?['Primary'] as String?;
+
+  String? get seriesId => rawData['SeriesId']?.toString();
+
+  /// The matched series' poster tag. This, not [imageTag], is where a
+  /// recognised episode's artwork actually lives.
+  String? get seriesPrimaryImageTag => rawData['SeriesPrimaryImageTag'] as String?;
+
+  double? get communityRating => (rawData['CommunityRating'] as num?)?.toDouble();
+
+  bool get isRepeat => rawData['IsRepeat'] == true;
+
+  /// `S{season}:E{episode}`, matching the quick channel changer's format.
+  String? get seasonEpisodeLabel {
+    final season = rawData['ParentIndexNumber'];
+    final episode = rawData['IndexNumber'];
+    return season != null && episode != null ? 'S$season:E$episode' : null;
+  }
 
   /// The program's categories in a fixed order, as the same [GuideFilter]
   /// values the guide's filter chips label, so callers localise them once.
@@ -128,9 +147,10 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   // The smallest responsive guide span. Wider landscape surfaces replace it
   // through setWindow after GuideLayoutProfile measures their available area.
   static const _defaultGuideWindow = Duration(minutes: 150);
-  // OfficialRating needs no entry: it isn't an ItemFields value and the
-  // server returns it unconditionally.
-  static const _fields = 'Overview,ImageTags';
+  // OfficialRating, CommunityRating, IsPremiere and IsRepeat need no entry:
+  // none of them are ItemFields values, so the server returns them
+  // unconditionally.
+  static const _fields = 'Overview,ImageTags,SeriesId,SeriesPrimaryImageTag';
 
   // Programs are loaded lazily in batches of this many channels as the guide is
   // scrolled, instead of one giant all-channels request (issue #666 timeout).

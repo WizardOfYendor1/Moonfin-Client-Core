@@ -26,6 +26,19 @@ class EpgHeroPreview extends StatelessWidget {
   final String? programImageUrl;
   final String? timeLabel;
   final String? genreLabel;
+
+  /// Parental classification (`TV-14`, `PG-13`, ...), shown in the call-sign
+  /// line after genre.
+  final String? officialRating;
+
+  /// Community score on a 0-10 scale, shown last in the call-sign line —
+  /// it's the first thing dropped by the line's own ellipsis when space
+  /// runs out.
+  final double? communityRating;
+
+  /// Short badge text (`Premiere`, `Repeat`) shown as a small pill next to
+  /// the title. Null shows no badge.
+  final String? badgeLabel;
   final String? synopsis;
   final bool isLive;
   final bool apple;
@@ -39,6 +52,9 @@ class EpgHeroPreview extends StatelessWidget {
     this.programImageUrl,
     required this.timeLabel,
     required this.genreLabel,
+    this.officialRating,
+    this.communityRating,
+    this.badgeLabel,
     required this.synopsis,
     required this.isLive,
     required this.apple,
@@ -69,10 +85,15 @@ class EpgHeroPreview extends StatelessWidget {
               fontSize: compact ? AppTypography.fontSizeMd : null,
               height: 1.2,
             );
+    // Ordered highest to lowest priority: the line's own maxLines:1 ellipsis
+    // drops from the end, so whatever doesn't fit is the least important
+    // thing here rather than whatever happens to be longest.
     final meta = [
       if (isLive) 'Live',
       if (timeLabel != null) timeLabel,
       if (genreLabel != null && genreLabel!.isNotEmpty) genreLabel,
+      if (officialRating != null && officialRating!.isNotEmpty) officialRating,
+      if (communityRating != null) communityRating!.toStringAsFixed(1),
     ].whereType<String>().join('  ·  ');
 
     final hasChannelPreview = channelLogoUrl != null || programTitle != null;
@@ -87,6 +108,10 @@ class EpgHeroPreview extends StatelessWidget {
             style: channelTitleStyle,
           ),
         ),
+        if (badgeLabel != null) ...[
+          const SizedBox(width: 8),
+          _HeroBadge(label: badgeLabel!),
+        ],
         if (meta.isNotEmpty) ...[
           const SizedBox(width: 10),
           Flexible(
@@ -202,5 +227,33 @@ class EpgHeroPreview extends StatelessWidget {
             ),
             child: content,
           );
+  }
+}
+
+/// Small pill for a premiere/repeat badge next to the title.
+class _HeroBadge extends StatelessWidget {
+  final String label;
+
+  const _HeroBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColorScheme.accent.withValues(alpha: 0.18),
+        borderRadius: AppRadius.circular(4),
+        border: Border.all(color: AppColorScheme.accent.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+          color: AppColorScheme.accent,
+        ),
+      ),
+    );
   }
 }

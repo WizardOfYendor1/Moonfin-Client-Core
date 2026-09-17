@@ -3201,6 +3201,10 @@
   "@premiere": {
     "description": "Premiere category filter label"
   },
+  "guideRepeatBadge": "Repeat",
+  "@guideRepeatBadge": {
+    "description": "Short badge label shown on a rerun in the guide hero band"
+  },
   "guideTimeline": "Guide Timeline",
   "@guideTimeline": {
     "description": "Section title for the TV guide timeline"
