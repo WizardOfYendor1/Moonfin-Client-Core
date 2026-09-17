@@ -4877,10 +4877,12 @@
     "description": "Still watching prompt interval",
     "placeholders": {
       "episodes": {
-        "type": "int"
+        "type": "int",
+        "format": "decimalPattern"
       },
       "hours": {
-        "type": "double"
+        "type": "double",
+        "format": "decimalPattern"
       }
     }
   },

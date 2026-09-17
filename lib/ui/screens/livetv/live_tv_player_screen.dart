@@ -92,6 +92,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   bool _isStopping = false;
   bool _isSwitching = false;
   bool _isGuidePickerOpen = false;
+  final _guideBackController = LiveTvGuideBackController();
   bool _isCarouselOpen = false;
   int _carouselSelectionRevision = 0;
 
@@ -1610,6 +1611,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
           return;
         }
         if (_isGuidePickerOpen) {
+          if (_guideBackController.consumeBackPress()) return;
           _closeGuideOverlay();
           return;
         }
@@ -1756,6 +1758,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
         currentChannel: _currentChannel,
         onChannelSelected: _onGuideChannelSelected,
         onClose: _closeGuideOverlay,
+        backController: _guideBackController,
       ),
     );
   }

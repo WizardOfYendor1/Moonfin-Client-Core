@@ -82,6 +82,16 @@ int _pageRowDirection(LogicalKeyboardKey key) {
   return 0;
 }
 
+/// Handed to an embedded [LiveTvGuideScreen] so its host's [PopScope] can
+/// offer it a back press before closing the guide outright.
+class LiveTvGuideBackController {
+  bool Function()? _onBackPressed;
+
+  /// True when the guide consumed the press (it reset itself); false when
+  /// the host should proceed with its own close/exit handling.
+  bool consumeBackPress() => _onBackPressed?.call() ?? false;
+}
+
 class LiveTvGuideScreen extends StatefulWidget {
   final bool miniPlayerMode;
   final GuideChannel? currentChannel;
@@ -104,6 +114,12 @@ class LiveTvGuideScreen extends StatefulWidget {
   /// mini-player frame) instead of `Navigator.pop()`.
   final VoidCallback? onClose;
 
+  /// Lets an [embedded] host, which owns the only [PopScope] in its route,
+  /// give this screen first refusal on a back press so it can reset to its
+  /// entry state instead of always closing. Unused on the standalone route,
+  /// which handles this itself.
+  final LiveTvGuideBackController? backController;
+
   const LiveTvGuideScreen({
     super.key,
     this.miniPlayerMode = false,
@@ -112,6 +128,7 @@ class LiveTvGuideScreen extends StatefulWidget {
     this.embedded = false,
     this.onChannelSelected,
     this.onClose,
+    this.backController,
   });
 
   /// Geometry of the mini-player video box in [embedded] mode, in the host
@@ -173,6 +190,11 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   Timer? _artworkLookupDebounce;
   bool _didInitializeMiniPlayerMode = false;
   bool _didRestoreInitialChannelFocus = false;
+
+  /// The channel focused when the guide first settled (last-tuned channel on
+  /// the standalone route, the actively-playing channel in mini-player mode).
+  /// Back resets here rather than exiting once the user has moved away from it.
+  String? _entryChannelId;
   late EpgMobileView _mobileView;
   GuideLayoutProfile _layoutProfile = GuideLayoutProfile.fromAvailableArea(
     availableWidth: 960,
@@ -217,6 +239,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       initialSortBy: _prefs.get(UserPreferences.liveTvChannelSortBy),
     );
     _vm.addListener(_onChanged);
+    widget.backController?._onBackPressed = _consumeBackIfExploring;
     WidgetsBinding.instance.addObserver(this);
     _mobileView = _prefs.get(UserPreferences.epgMobileView);
     _focusedProgram.addListener(_scheduleArtworkLookup);
@@ -450,6 +473,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
     _didInitializeMiniPlayerMode = true;
     final channel = channels[initialIndex];
+    _entryChannelId = channel.id;
     _focusedChannel.value = channel;
     _focusedProgram.value = _currentProgramForChannel(channel.id);
 
@@ -473,6 +497,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
     final index = preferredIndex >= 0 ? preferredIndex : 0;
     _didRestoreInitialChannelFocus = true;
+    _entryChannelId = _vm.filteredChannels[index].id;
 
     // RequestInitialFocus also schedules a post-frame focus. Defer one extra
     // frame so the restored row wins that initial traversal race.
@@ -662,6 +687,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   @override
   void dispose() {
+    widget.backController?._onBackPressed = null;
     _reanchorTimer?.cancel();
     _displayClockTimer?.cancel();
     _artworkLookupDebounce?.cancel();
@@ -750,8 +776,22 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   }
 
   @override
-  Widget build(BuildContext context) =>
-      RequestInitialFocus(child: _buildContent(context));
+  Widget build(BuildContext context) {
+    final content = RequestInitialFocus(child: _buildContent(context));
+    // The embedded overlay shares its host's single route and its PopScope;
+    // the host asks widget.backController instead. The standalone route owns
+    // its own pop attempts, so it needs its own PopScope here.
+    if (widget.embedded) return content;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_consumeBackIfExploring()) return;
+        Navigator.of(context).pop();
+      },
+      child: content,
+    );
+  }
 
   Widget _buildContent(BuildContext context) {
     final body = LayoutBuilder(
@@ -1952,6 +1992,35 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     await _vm.goToNow(windowStart: guideLeftEdge(DateTime.now()));
     if (!mounted) return;
     _anchorToWindowStart();
+  }
+
+  /// True once the user has paged the window off live or moved focus onto a
+  /// channel other than [_entryChannelId] -- anywhere in the grid, channel
+  /// column included.
+  bool _isExploringAwayFromEntry() {
+    final entryId = _entryChannelId;
+    if (entryId == null) return false;
+    return !_vm.atLivePosition || _focusedChannel.value?.id != entryId;
+  }
+
+  Future<void> _resetToEntryState() async {
+    await _goToNow();
+    if (!mounted) return;
+    final entryId = _entryChannelId;
+    if (entryId == null) return;
+    final index = _vm.filteredChannels.indexWhere(
+      (channel) => channel.id == entryId,
+    );
+    if (index >= 0) _focusChannelRow(index);
+  }
+
+  /// A back press resolves here first: if the grid has drifted from where the
+  /// user would have landed opening the guide fresh, back re-homes it instead
+  /// of exiting. Returns true when it handled the press.
+  bool _consumeBackIfExploring() {
+    if (!_isExploringAwayFromEntry()) return false;
+    unawaited(_resetToEntryState());
+    return true;
   }
 
   /// Anchor for the first focused cell: now while the window covers it, and
