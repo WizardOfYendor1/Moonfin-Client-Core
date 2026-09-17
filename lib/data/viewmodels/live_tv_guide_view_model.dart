@@ -1009,6 +1009,9 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     _programGeneration++;
     _loadGeneration++;
     cancelBoundaryRefresh();
+    _artworkNotifyCoalesce?.cancel();
+    _artworkPrefetchQueue.clear();
+    _artworkQueued.clear();
     super.dispose();
   }
 
@@ -1309,9 +1312,11 @@ class LiveTvGuideViewModel extends ChangeNotifier {
   /// bulk fetch even when the server has one on file — confirmed on a live
   /// server: the same program id carries `ImageTags.Primary` through
   /// `/LiveTv/Programs/Recommended` but not through `/LiveTv/Programs`. This
-  /// re-fetches that one program, images enabled, to get what the bulk fetch
-  /// can't — call sites must limit this to the currently-focused program,
-  /// debounced, since it's a full request per call.
+  /// re-fetches one program, images enabled, to get what the bulk fetch
+  /// can't. Safe to call for anything — [queueArtworkPrefetch] and a
+  /// call site's own debounced on-focus lookup can both land here for the
+  /// same program without duplicating the request, since the cache check
+  /// above is the first thing that runs.
   Future<({String itemId, String tag})?> artworkSourceFor(
     GuideProgram program,
   ) async {
@@ -1329,7 +1334,58 @@ class LiveTvGuideViewModel extends ChangeNotifier {
     }
     if (_artworkCache.length >= _artworkCacheCap) _artworkCache.clear();
     _artworkCache[program.id] = result;
+    _scheduleArtworkNotify();
     return result;
+  }
+
+  /// Background prefetch, throttled to [_artworkPrefetchConcurrency]
+  /// concurrent requests so a big lazily-loaded channel batch can't turn into
+  /// exactly the kind of all-at-once load issue #666 was about, just spread
+  /// across many small requests instead of one huge one. Cheap to call
+  /// often — already-cached or already-queued programs are skipped for the
+  /// cost of a couple of lookups, so a call site can just resubmit its whole
+  /// currently-visible set on every guide update.
+  final List<GuideProgram> _artworkPrefetchQueue = [];
+  final Set<String> _artworkQueued = {};
+  int _artworkPrefetchActive = 0;
+  static const _artworkPrefetchConcurrency = 3;
+
+  void queueArtworkPrefetch(Iterable<GuideProgram> programs) {
+    for (final program in programs) {
+      if (program.artworkSource != null) continue;
+      if (_artworkCache.containsKey(program.id)) continue;
+      if (!_artworkQueued.add(program.id)) continue;
+      _artworkPrefetchQueue.add(program);
+    }
+    _pumpArtworkPrefetch();
+  }
+
+  void _pumpArtworkPrefetch() {
+    while (!_disposed &&
+        _artworkPrefetchActive < _artworkPrefetchConcurrency &&
+        _artworkPrefetchQueue.isNotEmpty) {
+      final program = _artworkPrefetchQueue.removeAt(0);
+      _artworkQueued.remove(program.id);
+      if (_artworkCache.containsKey(program.id)) continue;
+      _artworkPrefetchActive++;
+      unawaited(
+        artworkSourceFor(program).whenComplete(() {
+          _artworkPrefetchActive--;
+          if (!_disposed) _pumpArtworkPrefetch();
+        }),
+      );
+    }
+  }
+
+  /// A prefetch backlog can resolve dozens of items a second; coalescing
+  /// keeps that from rebuilding the whole guide once per item.
+  Timer? _artworkNotifyCoalesce;
+
+  void _scheduleArtworkNotify() {
+    _artworkNotifyCoalesce ??= Timer(const Duration(milliseconds: 200), () {
+      _artworkNotifyCoalesce = null;
+      if (!_disposed) _notifyListeners();
+    });
   }
 
   /// Fetches programs for one batch of channels over the current window and

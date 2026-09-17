@@ -335,6 +335,13 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         .map((channel) => channel.id)
         .toList();
     _precacheGuideLogos(_vm.filteredChannels);
+    // Cheap to resubmit on every update: queueArtworkPrefetch skips anything
+    // already cached or already queued, so this just picks up whatever the
+    // last lazy-loaded batch added.
+    _vm.queueArtworkPrefetch([
+      for (final channel in _vm.filteredChannels)
+        ..._vm.programsForChannel(channel.id),
+    ]);
     final lineupChanged = !listEquals(channelIds, _visibleChannelIds);
     _visibleChannelIds = channelIds;
     setState(_initializeMiniPlayerMode);
@@ -892,10 +899,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   /// [LiveTvGuideViewModel.artworkSourceFor]) so scrolling through the
   /// channel column doesn't fire a request per row passed through, and skips
   /// it entirely once cached. Not limited to currently-airing programs —
-  /// the official Jellyfin Android TV client's own guide does the exact same
-  /// per-selection re-fetch (`LiveTvGuideFragmentHelper.refreshSelectedProgram`,
-  /// 500 ms debounce) with no such restriction, and future programs carry
-  /// artwork just as often as live ones.
+  /// future programs carry artwork just as often as live ones.
   void _scheduleArtworkLookup() {
     _artworkLookupDebounce?.cancel();
     final preview = _currentPreviewProgram();

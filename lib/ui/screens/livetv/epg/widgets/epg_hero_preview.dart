@@ -217,7 +217,13 @@ class EpgHeroPreview extends StatelessWidget {
         : SizedBox(
             width: plateWidth,
             child: DecoratedBox(
-              decoration: const BoxDecoration(color: _logoPlate),
+              // The plate colour is a backdrop for transparent-background
+              // logo PNGs. Artwork is an opaque photo that covers the box
+              // completely, so the colour would only ever show through a
+              // loading gap — pure noise there, not a backdrop.
+              decoration: BoxDecoration(
+                color: usingArtwork ? Colors.transparent : _logoPlate,
+              ),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: BoundedNetworkImage(
