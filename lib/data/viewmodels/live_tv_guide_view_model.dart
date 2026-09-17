@@ -1262,7 +1262,10 @@ class LiveTvGuideViewModel extends ChangeNotifier {
         startDate: DateTime.parse(startStr).toLocal(),
         endDate: DateTime.parse(endStr).toLocal(),
         overview: raw['Overview'] as String?,
-        episodeTitle: raw['EpisodeTitle'] as String?,
+        // Some guide sources deliver EpisodeTitle with literal backslash-escaped
+        // quotes (`\"Raygun\"`) even though the same program's Overview does
+        // not, so this field alone needs unescaping.
+        episodeTitle: (raw['EpisodeTitle'] as String?)?.replaceAll(r'\"', '"'),
         isMovie: raw['IsMovie'] == true,
         isSeries: raw['IsSeries'] == true,
         isSports: raw['IsSports'] == true,
