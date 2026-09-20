@@ -25,6 +25,7 @@ import android.view.Surface
 import android.view.SurfaceView
 import android.view.TextureView
 import android.view.View
+import android.util.Log as AndroidLog
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.core.content.getSystemService
@@ -37,6 +38,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.TrackGroup
+import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
@@ -1012,7 +1014,7 @@ class Media3VideoView(
                     mapOf(
                         "event" to "completed",
                         "completed" to true,
-                    ),
+                    ) + endOfStreamDiagnostics(),
                 )
             }
         }
@@ -2014,6 +2016,12 @@ class Media3VideoView(
                     result.success(null)
                 }
 
+                "resumeLive" -> {
+                    resumeLiveEdge()
+                    emitState()
+                    result.success(null)
+                }
+
                 "stop" -> {
                     stopPlaybackAndRestoreDisplayMode()
                     if (isDisposedByFlutter && currentMediaType != "audio") {
@@ -2215,6 +2223,11 @@ class Media3VideoView(
                     emitState()
                 }
 
+                "resumeLive" -> {
+                    resumeLiveEdge()
+                    emitState()
+                }
+
                 "stop" -> {
                     stopPlaybackAndRestoreDisplayMode()
                     if (isDisposedByFlutter && currentMediaType != "audio") {
@@ -2346,7 +2359,6 @@ class Media3VideoView(
         val startPositionMs = (args["startPositionMs"] as? Number)?.toLong() ?: 0L
         val autoPlay = args["autoPlay"] as? Boolean ?: false
         displayModeSwitchRetriesForCurrentSource = 0
-
         restorePreferredDisplayMode()
         detectedFrameRate = null
         // Most containers, mkv and ts among them, come out of the extractor
@@ -3661,6 +3673,99 @@ class Media3VideoView(
         }
     }
 
+    /** One greppable logcat tag for everything the live recovery work reports. */
+    private val LIVE_TAG = "MoonfinLive"
+
+    // How far behind the live edge a live stream aims to sit, and the gentle
+    // slow-down that gets it there. The cushion is buffered-but-unplayed media:
+    // at 5s of it, a source that hiccups for four seconds is never seen.
+    /** The window the player is on, or null before it has a timeline. */
+    private fun currentWindow(): Timeline.Window? {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return null
+        return try {
+            timeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
+        } catch (_: IndexOutOfBoundsException) {
+            null
+        }
+    }
+
+    /**
+     * What the player thought it was playing when it reported the end of the
+     * stream. A live source has no end, so the window's own view of itself is
+     * what separates a starved live stream from a finished one, whatever
+     * container the server chose to deliver it in.
+     */
+    private fun endOfStreamDiagnostics(): Map<String, Any> {
+        val window = currentWindow()
+        val mimeType = inferStreamMimeType(currentUrl ?: "", currentContainer, currentMediaType)
+        val fields = mapOf(
+            "isLive" to currentIsLive,
+            "windowKnown" to (window != null),
+            "windowIsLive" to (window?.isLive() ?: false),
+            "windowIsDynamic" to (window?.isDynamic ?: false),
+            "sourceMimeType" to (mimeType ?: "unknown"),
+            "durationMs" to player.duration,
+            "positionMs" to player.currentPosition,
+            "bufferedPositionMs" to player.bufferedPosition,
+            // The player's own answer to "is this live, and how far behind the
+            // edge were we": C.TIME_UNSET means it is not treating the window
+            // as live at all, which is the question Fix 2 is gated on.
+            "liveOffsetMs" to player.currentLiveOffset,
+            // Whether the loader still had work in hand. A starved live source
+            // ends with loading still true; a source that genuinely ran out
+            // ends with nothing left to load.
+            "isLoading" to player.isLoading,
+            "playWhenReady" to player.playWhenReady,
+        )
+        // Also to logcat: the Dart diagnostic log only keeps entries when the
+        // user has the diagnostics preference on, and its developer.log call
+        // sits behind an assert, so on a release build this is the only place
+        // the answer survives.
+        AndroidLog.w(LIVE_TAG, fields.entries.joinToString(" ") { "${it.key}=${it.value}" })
+        return fields
+    }
+
+    /**
+     * Picks a starved live stream back up in place, without the server
+     * session being torn down. Only a window that says it is live has an edge
+     * to seek to; anything else -- a progressive transport stream the server
+     * stopped feeding, say -- is re-prepared where it stopped, since seeking
+     * such a source to its default position means restarting it from the
+     * front.
+     */
+    private fun resumeLiveEdge() {
+        if (isPlayerReleased) return
+        val window = currentWindow()
+        // Only a dynamic window has newer media to seek into. isLive() must
+        // not be trusted here: it reports whether the *media item* carries a
+        // live configuration, which we set for the cushion, so it reads true
+        // even for a direct-streamed raw TS whose window is a fixed duration.
+        // Seeking that window's default position lands on 0, not the edge.
+        val hasLiveEdge = window?.isDynamic == true
+        if (hasLiveEdge) {
+            // A live window has somewhere newer to go, so jumping to the edge
+            // and re-preparing puts the player back on fresh media.
+            player.seekToDefaultPosition()
+            player.prepare()
+        } else {
+            // Nothing newer to seek to, and prepare() on its own cannot help
+            // here: the player is ENDED and sitting at the end of everything
+            // the source gave it, so there is no media after the playhead to
+            // resume into. Only handing the source back rebuilds it and
+            // re-opens the connection the server stopped feeding.
+            prepareCurrentSource(player.currentPosition, true)
+        }
+        player.playWhenReady = true
+        AndroidLog.w(LIVE_TAG, "resumeLiveEdge seekedToEdge=$hasLiveEdge")
+        Media3Bridge.emitEvent(
+            mapOf(
+                "event" to "liveEdgeResumed",
+                "seekedToEdge" to hasLiveEdge,
+            ) + endOfStreamDiagnostics(),
+        )
+    }
+
     /**
      * The one place the current source is handed to the player, for the first
      * prepare and every re-prepare after it. Playback with no subtitle timing
@@ -4858,6 +4963,13 @@ class Media3VideoView(
             "bufferedMs" to if (bufferedPosition > 0) bufferedPosition else 0L,
             "isPlaying" to player.isPlaying,
             "isBuffering" to (player.playbackState == Player.STATE_BUFFERING),
+            // isPlaying alone cannot say WHY the player is not playing: media3
+            // defines it as playWhenReady && READY && no suppression, so a
+            // viewer pause, a starved stream and a transient audio-focus loss
+            // all read as false. playWhenReady is the intent to play, and the
+            // suppression reason is the third case, so the pair separates them.
+            "playWhenReady" to player.playWhenReady,
+            "playbackSuppressionReason" to player.playbackSuppressionReason,
             "playbackSpeed" to player.playbackParameters.speed.toDouble(),
             "videoWidth" to videoSize.width,
             "videoHeight" to videoSize.height,

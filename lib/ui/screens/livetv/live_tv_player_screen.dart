@@ -110,6 +110,18 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   Timer? _programRefreshTimer;
   StreamSubscription<PlayerBackend>? _backendSub;
 
+  /// Watches the bringup state for the whole time the screen is up, not just
+  /// while a channel is tuning. A live stream that dies mid-watch is reported
+  /// as a failed bringup by the manager once its bounded recovery is spent,
+  /// and without a standing listener that report reaches nobody: playback
+  /// simply stops and the viewer is left on a still frame with no way back.
+  StreamSubscription<PlaybackBringupState>? _liveFailureSub;
+
+  /// The tune path reports its own failures, so this must not double up on
+  /// them. Only a failure arriving after a channel was playing is this
+  /// listener's to report.
+  bool _channelIsUp = false;
+
   /// Guards the focus reclaim below against fighting another widget forever.
   bool _reclaimingFocus = false;
   StreamSubscription<bool>? _screensaverPlayingSub;
@@ -179,6 +191,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       setState(() {});
     });
     _listenForPlayerTrackChanges();
+    _liveFailureSub = _manager.bringupStateStream.listen(_onBringupState);
     FocusManager.instance.addListener(_onGlobalFocusChanged);
     _tvPlayPauseFocus.addListener(_onControlFocusChanged);
     _tvChannelsFocus.addListener(_onControlFocusChanged);
@@ -215,6 +228,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _hideTimer?.cancel();
     _programRefreshTimer?.cancel();
     _backendSub?.cancel();
+    _liveFailureSub?.cancel();
     FocusManager.instance.removeListener(_onGlobalFocusChanged);
     _tracksChangedSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -644,6 +658,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     // A channel change starts a new stream, so whatever caption choice is
     // remembered has to be put back once this one reports its own captions.
     _captionTrackApplied = false;
+    // The old channel is no longer up, and until the new one is, a failure
+    // belongs to the tune below and nothing else. Left set, the persistent
+    // listener claims the same failure first and the viewer gets told twice.
+    _channelIsUp = false;
     final channel = _currentChannel;
     unawaited(_prefs.set(UserPreferences.liveTvLastChannelId, channel.id));
     final item = AggregatedItem(
@@ -659,7 +677,12 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       start: () => _manager.playItems(
         [item],
         enableDirectPlay: allowDirect,
-        enableDirectStream: allowDirect,
+        // Never withdrawn with direct play. A viewer who turns direct play off
+        // wants the server to serve the channel, not to re-encode it: the
+        // remux keeps the original codecs and arrives as HLS, which has the
+        // live window a raw transport stream never had. Withdrawing both left
+        // them with a transcode nobody asked for.
+        enableDirectStream: true,
         // Keep transcoding available as a fallback so a failed direct-play
         // of the upstream URL recovers to the server transcode instead of
         // erroring.
@@ -670,6 +693,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
       return false;
     }
     final succeeded = terminalState?.phase == PlaybackBringupPhase.ready;
+    _channelIsUp = succeeded;
     if (!succeeded) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -685,6 +709,22 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     unawaited(_fetchCurrentProgram());
     _warmChannelCarousel();
     return true;
+  }
+
+  /// A failure that arrives once a channel is playing is the manager saying
+  /// its bounded recovery could not save the stream. The tune path never sees
+  /// it, because by then it has already returned.
+  void _onBringupState(PlaybackBringupState state) {
+    if (!mounted || _isStopping || !_channelIsUp) return;
+    if (state.phase != PlaybackBringupPhase.failed) return;
+    _channelIsUp = false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).failedToPlayChannel(_currentChannel.name),
+        ),
+      ),
+    );
   }
 
   /// Takes focus back when something off-screen steals it.

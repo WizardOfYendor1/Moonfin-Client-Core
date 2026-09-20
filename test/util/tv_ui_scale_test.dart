@@ -15,7 +15,7 @@ void main() {
       expect(tvos.width, closeTo(kTvDesignWidth, 0.01));
       expect(androidTv.width, closeTo(kTvDesignWidth, 0.01));
       expect(tvos.height, closeTo(androidTv.height, 0.01));
-      expect(tvos.height, closeTo(745.0, 0.5));
+      expect(tvos.height, closeTo(620.7, 0.5));
     });
 
     test('drives a 1080p panel at the scale the layouts were drawn for', () {
@@ -25,7 +25,7 @@ void main() {
 
     test('leaves the effective density the same on both', () {
       // What the panel ends up painting at is the density it reported times
-      // the magnification. Both land on 1.45, which is 1920 real pixels.
+      // the magnification. Both land on 1.74, which is 1920 real pixels.
       const tvosReported = 1.0;
       const androidTvReported = 2.0;
       expect(
