@@ -366,6 +366,8 @@ void main() {
           reason: 'these would leak across servers: \$unscoped');
     });
   });
+
+  scopeAdoptionTests();
 }
 
 // Moving a preference to per-server storage changes which key reads consult, so an existing

@@ -151,4 +151,26 @@ void main() {
     expect(request?.queryParameters.containsKey('Fields'), isFalse);
     expect(request?.queryParameters['UserId'], 'user-1');
   });
+
+  test('collection removal deletes with the joined Ids param', () async {
+    RequestOptions? request;
+    final dio = Dio()
+      ..interceptors.add(
+        _FakeServer((options, handler) {
+          request = options;
+          handler.resolve(
+            Response(requestOptions: options, data: <String, dynamic>{}),
+          );
+        }),
+      );
+
+    await JellyfinItemsApi(
+      dio,
+      () => 'user-1',
+    ).removeFromCollection('boxset-1', ['a', 'b']);
+
+    expect(request?.method, 'DELETE');
+    expect(request?.path, '/Collections/boxset-1/Items');
+    expect(request?.queryParameters['Ids'], 'a,b');
+  });
 }

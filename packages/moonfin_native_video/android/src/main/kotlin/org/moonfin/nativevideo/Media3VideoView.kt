@@ -109,6 +109,7 @@ import org.moonfin.nativevideo.subtitle.TimeOffsetMediaSource
 import org.moonfin.nativevideo.subtitle.clampManualDelayMs
 import org.moonfin.nativevideo.subtitle.effectiveOffsetUs
 import org.moonfin.nativevideo.subtitle.externalFormatIdMatches
+import org.moonfin.nativevideo.subtitle.joinStackedCues
 import org.moonfin.nativevideo.subtitle.shouldRetime
 import org.moonfin.nativevideo.subtitle.sourceTreeFor
 import org.moonfin.nativevideo.subtitle.syncDelaysPayload
@@ -983,11 +984,11 @@ class Media3VideoView(
     private val listener = object : Player.Listener {
         @Suppress("DEPRECATION")
         override fun onCues(cues: List<Cue>) {
-            subtitleView.setCues(cues)
+            subtitleView.setCues(joinStackedCues(cues))
         }
 
         override fun onCues(cueGroup: CueGroup) {
-            subtitleView.setCues(cueGroup.cues)
+            subtitleView.setCues(joinStackedCues(cueGroup.cues))
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -1336,6 +1337,13 @@ class Media3VideoView(
             // the iec* fields carry that transport truth.
             val iecEngaged = iecOutputProvider?.lastOutputWasIec == true
             val iecCarrier = if (iecEngaged) iecOutputProvider?.lastIecCarrier else null
+            // What narrowed a PCM track, so a stereo one is attributable
+            // without a settings screenshot.
+            val stereoDownmix = when {
+                !stereoDownmixEnabled -> "off"
+                deviceRequiresStereoDownmix -> "device"
+                else -> "preference"
+            }
             Media3Bridge.emitEvent(
                 mapOf(
                     "event" to "audioTrackInitialized",
@@ -1347,6 +1355,7 @@ class Media3VideoView(
                     // The CHANNEL_OUT mask is one bit per speaker, so the bit
                     // count is the channel count the sink actually opened.
                     "outputChannels" to Integer.bitCount(audioTrackConfig.channelConfig),
+                    "stereoDownmix" to stereoDownmix,
                     "tunneling" to audioTrackConfig.tunneling,
                     "offload" to audioTrackConfig.offload,
                     "bufferSize" to audioTrackConfig.bufferSize,
@@ -1602,6 +1611,26 @@ class Media3VideoView(
             )
             return arrayOf<Extractor>(rebasing) + extractors
         }
+    }
+
+    /**
+     * Whether the route killed the AudioTrack rather than the device refusing
+     * to open it. A write on a track whose output went away answers with a
+     * dead object, and the replacement opens at the same shape once the link
+     * is back, so the failure says nothing about the channel count.
+     */
+    private fun errorIsDeadAudioTrack(error: PlaybackException): Boolean {
+        var cause: Throwable? = error
+        var depth = 0
+        while (cause != null && depth < 6) {
+            val writeError = cause as? AudioSink.WriteException
+            if (writeError != null && RouteFlapHold.isDeadObjectCode(writeError.errorCode)) {
+                return true
+            }
+            cause = cause.cause
+            depth++
+        }
+        return false
     }
 
     // Walks a failure back to its root, naming the type and the first frame
@@ -4130,13 +4159,25 @@ class Media3VideoView(
      * in-place stereo downmix and re-prepares from the current position, which
      * avoids a costly server-transcode round-trip. Applies to both audio-only
      * and video content.
+     *
+     * The conclusion is sticky for the session, so only a failure that really
+     * is about the channel count may draw it. A track the route killed is not
+     * one: an HDMI link renegotiating mid stream hands back a dead object
+     * whatever the channel count was, and a display mode switch still landing
+     * is the same story before the error even arrives. Reading either as a
+     * device limit folds every later decode in the session to 2.0.
      */
     private fun retryAudioWithStereoDownmixIfNeeded(error: PlaybackException): Boolean {
         val isRetryableError =
             error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED ||
                 error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED
 
-        if (!isRetryableError || stereoDownmixEnabled || stereoDownmixRetryAttemptedForCurrentSource) {
+        if (!isRetryableError ||
+            stereoDownmixEnabled ||
+            stereoDownmixRetryAttemptedForCurrentSource ||
+            displayModeSwitchInFlight() ||
+            errorIsDeadAudioTrack(error)
+        ) {
             return false
         }
 
@@ -4149,6 +4190,7 @@ class Media3VideoView(
         // instead of failing the AudioTrack init again.
         deviceRequiresStereoDownmix = true
         applyStereoDownmix(true)
+        Media3Bridge.emitEvent(mapOf("event" to "stereoDownmixLatched"))
         prepareCurrentSource(retryPositionMs, playWhenReady)
         return true
     }

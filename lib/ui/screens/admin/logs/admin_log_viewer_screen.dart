@@ -8,6 +8,7 @@ import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../util/error_message.dart';
 import '../../../../util/platform_detection.dart';
 import '../widgets/admin_form_styles.dart';
 
@@ -62,7 +63,7 @@ class _AdminLogViewerScreenState extends State<AdminLogViewerScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = describeError(e, AppLocalizations.of(context));
         _loading = false;
       });
     }
@@ -104,8 +105,9 @@ class _AdminLogViewerScreenState extends State<AdminLogViewerScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).adminSaveFailed(e.toString()))),
+        SnackBar(content: Text(l10n.adminSaveFailed(describeError(e, l10n)))),
       );
     }
   }

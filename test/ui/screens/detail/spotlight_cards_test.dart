@@ -58,6 +58,8 @@ AggregatedItem _seerrMissing(String tmdbId, String name) => AggregatedItem(
 SpotlightCardActions _actions() => SpotlightCardActions(
   openItem: (_) {},
   openSeerrItem: (_) {},
+  openSeerrBrowse: (_, _, _, _) {},
+  openSeerrCollection: (_) {},
   openPerson: (_) {},
   openStudio: (_) {},
   playFromChapter: (_) {},
@@ -487,6 +489,89 @@ void main() {
     final cards = cardsFor(_item('Movie'));
 
     expect(cards.map((c) => c.id), ['people', 'similar']);
+  });
+
+  test('a seerr-only title leads with a details card of its seerr facts', () {
+    when(() => vm.isSeerrOnly).thenReturn(true);
+    final seerrVm = _SeerrVm();
+    when(() => seerrVm.state).thenReturn(
+      SeerrMediaDetailState(
+        movie: const SeerrMovieDetails(
+          id: 42,
+          title: 'The Movie',
+          status: 'Released',
+          releaseDate: '2025-06-18',
+          budget: 60000000,
+          genres: [
+            SeerrGenre(id: 1, name: 'Horror'),
+            SeerrGenre(id: 2, name: 'Thriller'),
+          ],
+          keywords: [SeerrKeyword(id: 3, name: 'zombie')],
+          collection: SeerrCollectionRef(id: 9, name: 'The Collection'),
+        ),
+      ),
+    );
+    when(() => vm.seerr).thenReturn(seerrVm);
+    when(() => vm.similar).thenReturn([_child('s1', 'Movie')]);
+
+    final cards = cardsFor(_item('Movie'));
+
+    final details = cards.first;
+    expect(details.id, 'seerr_details');
+    expect(details.title, _l10n.details);
+    // Status, release date and budget make three facts, two genres and a
+    // keyword make three tags.
+    expect(details.subtitle, '3 facts · 3 tags');
+    expect(details.sections.map((s) => s.title), [
+      _l10n.genresAndTags,
+      isNull,
+      isNull,
+    ]);
+    expect(details.sections.first.count, 3);
+  });
+
+  test('a seerr-only title does not repeat its facts on the similar card', () {
+    when(() => vm.isSeerrOnly).thenReturn(true);
+    final seerrVm = _SeerrVm();
+    when(() => seerrVm.state).thenReturn(
+      SeerrMediaDetailState(
+        movie: const SeerrMovieDetails(
+          id: 42,
+          title: 'The Movie',
+          status: 'Released',
+          genres: [SeerrGenre(id: 1, name: 'Horror')],
+        ),
+        recommendations: const [
+          SeerrDiscoverItem(id: 1, title: 'Rec', posterPath: '/rec.jpg'),
+        ],
+      ),
+    );
+    when(() => vm.seerr).thenReturn(seerrVm);
+
+    final cards = cardsFor(_item('Movie'));
+
+    expect(cards.map((c) => c.id), ['seerr_details', 'similar']);
+    final similar = cards.singleWhere((c) => c.id == 'similar');
+    expect(similar.sections.map((s) => s.title), [
+      _l10n.spotlightRecommendationsSeerr,
+    ]);
+  });
+
+  test('a seerr-only title with nothing extra gets no details card', () {
+    when(() => vm.isSeerrOnly).thenReturn(true);
+    final seerrVm = _SeerrVm();
+    when(() => seerrVm.state).thenReturn(
+      SeerrMediaDetailState(
+        movie: const SeerrMovieDetails(id: 42, title: 'The Movie'),
+      ),
+    );
+    when(() => vm.seerr).thenReturn(seerrVm);
+    when(() => vm.similar).thenReturn([_child('s1', 'Movie')]);
+
+    expect(
+      cardsFor(_item('Movie')).map((c) => c.id),
+      isNot(contains('seerr_details')),
+    );
   });
 
   test('empty sections are dropped from a card', () {

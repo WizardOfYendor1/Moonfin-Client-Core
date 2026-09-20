@@ -14,6 +14,7 @@ import 'package:server_core/server_core.dart';
 import '../../navigation/destinations.dart';
 import '../../navigation/route_lifecycle_observer.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 import '../../../preference/user_preferences.dart';
 import '../../widgets/adaptive/adaptive_glass.dart';
 import '../../widgets/bounded_network_image.dart';
@@ -298,9 +299,10 @@ class _GameDetailScreenState extends State<GameDetailScreen> with RouteAware {
       _loadRelated(games, game);
     } catch (e) {
       if (!mounted) return;
+      final detail = describeError(e, AppLocalizations.of(context));
       setState(() {
         _loading = false;
-        _error = 'Failed to load game: $e';
+        _error = 'Failed to load game: $detail';
       });
     }
   }
@@ -455,9 +457,10 @@ class _GameDetailScreenState extends State<GameDetailScreen> with RouteAware {
       }
     } catch (e) {
       if (!mounted) return;
+      final detail = describeError(e, AppLocalizations.of(context));
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not change player: $e')));
+      ).showSnackBar(SnackBar(content: Text('Could not change player: $detail')));
     } finally {
       if (didUpdate && mounted) unawaited(_loadSave(games, updated));
     }
@@ -993,7 +996,7 @@ class _BackdropImage extends StatelessWidget {
             cacheManager: gameArtworkCacheManagerForScope(artworkScope),
             fit: BoxFit.cover,
             alignment: Alignment.center,
-            fadeInDuration: const Duration(milliseconds: 250),
+            fadeInDuration: Duration.zero,
             maxWidth: 1920,
             onLoadFinished: () =>
                 artworkDataSource?.reportImageLoaded(gameId, role: step.role),

@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../screens/livetv/epg/epg_genre.dart';
+import '../offline_aware_image.dart';
 
 /// One channel in the quick channel carousel. Pure presentation: the host
 /// owns scrolling, focus, and data. This only renders what it is given.
@@ -347,7 +347,7 @@ class ChannelCarouselCard extends StatelessWidget {
   Widget _logo() => SizedBox(
     height: _logoHeight,
     width: _logoMaxWidth,
-    child: CachedNetworkImage(
+    child: OfflineAwareImage(
       imageUrl: logoUrl!,
       fit: BoxFit.contain,
       alignment: Alignment.centerRight,

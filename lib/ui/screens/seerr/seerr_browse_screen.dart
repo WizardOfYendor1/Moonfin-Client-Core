@@ -18,6 +18,7 @@ import '../../navigation/destinations.dart';
 import '../../widgets/media_card.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/quick_return_wrapper.dart';
 import '../../widgets/skeleton/skeleton_library_grid.dart';
@@ -189,7 +190,7 @@ class _SeerrBrowseScreenState extends State<SeerrBrowseScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              s.error!,
+              describeError(s.error!, AppLocalizations.of(context)),
               style: TextStyle(
                 color: AppColorScheme.onSurface.withValues(alpha: 0.7),
               ),

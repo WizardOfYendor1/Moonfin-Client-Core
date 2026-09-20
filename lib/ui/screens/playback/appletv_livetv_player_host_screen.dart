@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' show min;
 
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -17,7 +16,9 @@ import '../../../preference/user_preferences.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../util/play_method_label.dart';
 import '../livetv/live_tv_guide_screen.dart';
+import '../../screensaver/screensaver_controller.dart';
 import '../../theme/app_theme_controller.dart';
+import '../../widgets/live_tv/channel_carousel_overlay.dart';
 import 'osd_buttons.dart';
 
 class AppleTvLiveTvPlayerHostScreen extends StatefulWidget {
@@ -36,7 +37,8 @@ class AppleTvLiveTvPlayerHostScreen extends StatefulWidget {
 }
 
 class _AppleTvLiveTvPlayerHostScreenState
-    extends State<AppleTvLiveTvPlayerHostScreen> {
+    extends State<AppleTvLiveTvPlayerHostScreen>
+    with WidgetsBindingObserver {
   final _manager = GetIt.instance<PlaybackManager>();
   final _client = GetIt.instance<MediaServerClient>();
   final _prefs = GetIt.instance<UserPreferences>();
@@ -50,7 +52,6 @@ class _AppleTvLiveTvPlayerHostScreenState
   bool _switching = false;
   bool _inGuide = false;
   AppleTvPreviewPlayer? _pipPlayer;
-  Timer? _programRefreshTimer;
 
   // Captions the player found inside the video, which the server never lists
   // as subtitle streams. The native subtitle menu round-trips a plain index
@@ -62,10 +63,14 @@ class _AppleTvLiveTvPlayerHostScreenState
   StreamSubscription<void>? _tracksChangedSub;
 
   GuideProgram? _currentProgram;
-  final Map<String, String> _nowPlayingByChannel = {};
-  List<Map<String, dynamic>>? _channelListCache;
-  bool _sweepInFlight = false;
+  final Map<String, GuideProgram> _nowPlayingByChannel = {};
+  final Map<String, String> _logoUrlCache = {};
+
+  /// Holds the lineup's schedule for the header and the channel list, and
+  /// refreshes it on a program boundary and once an hour.
+  ChannelCarouselPrewarm? _carouselPrewarm;
   AppThemeController? _themeController;
+  ScreensaverController? _screensaverController;
 
   AppleTvBackend? get _backend {
     try {
@@ -80,6 +85,10 @@ class _AppleTvLiveTvPlayerHostScreenState
   @override
   void initState() {
     super.initState();
+    try {
+      _screensaverController = GetIt.instance<ScreensaverController>();
+    } catch (_) {}
+    _screensaverController?.setNativePlayerPresented(true);
     _currentIndex = widget.startIndex;
     _exitSub = _backend?.userExitStream.listen((_) => _handleExit());
     _actionSub = _backend?.uiActionStream.listen(_handleUiAction);
@@ -87,13 +96,19 @@ class _AppleTvLiveTvPlayerHostScreenState
       (_) => _onPlayerTracksChanged(),
     );
     _bringupSub = _manager.bringupStateStream.listen((_) => _pushMetadata());
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pushSubtitleStyle();
       _pushThemeConfig();
       _playCurrentChannel();
-      _fetchAllNowPlaying();
     });
-    _startProgramRefresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.resumed) {
+      unawaited(_carouselPrewarm?.onAppResumed());
+    }
   }
 
   @override
@@ -122,6 +137,7 @@ class _AppleTvLiveTvPlayerHostScreenState
         isGlass: AppColorScheme.isGlass,
         accentARGB: AppColorScheme.accent.toARGB32(),
         surfaceARGB: AppColorScheme.surface.toARGB32(),
+        surfaceVariantARGB: AppColorScheme.surfaceVariant.toARGB32(),
         onSurfaceARGB: AppColorScheme.onSurface.toARGB32(),
         rangeProgressARGB: AppColorScheme.rangeProgress.toARGB32(),
         rangeTrackARGB: AppColorScheme.rangeTrack.toARGB32(),
@@ -135,7 +151,9 @@ class _AppleTvLiveTvPlayerHostScreenState
     _actionSub?.cancel();
     _bringupSub?.cancel();
     _tracksChangedSub?.cancel();
-    _programRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _carouselPrewarm?.dispose();
+    _screensaverController?.setNativePlayerPresented(false);
     _themeController?.removeListener(_onThemeChanged);
     unawaited(_pipPlayer?.dispose());
     unawaited(_backend?.dismissPlayer() ?? Future<void>.value());
@@ -198,7 +216,7 @@ class _AppleTvLiveTvPlayerHostScreenState
       return;
     }
     _pushMetadata();
-    _fetchCurrentProgram();
+    _warmSchedule();
   }
 
   Future<void> _switchChannel(String channelId) async {
@@ -208,7 +226,7 @@ class _AppleTvLiveTvPlayerHostScreenState
     _switching = true;
     try {
       _currentIndex = index;
-      _currentProgram = null;
+      _readSchedule();
       _pushMetadata();
       await _playCurrentChannel();
     } finally {
@@ -276,127 +294,49 @@ class _AppleTvLiveTvPlayerHostScreenState
       final idx = widget.channels.indexWhere((c) => c.id == selectedId);
       if (idx >= 0) {
         _currentIndex = idx;
-        _currentProgram = null;
+        _readSchedule();
       }
     }
     await _playCurrentChannel();
   }
 
-  void _startProgramRefresh() {
-    _programRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      _fetchCurrentProgram();
-      _fetchAllNowPlaying();
-    });
+  void _warmSchedule() {
+    if (widget.channels.isEmpty) return;
+    var prewarm = _carouselPrewarm;
+    if (prewarm == null) {
+      prewarm = ChannelCarouselPrewarm(_client);
+      prewarm.viewModel.addListener(_onScheduleChanged);
+      _carouselPrewarm = prewarm;
+    }
+    prewarm.tuned(widget.channels, _currentChannel.id);
   }
 
-  Future<void> _fetchCurrentProgram() async {
-    final channelId = _currentChannel.id;
-    try {
-      final now = DateTime.now();
-      final response = await _client.liveTvApi.getGuide(
-        startDate: now.subtract(const Duration(minutes: 30)),
-        endDate: now.add(const Duration(hours: 3)),
-        channelIds: [channelId],
-        fields: 'Overview',
-        enableTotalRecordCount: false,
-        userId: _client.userId,
-      );
-      final items = (response['Items'] as List?) ?? [];
-      if (items.isEmpty || !mounted) return;
-
-      Map<String, dynamic>? selected;
-      DateTime? selectedStart;
-      DateTime? selectedEnd;
-      for (final item in items) {
-        final raw = item as Map<String, dynamic>;
-        final start = DateTime.tryParse(
-          raw['StartDate']?.toString() ?? '',
-        )?.toLocal();
-        final end = DateTime.tryParse(
-          raw['EndDate']?.toString() ?? '',
-        )?.toLocal();
-        if (start == null || end == null) continue;
-        selected ??= raw;
-        selectedStart ??= start;
-        selectedEnd ??= end;
-        if (!now.isBefore(start) && now.isBefore(end)) {
-          selected = raw;
-          selectedStart = start;
-          selectedEnd = end;
-          break;
-        }
-      }
-
-      if (selected == null || selectedStart == null || selectedEnd == null) {
-        return;
-      }
-      if (_currentChannel.id != channelId) return;
-
-      _currentProgram = GuideProgram(
-        id: selected['Id']?.toString() ?? '',
-        channelId: channelId,
-        name: selected['Name']?.toString() ?? '',
-        startDate: selectedStart,
-        endDate: selectedEnd,
-        overview: selected['Overview'] as String?,
-        episodeTitle: selected['EpisodeTitle'] as String?,
-        isMovie: selected['IsMovie'] == true,
-        isSeries: selected['IsSeries'] == true,
-        isSports: selected['IsSports'] == true,
-        isNews: selected['IsNews'] == true,
-        isKids: selected['IsKids'] == true,
-        isPremiere: selected['IsPremiere'] == true,
-        hasTimer: selected['TimerId'] != null,
-        rawData: selected,
-      );
-      _pushMetadata();
-    } catch (_) {}
+  void _onScheduleChanged() {
+    if (!mounted) return;
+    _readSchedule();
+    _pushMetadata();
   }
 
-  Future<void> _fetchAllNowPlaying() async {
-    if (_sweepInFlight) return;
-    final allIds = widget.channels.map((c) => c.id).toList();
-    if (allIds.isEmpty) return;
-    _sweepInFlight = true;
-    try {
-      const chunkSize = 50;
-      for (var i = 0; i < allIds.length; i += chunkSize) {
-        if (!mounted) return;
-        final chunk = allIds.sublist(i, min(i + chunkSize, allIds.length));
-        final now = DateTime.now();
-        final response = await _client.liveTvApi.getGuide(
-          startDate: now.subtract(const Duration(minutes: 5)),
-          endDate: now.add(const Duration(minutes: 5)),
-          channelIds: chunk,
-          enableTotalRecordCount: false,
-          userId: _client.userId,
-        );
-        final items = (response['Items'] as List?) ?? [];
-        for (final item in items) {
-          final raw = item as Map<String, dynamic>;
-          final channelId = raw['ChannelId']?.toString();
-          if (channelId == null) continue;
-          final start = DateTime.tryParse(
-            raw['StartDate']?.toString() ?? '',
-          )?.toLocal();
-          final end = DateTime.tryParse(
-            raw['EndDate']?.toString() ?? '',
-          )?.toLocal();
-          if (start == null || end == null) continue;
-          if (!now.isBefore(start) && now.isBefore(end)) {
-            _nowPlayingByChannel[channelId] = raw['Name']?.toString() ?? '';
-          }
-        }
-        if (!mounted) return;
-        _pushMetadata();
-      }
-    } catch (_) {
-    } finally {
-      _sweepInFlight = false;
+  /// Reads what is airing now out of the loaded schedule. Nothing is fetched
+  /// here, so a boundary the schedule already covers costs nothing.
+  void _readSchedule() {
+    final viewModel = _carouselPrewarm?.viewModel;
+    if (viewModel == null) return;
+    final currentId = _currentChannel.id;
+    for (final channel in widget.channels) {
+      final program = viewModel.nowNextForChannel(channel.id).now;
+      if (program != null) _nowPlayingByChannel[channel.id] = program;
+      if (channel.id == currentId) _currentProgram = program;
     }
   }
 
   String _channelLogoUrl(GuideChannel channel) {
+    final cached = _logoUrlCache[channel.id];
+    if (cached != null) return cached;
+    return _logoUrlCache[channel.id] = _buildLogoUrl(channel);
+  }
+
+  String _buildLogoUrl(GuideChannel channel) {
     final tag = channel.imageTag;
     if (tag == null || tag.isEmpty) return '';
     try {
@@ -410,25 +350,101 @@ class _AppleTvLiveTvPlayerHostScreenState
     }
   }
 
+  /// One carousel card per channel, fully resolved. The native strip does no
+  /// fetching and no formatting, so every label is built here where the
+  /// localizations are.
   List<Map<String, dynamic>> _channelListPayload() {
-    final cache = _channelListCache ??= [
+    final viewModel = _carouselPrewarm?.viewModel;
+    final currentId = _currentChannel.id;
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    return [
       for (final channel in widget.channels)
         {
           'id': channel.id,
           'number': channel.number ?? '',
           'name': channel.name,
           'logoUrl': _channelLogoUrl(channel),
-          'programName': '',
-          'selected': false,
+          'isFavorite': channel.isFavorite,
+          'selected': channel.id == currentId,
+          ..._programPayload(
+            _nowPlayingByChannel[channel.id],
+            viewModel?.loadStateFor(channel.id) == GuideChannelLoadState.loaded,
+            l10n,
+            now,
+          ),
         },
     ];
-    final currentId = _currentChannel.id;
-    for (final entry in cache) {
-      final id = entry['id']?.toString() ?? '';
-      entry['programName'] = _nowPlayingByChannel[id] ?? '';
-      entry['selected'] = id == currentId;
+  }
+
+  Map<String, dynamic> _programPayload(
+    GuideProgram? program,
+    bool scheduleLoaded,
+    AppLocalizations l10n,
+    DateTime now,
+  ) {
+    if (program == null) {
+      return {
+        'programName': '',
+        'episodeTitle': '',
+        'overview': '',
+        'seasonEpisode': '',
+        'timeLabel': '',
+        'rating': '',
+        'tags': const <String>[],
+        'genre': '',
+        'isLive': false,
+        'progress': 0.0,
+        'hasTimer': false,
+        'programLoading': !scheduleLoaded,
+      };
     }
-    return cache;
+    final seasonEpisode = program.seasonEpisodeLabel;
+    return {
+      'programName': program.name,
+      'episodeTitle': program.episodeTitle ?? '',
+      'overview': program.overview ?? '',
+      'seasonEpisode': seasonEpisode == null ? '' : ' ($seasonEpisode)',
+      'timeLabel': _timeRange(program),
+      'rating': program.officialRating ?? '',
+      'tags': _categoryLabels(program, l10n),
+      'genre': _genreKey(program),
+      'isLive': true,
+      'progress': program.progressAt(now),
+      'hasTimer': program.hasTimer || program.hasSeriesTimer,
+      'programLoading': false,
+    };
+  }
+
+  String _timeRange(GuideProgram program) =>
+      '${TimeOfDay.fromDateTime(program.startDate).format(context)} - '
+      '${TimeOfDay.fromDateTime(program.endDate).format(context)}';
+
+  /// The card tints itself from this, so the five genres the guide cells use
+  /// are named rather than sent as colors.
+  String _genreKey(GuideProgram program) {
+    if (program.isMovie) return 'movie';
+    if (program.isSports) return 'sports';
+    if (program.isNews) return 'news';
+    if (program.isKids) return 'kids';
+    if (program.isSeries) return 'series';
+    return 'none';
+  }
+
+  List<String> _categoryLabels(GuideProgram program, AppLocalizations l10n) {
+    return [
+      for (final tag in program.categoryTags)
+        switch (tag) {
+          GuideFilter.all => l10n.all,
+          GuideFilter.movies => l10n.movies,
+          GuideFilter.series => l10n.series,
+          GuideFilter.sports => l10n.sports,
+          GuideFilter.news => l10n.news,
+          GuideFilter.kids => l10n.kids,
+          GuideFilter.premiere => l10n.premiere,
+          GuideFilter.favorites => l10n.favorites,
+        },
+    ];
   }
 
   Map<String, dynamic>? _liveProgramPayload() {

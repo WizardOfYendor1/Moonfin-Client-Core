@@ -14,6 +14,7 @@ import '../../auth/repositories/user_repository.dart';
 import '../../data/models/aggregated_library.dart';
 import '../../data/repositories/multi_server_repository.dart';
 import '../../data/repositories/user_views_repository.dart';
+import '../../data/services/library_scope_service.dart';
 import '../../data/services/plugin_sync_service.dart';
 import '../../preference/preference_constants.dart';
 import '../../preference/seerr_preferences.dart';
@@ -338,16 +339,11 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
 
       unawaited(GetIt.instance<GameLibraryRegistry>().refresh());
 
-      List<AggregatedLibrary> filtered = libs;
-      if (useMultiServer) {
-        try {
-          final config = await _viewsRepo.getUserConfiguration();
-          final excluded = config.myMediaExcludes.toSet();
-          if (excluded.isNotEmpty) {
-            filtered = libs.where((lib) => !excluded.contains(lib.id)).toList();
-          }
-        } catch (_) {}
-      }
+      final filtered = useMultiServer
+          ? await GetIt.instance<LibraryScopeService>().withoutHiddenLibraries(
+              libs,
+            )
+          : libs;
 
       if (mounted && !_librariesEqual(_libraries, filtered)) {
         setState(() => _libraries = filtered);
@@ -363,12 +359,17 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     return true;
   }
 
+  // Kids Mode sends /live-tv back to home, so the guide button would only be a
+  // dead end.
   bool get _showLiveTvButton =>
+      !_kidsMode &&
       _prefs.get(UserPreferences.showLiveTvButton) &&
       _libraries.any(isLiveTvLibrary);
 
   List<AggregatedLibrary> get _navLibraries =>
-      librariesForNav(_libraries, _showLiveTvButton);
+      librariesForNav(_libraries, _showLiveTvButton, hideLiveTv: _kidsMode);
+
+  bool get _kidsMode => _prefs.get(UserPreferences.kidsModeEnabled);
 
   void _trackPreviousFocus() {
     final primary = FocusManager.instance.primaryFocus;
@@ -881,6 +882,10 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                       fit: BoxFit.cover,
                       width: avatarSize,
                       height: avatarSize,
+                      cacheWidth: ArtworkDecode.widthFor(
+                        avatarSize,
+                        MediaQuery.devicePixelRatioOf(context),
+                      ),
                       errorBuilder: (_, _, _) => _avatarFallback(),
                     )
                   : _avatarFallback(),
@@ -923,16 +928,22 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     final showShuffle = _prefs.get(UserPreferences.showShuffleButton);
     final showGenres = _prefs.get(UserPreferences.showGenresButton);
     final showFavorites = _prefs.get(UserPreferences.showFavoritesButton);
+    // Checked alongside the show* preferences, never written into them, since
+    // those sync and would follow the account to the parent's other devices.
+    final kidsMode = _kidsMode;
     final showLiveTv = _showLiveTvButton;
     final navLibraries = _navLibraries;
-    final showLibraries = _prefs.get(UserPreferences.showLibrariesInToolbar);
+    final showLibraries =
+        !kidsMode && _prefs.get(UserPreferences.showLibrariesInToolbar);
     final alwaysExpanded = _prefs.get(UserPreferences.navbarAlwaysExpanded);
     final showFolders = _prefs.get(UserPreferences.enableFolderView);
     final showSyncPlay =
+        !kidsMode &&
         _prefs.get(UserPreferences.syncPlayEnabled) &&
         _prefs.get(UserPreferences.showSyncPlayButton);
     final seerrPrefs = GetIt.instance<SeerrPreferences>();
     final showSeerr =
+        !kidsMode &&
         _prefs.get(UserPreferences.showSeerrButton) &&
         GetIt.instance<PluginSyncService>().seerrAvailable;
     final l10n = AppLocalizations.of(context);
@@ -1260,28 +1271,14 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
       iconColor: iconColor,
       alwaysExpanded: alwaysExpanded,
       onLibraryTap: (lib) {
-        if (lib.collectionType == 'music') {
-          context.navigateTopLevel('/music/${lib.id}');
-        } else if (lib.collectionType == 'books' ||
-            lib.collectionType == 'audiobooks') {
-          context.navigateTopLevel(
-            Destinations.bookLibrary(
-              lib.id,
-              collectionType: lib.collectionType,
-            ),
-          );
-        } else if (lib.collectionType == 'livetv') {
-          context.navigateTopLevel(Destinations.liveTvGuide);
-        } else {
-          context.navigateTopLevel(
-            gameOrLibraryRoute(
-              lib.id,
-              lib.collectionType,
-              lib.name,
-              serverId: lib.serverId,
-            ),
-          );
-        }
+        context.navigateTopLevel(
+          libraryRoute(
+            lib.id,
+            lib.collectionType,
+            lib.name,
+            serverId: lib.serverId,
+          ),
+        );
       },
     );
   }
@@ -1301,28 +1298,14 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
       triggerFocusNode: _inlineLibrariesTriggerFocus,
       nextFocusNode: _settingsFocus,
       onLibraryTap: (lib) {
-        if (lib.collectionType == 'music') {
-          context.navigateTopLevel('/music/${lib.id}');
-        } else if (lib.collectionType == 'books' ||
-            lib.collectionType == 'audiobooks') {
-          context.navigateTopLevel(
-            Destinations.bookLibrary(
-              lib.id,
-              collectionType: lib.collectionType,
-            ),
-          );
-        } else if (lib.collectionType == 'livetv') {
-          context.navigateTopLevel(Destinations.liveTvGuide);
-        } else {
-          context.navigateTopLevel(
-            gameOrLibraryRoute(
-              lib.id,
-              lib.collectionType,
-              lib.name,
-              serverId: lib.serverId,
-            ),
-          );
-        }
+        context.navigateTopLevel(
+          libraryRoute(
+            lib.id,
+            lib.collectionType,
+            lib.name,
+            serverId: lib.serverId,
+          ),
+        );
       },
     );
   }

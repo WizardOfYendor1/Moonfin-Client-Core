@@ -132,3 +132,72 @@ final class SubtitleOverlayTests: XCTestCase {
         XCTAssertEqual(canvas(forVideoRect: nil), overlayBounds)
     }
 }
+
+/// How a reader stall reaches the player UI. The spinner belongs to a picture
+/// that has stopped, not to a connection that dropped while AVPlayer still has
+/// frames to play.
+final class StalledStateTests: XCTestCase {
+
+    private func state(
+        isNativePath: Bool = true,
+        sawPlayback: Bool = true,
+        isSeeking: Bool = false,
+        isPlaying: Bool = true,
+        isPaused: Bool = false,
+        isBuffering: Bool = false,
+        secondsSinceClockAdvanced: Double = 0.1
+    ) -> PlayerState {
+        AetherPlayerWrapper.stalledState(
+            isNativePath: isNativePath,
+            sawPlayback: sawPlayback,
+            isSeeking: isSeeking,
+            isPlaying: isPlaying,
+            isPaused: isPaused,
+            isBuffering: isBuffering,
+            secondsSinceClockAdvanced: secondsSinceClockAdvanced,
+            bufferProgress: 0.4)
+    }
+
+    func testReconnectWhileThePictureMovesKeepsPlaying() {
+        XCTAssertEqual(state(), .playing)
+    }
+
+    func testAVPlayerWaitingShowsBuffering() {
+        XCTAssertEqual(state(isBuffering: true), .buffering(0.4))
+    }
+
+    func testAFrozenClockShowsBufferingEvenIfAVPlayerNeverWaits() {
+        XCTAssertEqual(state(secondsSinceClockAdvanced: 1), .buffering(0.4))
+    }
+
+    func testAClockJustUnderTheFreezeLimitKeepsPlaying() {
+        XCTAssertEqual(state(secondsSinceClockAdvanced: 0.99), .playing)
+    }
+
+    func testPausingDuringAStallStaysPaused() {
+        XCTAssertEqual(state(isPlaying: false, isPaused: true), .paused)
+    }
+
+    func testAStallBeforeTheFirstFrameStaysBuffering() {
+        XCTAssertEqual(state(sawPlayback: false), .buffering(0.4))
+    }
+
+    func testAPausedMountThatStallsStaysBuffering() {
+        XCTAssertEqual(
+            state(sawPlayback: false, isPlaying: false, isPaused: true), .buffering(0.4))
+    }
+
+    func testASeekDuringAStallStaysBuffering() {
+        XCTAssertEqual(state(isSeeking: true), .buffering(0.4))
+    }
+
+    func testTheSoftwareAndAudioPathsStayBuffering() {
+        XCTAssertEqual(state(isNativePath: false), .buffering(0.4))
+        XCTAssertEqual(
+            state(isNativePath: false, isPlaying: false, isPaused: true), .buffering(0.4))
+    }
+
+    func testAnEngineLeavingPlaybackStaysBuffering() {
+        XCTAssertEqual(state(isPlaying: false, isPaused: false), .buffering(0.4))
+    }
+}

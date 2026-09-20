@@ -13,6 +13,11 @@ import 'glass_press_scale.dart';
 /// Under non-glass looks the ring falls back to the accent color so existing
 /// themes keep their identity.
 class GlassFocusHalo extends StatelessWidget {
+  /// The ring is drawn whether or not the halo is focused, transparent when
+  /// it isn't, so it always insets the child by this much on every side.
+  /// Anything sizing itself around a halo has to count it.
+  static const double borderWidth = 2;
+
   const GlassFocusHalo({
     super.key,
     required this.focused,
@@ -65,7 +70,7 @@ class GlassFocusHalo extends StatelessWidget {
         borderRadius: radius,
         border: Border.all(
           color: focused ? ring : Colors.transparent,
-          width: 2,
+          width: borderWidth,
         ),
         color: focused ? bg : Colors.transparent,
         boxShadow: focused && apple

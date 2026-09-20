@@ -11,6 +11,7 @@ import '../../../../widgets/marquee_text.dart';
 /// Apple, a tokenized translucent panel on Material.
 class EpgHeroPreview extends StatelessWidget {
   static const double compactHeight = 144;
+  static const double plateWidth = compactHeight * 0.75;
   static const Color _logoPlate = Color(0xEF353940);
 
   final String? title;
@@ -211,7 +212,6 @@ class EpgHeroPreview extends StatelessWidget {
     // crossfade rather than a resize — a shape change compounded with the
     // content swap is what actually read as the jerky pop.
     final usingArtwork = programImageUrl != null;
-    final plateWidth = compactHeight * 0.75;
     final imagePlate = plateImageUrl == null
         ? null
         : SizedBox(
@@ -231,7 +231,9 @@ class EpgHeroPreview extends StatelessWidget {
                   imageUrl: plateImageUrl,
                   fit: usingArtwork ? BoxFit.cover : BoxFit.contain,
                   fadeInDuration: Duration.zero,
-                  maxWidth: 256,
+                  // Tracks the plate's rendered width at the 2.0 device
+                  // pixel ratio BoundedNetworkImage itself clamps to.
+                  maxWidth: (plateWidth * 2).round(),
                 ),
               ),
             ),

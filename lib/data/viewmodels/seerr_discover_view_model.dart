@@ -70,8 +70,8 @@ class SeerrDiscoverViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  String? _error;
-  String? get error => _error;
+  Object? _error;
+  Object? get error => _error;
 
   static const _localRowsFetchLimit = 15;
 
@@ -153,7 +153,7 @@ class SeerrDiscoverViewModel extends ChangeNotifier {
 
       await _loadAllRows();
     } catch (e) {
-      _error = e.toString();
+      _error = e;
       debugPrint('[SeerrDiscover] Failed to load: $e');
     } finally {
       _isLoading = false;

@@ -44,6 +44,8 @@ import 'detail_buttons.dart';
 import '../../../data/models/upcoming_episode_info.dart';
 import '../../../preference/detail_metadata_layout.dart';
 import 'upcoming_episode_badge.dart';
+import 'detail_episode_images.dart';
+import 'minimalist/minimalist_detail_content.dart';
 import 'nouveau/nouveau_detail_content.dart';
 import 'nouveau/hero/nouveau_action_buttons.dart';
 import 'modern/modern_detail_content.dart';
@@ -53,6 +55,7 @@ import '../../widgets/skeleton/skeleton_shimmer.dart';
 import '../../../data/repositories/seerr_repository.dart';
 import '../../../data/services/seerr/seerr_api_models.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 import '../../widgets/quick_return_wrapper.dart';
 import '../../widgets/progress_snack_bar.dart';
 import '../../../util/remote_subtitle_labels.dart';
@@ -95,6 +98,7 @@ import '../../widgets/track_selector_dialog.dart';
 import '../../widgets/remote_play_to_session_dialog.dart';
 import '../../widgets/fullscreen_backdrop_switcher.dart';
 import '../../widgets/seerr_icons.dart';
+import '../../widgets/focus/context_action.dart';
 import '../../widgets/focus/context_menu_sheet.dart';
 import '../../widgets/focus/dpad_list_tile.dart';
 import '../../widgets/focus/focusable_button.dart';
@@ -113,27 +117,19 @@ import '../../../util/focus/dpad_keys.dart';
 import '../../../util/language_matching.dart';
 import '../../../util/subtitle_track_logic.dart';
 import '../../../util/audio_track_logic.dart';
+import '../../../util/artwork_request_size.dart';
 import '../../../util/platform_detection.dart';
+import 'detail_layout_metrics.dart';
 
 const _textShadows = [Shadow(blurRadius: 4, color: Colors.black54)];
-const _kCompactBreakpoint = 600.0;
 
-bool _isCompact(BuildContext context) =>
-    !PlatformDetection.isTV &&
-    (PlatformDetection.useMobileUi ||
-        MediaQuery.sizeOf(context).width < _kCompactBreakpoint);
+bool _isCompact(BuildContext context) => detailIsCompact(context);
 
-bool _useDesktopDetailLayout(BuildContext context) {
-  final size = MediaQuery.sizeOf(context);
-  final isLandscape = size.width > size.height;
-  return !(_isCompact(context)) ||
-      (PlatformDetection.useMobileUi && isLandscape && size.width >= 700);
-}
+bool _useDesktopDetailLayout(BuildContext context) =>
+    useDesktopDetailLayout(context);
 
-double _desktopUiScale({UserPreferences? prefs}) {
-  final effectivePrefs = prefs ?? GetIt.instance<UserPreferences>();
-  return effectivePrefs.get(UserPreferences.desktopUiScale).scaleFactor;
-}
+double _desktopUiScale({UserPreferences? prefs}) =>
+    detailDesktopScale(prefs: prefs);
 
 /// Smoothly scrolls a position back to the top. Ignore if already there.
 void _animateScrollToTop(ScrollPosition position) {
@@ -667,8 +663,27 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
   Widget _buildBody(BuildContext context) {
     return switch (_viewModel.state) {
       ItemDetailState.loading => DetailScreenSkeleton(
-        style: _prefs.get(UserPreferences.detailScreenStyle),
+        style: _prefs.effectiveDetailScreenStyle,
         prefs: _prefs,
+      ),
+      // Nothing about the title, deliberately. No artwork, no name, and no
+      // retry, which would read as an invitation.
+      ItemDetailState.blocked => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AdaptiveIcon(
+              Icons.lock_outline,
+              color: Colors.white54,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context).itemBlockedByParentalControls,
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ],
+        ),
       ),
       ItemDetailState.error => Center(
         child: Column(
@@ -681,8 +696,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              _viewModel.errorMessage ??
-                  AppLocalizations.of(context).failedToLoad,
+              describeError(_viewModel.error!, AppLocalizations.of(context)),
               style: const TextStyle(color: Colors.white54),
             ),
             const SizedBox(height: 16),
@@ -693,9 +707,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           ],
         ),
       ),
-      ItemDetailState.ready => switch (
-      _prefs.get(UserPreferences.detailScreenStyle)
-      ) {
+      ItemDetailState.ready => switch (_prefs.effectiveDetailScreenStyle) {
         DetailScreenStyle.classic => _DetailContent(
           viewModel: _viewModel,
           prefs: _prefs,
@@ -785,6 +797,22 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
               _selectedMediaSourceId,
             ),
           ),
+          actionsExpanded: _actionsExpanded,
+          onActionsExpandedChanged: (val) =>
+              setState(() => _actionsExpanded = val),
+        ),
+
+        DetailScreenStyle.minimalist => MinimalistDetailContent(
+          viewModel: _viewModel,
+          prefs: _prefs,
+          backdropUrl: _backdropUrl,
+          selectedMediaSourceId: _selectedMediaSourceId,
+          initialFocusNode: _ensureInitialFocusNode(),
+          onSelectedMediaSourceChanged: (id) {
+            setState(() => _selectedMediaSourceId = id);
+            _viewModel.load(mediaSourceId: id);
+          },
+          autoPlay: widget.autoPlay,
           actionsExpanded: _actionsExpanded,
           onActionsExpandedChanged: (val) =>
               setState(() => _actionsExpanded = val),
@@ -1736,9 +1764,10 @@ class _DetailContentState extends State<_DetailContent> {
         ? null
         : viewModel.imageApi.getPrimaryImageUrl(
             item.id,
-            maxHeight: BoundedNetworkImage.physicalPixels(
+            maxHeight: artworkRequestWidth(
               coverWidth * 3 / 2,
               dpr,
+              ArtworkShape.poster,
             ),
             tag: coverTag,
           );
@@ -3767,6 +3796,24 @@ class _DetailContentState extends State<_DetailContent> {
     );
   }
 
+  /// The same menu, plus the entry that pulls the card out of this collection.
+  void _showBoxSetItemContextMenu(AggregatedItem item) {
+    unawaited(
+      showContextMenu(
+        context,
+        item,
+        onChanged: () {
+          if (!mounted) return;
+          setState(() {});
+        },
+        collectionRemoval: CollectionRemovalContext(
+          collectionName: viewModel.item?.name ?? '',
+          remove: viewModel.removeFromCollection,
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildBoxSetContent(BuildContext context, AggregatedItem item) {
     final l10n = AppLocalizations.of(context);
     int releaseSort(AggregatedItem a, AggregatedItem b) {
@@ -3851,7 +3898,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: movies,
             imageApi: viewModel.imageApi,
             prefs: prefs,
-            onItemLongPress: _showItemContextMenu,
+            onItemLongPress: _showBoxSetItemContextMenu,
             scrollController: _trackSectionScrollController(
               moviesFocusNode,
               ctrl,
@@ -3874,7 +3921,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: series,
             imageApi: viewModel.imageApi,
             prefs: prefs,
-            onItemLongPress: _showItemContextMenu,
+            onItemLongPress: _showBoxSetItemContextMenu,
             scrollController: _trackSectionScrollController(
               seriesFocusNode,
               ctrl,
@@ -3900,7 +3947,7 @@ class _DetailContentState extends State<_DetailContent> {
             items: other,
             imageApi: viewModel.imageApi,
             prefs: prefs,
-            onItemLongPress: _showItemContextMenu,
+            onItemLongPress: _showBoxSetItemContextMenu,
             scrollController: _trackSectionScrollController(
               otherFocusNode,
               ctrl,
@@ -3986,6 +4033,7 @@ class _Backdrop extends StatelessWidget {
       memCacheWidth: blurred
           ? BackgroundService.backdropBlurredDecodeWidth
           : BackgroundService.backdropMaxWidth,
+      priority: ImageFetchPriority.high,
       errorWidget: (_, _, _) => const SizedBox.shrink(),
     );
     if (!blurred) return image;
@@ -4407,10 +4455,9 @@ class DetailPosterImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = !_useDesktopDetailLayout(context);
-    final desktopScale = _desktopUiScale();
-    final w = isMobile ? 120.0 : 165.0 * desktopScale;
-    final h = isMobile ? 180.0 : 248.0 * desktopScale;
+    final posterSize = classicDetailPosterSize(context);
+    final w = posterSize.width;
+    final h = posterSize.height;
     final dpr = MediaQuery.devicePixelRatioOf(context);
 
     final posterPath = item.rawData['PosterPath'] as String?;
@@ -4431,7 +4478,11 @@ class DetailPosterImage extends StatelessWidget {
                   ? '$seerrPosterBase$posterPath'
                   : imageApi.getPrimaryImageUrl(
                       item.id,
-                      maxHeight: BoundedNetworkImage.physicalPixels(h, dpr),
+                      maxHeight: artworkRequestWidth(
+                        h,
+                        dpr,
+                        ArtworkShape.poster,
+                      ),
                       tag: item.primaryImageTag,
                     ),
               width: w,
@@ -4477,48 +4528,6 @@ class DetailPosterImage extends StatelessWidget {
   }
 }
 
-/// The thumb endpoint only takes a width, so a card that reserves its space by
-/// height asks for the 16:9 width that fills it.
-int _landscapeWidthFor(int height) => (height * 16 / 9).round();
-
-/// The parent series artwork, for standing in where an episode still or a
-/// chapter frame would give something away. Null when the series offers nothing
-/// to show, which leaves the caller on the picture it would have used.
-String? _resolveSeriesLandscapeThumbnailUrl(
-  AggregatedItem item,
-  ImageApi imageApi, {
-  required int maxWidth,
-}) {
-  final thumbId = item.parentThumbItemId ?? item.seriesId;
-  final thumbTag = item.parentThumbImageTag ?? item.seriesThumbImageTag;
-  if (thumbId != null &&
-      thumbId.isNotEmpty &&
-      thumbTag != null &&
-      thumbTag.isNotEmpty) {
-    return imageApi.getThumbImageUrl(
-      thumbId,
-      maxWidth: maxWidth,
-      tag: thumbTag,
-    );
-  }
-
-  final seriesId = item.seriesId ?? item.parentPrimaryImageItemId;
-  final seriesPrimaryTag =
-      item.seriesPrimaryImageTag ?? item.parentPrimaryImageTag;
-  if (seriesId != null &&
-      seriesId.isNotEmpty &&
-      seriesPrimaryTag != null &&
-      seriesPrimaryTag.isNotEmpty) {
-    return imageApi.getPrimaryImageUrl(
-      seriesId,
-      maxWidth: maxWidth,
-      tag: seriesPrimaryTag,
-    );
-  }
-
-  return null;
-}
-
 class _EpisodeThumbnail extends StatelessWidget {
   final AggregatedItem item;
   final ImageApi imageApi;
@@ -4532,13 +4541,13 @@ class _EpisodeThumbnail extends StatelessWidget {
     final w = isMobile ? 200.0 : 280.0 * desktopScale;
     final h = isMobile ? 113.0 : 158.0 * desktopScale;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final maxW = BoundedNetworkImage.physicalPixels(w, dpr);
+    final maxW = artworkRequestWidth(w, dpr, ArtworkShape.landscape);
 
     final seriesThumbUrl =
         GetIt.instance<UserPreferences>().get(
           UserPreferences.detailUseSeriesThumbnails,
         )
-        ? _resolveSeriesLandscapeThumbnailUrl(item, imageApi, maxWidth: maxW)
+        ? resolveSeriesLandscapeThumbnailUrl(item, imageApi, maxWidth: maxW)
         : null;
 
     final imageUrl =
@@ -6893,6 +6902,19 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
         button.icon == Icons.movie_outlined;
   }
 
+  /// The buttons in the order they should be laid out.
+  ///
+  /// Kids Mode uses its own order rather than the saved arrangement, which
+  /// belongs to the parent.
+  List<DetailButton> _orderedButtons(UserPreferences prefs) =>
+      prefs.get(UserPreferences.kidsModeEnabled)
+      ? DetailButton.kidsModeOrder
+      : detailButtonLayout.ordered(
+          DetailButton.values,
+          (button) => button.id,
+          prefs,
+        );
+
   @override
   Widget build(BuildContext context) {
     final item = viewModel.item!;
@@ -6967,9 +6989,15 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     }
 
     final prefs = GetIt.instance<UserPreferences>();
-    final hidden = detailButtonLayout.hidden(prefs);
+    // The arrangement is the user's own, and it can't speak for what this
+    // device allows, which is what isOffered is for. Kids Mode hands the
+    // screen to someone else entirely, so it offers its own fixed set rather
+    // than whatever the parent switched off for themselves.
+    final hidden = prefs.get(UserPreferences.kidsModeEnabled)
+        ? const <String>{}
+        : detailButtonLayout.hidden(prefs);
     bool shows(DetailButton button) =>
-        !button.canHide || !hidden.contains(button.id);
+        button.isOffered && (!button.canHide || !hidden.contains(button.id));
 
     final isNeon = ThemeRegistry.active.id == ThemeRegistry.neonPulseId;
     final isPhoto = item.type == 'Photo';
@@ -7421,11 +7449,10 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
 
     var allButtons = <Widget>[
       ?primaryAction,
-      for (final button in detailButtonLayout.ordered(
-        DetailButton.values,
-        (button) => button.id,
-        prefs,
-      )) ...[?byButton[button], ?cancelByButton[button]],
+      for (final button in _orderedButtons(prefs)) ...[
+        ?byButton[button],
+        ?cancelByButton[button],
+      ],
     ];
 
     if (isNeon) {
@@ -7462,11 +7489,7 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
 
     if (widget.nouveauStyle) {
       final orderedSecondaryButtons = <_DetailActionButton>[
-        for (final detailButton in detailButtonLayout.ordered(
-          DetailButton.values,
-          (button) => button.id,
-          prefs,
-        )) ...[
+        for (final detailButton in _orderedButtons(prefs)) ...[
           if (byButton[detailButton] case final btn?)
             ?_actionForOverflow(context, btn),
           if (cancelByButton[detailButton] case final btn?)
@@ -8498,6 +8521,13 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
     AggregatedItem item, {
     bool forceStartOver = false,
   }) async {
+    // Transcode overrides and the external player handoff shouldn't be a
+    // long press away in Kids Mode. Gated here to cover every entry point.
+    if (GetIt.instance<UserPreferences>().get(
+      UserPreferences.kidsModeEnabled,
+    )) {
+      return;
+    }
     final l10n = AppLocalizations.of(context);
     final resume =
         !forceStartOver && (item.playbackPosition?.inMilliseconds ?? 0) > 0;
@@ -13268,7 +13298,7 @@ class DetailChaptersRow extends StatelessWidget {
         GetIt.instance<UserPreferences>().get(
           UserPreferences.detailUseSeriesThumbnails,
         )
-        ? _resolveSeriesLandscapeThumbnailUrl(
+        ? resolveSeriesLandscapeThumbnailUrl(
             item,
             imageApi,
             maxWidth: chapterImageWidth,
@@ -14516,10 +14546,10 @@ class _EpisodeListCardState extends State<_EpisodeListCard>
     final focusColor = Color(prefs.get(UserPreferences.focusColor).colorValue);
     final maxH = widget.isMobile ? 250 : (250 * desktopScale).round();
     final seriesThumbUrl = prefs.get(UserPreferences.detailUseSeriesThumbnails)
-        ? _resolveSeriesLandscapeThumbnailUrl(
+        ? resolveSeriesLandscapeThumbnailUrl(
             ep,
             widget.imageApi,
-            maxWidth: _landscapeWidthFor(maxH),
+            maxWidth: landscapeWidthFor(maxH),
           )
         : null;
 
@@ -14755,10 +14785,10 @@ class DetailNextUpCardState extends State<DetailNextUpCard>
     final cardExpansion = prefs.get(UserPreferences.cardFocusExpansion);
     final maxH = isMobile ? 240 : (240 * desktopScale).round();
     final seriesThumbUrl = prefs.get(UserPreferences.detailUseSeriesThumbnails)
-        ? _resolveSeriesLandscapeThumbnailUrl(
+        ? resolveSeriesLandscapeThumbnailUrl(
             episode,
             widget.imageApi,
-            maxWidth: _landscapeWidthFor(maxH),
+            maxWidth: landscapeWidthFor(maxH),
           )
         : null;
 
@@ -14998,10 +15028,10 @@ class DetailEpisodeCardState extends State<DetailEpisodeCard>
     final isMobile = _isCompact(context);
     final maxH = isMobile ? 220 : (220 * desktopScale).round();
     final seriesThumbUrl = prefs.get(UserPreferences.detailUseSeriesThumbnails)
-        ? _resolveSeriesLandscapeThumbnailUrl(
+        ? resolveSeriesLandscapeThumbnailUrl(
             episode,
             widget.imageApi,
-            maxWidth: _landscapeWidthFor(maxH),
+            maxWidth: landscapeWidthFor(maxH),
           )
         : null;
 

@@ -288,13 +288,15 @@ enum VisualThemeId {
 /// [spotlight] is the hero-first layout: Play plus at most three action
 /// buttons with the rest behind an ellipsis menu, and summary cards that open
 /// sectioned grid modals. [nouveau] is the full-screen layout, with every
-/// section stacked down the page rather than behind tabs or cards. Stored per
-/// server and user.
+/// section stacked down the page rather than behind tabs or cards.
+/// [minimalist] strips the screen back to artwork, one play button and the
+/// episodes, and is what Kids Mode always shows. Stored per server and user.
 enum DetailScreenStyle {
   classic,
   modern,
   spotlight,
-  nouveau;
+  nouveau,
+  minimalist;
 }
 
 /// Selectable algorithm source for similarity recommendation system.

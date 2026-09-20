@@ -119,7 +119,7 @@ void main() {
     when(() => vm.features).thenReturn([]);
     when(() => vm.seerr).thenReturn(null);
     when(() => vm.state).thenReturn(ItemDetailState.ready);
-    when(() => vm.errorMessage).thenReturn(null);
+    when(() => vm.error).thenReturn(null);
     when(() => vm.effectiveSeasonId).thenReturn(null);
     when(() => vm.selectedAudioIndex).thenReturn(null);
     when(() => vm.selectedSubtitleIndex).thenReturn(null);

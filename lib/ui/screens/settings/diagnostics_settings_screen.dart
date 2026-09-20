@@ -5,11 +5,14 @@ import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../data/services/log_service.dart';
 import '../../../preference/user_preferences.dart';
+import '../../../util/artwork_timing.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../widgets/focus/request_initial_focus.dart';
 import '../../widgets/overlay_sheet.dart';
 import '../../widgets/settings/clean_settings_typography.dart';
 import '../../widgets/settings/preference_tiles.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 import 'settings_app_bar.dart';
 
 class DiagnosticsSettingsScreen extends StatefulWidget {
@@ -28,6 +31,7 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
 
   Future<void> _sendReport() async {
     setState(() => _uploading = true);
+    ArtworkTimings.prepareReport();
     try {
       final fileName = await _log.uploadToServer();
       if (!mounted) return;
@@ -38,13 +42,15 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Could not send report: $e');
+      final detail = describeError(e, AppLocalizations.of(context));
+      _showSnack('Could not send report: $detail');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
   }
 
   Future<void> _copyAll() async {
+    ArtworkTimings.prepareReport();
     await Clipboard.setData(ClipboardData(text: _log.exportText()));
     _showSnack('Logs copied to clipboard');
   }
@@ -279,6 +285,7 @@ class _DiagnosticsSettingsScreenState extends State<DiagnosticsSettingsScreen> {
     LogCategory.auth => 'Authentication',
     LogCategory.playback => 'Playback',
     LogCategory.sync => 'Sync',
+    LogCategory.artwork => 'Artwork',
   };
 }
 

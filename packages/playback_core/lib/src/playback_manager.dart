@@ -88,6 +88,14 @@ class PlaybackManager implements AudioOwnable {
   PlayerService? _service;
   Future<void> Function(dynamic item)? _resolverConfigurator;
   bool Function(List<dynamic> items)? _externalPlaybackDecider;
+
+  /// Host veto on what may play. [_queueContentFilter] is cheap and free of
+  /// side effects, so a whole queue can be strained through it as it's set.
+  /// [_playContentRefusal] may go to the network, so it's asked only about the
+  /// one item about to open. A host that registers neither keeps the old
+  /// behaviour.
+  bool Function(dynamic item)? _queueContentFilter;
+  Future<bool> Function(dynamic item)? _playContentRefusal;
   Future<List<dynamic>> Function(
     dynamic completedItem,
     List<dynamic> queueItems,
@@ -134,6 +142,8 @@ class PlaybackManager implements AudioOwnable {
   String? _mediaSourceId;
   String? _pendingItemOverrideId;
   int? _pendingItemAudioStreamIndex;
+  double _volume = 100;
+  bool _isMuted = false;
   int? _pendingItemSubtitleStreamIndex;
   String? _pendingItemMediaSourceId;
   String? _lastItemId;
@@ -187,6 +197,15 @@ class PlaybackManager implements AudioOwnable {
   PlaybackBringupState _bringupState = const PlaybackBringupState.idle();
 
   PlayerBackend? get backend => _backend;
+
+  double get volume => _volume;
+  bool get isMuted => _isMuted;
+
+  void reportVolumeState({required double volume, required bool isMuted}) {
+    _volume = volume.clamp(0, 100);
+    _isMuted = isMuted;
+  }
+
   Duration get currentPlaybackPosition {
     final backendPos = _backend?.position ?? Duration.zero;
     return Duration(
@@ -589,6 +608,14 @@ class PlaybackManager implements AudioOwnable {
 
   void setExternalPlaybackDecider(bool Function(List<dynamic> items)? decider) {
     _externalPlaybackDecider = decider;
+  }
+
+  void setContentRefusal({
+    bool Function(dynamic item)? queueFilter,
+    Future<bool> Function(dynamic item)? playRefusal,
+  }) {
+    _queueContentFilter = queueFilter;
+    _playContentRefusal = playRefusal;
   }
 
   void setNextSeasonItemsProvider(
@@ -1263,6 +1290,22 @@ class PlaybackManager implements AudioOwnable {
     if (items.isNotEmpty) {
       pendingItem = items[startIndex.clamp(0, items.length - 1)];
     }
+
+    final queueFilter = _queueContentFilter;
+    if (queueFilter != null && pendingItem != null) {
+      if (queueFilter(pendingItem)) {
+        // Return before the bringup phase moves off `preparing`. A launcher
+        // holding a player route reads that as "nothing started" and closes
+        // it, which is exactly the refusal we want and costs no new UI.
+        return;
+      }
+      final allowed = items.where((i) => !queueFilter(i)).toList();
+      if (allowed.length != items.length) {
+        startIndex = allowed.indexOf(pendingItem);
+        items = allowed;
+      }
+    }
+
     _setBringupState(
       PlaybackBringupState(
         phase: PlaybackBringupPhase.stoppingPrevious,
@@ -1365,6 +1408,19 @@ class PlaybackManager implements AudioOwnable {
     final item = queueService.currentItem;
     if (item == null || _backend == null) {
       _setBringupState(const PlaybackBringupState.idle());
+      return;
+    }
+
+    // The backstop for everything the queue filter couldn't answer without a
+    // lookup. Prerolls carry no rating of their own and are skipped.
+    final refusal = _playContentRefusal;
+    if (refusal != null && !_isPreroll(item) && await refusal(item)) {
+      suppressAutoNext = true;
+      queueService.clear();
+      state.reset();
+      // Closes a player that's already open, rather than leaving it frozen on
+      // the last frame.
+      _notifySessionEnded();
       return;
     }
 
@@ -1989,6 +2045,8 @@ class PlaybackManager implements AudioOwnable {
           isPaused: !state.isPlaying,
           audioStreamIndex: _audioStreamIndex,
           subtitleStreamIndex: _subtitleStreamIndex,
+          volumeLevel: _volume.round(),
+          isMuted: _isMuted,
         );
       } catch (_) {
         return;

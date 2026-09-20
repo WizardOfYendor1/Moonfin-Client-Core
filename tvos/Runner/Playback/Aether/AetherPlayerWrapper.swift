@@ -77,6 +77,10 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
     private var forceSubtitlesDisabledOnStart = false
     private var didEmitLoadError = false
     private var lastErrorMessage: String?
+    private var lastPhase: PlaybackPhase = .idle
+    private var sawPlaybackThisLoad = false
+    private var lastClockAdvanceAt = CACurrentMediaTime()
+    private var stallCheckTimer: Timer?
 
     /// Ties the load watchdog and the load's own continuation to the load
     /// that started them, so neither acts after a newer load has taken over.
@@ -210,6 +214,13 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
             .sink { [weak self] phase in self?.applyPhase(phase) }
             .store(in: &cancellables)
 
+        // A stall reports nothing new while the buffer drains under it, so
+        // buffering changes re-check it.
+        engine.$isBuffering
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.applyStalledState() }
+            .store(in: &cancellables)
+
         engine.$duration
             .receive(on: DispatchQueue.main)
             .sink { [weak self] value in
@@ -222,6 +233,9 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] value in
                 guard let self else { return }
+                if value != self.currentTime {
+                    self.lastClockAdvanceAt = CACurrentMediaTime()
+                }
                 self.currentTime = value
                 self.position =
                     self.duration > 0 ? Float(value / self.duration) : 0
@@ -301,13 +315,23 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
     }
 
     private func applyPhase(_ phase: PlaybackPhase) {
+        lastPhase = phase
         switch phase {
-        case .idle: state = .idle
-        case .loading: state = .opening
-        case .playing: state = .playing
+        case .idle:
+            state = .idle
+            sawPlaybackThisLoad = false
+        case .loading:
+            state = .opening
+            sawPlaybackThisLoad = false
+        case .playing:
+            state = .playing
+            sawPlaybackThisLoad = true
         case .paused: state = .paused
-        case .seeking, .rebuffering: state = .buffering(bufferProgress)
-        case .stalled: state = .buffering(bufferProgress)
+        case .seeking: state = .buffering(bufferProgress)
+        case .rebuffering:
+            state = .buffering(bufferProgress)
+            sawPlaybackThisLoad = true
+        case .stalled: applyStalledState()
         case .ended: state = .ended
         case .error(let message):
             state = .error
@@ -318,10 +342,73 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
                 emitError(kind: "unsupported_container", recoverable: true, message: message)
             }
         }
+        updateStallCheckTimer()
         if Self.drivesNowPlaying, isPlaying || state == .paused {
             nowPlaying.updatePlaybackState(
                 isPlaying: isPlaying, elapsed: currentTime, duration: duration, rate: rate)
         }
+    }
+
+    /// A stall means the engine lost its connection to the server, not that
+    /// the picture stopped. On the native path AVPlayer keeps playing what it
+    /// already has, so the stall only counts as buffering once AVPlayer waits
+    /// or the clock stops moving. The software and audio paths report no
+    /// buffering of their own, and nothing is playing before the first frame,
+    /// so both still treat the stall itself as buffering.
+    nonisolated static func stalledState(
+        isNativePath: Bool,
+        sawPlayback: Bool,
+        isSeeking: Bool,
+        isPlaying: Bool,
+        isPaused: Bool,
+        isBuffering: Bool,
+        secondsSinceClockAdvanced: Double,
+        bufferProgress: Float
+    ) -> PlayerState {
+        let buffering = PlayerState.buffering(bufferProgress)
+        guard isNativePath, sawPlayback, !isSeeking else { return buffering }
+        if isPaused { return .paused }
+        guard isPlaying else { return buffering }
+        let frozen = secondsSinceClockAdvanced >= stalledClockFreezeSeconds
+        return isBuffering || frozen ? buffering : .playing
+    }
+
+    /// Ten times the native clock's tick, so a moving picture never trips it.
+    private nonisolated static let stalledClockFreezeSeconds: Double = 1
+
+    private func applyStalledState() {
+        guard case .stalled = lastPhase, let engine = Self.sharedEngine() else { return }
+        let next = Self.stalledState(
+            isNativePath: engine.playbackBackend == .native,
+            sawPlayback: sawPlaybackThisLoad,
+            isSeeking: engine.isSeeking || engine.state == .seeking,
+            isPlaying: engine.state == .playing,
+            isPaused: engine.state == .paused,
+            isBuffering: engine.isBuffering,
+            secondsSinceClockAdvanced: CACurrentMediaTime() - lastClockAdvanceAt,
+            bufferProgress: bufferProgress)
+        if next != state { state = next }
+    }
+
+    /// A frozen clock publishes nothing, so a native stall re-checks it.
+    private func updateStallCheckTimer() {
+        guard case .stalled = lastPhase, Self.sharedEngine()?.playbackBackend == .native else {
+            stallCheckTimer?.invalidate()
+            stallCheckTimer = nil
+            return
+        }
+        guard stallCheckTimer == nil else { return }
+        stallCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) {
+            [weak self] _ in
+            Task { @MainActor in self?.applyStalledState() }
+        }
+    }
+
+    private func resetStallTracking() {
+        lastPhase = .idle
+        sawPlaybackThisLoad = false
+        stallCheckTimer?.invalidate()
+        stallCheckTimer = nil
     }
 
     // MARK: - Now Playing
@@ -567,6 +654,7 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
         isAudioOnlySession = audioOnly
         isLiveSession = sourceConfiguration.isLive
         didEmitLoadError = false
+        resetStallTracking()
         resetAssState()
         subtitleOverlay.clear()
         state = .opening
@@ -696,6 +784,7 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
     /// through SDR.
     func stop() {
         Self.sharedEngine()?.stop(resetDisplayCriteria: false)
+        resetStallTracking()
         state = .stopped
         subtitleOverlay.clear()
         resetAssState()
@@ -708,6 +797,7 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
         guard let engine = Self.sharedEngine() else { return }
         engine.stop(resetDisplayCriteria: true)
         cancellables.removeAll()
+        resetStallTracking()
         engine.unbind(view: playerView)
         subtitleOverlay.clear()
         resetAssState()

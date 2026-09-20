@@ -15,6 +15,7 @@ import '../../../widgets/adaptive/adaptive_dialog.dart';
 import '../providers/admin_user_providers.dart';
 import '../widgets/admin_form_styles.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../util/error_message.dart';
 import '../../../../util/platform_detection.dart';
 
 final _packageInfoProvider = FutureProvider.family<PackageInfo?, String>((
@@ -67,16 +68,13 @@ class _AdminPluginDetailScreenState
       ref.invalidate(adminInstalledPluginsProvider);
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         final message = switch (e) {
           DioException(response: final response)
               when response?.statusCode == 404 =>
-            AppLocalizations.of(context).adminPluginDetailToggle404,
-          DioException() => AppLocalizations.of(
-            context,
-          ).adminPluginDetailToggleDioError,
-          _ => AppLocalizations.of(
-            context,
-          ).adminPluginToggleFailed(e.toString()),
+            l10n.adminPluginDetailToggle404,
+          DioException() => l10n.adminPluginDetailToggleDioError,
+          _ => l10n.adminPluginToggleFailed(describeError(e, l10n)),
         };
         ScaffoldMessenger.of(
           context,
@@ -128,14 +126,9 @@ class _AdminPluginDetailScreenState
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(
-                context,
-              ).adminPluginUninstallFailed(e.toString()),
-            ),
-          ),
+          SnackBar(content: Text(l10n.adminPluginUninstallFailed(describeError(e, l10n)))),
         );
       }
     }
@@ -172,14 +165,9 @@ class _AdminPluginDetailScreenState
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(
-                context,
-              ).adminPluginUpdateFailed(e.toString()),
-            ),
-          ),
+          SnackBar(content: Text(l10n.adminPluginUpdateFailed(describeError(e, l10n)))),
         );
       }
     }
@@ -303,6 +291,7 @@ class _AdminPluginDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final pluginsAsync = ref.watch(adminInstalledPluginsProvider);
     final packageInfoAsync = ref.watch(_packageInfoProvider(widget.pluginId));
 
@@ -312,11 +301,7 @@ class _AdminPluginDetailScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              AppLocalizations.of(
-                context,
-              ).adminPluginLoadFailed(error.toString()),
-            ),
+            Text(l10n.adminPluginLoadFailed(describeError(error, l10n))),
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: () => ref.invalidate(adminInstalledPluginsProvider),

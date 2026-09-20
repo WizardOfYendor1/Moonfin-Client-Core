@@ -38,6 +38,14 @@ class MediaCard extends StatefulWidget {
   static double focusGap(double extent, {double minimum = 12.0}) =>
       math.max(minimum, extent * (focusScale - 1) / 2);
 
+  /// The widest decode a card of this shape ever holds, in physical pixels.
+  ///
+  /// Public so a prefetch of a card's image uses the same cap the card does.
+  /// A prefetch capped differently lands under a different cache key and the
+  /// card decodes the image a second time.
+  static int decodeMaxWidthFor(double aspectRatio) =>
+      aspectRatio > 1.2 ? 960 : 640;
+
   final String? title;
   final String? subtitle;
   final Widget? subtitleWidget;
@@ -380,20 +388,9 @@ class _MediaCardState extends State<MediaCard> with FocusStateMixin {
                       itemType: widget.itemType,
                       seerrMediaType: widget.seerrMediaType,
                       seerrStatus: widget.seerrStatus,
-                      imageOverlays: [
-                        ...widget.imageOverlays,
-                        if (widget.animeMarkerItemId != null)
-                          Positioned(
-                            top: 6,
-                            left: 6,
-                            child: AnimeItemAudioBadge(
-                              itemId: widget.animeMarkerItemId!,
-                              scale: 0.85,
-                            ),
-                          ),
-                      ],
-                      overlayOccupiesTopLeft: widget.overlayOccupiesTopLeft ||
-                          widget.animeMarkerItemId != null,
+                      imageOverlays: widget.imageOverlays,
+                      overlayOccupiesTopLeft: widget.overlayOccupiesTopLeft,
+                      animeMarkerItemId: widget.animeMarkerItemId,
                       isGenreFallback: widget.isGenreFallback,
                     ),
                     if (widget.isBanner) ...[
@@ -648,6 +645,7 @@ class _CardImage extends StatelessWidget {
   final List<Widget> imageOverlays;
   final bool overlayOccupiesTopLeft;
   final bool isGenreFallback;
+  final String? animeMarkerItemId;
 
   const _CardImage({
     this.imageUrl,
@@ -670,6 +668,7 @@ class _CardImage extends StatelessWidget {
     this.imageOverlays = const [],
     this.overlayOccupiesTopLeft = false,
     this.isGenreFallback = false,
+    this.animeMarkerItemId,
   });
 
   /// How far the focus ring sits outside the artwork. The ring is 3px thick
@@ -746,7 +745,9 @@ class _CardImage extends StatelessWidget {
                                   ? BoxFit.contain
                                   : BoxFit.cover,
                               fadeInDuration: Duration.zero,
-                              maxWidth: aspectRatio > 1.2 ? 960 : 640,
+                              maxWidth: MediaCard.decodeMaxWidthFor(
+                                aspectRatio,
+                              ),
                               errorBuilder: (_, _, _) => _PlaceholderIcon(
                                 itemType: itemType,
                                 title: title,
@@ -794,19 +795,36 @@ class _CardImage extends StatelessWidget {
                         )
                       : _PlaceholderIcon(itemType: itemType, title: title),
                 ),
-                if (isFavorite)
+                if (isFavorite ||
+                    _showSeerrMediaTypeBadge ||
+                    animeMarkerItemId != null)
                   Positioned(
-                    top: (_showSeerrMediaTypeBadge || overlayOccupiesTopLeft)
-                        ? 32
-                        : 6,
+                    top: overlayOccupiesTopLeft ? 32 : 6,
                     left: 6,
-                    child: MediaFavoriteBadge(size: 22),
-                  ),
-                if (_showSeerrMediaTypeBadge)
-                  Positioned(
-                    top: 6,
-                    left: 6,
-                    child: SeerrMediaTypeBadge(mediaType: seerrMediaType),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_showSeerrMediaTypeBadge) ...[
+                          SeerrMediaTypeBadge(mediaType: seerrMediaType),
+                          if (animeMarkerItemId != null || isFavorite)
+                            const SizedBox(height: 4),
+                        ],
+                        // The gap sits inside the pill rather than in a sibling
+                        // box, because the pill draws nothing until an audio
+                        // verdict resolves and an empty one must take no space.
+                        if (animeMarkerItemId != null)
+                          AnimeItemAudioBadge(
+                            itemId: animeMarkerItemId!,
+                            scale: 0.85,
+                            padding: isFavorite
+                                ? const EdgeInsets.only(bottom: 4)
+                                : EdgeInsets.zero,
+                          ),
+                        if (isFavorite)
+                          const MediaFavoriteBadge(size: 22),
+                      ],
+                    ),
                   ),
                 if (_showSeerrStatusIndicator)
                   Positioned(

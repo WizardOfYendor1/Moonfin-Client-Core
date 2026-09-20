@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -32,8 +31,10 @@ import '../../widgets/skeleton/skeleton_library_grid.dart';
 import '../../widgets/seerr/seerr_tv_controls.dart';
 import '../../widgets/track_selector_dialog.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 import '../../widgets/focus/focusable_wrapper.dart';
 import '../../widgets/focus/request_initial_focus.dart';
+import '../../widgets/offline_aware_image.dart';
 
 // w342, like the other Seerr screens. w200 is too soft once the grid
 // enlarges it.
@@ -661,14 +662,14 @@ class _SeerrRequestsScreenState extends State<SeerrRequestsScreen>
     );
   }
 
-  Widget _buildError(String error, Future<void> Function() onRetry) {
+  Widget _buildError(Object error, Future<void> Function() onRetry) {
     final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            error,
+            describeError(error, l10n),
             style: TextStyle(
               color: AppColorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -1445,7 +1446,7 @@ class _RequestCardState extends State<_RequestCard> with FocusStateMixin {
               fit: StackFit.expand,
               children: [
                 if (posterPath != null)
-                  CachedNetworkImage(
+                  OfflineAwareImage(
                     imageUrl: '$_tmdbPosterBase$posterPath',
                     fit: BoxFit.cover,
                     placeholder: (_, _) =>
@@ -1521,7 +1522,7 @@ class _RequestCardState extends State<_RequestCard> with FocusStateMixin {
               fit: StackFit.expand,
               children: [
                 if (posterPath != null)
-                  CachedNetworkImage(
+                  OfflineAwareImage(
                     imageUrl: '$_tmdbPosterBase$posterPath',
                     fit: BoxFit.cover,
                     height: double.infinity,
@@ -1893,7 +1894,7 @@ class _IssueCardState extends State<_IssueCard> with FocusStateMixin {
             SizedBox(
               width: _cardPosterWidth * scale,
               child: posterPath != null
-                  ? CachedNetworkImage(
+                  ? OfflineAwareImage(
                       imageUrl: '$_tmdbPosterBase$posterPath',
                       fit: BoxFit.cover,
                       height: double.infinity,

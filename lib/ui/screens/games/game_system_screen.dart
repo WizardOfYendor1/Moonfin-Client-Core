@@ -1375,7 +1375,7 @@ class _GameBrowseBackdropImage extends StatelessWidget {
         fit: BoxFit.cover,
         maxWidth: blur > 0 ? 480 : 960,
         scale: blur > 0 ? 0.6 : 1,
-        fadeInDuration: const Duration(milliseconds: 200),
+        fadeInDuration: Duration.zero,
         onLoadFinished: () =>
             artworkDataSource?.reportImageLoaded(gameId, role: role),
         errorBuilder: (_, _, error) {

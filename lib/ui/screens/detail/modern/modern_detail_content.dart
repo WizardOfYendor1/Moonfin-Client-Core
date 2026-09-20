@@ -40,6 +40,8 @@ import '../../../widgets/logo_view.dart';
 import '../../../widgets/marquee_text.dart';
 import '../../../widgets/media_card.dart';
 import '../../../widgets/rating_display.dart';
+import '../../../widgets/focus/context_action.dart';
+import '../../../widgets/focus/context_menu_sheet.dart';
 import '../../../widgets/focus/focusable_wrapper.dart';
 import '../../../widgets/focus/focusable_toolbar_button.dart';
 import '../../../widgets/navigation_layout.dart';
@@ -50,6 +52,7 @@ import '../../../../data/repositories/seerr_repository.dart';
 import '../../../../data/repositories/tmdb_repository.dart';
 import '../../../../data/services/seerr/seerr_api_models.dart';
 import '../../../../data/services/plugin_sync_service.dart';
+import '../detail_layout_metrics.dart';
 import '../item_detail_screen.dart'
     show
         DetailActionButtons,
@@ -1058,9 +1061,9 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
 
         return [
           if (moviesList.isNotEmpty)
-            _ModernTab('movies', l10n.movies, (context, item) => _mediaGrid(context, moviesList, firstFocusNode: _moviesFirstFocusNode)),
+            _ModernTab('movies', l10n.movies, (context, item) => _mediaGrid(context, moviesList, firstFocusNode: _moviesFirstFocusNode, onItemLongPress: _showCollectionItemMenu)),
           if (seriesList.isNotEmpty)
-            _ModernTab('series', l10n.series, (context, item) => _mediaGrid(context, seriesList, firstFocusNode: _seriesFirstFocusNode)),
+            _ModernTab('series', l10n.series, (context, item) => _mediaGrid(context, seriesList, firstFocusNode: _seriesFirstFocusNode, onItemLongPress: _showCollectionItemMenu)),
           if (hasCast) _ModernTab('cast', l10n.castMembers, _boxSetCastTab),
           if (hasCrew) _ModernTab('crew', l10n.crewSection, _boxSetCrewTab),
           if (hasStudios) studios,
@@ -3443,6 +3446,24 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   Widget _similarTab(BuildContext context, List<AggregatedItem> items) =>
       _mediaGrid(context, items, firstFocusNode: _similarFirstFocusNode);
 
+  /// The shared menu for a card in a collection's own grid, plus the entry
+  /// that pulls the card out of this collection.
+  void _showCollectionItemMenu(AggregatedItem entry) {
+    unawaited(
+      showContextMenu(
+        context,
+        entry,
+        collectionRemoval: CollectionRemovalContext(
+          collectionName: _vm.item?.name ?? '',
+          remove: _vm.removeFromCollection,
+        ),
+        onChanged: () {
+          if (mounted) setState(() {});
+        },
+      ),
+    );
+  }
+
   /// Responsive poster grid shared by the Similar tab and the collection
   /// Movies/Shows tabs. Columns scale to width; d-pad uses default geometric
   /// traversal, the top row escapes up to the tab bar, and cards scroll into
@@ -3451,6 +3472,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     BuildContext context,
     List<AggregatedItem> items, {
     FocusNode? firstFocusNode,
+    void Function(AggregatedItem item)? onItemLongPress,
   }) {
     if (items.isEmpty) return const SizedBox.shrink();
     const cardRatio = 2 / 3;
@@ -3520,6 +3542,9 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
                             child: SeerrBadge(size: 18),
                           ),
                       ],
+                      onLongPress: isSeerrItem || onItemLongPress == null
+                          ? null
+                          : () => onItemLongPress(entry),
                       onFocus: () => Scrollable.ensureVisible(
                         cellContext,
                         alignment: 0.5,
@@ -4827,9 +4852,11 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
           OfflineAwareImage(
             imageUrl: url,
             fit: BoxFit.cover,
-            alignment:
-                landscape ? Alignment.centerRight : Alignment.topCenter,
-            fadeInDuration: const Duration(milliseconds: 250),
+            alignment: landscape ? Alignment.centerRight : Alignment.topCenter,
+            fadeInDuration: Duration.zero,
+            sourceAspectRatio: 16 / 9,
+            maxDecodeWidth: ArtworkDecode.maxSourceWidth,
+            priority: ImageFetchPriority.high,
             errorWidget: (context, url, error) => const SizedBox.shrink(),
           ),
           if (item?.type == 'Person' && _randomBackdropUrl == null)
@@ -4991,9 +5018,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     final desktopScale = _desktopUiScale(prefs: widget.prefs);
     final logoScaleFactor = desktopScale > 1.1 ? 0.70 : 1.0;
 
-    _landscape = PlatformDetection.isTV ||
-        PlatformDetection.useDesktopUi ||
-        MediaQuery.orientationOf(context) == Orientation.landscape;
+    _landscape = detailUsesLandscapeLayout(context);
 
     final tabs = _tabsFor(item, l10n);
     final isMusicAlbumOrPlaylist = item.type == 'Playlist' || item.type == 'MusicAlbum';

@@ -395,6 +395,12 @@ class Media3PlayerBackend extends PlayerBackend {
           'Media3: sticky stereo downmix cleared '
           '(${map['reason'] ?? 'route change'})',
         );
+      case 'stereoDownmixLatched':
+        _diag(
+          'Media3: AudioTrack failure read as a device limit, '
+          'stereo downmix now sticky for this session',
+          level: LogLevel.warning,
+        );
       case 'ffmpegDecoderDiagnostics':
         ffmpegDecoderDiagnostics = <String, dynamic>{
           'available': map['available'] == true,
@@ -492,7 +498,9 @@ class Media3PlayerBackend extends PlayerBackend {
       'Media3: audio track opened $encodingName ${channels}ch '
       '@${_toInt(map['sampleRate'])}Hz '
       '(passthrough=$passthrough tunneling=${map['tunneling'] == true} '
-      'offload=${map['offload'] == true} buffer=${_toInt(map['bufferSize'])}B)',
+      'offload=${map['offload'] == true} '
+      'buffer=${_toInt(map['bufferSize'])}B '
+      'downmix=${map['stereoDownmix'] ?? 'off'})',
     );
   }
 

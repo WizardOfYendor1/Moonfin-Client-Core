@@ -83,6 +83,7 @@ import '../../../playback/player_key_bindings.dart';
 import '../../widgets/syncplay/syncplay_player_button.dart';
 import '../../../syncplay/syncplay_manager.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 import '../../widgets/playback/delay_footer.dart';
 import '../../widgets/progress_snack_bar.dart';
 import '../../../util/remote_subtitle_labels.dart';
@@ -92,6 +93,7 @@ import '../../../playback/media3_player_backend.dart';
 import '../../../util/system_ui.dart';
 import 'playback_takeover.dart';
 import 'osd_buttons.dart';
+import 'trickplay_housing_inset.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({super.key});
@@ -316,6 +318,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   TrickplayInfo? _trickplayInfo;
   String? _trickplayMediaSourceId;
+  String? _castPeopleItemId;
+  List<Map<String, dynamic>> _castPeople = const [];
   int _trickplayLoadGeneration = 0;
   static const int _trickplayFrameWidth = 320;
 
@@ -1237,8 +1241,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       await _castService.setVolume(kind, volume: volume);
     } catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       _showThrottledCastError(
-        AppLocalizations.of(context).failedToSetCastVolume('$e'),
+        l10n.failedToSetCastVolume(describeError(e, l10n)),
       );
     }
   }
@@ -2370,6 +2375,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _syncSubtitleActive();
     }
     _refreshTrickplayIfNeeded();
+    _refreshCastPeopleIfNeeded();
     _handleTrickplayAmbientPrefetch(position);
     _syncAirPlayPlaybackState(position: position);
     if (PlatformDetection.isIOS) {
@@ -4108,24 +4114,38 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final tile = _getTrickplayTile(seekPosition);
     if (tile == null) return const SizedBox.shrink();
     return Positioned.fill(
-      child: Trickplay(
-        fillFrame: true,
-        content: (_) => FittedBox(
-          fit: _zoomToFit(_zoomMode),
-          child: SizedBox(
-            width: tile.thumbWidth,
-            height: tile.thumbHeight,
-            child: _trickplayTileImage(tile),
+      child: Padding(
+        padding: trickplayHousingInset(
+          keepClear: _keepVideoClearOfHousing,
+          viewPadding: MediaQuery.viewPaddingOf(context),
+        ),
+        child: Trickplay(
+          fillFrame: true,
+          content: (_) => FittedBox(
+            fit: _zoomToFit(_zoomMode),
+            child: SizedBox(
+              width: tile.thumbWidth,
+              height: tile.thumbHeight,
+              child: _trickplayTileImage(tile),
+            ),
           ),
         ),
       ),
     );
   }
 
+  bool get _keepVideoClearOfHousing =>
+      PlatformDetection.isIOS &&
+      _prefs.get(UserPreferences.keepVideoClearOfDynamicIsland);
+
   Widget _buildVideoSurface() {
     if (PlatformDetection.isIOS || PlatformDetection.isMacOS) {
       return Positioned.fill(
-        child: AetherVideoView(key: _videoSurfaceKey, zoomMode: _zoomMode.name),
+        child: AetherVideoView(
+          key: _videoSurfaceKey,
+          zoomMode: _zoomMode.name,
+          keepClearOfHousing: _keepVideoClearOfHousing,
+        ),
       );
     }
 
@@ -5946,6 +5966,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _playerVolume = next;
     await backend.setVolume(next);
     _persistPlayerVolume();
+    _reportVolumeToManager();
     _showVolumeIndicator();
   }
 
@@ -6047,6 +6068,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _volumeListenerSub = vc.addListener((value) {
       if (mounted && (value - _systemVolume).abs() > 0.01) {
         setState(() => _systemVolume = value);
+        _reportVolumeToManager();
       }
 
       if (value < 0.99 &&
@@ -6063,6 +6085,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         .clamp(0.0, 100.0)
         .toDouble();
     unawaited(_manager.backend?.setVolume(_playerVolume));
+    _reportVolumeToManager();
   }
 
   void _persistPlayerVolume() {
@@ -6073,6 +6096,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     });
   }
 
+  /// Puts the volume where the progress report can carry it to a remote
+  /// controller. Reads [_osdVolume] because a phone's volume is the system one
+  /// and a desktop's is the player's.
+  void _reportVolumeToManager() {
+    final level = (_osdVolume * 100).clamp(0.0, 100.0).toDouble();
+    _manager.reportVolumeState(volume: level, isMuted: level <= 0);
+  }
+
   Future<void> _setMobileSystemVolume(
     double value, {
     bool syncFromSystem = false,
@@ -6081,6 +6112,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     if (mounted && (clamped - _systemVolume).abs() > 0.01) {
       setState(() => _systemVolume = clamped);
+      _reportVolumeToManager();
     }
 
     _pendingMobileSystemVolume = clamped;
@@ -6259,6 +6291,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         _playerVolume = newVolume * 100.0;
         _manager.backend?.setVolume(_playerVolume);
         _persistPlayerVolume();
+        _reportVolumeToManager();
       }
       _showVolumeIndicator();
     } else {
@@ -6647,6 +6680,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       setState(() => _playerVolume = clamped * 100.0);
       _manager.backend?.setVolume(_playerVolume);
       _persistPlayerVolume();
+      _reportVolumeToManager();
     }
     _showControls();
   }
@@ -7230,9 +7264,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _hasCastCrew(dynamic item) {
     if (item is! AggregatedItem) return false;
     if (item.people.isNotEmpty) return true;
-    return item.type == 'Episode' &&
-        item.seriesId != null &&
-        item.seriesId!.isNotEmpty;
+    return item.id == _castPeopleItemId && _castPeople.isNotEmpty;
+  }
+
+  /// Settles the cast list for whatever is playing, since a row hands over an
+  /// item with no people on it. The id guard means it runs once per item.
+  void _refreshCastPeopleIfNeeded() {
+    final item = _queue.currentItem;
+    if (item is! AggregatedItem || item.id.isEmpty) return;
+    if (item.id == _castPeopleItemId) return;
+    _castPeopleItemId = item.id;
+    _castPeople = const [];
+    unawaited(_prefetchCastPeople(item));
+  }
+
+  Future<void> _prefetchCastPeople(AggregatedItem item) async {
+    final people = await _resolveCastPeople(item);
+    // Set an empty answer too, or the button carries over from the last item.
+    if (!mounted || _castPeopleItemId != item.id) return;
+    setState(() => _castPeople = people);
   }
 
   Future<List<Map<String, dynamic>>> _resolveCastPeople(
@@ -7241,17 +7291,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     if (item.people.isNotEmpty) {
       return item.people;
     }
+    if (item.id == _castPeopleItemId && _castPeople.isNotEmpty) {
+      return _castPeople;
+    }
 
-    if (item.type != 'Episode' ||
-        item.seriesId == null ||
-        item.seriesId!.isEmpty) {
+    // An episode keeps its cast on the series, everything else on itself.
+    final id = item.type == 'Episode' ? (item.seriesId ?? '') : item.id;
+    if (id.isEmpty) {
       return const <Map<String, dynamic>>[];
     }
 
     try {
       final client = _clientForItem(item);
-      final seriesData = await client.itemsApi.getItem(item.seriesId!);
-      final people = (seriesData['People'] as List?)
+      final data = await client.itemsApi.getItem(id);
+      final people = (data['People'] as List?)
           ?.cast<Map<String, dynamic>>()
           .toList(growable: false);
       return people ?? const <Map<String, dynamic>>[];
@@ -7546,7 +7599,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         CastTargetKind.dlna => 'DLNA',
         _ => l10n.cast,
       };
-      _showThrottledCastError(l10n.castActionFailed(label, '$e'));
+      _showThrottledCastError(l10n.castActionFailed(label, describeError(e, l10n)));
     }
   }
 

@@ -7,10 +7,12 @@ import '../../../../data/services/seerr/seerr_api_models.dart';
 import '../../../../data/viewmodels/item_detail_view_model.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../preference/user_preferences.dart';
+import '../../../widgets/seerr/seerr_collection_banner.dart';
 import '../../../widgets/seerr/seerr_item_chips.dart';
 import '../../../widgets/seerr/seerr_item_status.dart'
     show seerrItemSeasonStatus, seerrItemTabState;
 import '../../../widgets/seerr/seerr_stats_card.dart';
+import '../../../widgets/seerr/seerr_tags_dialog.dart' show SeerrTagsContent;
 import '../item_detail_screen.dart' show DetailTrackList;
 import '../modern/modern_detail_content.dart'
     show
@@ -28,6 +30,16 @@ import 'widgets/spotlight_section_modal.dart';
 class SpotlightCardActions {
   final void Function(AggregatedItem item) openItem;
   final void Function(SeerrDiscoverItem item) openSeerrItem;
+
+  /// Seerr browse, filtered by one genre, network or keyword.
+  final void Function(
+    String filterId,
+    String filterName,
+    String filterType,
+    String mediaType,
+  )
+  openSeerrBrowse;
+  final void Function(String collectionId) openSeerrCollection;
   final void Function(String personId) openPerson;
   final void Function(String studioName) openStudio;
   final void Function(Duration position) playFromChapter;
@@ -39,6 +51,8 @@ class SpotlightCardActions {
   const SpotlightCardActions({
     required this.openItem,
     required this.openSeerrItem,
+    required this.openSeerrBrowse,
+    required this.openSeerrCollection,
     required this.openPerson,
     required this.openStudio,
     required this.playFromChapter,
@@ -169,7 +183,11 @@ class _SpotlightCardsBuilder {
   /// caller after one card doesn't pay for the rest.
   Map<String, SpotlightCardSpec? Function()> _cardFactories() {
     if (vm.isSeerrOnly) {
-      return {'people': _peopleCard, 'similar': _similarCard};
+      return {
+        'seerr_details': _seerrDetailsCard,
+        'people': _peopleCard,
+        'similar': _similarCard,
+      };
     }
     return switch (item.type) {
       'Series' => {
@@ -413,6 +431,60 @@ class _SpotlightCardsBuilder {
     );
   }
 
+  /// What Seerr knows about a title the library doesn't have: what it is filed
+  /// under, the facts behind it, and the collection it belongs to.
+  ///
+  /// It gets a card rather than a place in the hero because inline content
+  /// above the action row has no d-pad path into it.
+  SpotlightCardSpec? _seerrDetailsCard() {
+    final state = seerrItemTabState(vm);
+    if (state == null) return null;
+
+    final tagCount = SeerrTagsContent.chipCount(state);
+    final factCount = SeerrStatsCard.factCount(state, l10n);
+    final collection = state.movie?.collection;
+    if (tagCount == 0 && factCount == 0 && collection == null) return null;
+
+    final subtitle = [
+      if (factCount > 0) l10n.spotlightFactsCount(factCount),
+      if (tagCount > 0) l10n.spotlightTagsCount(tagCount),
+    ].join(' · ');
+
+    return SpotlightCardSpec(
+      id: 'seerr_details',
+      title: l10n.details,
+      subtitle: subtitle,
+      imageUrl: fallbackImageUrl,
+      icon: Icons.info_outline,
+      sections: [
+        // The modal hands its opening d-pad focus to the first section, and
+        // only the chips take the node, so they go first.
+        if (tagCount > 0)
+          SpotlightModalSection(
+            title: l10n.genresAndTags,
+            count: tagCount,
+            builder: (context, firstFocusNode) => SeerrTagsContent(
+              state: state,
+              firstFocusNode: firstFocusNode,
+              onTagTap: actions.openSeerrBrowse,
+            ),
+          ),
+        if (factCount > 0)
+          SpotlightModalSection(
+            builder: (context, _) => SeerrStatsCard(state: state),
+          ),
+        if (collection != null)
+          SpotlightModalSection(
+            builder: (context, _) => SeerrCollectionBanner(
+              collection: collection,
+              onOpen: () =>
+                  actions.openSeerrCollection(collection.id.toString()),
+            ),
+          ),
+      ],
+    );
+  }
+
   SpotlightCardSpec? _similarCard() {
     final similar = vm.similar;
     final seerrState = seerrItemTabState(vm);
@@ -454,18 +526,22 @@ class _SpotlightCardsBuilder {
       imageUrl: imageUrl ?? fallbackImageUrl,
       icon: Icons.auto_awesome_outlined,
       sections: [
-        // What Seerr knows about the title itself, ahead of the lists.
-        if (seerrState != null && SeerrItemChips.hasContent(seerrState))
-          SpotlightModalSection(
-            builder: (context, firstFocusNode) => SeerrItemChips(
-              state: seerrState,
-              firstFocusNode: firstFocusNode,
+        // What Seerr knows about the title itself, ahead of the lists. A
+        // Seerr-only title carries these on its own Details card, so folding
+        // them in here too would show them twice.
+        if (!vm.isSeerrOnly) ...[
+          if (seerrState != null && SeerrItemChips.hasContent(seerrState))
+            SpotlightModalSection(
+              builder: (context, firstFocusNode) => SeerrItemChips(
+                state: seerrState,
+                firstFocusNode: firstFocusNode,
+              ),
             ),
-          ),
-        if (seerrState != null && SeerrStatsCard.hasContent(seerrState, l10n))
-          SpotlightModalSection(
-            builder: (context, _) => SeerrStatsCard(state: seerrState),
-          ),
+          if (seerrState != null && SeerrStatsCard.hasContent(seerrState, l10n))
+            SpotlightModalSection(
+              builder: (context, _) => SeerrStatsCard(state: seerrState),
+            ),
+        ],
         if (similar.isNotEmpty) _mediaSection(librarySectionTitle, similar),
         if (seerrRecommendations.isNotEmpty)
           _seerrSection(

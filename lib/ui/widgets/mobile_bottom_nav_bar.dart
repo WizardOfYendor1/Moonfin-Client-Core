@@ -10,6 +10,7 @@ import '../../auth/repositories/user_repository.dart';
 import '../../data/models/aggregated_library.dart';
 import '../../data/repositories/multi_server_repository.dart';
 import '../../data/repositories/user_views_repository.dart';
+import '../../data/services/library_scope_service.dart';
 import '../../data/services/plugin_sync_service.dart';
 import '../../data/services/server_messages_service.dart';
 import '../../l10n/app_localizations.dart';
@@ -18,6 +19,7 @@ import '../../preference/user_preferences.dart';
 import '../../util/overlay_color_palette.dart';
 import '../../util/game_library.dart';
 import '../../util/live_tv_library.dart';
+import '../../util/platform_detection.dart';
 import '../navigation/destinations.dart';
 import '../navigation/home_refresh_bus.dart';
 import '../screens/downloads/downloads_panel.dart';
@@ -31,6 +33,7 @@ import 'settings/settings_panel.dart';
 import 'shuffle_overlay.dart';
 import 'unread_badge.dart';
 import 'user_menu_dialog.dart';
+import 'image_source.dart';
 
 const double _kBarHeight = 54.0;
 const double _kIconSize = 24.0;
@@ -145,16 +148,11 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
 
       unawaited(GetIt.instance<GameLibraryRegistry>().refresh());
 
-      List<AggregatedLibrary> filtered = libs;
-      if (useMultiServer) {
-        try {
-          final config = await _viewsRepo.getUserConfiguration();
-          final excluded = config.myMediaExcludes.toSet();
-          if (excluded.isNotEmpty) {
-            filtered = libs.where((lib) => !excluded.contains(lib.id)).toList();
-          }
-        } catch (_) {}
-      }
+      final filtered = useMultiServer
+          ? await GetIt.instance<LibraryScopeService>().withoutHiddenLibraries(
+              libs,
+            )
+          : libs;
 
       if (mounted && !_librariesEqual(_libraries, filtered)) {
         setState(() => _libraries = filtered);
@@ -170,12 +168,15 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
     return true;
   }
 
+  // Kids Mode sends /live-tv back to home, so the guide button would only be a
+  // dead end.
   bool get _showLiveTvButton =>
+      !_kidsMode &&
       _prefs.get(UserPreferences.showLiveTvButton) &&
       _libraries.any(isLiveTvLibrary);
 
   List<AggregatedLibrary> get _navLibraries =>
-      librariesForNav(_libraries, _showLiveTvButton);
+      librariesForNav(_libraries, _showLiveTvButton, hideLiveTv: _kidsMode);
 
   bool _isActive(String route) => widget.activeRoute == route;
 
@@ -281,7 +282,8 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
       );
     }
 
-    final showSyncPlay = _prefs.get(UserPreferences.syncPlayEnabled) &&
+    final showSyncPlay = !_kidsMode &&
+        _prefs.get(UserPreferences.syncPlayEnabled) &&
         _prefs.get(UserPreferences.showSyncPlayButton);
     if (showSyncPlay) {
       actions.add(
@@ -315,7 +317,9 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
     }
 
     final activeRoute = widget.activeRoute ?? '';
-    if (_prefs.get(UserPreferences.showLibrariesInToolbar) &&
+    // Kids Mode drops this entry, so the My Media home row takes its place.
+    if (!_kidsMode &&
+        _prefs.get(UserPreferences.showLibrariesInToolbar) &&
         _navLibraries.isNotEmpty) {
       actions.add(
         _BottomNavAction(
@@ -334,7 +338,11 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
       );
     }
 
-    if (_prefs.get(UserPreferences.showDownloadsButton)) {
+    // Same gate the sidebar and the toolbar use: downloads exist on phones,
+    // tablets, desktops and Android TV, and nowhere else.
+    if (_prefs.get(UserPreferences.showDownloadsButton) &&
+        PlatformDetection.supportsOfflineDownloads &&
+        !PlatformDetection.isWeb) {
       actions.add(
         _BottomNavAction(
           icon: Icons.download_for_offline,
@@ -350,9 +358,12 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
     return actions;
   }
 
+  bool get _kidsMode => _prefs.get(UserPreferences.kidsModeEnabled);
+
   bool _seerrEnabled() {
     try {
-      return _prefs.get(UserPreferences.showSeerrButton) &&
+      return !_kidsMode &&
+          _prefs.get(UserPreferences.showSeerrButton) &&
           GetIt.instance<PluginSyncService>().seerrAvailable;
     } catch (_) {
       return false;
@@ -392,25 +403,14 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
   }
 
   void _navigateToLibrary(AggregatedLibrary lib) {
-    if (lib.collectionType == 'music') {
-      context.navigateTopLevel('/music/${lib.id}');
-    } else if (lib.collectionType == 'books' ||
-        lib.collectionType == 'audiobooks') {
-      context.navigateTopLevel(
-        Destinations.bookLibrary(lib.id, collectionType: lib.collectionType),
-      );
-    } else if (lib.collectionType == 'livetv') {
-      context.navigateTopLevel(Destinations.liveTvGuide);
-    } else {
-      context.navigateTopLevel(
-        gameOrLibraryRoute(
-          lib.id,
-          lib.collectionType,
-          lib.name,
-          serverId: lib.serverId,
-        ),
-      );
-    }
+    context.navigateTopLevel(
+      libraryRoute(
+        lib.id,
+        lib.collectionType,
+        lib.name,
+        serverId: lib.serverId,
+      ),
+    );
   }
 
   Future<void> _showMoreSheet(
@@ -572,6 +572,10 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
                   _userImageUrl!,
                   headers: serverImageHeaders,
                   fit: BoxFit.cover,
+                  cacheWidth: ArtworkDecode.widthFor(
+                    40,
+                    MediaQuery.devicePixelRatioOf(context),
+                  ),
                   errorBuilder: (_, _, _) => _avatarFallback(initial),
                 )
               : _avatarFallback(initial),

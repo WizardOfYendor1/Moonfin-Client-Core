@@ -10,6 +10,7 @@ import 'package:server_core/server_core.dart';
 
 import '../../../data/viewmodels/live_tv_guide_view_model.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 import '../../../util/platform_detection.dart';
 import '../../../util/idiom/app_ui_idiom.dart';
 import '../../navigation/destinations.dart';
@@ -40,6 +41,9 @@ import 'guide/guide_window.dart';
 const _kProgramPrefetchRows = 12;
 const _kGuideScrollLead = 24.0;
 const _kGuideLogoPrecacheRows = 24;
+// Extra rows of slack above/below the viewport carried into the artwork
+// prefetch window, so a small scroll doesn't immediately fall outside it.
+const _kArtworkPrefetchRowMargin = 5;
 
 /// How far back the guide will page. Most EPG sources keep little history,
 /// so beyond this the grid would only ever show empty cells.
@@ -188,19 +192,23 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   /// [LiveTvGuideViewModel.artworkSourceFor]) so scrolling through the
   /// channel column doesn't fire a request per row passed through.
   Timer? _artworkLookupDebounce;
+
+  /// Debounces re-submitting the bounded artwork prefetch window on scroll, so
+  /// a fling doesn't resubmit on every frame.
+  Timer? _artworkPrefetchScrollDebounce;
   bool _didInitializeMiniPlayerMode = false;
   bool _didRestoreInitialChannelFocus = false;
 
-  /// The channel focused when the guide first settled (last-tuned channel on
-  /// the standalone route, the actively-playing channel in mini-player mode).
-  /// Back resets here rather than exiting once the user has moved away from it.
-  String? _entryChannelId;
   late EpgMobileView _mobileView;
   GuideLayoutProfile _layoutProfile = GuideLayoutProfile.fromAvailableArea(
     availableWidth: 960,
     availableHeight: 540,
   );
   Duration? _pendingGuideWindow;
+
+  /// Whether the current layout actually renders the hero band, the only
+  /// widget that consumes per-program artwork.
+  bool _heroVisible = false;
 
   /// The grid's selection model. Vertical navigation resolves against its
   /// anchor time instead of focus geometry. Seeded on the first cell focus.
@@ -299,6 +307,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   }
 
   void _syncVerticalScroll() {
+    _scheduleArtworkPrefetch();
     if (_syncingScroll) return;
     if (!_channelScrollController.hasClients ||
         !_programScrollController.hasClients) {
@@ -358,17 +367,14 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         .map((channel) => channel.id)
         .toList();
     _precacheGuideLogos(_vm.filteredChannels);
-    // Cheap to resubmit on every update: queueArtworkPrefetch skips anything
-    // already cached or already queued, so this just picks up whatever the
-    // last lazy-loaded batch added.
-    _vm.queueArtworkPrefetch([
-      for (final channel in _vm.filteredChannels)
-        ..._vm.programsForChannel(channel.id),
-    ]);
+    // The whole lineup is submitted on ordinary lineups; only large ones
+    // are bounded to the rows around the current viewport.
+    _queueArtworkPrefetch();
     final lineupChanged = !listEquals(channelIds, _visibleChannelIds);
     _visibleChannelIds = channelIds;
     setState(_initializeMiniPlayerMode);
     if (lineupChanged) {
+      _refreshFocusedChannelAfterLineupChange();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _rebindSelectionAfterLineupChange();
       });
@@ -409,15 +415,100 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     }
   }
 
-  /// True while a grid cell (channel column or program row) actually holds
-  /// focus. A genre filter switch changes the lineup and would otherwise
-  /// yank focus back into the grid even while the user is still sitting on
-  /// a filter chip or the window bar.
+  void _scheduleArtworkPrefetch() {
+    _artworkPrefetchScrollDebounce?.cancel();
+    if (!_heroVisible) return;
+    _artworkPrefetchScrollDebounce = Timer(
+      const Duration(milliseconds: 250),
+      () {
+        if (mounted) _queueArtworkPrefetch();
+      },
+    );
+  }
+
+  /// Submits artwork prefetch for the channel rows near the current viewport,
+  /// plus [_kArtworkPrefetchRowMargin] rows of slack above and below. Falls
+  /// back to the first screenful of channels before the scroll controller has
+  /// attached. Every submission replaces the pending queue, so a filter change
+  /// can't leave requests for channels that are no longer shown ahead of the
+  /// new work.
+  ///
+  /// The bound applies to every lineup, not just large ones. Submitting a
+  /// whole lineup queued a request per program, which is the same load issue
+  /// #666 was about spread across many small requests, and a submission
+  /// bigger than the view model's artwork cache made each pass evict entries
+  /// the next pass then re-fetched. Since [_onChanged] resubmits on every
+  /// notification and each resolved fetch notifies, that fed itself. A
+  /// viewport-sized submission stays well under the cache cap, so once its
+  /// rows resolve a resubmission does nothing.
+  void _queueArtworkPrefetch() {
+    // The hero band is the only consumer of per-program artwork.
+    if (!_heroVisible) return;
+    final channels = _vm.filteredChannels;
+    if (channels.isEmpty) {
+      // A filter matching nothing must still drop work queued for the
+      // lineup it replaced.
+      _vm.queueArtworkPrefetch(const [], replace: true);
+      return;
+    }
+
+    final rowHeight = _layoutProfile.rowHeight;
+
+    var firstRow = 0;
+    var visibleCount = _kGuideLogoPrecacheRows;
+    if (_channelScrollController.hasClients) {
+      final offset = _channelScrollController.offset;
+      final viewport = _channelScrollController.position.viewportDimension;
+      firstRow = (offset / rowHeight).floor();
+      visibleCount = (viewport / rowHeight).ceil();
+    }
+
+    final start = (firstRow - _kArtworkPrefetchRowMargin).clamp(
+      0,
+      channels.length,
+    );
+    final end = (firstRow + visibleCount + _kArtworkPrefetchRowMargin).clamp(
+      0,
+      channels.length,
+    );
+    if (start >= end) return;
+
+    _vm.queueArtworkPrefetch([
+      for (final channel in channels.sublist(start, end))
+        ..._vm.programsForChannel(channel.id),
+    ], replace: true);
+  }
+
+  /// True unless focus is sitting on one of this screen's non-grid controls.
+  /// A genre filter switch changes the lineup and would otherwise yank focus
+  /// back into the grid while the user is still on a filter chip or the
+  /// window bar.
   bool get _gridHasFocus {
-    final label = FocusManager.instance.primaryFocus?.debugLabel;
-    return label != null &&
-        (label.startsWith('GuideChannel:') ||
-            label.startsWith('GuideProgramRow'));
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null) return false;
+    return !_filterFocusNodes.containsValue(focus) &&
+        !_windowBarFocusNodes.containsValue(focus) &&
+        focus != _miniPlayerFocusNode;
+  }
+
+  /// A channel row's FocusNode is cached by row index, so a filter that swaps
+  /// which channel sits in a focused row fires no focus change and leaves the
+  /// tracked channel naming the old one. Re-derive it from whichever row's
+  /// node actually holds focus; this only updates tracked state, never real
+  /// focus, so it stays safe to call while the guide is covered.
+  void _refreshFocusedChannelAfterLineupChange() {
+    final channels = _vm.filteredChannels;
+    for (final entry in _channelFocusNodes.entries) {
+      if (!entry.value.hasFocus) continue;
+      final index = entry.key;
+      if (index >= channels.length) return;
+      final channel = channels[index];
+      if (_focusedChannel.value?.id == channel.id) return;
+      _channelRailFocused.value = true;
+      _focusedProgram.value = null;
+      _focusedChannel.value = channel;
+      return;
+    }
   }
 
   void _rebindSelectionAfterLineupChange() {
@@ -473,13 +564,12 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
     _didInitializeMiniPlayerMode = true;
     final channel = channels[initialIndex];
-    _entryChannelId = channel.id;
     _focusedChannel.value = channel;
     _focusedProgram.value = _currentProgramForChannel(channel.id);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _focusChannelRow(initialIndex);
+      _focusChannelRow(initialIndex, animate: false);
     });
   }
 
@@ -497,19 +587,24 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
     final index = preferredIndex >= 0 ? preferredIndex : 0;
     _didRestoreInitialChannelFocus = true;
-    _entryChannelId = _vm.filteredChannels[index].id;
 
     // RequestInitialFocus also schedules a post-frame focus. Defer one extra
     // frame so the restored row wins that initial traversal race.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _focusChannelRow(index);
+        if (mounted) _focusChannelRow(index, animate: false);
       });
     });
   }
 
-  void _scrollToRow(int index) {
+  /// [animate] is false for jumps that reposition the whole grid to a
+  /// channel that may be nowhere near the current viewport -- entering the
+  /// guide, or the back-to-entry reset -- where animating the tween across a
+  /// long lineup is pure wasted paint on slower hardware. Ordinary vertical
+  /// navigation keeps the animated version so a one-row move still reads as
+  /// a scroll.
+  void _scrollToRow(int index, {bool animate = true}) {
     final offset = index * _layoutProfile.rowHeight;
     final targetRow = index;
     if (_lastFocusedRowIndex == targetRow) {
@@ -518,19 +613,29 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _lastFocusedRowIndex = targetRow;
     if (_channelScrollController.hasClients) {
       final max = _channelScrollController.position.maxScrollExtent;
-      _channelScrollController.animateTo(
-        offset.clamp(0.0, max),
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
+      final clamped = offset.clamp(0.0, max);
+      if (animate) {
+        _channelScrollController.animateTo(
+          clamped,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _channelScrollController.jumpTo(clamped);
+      }
     }
     if (_programScrollController.hasClients) {
       final max = _programScrollController.position.maxScrollExtent;
-      _programScrollController.animateTo(
-        offset.clamp(0.0, max),
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
+      final clamped = offset.clamp(0.0, max);
+      if (animate) {
+        _programScrollController.animateTo(
+          clamped,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _programScrollController.jumpTo(clamped);
+      }
     }
   }
 
@@ -541,19 +646,39 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
   }
 
-  void _focusChannelRow(int index) {
+  /// Whether focus is this screen's to take right now.
+  ///
+  /// Several of these requests are deferred to a post-frame callback, and a
+  /// route pushed on top of the guide does NOT unmount it -- the guide stays
+  /// alive underneath. So `mounted` alone is not enough: a callback landing
+  /// after the viewer opened a channel would pull focus out of the player and
+  /// back onto a row nobody can see, leaving the remote apparently dead
+  /// because every key goes to the hidden screen. Measured on a Shield with
+  /// primaryFocus stranded on `GuideFilter:0` while the player was on top.
+  ///
+  /// A null route means the guide is embedded rather than pushed, and then
+  /// nothing is on top of it to protect.
+  bool get _mayTakeFocus {
+    if (!mounted) return false;
+    final route = ModalRoute.of(context);
+    return route == null || route.isCurrent;
+  }
+
+  void _focusChannelRow(int index, {bool animate = true}) {
+    if (!_mayTakeFocus) return;
     _cancelPendingVerticalMove();
-    _scrollToRow(index);
+    _scrollToRow(index, animate: animate);
     _channelFocusNodeFor(index).requestFocus();
   }
 
   void _focusMiniPlayer() {
-    if (!widget.miniPlayerMode) return;
+    if (!widget.miniPlayerMode || !_mayTakeFocus) return;
     _cancelPendingVerticalMove();
     _miniPlayerFocusNode.requestFocus();
   }
 
   void _focusFilterRail() {
+    if (!_mayTakeFocus) return;
     _cancelPendingVerticalMove();
     _filterFocusNodeFor(0).requestFocus();
   }
@@ -561,6 +686,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   /// Moves within the controls row, refusing a move off either end.
   void _focusWindowBar(int index) {
     if (index < _kWindowBarPrevious || index > _kWindowBarLast) return;
+    if (!_mayTakeFocus) return;
     _cancelPendingVerticalMove();
     _lastWindowBarIndex = index;
     _windowBarFocusNodeFor(index).requestFocus();
@@ -691,6 +817,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _reanchorTimer?.cancel();
     _displayClockTimer?.cancel();
     _artworkLookupDebounce?.cancel();
+    _artworkPrefetchScrollDebounce?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _vm.cancelBoundaryRefresh();
     _vm.removeListener(_onChanged);
@@ -808,6 +935,25 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
           textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
         );
         _layoutProfile = profile;
+        final heroVisible = landscape && !widget.miniPlayerMode;
+        if (heroVisible != _heroVisible) {
+          _heroVisible = heroVisible;
+          // Deferred because this runs during build: gaining the hero has
+          // to start artwork work that nothing else will trigger until the
+          // next notification, and losing it has to drop work already
+          // queued for a band that is no longer on screen.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (_heroVisible) {
+              _queueArtworkPrefetch();
+              _scheduleArtworkLookup();
+            } else {
+              _artworkPrefetchScrollDebounce?.cancel();
+              _artworkLookupDebounce?.cancel();
+              _vm.queueArtworkPrefetch(const [], replace: true);
+            }
+          });
+        }
         if (landscape) _scheduleGuideWindowUpdate(profile.guideWindow);
         return Padding(
           padding: EdgeInsets.only(
@@ -942,6 +1088,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   /// future programs carry artwork just as often as live ones.
   void _scheduleArtworkLookup() {
     _artworkLookupDebounce?.cancel();
+    if (!_heroVisible) return;
     final preview = _currentPreviewProgram();
     if (preview == null ||
         preview.artworkSource != null ||
@@ -950,7 +1097,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     }
     final programId = preview.id;
     _artworkLookupDebounce = Timer(const Duration(milliseconds: 500), () async {
-      await _vm.artworkSourceFor(preview);
+      // Nothing came back, so the hero has nothing new to paint. Rebuilding
+      // the whole guide anyway would cost a frame per focus move on any
+      // server whose programs carry no artwork.
+      if (await _vm.artworkSourceFor(preview) == null) return;
       if (mounted && _currentPreviewProgram()?.id == programId) {
         setState(() {});
       }
@@ -987,16 +1137,26 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         final artwork = preview == null
             ? null
             : preview.artworkSource ?? _vm.cachedArtworkFor(preview.id);
+        // A thumb tag names the parent's Thumb image, so asking for its
+        // Primary with that tag serves the wrong image or nothing at all.
         final programImageUrl = artwork == null
             ? null
+            : artwork.isThumb
+            ? _vm.imageApi.getThumbImageUrl(
+                artwork.itemId,
+                maxWidth: EpgHeroPreview.plateWidth.toInt(),
+                tag: artwork.tag,
+              )
             : _vm.imageApi.getPrimaryImageUrl(
                 artwork.itemId,
                 maxHeight: EpgHeroPreview.compactHeight.toInt(),
-                maxWidth: (EpgHeroPreview.compactHeight * 2 / 3).toInt(),
+                maxWidth: EpgHeroPreview.plateWidth.toInt(),
                 tag: artwork.tag,
               );
         for (final url in [channelLogoUrl, programImageUrl]) {
-          if (url != null) _precacheGuideLogoUrl(url, layoutWidth: 100);
+          if (url != null) {
+            _precacheGuideLogoUrl(url, layoutWidth: EpgHeroPreview.plateWidth);
+          }
         }
         final episodeTitle = preview?.episodeTitle;
         final episodeSuffix =
@@ -1141,9 +1301,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       case GuideState.loading:
         return const Center(child: CircularProgressIndicator());
       case GuideState.error:
+        final l10n = AppLocalizations.of(context);
         return Center(
           child: Text(
-            AppLocalizations.of(context).failedToLoadGuide(_vm.errorMessage),
+            l10n.failedToLoadGuide(describeError(_vm.error!, l10n)),
             style: TextStyle(color: Colors.white.withAlpha(179)),
           ),
         );
@@ -1224,7 +1385,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   }) {
     final l10n = AppLocalizations.of(context);
     final title = program?.name ?? channel?.name ?? l10n.guideTimeline;
-    final episodeTitle = program?.episodeTitle;
+    final episodeLine = program?.episodeLine ?? '';
     final timeRange = program == null
         ? null
         : '${_formatTime(program.startDate)} - ${_formatTime(program.endDate)}';
@@ -1284,10 +1445,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (episodeTitle != null && episodeTitle.isNotEmpty) ...[
+                    if (episodeLine.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        episodeTitle,
+                        episodeLine,
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: AppTypography.fontSizeSm,
@@ -1513,9 +1674,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       case GuideState.loading:
         return const Center(child: CircularProgressIndicator());
       case GuideState.error:
+        final l10n = AppLocalizations.of(context);
         return Center(
           child: Text(
-            AppLocalizations.of(context).failedToLoadGuide(_vm.errorMessage),
+            l10n.failedToLoadGuide(describeError(_vm.error!, l10n)),
             style: TextStyle(color: Colors.white.withAlpha(179)),
           ),
         );
@@ -1791,6 +1953,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   void _applyPendingVerticalMove() {
     final pending = _pendingVerticalMove;
     if (pending == null) return;
+    // Deferred to a later frame, so the viewer may have opened a channel in
+    // the meantime. The move is theirs to finish when they come back, not
+    // something to take the remote for now.
+    if (!_mayTakeFocus) return;
     final cells = _cellsForRow(pending.targetRowIndex);
     if (cells.isEmpty || _cellsAreLoading(cells)) return;
     final rowState = _rowStates[pending.targetRowIndex];
@@ -1875,6 +2041,15 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   }
 
   void _focusSelectedCell(GuideSelection selection, List<GuideCell> cells) {
+    // The reanchor timer reaches here on its own, driven by the clock rather
+    // than by the viewer: when a programme boundary passes it re-resolves the
+    // selection and puts focus on the new cell. If the viewer has since opened
+    // a channel, that focus lands on a cell behind the player and every remote
+    // key goes to a screen nobody can see -- watching fine for a while, then
+    // the remote stops answering, with nothing the viewer did to cause it.
+    // Keep re-resolving the selection so the guide is correct when they come
+    // back; just do not take the remote to do it.
+    if (!_mayTakeFocus) return;
     if (_cellsAreLoading(cells)) return;
     final rowIndex = _vm.filteredChannels.indexWhere(
       (channel) => channel.id == selection.channelId,
@@ -1994,24 +2169,59 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     _anchorToWindowStart();
   }
 
-  /// True once the user has paged the window off live or moved focus onto a
-  /// channel other than [_entryChannelId] -- anywhere in the grid, channel
-  /// column included.
-  bool _isExploringAwayFromEntry() {
-    final entryId = _entryChannelId;
-    if (entryId == null) return false;
-    return !_vm.atLivePosition || _focusedChannel.value?.id != entryId;
+  /// The channel the guide considers "home": the last one the user actually
+  /// tuned, read live off the always-current preference rather than a copy
+  /// cached at some earlier point.
+  String? get _homeChannelId {
+    final id = _prefs.get(UserPreferences.liveTvLastChannelId).trim();
+    return id.isEmpty ? null : id;
   }
 
+  /// True once the user has paged the window off live or moved focus onto a
+  /// channel other than [_homeChannelId] -- anywhere in the grid, channel
+  /// column included. When nothing has ever been tuned, row 0 stands in for
+  /// home, since that is where [_scheduleInitialChannelFocus] falls back to
+  /// on first use; checked by real focus on that row's node rather than
+  /// channel identity, since a genre filter can swap which channel sits at
+  /// row 0 without moving focus off a node that was already focused there.
+  bool _isExploringAwayFromEntry() {
+    final homeId = _homeChannelId;
+    if (homeId != null) {
+      return !_vm.atLivePosition || _focusedChannel.value?.id != homeId;
+    }
+    if (_vm.filteredChannels.isEmpty) return false;
+    return !_vm.atLivePosition || !_channelFocusNodeFor(0).hasFocus;
+  }
+
+  /// True while [_resetToEntryState] is awaiting its reload, so a second back
+  /// press in that window doesn't start the reset over.
+  bool _resettingToEntryState = false;
+
+  /// Resets to [_homeChannelId], re-resolving it into
+  /// [LiveTvGuideViewModel.filteredChannels] AFTER [_goToNow] reloads the
+  /// lineup, since a genre filter can change which channels are present
+  /// during that reload -- resolving before it would risk landing on
+  /// whatever channel now sits at a stale index. With nothing ever tuned,
+  /// resets to row 0 instead, the same first-use fallback as
+  /// [_scheduleInitialChannelFocus].
   Future<void> _resetToEntryState() async {
-    await _goToNow();
+    _resettingToEntryState = true;
+    try {
+      await _goToNow();
+    } finally {
+      _resettingToEntryState = false;
+    }
     if (!mounted) return;
-    final entryId = _entryChannelId;
-    if (entryId == null) return;
-    final index = _vm.filteredChannels.indexWhere(
-      (channel) => channel.id == entryId,
-    );
-    if (index < 0) return;
+    final homeId = _homeChannelId;
+    final channels = _vm.filteredChannels;
+    int index;
+    if (homeId != null) {
+      index = channels.indexWhere((channel) => channel.id == homeId);
+      if (index < 0) return;
+    } else {
+      if (channels.isEmpty) return;
+      index = 0;
+    }
     // Set the tracked focus target directly instead of waiting on the
     // channel row's own focus-change callback: the row can be scrolled many
     // screens away, so its FocusNode isn't attached until the list has
@@ -2022,20 +2232,48 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     // exiting.
     _channelRailFocused.value = true;
     _focusedProgram.value = null;
-    _focusedChannel.value = _vm.filteredChannels[index];
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _focusedChannel.value = channels[index];
+    // Neither the field assignments above nor the reload behind _goToNow()
+    // are guaranteed to have scheduled a frame, and addPostFrameCallback
+    // only runs on a frame that actually happens -- so without an explicit
+    // scheduleFrame() the row can sit waiting for whatever unrelated widget
+    // (e.g. the guide's own clock) next triggers one. Schedule both frames
+    // this needs explicitly: one for the callback below to fire at all, and
+    // a second because the target row may still be off-screen with its
+    // FocusNode not yet attached, exactly as in _scheduleInitialChannelFocus.
+    final binding = WidgetsBinding.instance;
+    binding.addPostFrameCallback((_) {
       if (!mounted) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _focusChannelRow(index);
+      binding.scheduleFrame();
+      binding.addPostFrameCallback((_) {
+        if (mounted) _focusChannelRow(index, animate: false);
       });
     });
+    binding.scheduleFrame();
   }
 
   /// A back press resolves here first: if the grid has drifted from where the
   /// user would have landed opening the guide fresh, back re-homes it instead
-  /// of exiting. Returns true when it handled the press.
+  /// of exiting. Returns true when it handled the press. Resolves the entry
+  /// channel's index before committing to consume the press, so a genre
+  /// filter that excludes the entry channel falls through to the normal
+  /// close/exit path instead of consuming back presses forever. With no
+  /// channel ever tuned, the target is row 0 as long as the lineup is
+  /// non-empty.
   bool _consumeBackIfExploring() {
+    // A reset already running owns this press. Consuming it keeps the guide
+    // from closing out from under a reset that is about to land.
+    if (_resettingToEntryState) return true;
     if (!_isExploringAwayFromEntry()) return false;
+    final homeId = _homeChannelId;
+    if (homeId != null) {
+      final index = _vm.filteredChannels.indexWhere(
+        (channel) => channel.id == homeId,
+      );
+      if (index < 0) return false;
+    } else if (_vm.filteredChannels.isEmpty) {
+      return false;
+    }
     unawaited(_resetToEntryState());
     return true;
   }
@@ -2188,9 +2426,18 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     );
     if (!mounted) return;
     _vm.scheduleBoundaryRefresh();
-    final restoredIndex = _vm.filteredChannels.indexWhere(
-      (channel) => channel.id == channelId,
+    // The player may have switched channels (carousel) while it was up, so
+    // the preference it kept current names the channel to restore focus to,
+    // not the one this call originally launched.
+    final restoredChannels = _vm.filteredChannels;
+    var restoredIndex = restoredChannels.indexWhere(
+      (channel) => channel.id == _homeChannelId,
     );
+    if (restoredIndex < 0) {
+      restoredIndex = restoredChannels.indexWhere(
+        (channel) => channel.id == channelId,
+      );
+    }
     if (restoredIndex >= 0) _focusChannelRow(restoredIndex);
   }
 
@@ -2214,6 +2461,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       debugLabel: 'GuideProgramDialogDefaultAction',
     );
     var defaultActionFocusRequested = false;
+    final episodeLine = program.episodeLine;
 
     showFocusRestoringDialog(
       context: context,
@@ -2245,10 +2493,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                   '${_formatTime(program.startDate)} – ${_formatTime(program.endDate)}',
                   style: const TextStyle(color: Colors.white70),
                 ),
-                if (program.episodeTitle != null) ...[
+                if (episodeLine.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
-                    program.episodeTitle!,
+                    episodeLine,
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],

@@ -29,6 +29,7 @@ import '../../widgets/rating_display.dart';
 import '../../widgets/sliding_pill_tabs.dart';
 import '../../widgets/skeleton/skeleton_library_grid.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../util/error_message.dart';
 
 Color get _navyBackground => AppColorScheme.background;
 const _horizontalPadding = 60.0;
@@ -450,7 +451,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
             Text(
               _vm.isNetworkError
                   ? AppLocalizations.of(context).unableToConnectToServer
-                  : _vm.errorMessage ?? AppLocalizations.of(context).failedToLoadFavorites,
+                  : describeError(_vm.error!, AppLocalizations.of(context)),
               style: const TextStyle(color: Colors.white),
             ),
             const SizedBox(height: 16),

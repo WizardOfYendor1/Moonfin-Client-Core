@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../../util/platform_detection.dart';
+import '../../../../widgets/marquee_text.dart';
 import '../../../../widgets/overlay_sheet.dart';
 
 class NouveauAction {
@@ -624,6 +625,14 @@ class _NouveauPrimaryButtonState extends State<_NouveauPrimaryButton> {
 
     final height = phone ? 54.0 : 62.0 * scale;
 
+    final labelStyle = TextStyle(
+      color: _highlighted ? Colors.black : Colors.white,
+      fontSize: phone ? 15.5 : 16.5 * scale,
+      fontWeight: FontWeight.w700,
+      height: 1,
+      letterSpacing: -0.1,
+    );
+
     return Focus(
       focusNode: action.focusNode,
       autofocus: action.autofocus,
@@ -792,21 +801,23 @@ class _NouveauPrimaryButtonState extends State<_NouveauPrimaryButton> {
                           color: _highlighted ? Colors.black : Colors.white,
                         ),
                         SizedBox(width: phone ? 10 : 12.0 * scale),
+                        // The pill is width capped, so a long label scrolls
+                        // while focused instead of losing its end. The phone
+                        // button is full width and never needs it.
                         Flexible(
-                          child: Text(
-                            action.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: _highlighted ? Colors.black : Colors.white,
-                              fontSize: phone ? 15.5 : 16.5 * scale,
-                              fontWeight: FontWeight.w700,
-                              height: 1,
-                              letterSpacing: -0.1,
-                            ),
-                          ),
+                          child: _highlighted && !phone
+                              ? MarqueeText(
+                                  text: action.label,
+                                  style: labelStyle,
+                                )
+                              : Text(
+                                  action.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: labelStyle,
+                                ),
                         ),
-                        // The label truncates before this does, so the time
+                        // The label yields its width to this, so the time
                         // left stays readable on a narrow button.
                         if (action.trailingLabel case final trailing?) ...[
                           SizedBox(width: phone ? 8 : 9.0 * scale),

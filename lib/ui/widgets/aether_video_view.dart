@@ -8,10 +8,17 @@ import 'package:flutter/widgets.dart';
 /// AetherBackend's method channel and this widget only hosts the picture
 /// and forwards zoom-mode changes.
 class AetherVideoView extends StatefulWidget {
-  const AetherVideoView({super.key, this.zoomMode = 'fit'});
+  const AetherVideoView({
+    super.key,
+    this.zoomMode = 'fit',
+    this.keepClearOfHousing = false,
+  });
 
   /// Dart ZoomMode enum name: 'fit', 'autoCrop', or 'stretch'.
   final String zoomMode;
+
+  /// Holds the picture back from the iPhone camera housing in landscape.
+  final bool keepClearOfHousing;
 
   @override
   State<AetherVideoView> createState() => _AetherVideoViewState();
@@ -25,6 +32,11 @@ class _AetherVideoViewState extends State<AetherVideoView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.zoomMode != widget.zoomMode) {
       _viewChannel?.invokeMethod('setZoomMode', {'mode': widget.zoomMode});
+    }
+    if (oldWidget.keepClearOfHousing != widget.keepClearOfHousing) {
+      _viewChannel?.invokeMethod('setKeepClearOfHousing', {
+        'value': widget.keepClearOfHousing,
+      });
     }
   }
 
@@ -42,7 +54,10 @@ class _AetherVideoViewState extends State<AetherVideoView> {
       TargetPlatform.iOS => IgnorePointer(
         child: UiKitView(
           viewType: 'moonfin/aether_video',
-          creationParams: {'zoomMode': widget.zoomMode},
+          creationParams: {
+            'zoomMode': widget.zoomMode,
+            'keepClearOfHousing': widget.keepClearOfHousing,
+          },
           creationParamsCodec: const StandardMessageCodec(),
           onPlatformViewCreated: _onCreated,
         ),

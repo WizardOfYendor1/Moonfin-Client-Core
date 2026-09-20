@@ -26,6 +26,14 @@ const _kTravelThreshold = 4.0;
 /// a pressed pill has to swell into.
 const _kPanePadding = 5.0;
 
+/// The height of one segment.
+const _kSegmentHeight = 34.0;
+
+/// Everything between the edge of the strip and the segments inside it: the
+/// pane's own padding, plus the focus halo's ring, which is laid out whether
+/// or not the strip has focus.
+const _kStripInset = _kPanePadding + GlassFocusHalo.borderWidth;
+
 /// How long the pill takes to settle onto a segment and to reshape its width.
 const _kSettleDuration = Duration(milliseconds: 350);
 
@@ -33,6 +41,11 @@ const _kSettleDuration = Duration(milliseconds: 350);
 const _kLiftDuration = Duration(milliseconds: 300);
 
 class SlidingPillTabs extends StatefulWidget {
+  /// How tall the strip lays out, for the layouts that reserve room for it
+  /// before it's built. Fixed, so it doesn't grow with the user's scale the
+  /// way the labels inside it do.
+  static const double height = _kSegmentHeight + _kStripInset * 2;
+
   final List<String> labels;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
@@ -44,6 +57,10 @@ class SlidingPillTabs extends StatefulWidget {
   /// Left D-pad from the first segment; e.g. hop to the sidebar.
   final VoidCallback? onExitLeft;
 
+  /// Where the strip sits once it has hugged its content. Search lines it up
+  /// under the field on the left, a panel centres it over its list.
+  final Alignment alignment;
+
   const SlidingPillTabs({
     super.key,
     required this.labels,
@@ -52,6 +69,7 @@ class SlidingPillTabs extends StatefulWidget {
     this.focusNode,
     this.onVerticalNavigation,
     this.onExitLeft,
+    this.alignment = Alignment.centerLeft,
   });
 
   @override
@@ -365,7 +383,10 @@ class _SlidingPillTabsState extends State<SlidingPillTabs> {
         builder: (context, constraints) {
           final available = constraints.maxWidth;
           final measured = _widths.isNotEmpty && available.isFinite;
-          final content = _trackWidth + _kPanePadding * 2;
+          // Hugging the segments means room for everything either side of
+          // them, the halo's ring included, or the strip sits closer to the
+          // last segment than the first and clips it.
+          final content = _trackWidth + _kStripInset * 2;
           // Unmeasured counts as not fitting, so the first frames clip rather
           // than risk painting segments outside the pane.
           final fits = measured && content <= available;
@@ -437,7 +458,7 @@ class _SlidingPillTabsState extends State<SlidingPillTabs> {
             context: context,
             padding: const EdgeInsets.all(_kPanePadding),
             child: SizedBox(
-              height: 34,
+              height: _kSegmentHeight,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 // Only clip when there is something scrolled out of view to
@@ -462,7 +483,7 @@ class _SlidingPillTabsState extends State<SlidingPillTabs> {
           // and let the segments scroll inside.
           final pillWidth = content < available ? content : available;
           return Align(
-            alignment: Alignment.centerLeft,
+            alignment: widget.alignment,
             child: SizedBox(width: pillWidth, child: framed),
           );
         },

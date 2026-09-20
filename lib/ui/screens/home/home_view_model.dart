@@ -129,7 +129,8 @@ class HomeViewModel extends ChangeNotifier {
     // Offline rows are cached separately so cached online rows never hydrate
     // an offline home (and vice versa).
     final offline = _isOffline;
-    return '$_serverId|$userId|$sections|$multiServer|$merge|$blocked|offline:$offline';
+    final shape = RowDataSource.fieldShapeToken;
+    return '$_serverId|$userId|$sections|$multiServer|$merge|$blocked|offline:$offline|fields:$shape';
   }
 
   static bool _isFavoriteSectionType(HomeSectionType type) {
@@ -2138,22 +2139,27 @@ class HomeViewModel extends ChangeNotifier {
         // screen.
         if (_multiServerEnabled) {
           final resumeFuture = _loadRowOrNull(
+            'resume',
             () => _multiServerRepo.getAggregatedResume(),
           );
           final nextUpFuture = _loadRowOrNull(
+            'next up',
             () => _multiServerRepo.getAggregatedNextUp(),
           );
           _applyMergedResumeRows(await resumeFuture, await nextUpFuture);
         } else {
           final resumeFuture = _loadRowOrNull(
+            'resume',
             () => _dataSource.loadResume(_serverId),
           );
           final nextUpFuture = _loadRowOrNull(
+            'next up',
             () => _dataSource.loadNextUp(_serverId),
           );
           _applyMergedResumeRows(await resumeFuture, await nextUpFuture);
         }
-      } catch (_) {
+      } catch (e) {
+        debugPrint('[Home] Merged resume and next up load failed: $e');
       } finally {
         _bgMergeInFlight = false;
       }
@@ -2188,13 +2194,17 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   /// Returns null rather than throwing, so a caller merging several sources
-  /// can keep the ones that answered.
+  /// can keep the ones that answered. The failure is logged because a merged
+  /// row that quietly loses one of its sources looks the same as a server with
+  /// nothing to offer, which makes the difference impossible to report.
   static Future<HomeRow?> _loadRowOrNull(
+    String label,
     Future<HomeRow> Function() load,
   ) async {
     try {
       return await load();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Home] Failed to load $label for the merged row: $e');
       return null;
     }
   }
@@ -2262,9 +2272,11 @@ class HomeViewModel extends ChangeNotifier {
     final offset = _rowOffsets[row.id] ?? row.items.length;
 
     final resumeFuture = _loadRowOrNull(
+      'resume',
       () => _dataSource.loadResume(_serverId, startIndex: offset),
     );
     final nextUpFuture = _loadRowOrNull(
+      'next up',
       () => _dataSource.loadNextUp(_serverId, startIndex: offset),
     );
     final resumeRow = await resumeFuture;
