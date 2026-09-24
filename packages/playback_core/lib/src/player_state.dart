@@ -35,7 +35,7 @@ class PlayerState {
 
   /// Whether the viewer paused. Falls back to "not playing" on an engine that
   /// reports no intent, which is what every caller used to assume.
-  bool get isPaused => _playWhenReady == null ? !_isPlaying : !_playWhenReady!;
+  bool get isPaused => !(_playWhenReady ?? _isPlaying);
   Duration get position => _position;
   Duration get duration => _duration;
   Duration get buffer => _buffer;

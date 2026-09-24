@@ -19,10 +19,11 @@ import '../../preference/user_preferences.dart';
 import '../../util/overlay_color_palette.dart';
 import '../../util/game_library.dart';
 import '../../util/live_tv_library.dart';
-import '../../util/platform_detection.dart';
+import '../../data/services/saved_media_presence.dart';
 import '../navigation/destinations.dart';
 import '../navigation/home_refresh_bus.dart';
 import '../screens/downloads/downloads_panel.dart';
+import 'downloads_nav_slot.dart';
 import '../screens/settings/settings_side_panel.dart';
 import '../screens/syncplay/syncplay_screen.dart';
 import 'adaptive/adaptive_glass.dart';
@@ -74,6 +75,9 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
     GetIt.instance<ServerMessagesService>().addListener(
       _onServerMessagesChanged,
     );
+    if (GetIt.instance.isRegistered<SavedMediaPresence>()) {
+      GetIt.instance<SavedMediaPresence>().addListener(_onSavedMediaChanged);
+    }
     _userSub = _userRepo.currentUserStream.listen((_) => _loadUserImage());
     _loadUserImage();
     _loadLibraries();
@@ -86,6 +90,11 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
       GetIt.instance<ServerMessagesService>().removeListener(
         _onServerMessagesChanged,
       );
+      if (GetIt.instance.isRegistered<SavedMediaPresence>()) {
+        GetIt.instance<SavedMediaPresence>().removeListener(
+          _onSavedMediaChanged,
+        );
+      }
     } catch (_) {}
     _prefs.removeListener(_onPrefsChanged);
     try {
@@ -104,6 +113,10 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
 
   // Only the button changes, so the libraries are left alone.
   void _onServerMessagesChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onSavedMediaChanged() {
     if (mounted) setState(() {});
   }
 
@@ -339,10 +352,9 @@ class _MobileBottomNavBarState extends State<MobileBottomNavBar> {
     }
 
     // Same gate the sidebar and the toolbar use: downloads exist on phones,
-    // tablets, desktops and Android TV, and nowhere else.
-    if (_prefs.get(UserPreferences.showDownloadsButton) &&
-        PlatformDetection.supportsOfflineDownloads &&
-        !PlatformDetection.isWeb) {
+    // tablets, desktops and Android TV, and nowhere else. The entry also waits
+    // until there is something saved, so it never opens an empty screen.
+    if (DownloadsNavSlot.isOffered() && DownloadsNavSlot.hasSavedMedia()) {
       actions.add(
         _BottomNavAction(
           icon: Icons.download_for_offline,

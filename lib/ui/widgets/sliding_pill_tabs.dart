@@ -23,16 +23,12 @@ const _kJellyVelocityDivisor = 150.0;
 const _kTravelThreshold = 4.0;
 
 /// Padding between the pane edge and the segments, which doubles as the room
-/// a pressed pill has to swell into.
+/// a pressed pill has to swell into. The focus ring paints over the pane
+/// rather than around it, so this is the whole of the strip's inset.
 const _kPanePadding = 5.0;
 
 /// The height of one segment.
 const _kSegmentHeight = 34.0;
-
-/// Everything between the edge of the strip and the segments inside it: the
-/// pane's own padding, plus the focus halo's ring, which is laid out whether
-/// or not the strip has focus.
-const _kStripInset = _kPanePadding + GlassFocusHalo.borderWidth;
 
 /// How long the pill takes to settle onto a segment and to reshape its width.
 const _kSettleDuration = Duration(milliseconds: 350);
@@ -44,7 +40,7 @@ class SlidingPillTabs extends StatefulWidget {
   /// How tall the strip lays out, for the layouts that reserve room for it
   /// before it's built. Fixed, so it doesn't grow with the user's scale the
   /// way the labels inside it do.
-  static const double height = _kSegmentHeight + _kStripInset * 2;
+  static const double height = _kSegmentHeight + _kPanePadding * 2;
 
   final List<String> labels;
   final int selectedIndex;
@@ -383,10 +379,10 @@ class _SlidingPillTabsState extends State<SlidingPillTabs> {
         builder: (context, constraints) {
           final available = constraints.maxWidth;
           final measured = _widths.isNotEmpty && available.isFinite;
-          // Hugging the segments means room for everything either side of
-          // them, the halo's ring included, or the strip sits closer to the
-          // last segment than the first and clips it.
-          final content = _trackWidth + _kStripInset * 2;
+          // Hugging the segments still means room for the pane's padding
+          // either side of them, or the strip sits closer to the last
+          // segment than the first and clips it.
+          final content = _trackWidth + _kPanePadding * 2;
           // Unmeasured counts as not fitting, so the first frames clip rather
           // than risk painting segments outside the pane.
           final fits = measured && content <= available;
@@ -472,6 +468,9 @@ class _SlidingPillTabsState extends State<SlidingPillTabs> {
           final framed = GlassFocusHalo(
             focused: _focused,
             scale: 1.0,
+            // Around the pane it would widen the strip by the ring on every
+            // side, focused or not.
+            ringOverPaints: true,
             // A press belongs to the segment under the finger, not the whole
             // strip. The jelly thumb gives that response itself.
             pressGrowth: 0,

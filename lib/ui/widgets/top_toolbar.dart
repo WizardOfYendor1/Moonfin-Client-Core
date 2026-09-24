@@ -27,6 +27,7 @@ import '../../util/platform_detection.dart';
 import '../navigation/destinations.dart';
 import '../navigation/home_refresh_bus.dart';
 import '../navigation/route_lifecycle_observer.dart';
+import 'downloads_nav_slot.dart';
 import 'expandable_icon_button.dart';
 import 'overlay_sheet.dart';
 import 'navigation_layout.dart';
@@ -501,8 +502,44 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
     }
   }
 
-  bool _moveWithinToolbar(TraversalDirection direction) {
-    final primary = FocusManager.instance.primaryFocus;
+  /// Where focus goes on leaving the far end of the inline libraries.
+  ///
+  /// The row has collapsed by now, so its buttons are gone and the trigger is
+  /// what sits in their place. Stepping from there lands on whatever is next,
+  /// which is downloads or server messages before it reaches settings.
+  void _focusAfterInlineLibraries() {
+    final moved = _moveWithinToolbar(
+      TraversalDirection.right,
+      from: _inlineLibrariesTriggerFocus,
+    );
+    if (!moved) _settingsFocus.requestFocus();
+  }
+
+  /// Renders nothing while there is nothing saved.
+  Widget _buildDownloadsButton({
+    required Color? navColor,
+    required bool alwaysExpanded,
+    required String label,
+  }) {
+    return DownloadsNavSlot(
+      builder: (context) => ExpandableIconButton(
+        key: const ValueKey('toolbar-downloads'),
+        forceExpanded: alwaysExpanded,
+        icon: Icons.download_for_offline,
+        label: label,
+        baseColor: navColor,
+        onPressed: () => showDownloadsDialog(context),
+      ),
+    );
+  }
+
+  /// Moves focus one button along the toolbar, in painted order.
+  ///
+  /// [from] names where to step from when focus hasn't landed there yet. A
+  /// request applies a microtask later, so a caller that has just moved focus
+  /// can't rely on the primary node having caught up.
+  bool _moveWithinToolbar(TraversalDirection direction, {FocusNode? from}) {
+    final primary = from ?? FocusManager.instance.primaryFocus;
     if (primary == null || !_isInsideToolbar(primary)) return false;
 
     final insideMusicBar = _isDescendantOf(primary, _musicBarFocusNode);
@@ -1150,20 +1187,16 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                 ),
               ],
               _gap(),
-              if (_prefs.get(UserPreferences.showDownloadsButton) &&
-                PlatformDetection.supportsOfflineDownloads &&
-                !PlatformDetection.isWeb)
+              if (DownloadsNavSlot.isOffered())
                 _orderButton(
                   order: 97,
-                  child: ExpandableIconButton(
-                    key: const ValueKey('toolbar-downloads'),
-                    forceExpanded: alwaysExpanded,
-                    icon: Icons.download_for_offline,
+                  // The slot is taken here rather than inside the builder, so
+                  // the icons after it keep their colour whether or not
+                  // anything is saved to show.
+                  child: _buildDownloadsButton(
+                    navColor: nextNavColor(),
+                    alwaysExpanded: alwaysExpanded,
                     label: l10n.savedMedia,
-                    baseColor: nextNavColor(),
-                    onPressed: () {
-                      showDownloadsDialog(context);
-                    },
                   ),
                 ),
               if (_prefs.get(UserPreferences.showServerMessagesButton))
@@ -1206,7 +1239,14 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
                         useInlineLibraries &&
                         showLibraries &&
                         navLibraries.isNotEmpty) {
-                      _inlineLibrariesTriggerFocus.requestFocus();
+                      // Step onto whatever is actually alongside first, since
+                      // downloads and server messages both sit between the
+                      // libraries and here. Jumping to the trigger is the
+                      // fallback for when nothing does, which is what keeps
+                      // the inline libraries reachable from the end of the row.
+                      if (!_moveWithinToolbar(TraversalDirection.left)) {
+                        _inlineLibrariesTriggerFocus.requestFocus();
+                      }
                       return KeyEventResult.handled;
                     }
                     return KeyEventResult.ignored;
@@ -1296,7 +1336,7 @@ class _TopToolbarState extends State<TopToolbar> with RouteAware {
       iconColor: iconColor,
       alwaysExpanded: alwaysExpanded,
       triggerFocusNode: _inlineLibrariesTriggerFocus,
-      nextFocusNode: _settingsFocus,
+      onExitForward: _focusAfterInlineLibraries,
       onLibraryTap: (lib) {
         context.navigateTopLevel(
           libraryRoute(
@@ -1414,7 +1454,9 @@ class _AndroidTvExpandableLibrariesButton extends StatefulWidget {
   final Color? iconColor;
   final bool alwaysExpanded;
   final FocusNode? triggerFocusNode;
-  final FocusNode? nextFocusNode;
+
+  /// Called when focus leaves the far end of the row, once it has collapsed.
+  final VoidCallback? onExitForward;
   final ValueChanged<AggregatedLibrary> onLibraryTap;
 
   const _AndroidTvExpandableLibrariesButton({
@@ -1425,7 +1467,7 @@ class _AndroidTvExpandableLibrariesButton extends StatefulWidget {
     this.iconColor,
     this.alwaysExpanded = false,
     this.triggerFocusNode,
-    this.nextFocusNode,
+    this.onExitForward,
     required this.onLibraryTap,
   });
 
@@ -1516,9 +1558,9 @@ class _AndroidTvExpandableLibrariesButtonState
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final next = widget.nextFocusNode;
-      if (next != null && next.canRequestFocus) {
-        next.requestFocus();
+      final exit = widget.onExitForward;
+      if (exit != null) {
+        exit();
         return;
       }
       FocusScope.of(context).nextFocus();

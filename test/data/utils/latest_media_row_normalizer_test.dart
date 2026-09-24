@@ -10,6 +10,8 @@ AggregatedItem _createItem({
   String? seriesName,
   String? seriesPrimaryImageTag,
   String? parentPrimaryImageTag,
+  String? parentThumbImageTag,
+  String? parentThumbItemId,
 }) {
   return AggregatedItem(
     id: id,
@@ -22,6 +24,8 @@ AggregatedItem _createItem({
       'SeriesName': ?seriesName,
       'SeriesPrimaryImageTag': ?seriesPrimaryImageTag,
       'ParentPrimaryImageTag': ?parentPrimaryImageTag,
+      'ParentThumbImageTag': ?parentThumbImageTag,
+      'ParentThumbItemId': ?parentThumbItemId,
     },
   );
 }
@@ -241,6 +245,52 @@ void main() {
 
       expect(result.single.id, equals('series-fleabag'));
       expect(result.single.primaryImageTagField, isNull);
+    });
+
+    test('an episode preserves parent thumb tag onto ImageTags Thumb', () {
+      final episode = _createItem(
+        id: 'ep-dark-1',
+        name: 'Secrets',
+        type: 'Episode',
+        seriesId: 'series-dark',
+        seriesName: 'Dark',
+        parentThumbImageTag: 'darkThumb123',
+        parentThumbItemId: 'series-dark',
+      );
+
+      final result = normalizeLatestMediaItems(
+        [episode],
+        collectionType: 'tvshows',
+        limit: 10,
+      );
+
+      expect(result.single.id, equals('series-dark'));
+      expect(result.single.thumbImageTag, equals('darkThumb123'));
+    });
+
+    test('an episode ignores a thumb tag belonging to its season', () {
+      final episode = _createItem(
+        id: 'ep-dark-2',
+        name: 'Lies',
+        type: 'Episode',
+        seriesId: 'series-dark',
+        seriesName: 'Dark',
+        parentThumbImageTag: 'seasonThumb456',
+        parentThumbItemId: 'season-dark-1',
+      );
+
+      final result = normalizeLatestMediaItems(
+        [episode],
+        collectionType: 'tvshows',
+        limit: 10,
+      );
+
+      expect(result.single.id, equals('series-dark'));
+      expect(
+        result.single.thumbImageTag,
+        isNull,
+        reason: "the tag names the season, so it wouldn't load for the series",
+      );
     });
   });
 }

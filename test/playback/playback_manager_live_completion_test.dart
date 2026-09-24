@@ -53,9 +53,6 @@ class _TestBackend extends Fake implements PlayerBackend {
   Stream<bool> get bufferingStream => const Stream<bool>.empty();
 
   @override
-  Stream<bool>? get pictureShownStream => null;
-
-  @override
   Stream<bool> get completedStream => _completed.stream;
 
   @override
@@ -230,7 +227,7 @@ PlaybackManager _manager(
   ..setBackend(backend)
   ..setResolver(resolver)
   ..setPlayerService(service)
-  ..liveRecoveryClock = (() => clock.now);
+  ..clock = (() => clock.now);
 
 /// The manager reads completion off a stream and recovers without awaiting,
 /// so a test has to let those microtasks run before asserting.

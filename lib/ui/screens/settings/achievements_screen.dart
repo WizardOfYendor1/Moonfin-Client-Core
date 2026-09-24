@@ -699,56 +699,130 @@ class _StatChip extends StatelessWidget {
   }
 }
 
+/// The designed badge mark, and the icon drawn inside it. A tile too narrow
+/// to hold one at this size keeps their ratio on the way down.
+const _showcaseRadius = 22.0;
+const _showcaseIcon = 24.0;
+
+/// The avatar for a tile this wide. It holds its designed size until the tile
+/// is too narrow to carry one, so only a crowded strip draws smaller marks.
+double _showcaseAvatarRadius(double tile) =>
+    (tile / 2 - 6).clamp(14.0, _showcaseRadius);
+
 /// The badges the user pinned to their profile.
+///
+/// A pinned badge is only worth pinning if you can see it, so the strip fits
+/// however many there are into the room it has rather than drawing them all at
+/// one size and pushing the rest off the side. It scrolls only where a tile
+/// would be too narrow to read.
 class _ShowcaseStrip extends StatelessWidget {
   const _ShowcaseStrip({required this.badges});
+
+  /// The designed tile. A short showcase keeps it rather than spreading to
+  /// fill the row, so two pinned badges don't turn into two huge ones.
+  static const double _maxTile = 84;
+
+  /// Past this the title has no room for a readable second line.
+  static const double _minTile = 56;
+
+  static const double _gap = 12;
+  static const double _inset = 16;
 
   final List<AchievementBadge> badges;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
+    final titleStyle = Theme.of(context).textTheme.bodySmall;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SettingsSectionHeader(l10n.achievementsShowcase),
-        SizedBox(
-          height: 96,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: badges.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final badge = badges[index];
-              final color = _rarityColor(badge.rarity);
-              return SizedBox(
-                width: 84,
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: _tintedSurface(color),
-                      child: Icon(achievementIcon(badge.icon), color: color),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      badge.title,
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final count = badges.length;
+            final room = constraints.maxWidth - _inset * 2 - _gap * (count - 1);
+            final share = room.isFinite ? room / count : _maxTile;
+            final tile = share.clamp(_minTile, _maxTile);
+            final radius = _showcaseAvatarRadius(tile);
+
+            // The strip takes no height of its own. The tallest title sets it,
+            // so a larger text scale lengthens the strip instead of being cut
+            // off by a number settled before the text was measured.
+            final row = Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < count; i++) ...[
+                  if (i > 0) const SizedBox(width: _gap),
+                  _ShowcaseTile(
+                    badge: badges[i],
+                    width: tile,
+                    radius: radius,
+                    style: titleStyle,
+                  ),
+                ],
+              ],
+            );
+
+            const padding = EdgeInsets.symmetric(horizontal: _inset);
+            return share >= _minTile
+                ? Padding(padding: padding, child: row)
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: padding,
+                    child: row,
+                  );
+          },
         ),
         const SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+/// One pinned badge: the mark and its title under it.
+class _ShowcaseTile extends StatelessWidget {
+  const _ShowcaseTile({
+    required this.badge,
+    required this.width,
+    required this.radius,
+    required this.style,
+  });
+
+  final AchievementBadge badge;
+  final double width;
+  final double radius;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _rarityColor(badge.rarity);
+    return SizedBox(
+      width: width,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: radius,
+            backgroundColor: _tintedSurface(color),
+            child: Icon(
+              achievementIcon(badge.icon),
+              color: color,
+              size: radius * _showcaseIcon / _showcaseRadius,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            badge.title,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ],
+      ),
     );
   }
 }

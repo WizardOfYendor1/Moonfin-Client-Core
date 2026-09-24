@@ -796,6 +796,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get extraLarge => 'एक्स्ट्रा लार्ज';
 
   @override
+  String get uiScaleGrandfather => 'Grandfather';
+
+  @override
   String get scrollDirection => 'Scroll Direction';
 
   @override
@@ -3921,6 +3924,21 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get semiTransparentBlack => 'अर्ध-पारदर्शी काला';
+
+  @override
+  String get semiTransparentWhite => 'Semi-transparent White';
+
+  @override
+  String get lightGray => 'Light Gray';
+
+  @override
+  String get darkGray => 'Dark Gray';
+
+  @override
+  String get blue => 'Blue';
+
+  @override
+  String get magenta => 'Magenta';
 
   @override
   String get global => 'वैश्विक';

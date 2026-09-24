@@ -121,6 +121,9 @@ class AchievementPluginAdapter implements HttpClientAdapter {
     },
   ];
 
+  /// How many badges the user has pinned to their profile.
+  int equippedCount = 1;
+
   final Set<String> ownedCosmetics = {'avatar-medal'};
   String equippedAvatarId = '';
   String equippedTitleId = '';
@@ -436,8 +439,22 @@ class AchievementPluginAdapter implements HttpClientAdapter {
       };
     } else if (path.endsWith('/equipped')) {
       body = [
-        {
-          'Id': 'first-contact',
+        for (var i = 0; i < equippedCount - 1; i++)
+          {
+            'Id': 'pinned-$i',
+            'Title': 'Pinned badge $i',
+            'Description': 'A badge the user pinned.',
+            'Icon': 'rocket_launch',
+            'Category': 'Getting Started',
+            'Rarity': 'Common',
+            'Unlocked': true,
+            'UnlockedAt': '2026-09-01T10:00:00.0000000+00:00',
+            'CurrentValue': 1,
+            'TargetValue': 1,
+          },
+        if (equippedCount > 0)
+          {
+            'Id': 'first-contact',
           'Title': 'First Contact',
           'Description': 'Watch your first item.',
           'Icon': 'rocket_launch',

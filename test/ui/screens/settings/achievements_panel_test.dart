@@ -22,10 +22,12 @@ void main() {
   Future<void> arrange({
     bool leaderboardEnabled = true,
     bool forcePrivacyMode = false,
+    int equippedCount = 1,
   }) async {
     adapter = AchievementPluginAdapter()
       ..leaderboardEnabled = leaderboardEnabled
-      ..forcePrivacyMode = forcePrivacyMode;
+      ..forcePrivacyMode = forcePrivacyMode
+      ..equippedCount = equippedCount;
     final dio = Dio()..httpClientAdapter = adapter;
     final service = AchievementsService(dio: dio);
     final client = buildAchievementClient();
@@ -35,12 +37,18 @@ void main() {
     await service.refreshAvailability(client);
   }
 
-  Future<void> pumpPanel(WidgetTester tester) async {
+  Future<void> pumpPanel(WidgetTester tester, {double textScale = 1.0}) async {
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const AchievementsScreen(),
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
+            child: const AchievementsScreen(),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -547,6 +555,115 @@ void main() {
 
       expect(find.text('Leaderboard'), findsNothing);
       expect(find.text('Badges'), findsOneWidget);
+    });
+  });
+
+  group('the pinned badge showcase', () {
+    /// The titles of a full showcase, in the order the plugin returns them.
+    final pinnedTitles = [
+      for (var i = 0; i < 4; i++) 'Pinned badge $i',
+      'First Contact',
+    ];
+
+    Future<void> pumpAt(
+      WidgetTester tester,
+      double width, {
+      double textScale = 1.0,
+    }) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = Size(width, 900);
+      addTearDown(tester.view.reset);
+      await pumpPanel(tester, textScale: textScale);
+    }
+
+    /// Where each pinned badge's title landed, in screen coordinates.
+    List<Rect> titleRects(WidgetTester tester) => [
+      for (final title in pinnedTitles) tester.getRect(find.text(title)),
+    ];
+
+    group('with five pinned', () {
+      setUp(() => arrange(equippedCount: 5));
+
+      testWidgets('puts all five on screen at once', (tester) async {
+        // Five tiles at the designed width want 500 points, so a narrower
+        // screen has to size them down to show the lot.
+        await pumpAt(tester, 480);
+
+        final rects = titleRects(tester);
+        expect(rects, hasLength(5));
+        for (var i = 0; i < rects.length; i++) {
+          expect(rects[i].left, greaterThanOrEqualTo(0));
+          expect(
+            rects[i].right,
+            lessThanOrEqualTo(480),
+            reason: '${pinnedTitles[i]} ran off the side',
+          );
+        }
+      });
+
+      testWidgets('lays them out in order and never overlapping', (
+        tester,
+      ) async {
+        await pumpAt(tester, 480);
+
+        final rects = titleRects(tester);
+        for (var i = 1; i < rects.length; i++) {
+          expect(rects[i].left, greaterThanOrEqualTo(rects[i - 1].right));
+        }
+      });
+
+      testWidgets('keeps them on screen at every text scale', (tester) async {
+        // The strip takes its height from the tallest title rather than a
+        // number worked out in advance, so a larger scale lengthens it.
+        for (final scale in [1.0, 1.15, 1.3]) {
+          await pumpAt(tester, 480, textScale: scale);
+          expect(
+            titleRects(tester),
+            hasLength(5),
+            reason: 'at text scale $scale',
+          );
+          expect(tester.takeException(), isNull, reason: 'at scale $scale');
+        }
+      });
+
+      testWidgets('scrolls rather than shrinking past readable', (
+        tester,
+      ) async {
+        // The tile has a floor, under which two lines of a title have
+        // nowhere to go. Past it the strip scrolls, so the badges are still
+        // reachable rather than unreadable.
+        await pumpAt(tester, 300);
+
+        expect(
+          find.descendant(
+            of: find.byType(SingleChildScrollView),
+            matching: find.text('First Contact'),
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    });
+
+    group('with one pinned', () {
+      setUp(() => arrange());
+
+      testWidgets('leaves a short showcase at its designed size', (
+        tester,
+      ) async {
+        // Room to spare isn't a reason to blow one badge up to fill it.
+        await pumpAt(tester, 1324);
+
+        final tile = tester.getRect(
+          find
+              .ancestor(
+                of: find.text('First Contact'),
+                matching: find.byType(SizedBox),
+              )
+              .first,
+        );
+        expect(tile.width, 84);
+      });
     });
   });
 }

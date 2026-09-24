@@ -475,7 +475,7 @@ class JellyfinMediaStreamResolver implements MediaStreamResolver {
     required bool supportsTranscoding,
     required bool hasTranscodingUrl,
     required bool enableDirectPlay,
-    bool enableDirectStream = true,
+    required bool enableDirectStream,
     required bool isAudio,
     required List<String> transcodingReasons,
     required int? bitrate,

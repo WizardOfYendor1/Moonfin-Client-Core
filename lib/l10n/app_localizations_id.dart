@@ -796,6 +796,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get extraLarge => 'Sangat Besar';
 
   @override
+  String get uiScaleGrandfather => 'Grandfather';
+
+  @override
   String get scrollDirection => 'Scroll Direction';
 
   @override
@@ -3932,6 +3935,21 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get semiTransparentBlack => 'Hitam semi-transparan';
+
+  @override
+  String get semiTransparentWhite => 'Semi-transparent White';
+
+  @override
+  String get lightGray => 'Light Gray';
+
+  @override
+  String get darkGray => 'Dark Gray';
+
+  @override
+  String get blue => 'Blue';
+
+  @override
+  String get magenta => 'Magenta';
 
   @override
   String get global => 'Global';

@@ -1522,6 +1522,12 @@ class UserPreferences extends ChangeNotifier {
   bool get effectiveDetailUseSeriesThumbnails =>
       get(kidsModeEnabled) ? false : get(detailUseSeriesThumbnails);
 
+  /// Kids Mode shows the two as one row whatever the account chose for itself.
+  /// Apart they read as two separate places to carry on from, which is a
+  /// distinction that means nothing to a child.
+  bool get effectiveMergeContinueWatchingNextUp =>
+      get(kidsModeEnabled) || get(mergeContinueWatchingNextUp);
+
   /// The online source is an outside catalog no parental rating reaches, so
   /// Kids Mode keeps recommendations inside the server's own library.
   RecommendationSystemSource get effectiveRecommendationSystemSource =>
@@ -1582,7 +1588,7 @@ class UserPreferences extends ChangeNotifier {
 
   static final showLiveTvButton = Preference(
     key: 'pref_show_live_tv_button',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   static final showDownloadsButton = Preference(
@@ -2785,18 +2791,26 @@ class UserPreferences extends ChangeNotifier {
     );
   }
 
-  /// The only rows Kids Mode leaves standing: the way into the libraries, and
-  /// what arrived in them lately.
+  /// The only rows Kids Mode leaves standing: the way into the libraries, what
+  /// arrived in them lately, and what is part way through being watched.
+  ///
+  /// My Media rather than its small variant, since artwork is what a child
+  /// picks a library by.
   ///
   /// An allow list rather than a block list, so a row added later stays hidden
   /// until someone decides a child should see it. Everything else pulls from
-  /// somewhere this mode can't vouch for, whether that's a request queue, an
-  /// outside catalog no parental rating reaches, or the watch history of
-  /// whoever used the account last.
+  /// somewhere this mode can't vouch for, whether that's a request queue or an
+  /// outside catalog no parental rating reaches.
+  ///
+  /// Carrying on with something is worth the caveat it brings: these two read
+  /// the account's own history, so anything an adult started on the same
+  /// account turns up here too. Blocked ratings are what hold that back, and
+  /// they're set apart from this mode.
   static const _kidsModeAllowedSections = <HomeSectionType>{
     HomeSectionType.libraryTilesSmall,
-    HomeSectionType.libraryButtons,
     HomeSectionType.latestMedia,
+    HomeSectionType.resume,
+    HomeSectionType.nextUp,
   };
 
   /// Applied on read rather than by rewriting the saved config, so turning
@@ -2814,23 +2828,26 @@ class UserPreferences extends ChangeNotifier {
         .toList();
 
     // Kids Mode drops the libraries entry from the navbar, so My Media has to
-    // be on the home screen or there's no way into a library at all.
-    final hasLibraries = kept.any(
-      (c) =>
-          c.type == HomeSectionType.libraryTilesSmall ||
-          c.type == HomeSectionType.libraryButtons,
-    );
-    if (!hasLibraries) {
-      kept.insert(
-        0,
+    // be on the home screen or there's no way into a library at all. It leads
+    // rather than sitting wherever the account had it, since everything else
+    // here is something to carry on with and the way in belongs above those.
+    final libraries = kept
+        .where((c) => c.type == HomeSectionType.libraryTilesSmall)
+        .toList();
+    final rest = kept
+        .where((c) => c.type != HomeSectionType.libraryTilesSmall)
+        .toList();
+    return [
+      if (libraries.isEmpty)
         const HomeSectionConfig(
           type: HomeSectionType.libraryTilesSmall,
           enabled: true,
           order: -1,
-        ),
-      );
-    }
-    return kept;
+        )
+      else
+        ...libraries,
+      ...rest,
+    ];
   }
 
   static final themeMusicEnabled = Preference(

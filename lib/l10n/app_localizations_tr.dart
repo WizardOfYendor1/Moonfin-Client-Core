@@ -173,7 +173,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get detailScreenStyleSubtitle =>
-      'Klasik, orijinal ortalanmış Moonfin düzenidir. Modern ise duyarlı sinematik bir düzendir.';
+      'Klasik, orijinal ortalanmış Moonfin düzenidir. Modern, duyarlı sinematik bir düzendir. Spotlight, açılır içerik kartlarına sahip, ana görsel odaklı bir düzendir. Nouveau, bölümlerin sayfa boyunca alt alta sıralandığı tam ekran bir düzendir. Minimalist ise sadece kapak görselinden, tek bir oynatma butonundan ve bölümlerden oluşur.';
 
   @override
   String get detailScreenStyleMoonfin => 'Klasik';
@@ -185,48 +185,48 @@ class AppLocalizationsTr extends AppLocalizations {
   String get detailScreenStyleSpotlight => 'Spotlight';
 
   @override
-  String get spotlightMoreActions => 'More Actions';
+  String get spotlightMoreActions => 'Daha Fazla İşlem';
 
   @override
-  String get spotlightCastCrewStudios => 'Cast, Crew, and Studios';
+  String get spotlightCastCrewStudios => 'Oyuncular, Ekip ve Stüdyolar';
 
   @override
-  String get spotlightChaptersExtras => 'Chapters and Extras';
+  String get spotlightChaptersExtras => 'Bölümler ve Ekstralar';
 
   @override
-  String get spotlightSimilarRecommendations => 'Similar and Recommendations';
+  String get spotlightSimilarRecommendations => 'Benzerler ve Öneriler';
 
   @override
-  String get spotlightSeasonsEpisodes => 'Seasons and Episodes';
+  String get spotlightSeasonsEpisodes => 'Sezonlar ve Bölümler';
 
   @override
-  String get spotlightMoreEpisodes => 'More Episodes';
+  String get spotlightMoreEpisodes => 'Daha Fazla Bölümler';
 
   @override
-  String get spotlightFilmography => 'Filmography';
+  String get spotlightFilmography => 'Filmografi';
 
   @override
-  String get spotlightCollectionsCard => 'Collections';
+  String get spotlightCollectionsCard => 'Koleksiyonlar';
 
   @override
-  String get spotlightPlaylistOrder => 'Playlist Order';
+  String get spotlightPlaylistOrder => 'Oynatma Listesi Sırası';
 
   @override
-  String get spotlightMoviesAndShows => 'Movies & Shows';
+  String get spotlightMoviesAndShows => 'Filmler & Diziler';
 
   @override
-  String get spotlightSimilarSeerr => 'Similar (Seerr)';
+  String get spotlightSimilarSeerr => 'Benzerleri (Seerr)';
 
   @override
-  String get spotlightRecommendationsSeerr => 'Recommendations (Seerr)';
+  String get spotlightRecommendationsSeerr => 'Öneriler (Seerr)';
 
   @override
   String spotlightPeopleCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count people',
-      one: '1 person',
+      other: '$count kişi',
+      one: '1 kişi',
     );
     return '$_temp0';
   }
@@ -236,8 +236,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count facts',
-      one: '1 fact',
+      other: '$count bilgi',
+      one: '1 bilgi',
     );
     return '$_temp0';
   }
@@ -247,8 +247,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count tags',
-      one: '1 tag',
+      other: '$count etiket',
+      one: '1 etiket',
     );
     return '$_temp0';
   }
@@ -258,8 +258,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count studios',
-      one: '1 studio',
+      other: '$count stüdyo',
+      one: '1 stüdyo',
     );
     return '$_temp0';
   }
@@ -269,8 +269,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count chapters',
-      one: '1 chapter',
+      other: '$count bölüm',
+      one: '1 bölüm',
     );
     return '$_temp0';
   }
@@ -280,8 +280,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count extras',
-      one: '1 extra',
+      other: '$count ekstra',
+      one: '1 ekstra',
     );
     return '$_temp0';
   }
@@ -291,8 +291,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count seasons',
-      one: '1 season',
+      other: '$count sezon',
+      one: '1 sezon',
     );
     return '$_temp0';
   }
@@ -302,8 +302,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count episodes',
-      one: '1 episode',
+      other: '$count bölüm',
+      one: '1 bölüm',
     );
     return '$_temp0';
   }
@@ -313,8 +313,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count movies',
-      one: '1 movie',
+      other: '$count film',
+      one: '1 film',
     );
     return '$_temp0';
   }
@@ -324,8 +324,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count shows',
-      one: '1 show',
+      other: '$count dizi',
+      one: '1 dizi',
     );
     return '$_temp0';
   }
@@ -335,8 +335,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count tracks',
-      one: '1 track',
+      other: '$count parça',
+      one: '1 parça',
     );
     return '$_temp0';
   }
@@ -346,8 +346,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count items',
-      one: '1 item',
+      other: '$count öğe',
+      one: '1 öğe',
     );
     return '$_temp0';
   }
@@ -357,8 +357,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count albums',
-      one: '1 album',
+      other: '$count albüm',
+      one: '1 albüm',
     );
     return '$_temp0';
   }
@@ -368,8 +368,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count collections',
-      one: '1 collection',
+      other: '$count koleksiyon',
+      one: '1 koleksiyon',
     );
     return '$_temp0';
   }
@@ -379,8 +379,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count titles',
-      one: '1 title',
+      other: '$count başlık',
+      one: '1 başlık',
     );
     return '$_temp0';
   }
@@ -410,13 +410,13 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get recommendationSystemSubtitle =>
-      'Moonfin Önerileri yerel kütüphane algoritmasını veya çevrimiçi TMDb Benzerlik Metriklerini kullanın. Not: Çevrimiçi öneriler Seerr entegrasyonu gerektirir.';
+      'Moonfin Önerileri yerel kütüphane algoritmasını, Jellyfin Önerileri sunucu motorunu veya çevrimiçi TMDb Benzerlik Metriklerini kullanın. Not: Çevrimiçi öneriler Seerr entegrasyonu gerektirir.';
 
   @override
   String get recommendationSystemMoonfin => 'Moonfin Önerileri';
 
   @override
-  String get recommendationSystemJellyfin => 'Jellyfin Recommends';
+  String get recommendationSystemJellyfin => 'Jellyfin Önerileri';
 
   @override
   String get recommendationSystemTmdb => 'TMDb Benzerliği';
@@ -794,6 +794,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get extraLarge => 'Ekstra Büyük';
 
   @override
+  String get uiScaleGrandfather => 'Grandfather';
+
+  @override
   String get scrollDirection => 'Kaydırma Yönü';
 
   @override
@@ -1085,10 +1088,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get latestAudiobooks => 'Son Eklenen Sesli Kitaplar';
 
   @override
-  String get latestComics => 'Latest Comics';
+  String get latestComics => 'Son Eklenen Çizgi Romanlar';
 
   @override
-  String get comics => 'Comics';
+  String get comics => 'Çizgi Romanlar';
 
   @override
   String bookSeriesItemCount(int count) {
@@ -1108,14 +1111,14 @@ class AppLocalizationsTr extends AppLocalizations {
   String get bookFormatAudiobook => 'Sesli Kitap';
 
   @override
-  String get bookFormatComic => 'Comic';
+  String get bookFormatComic => 'Çizgi Roman';
 
   @override
   String get noBooksFound => 'Bu yazara ait kitap bulunamadı.';
 
   @override
   String get noBooksFoundDescription =>
-      'This library does not contain any books, audiobooks, or comics yet.';
+      'Bu kitaplıkta henüz hiçbir kitap, sesli kitap veya çizgi roman bulunmuyor.';
 
   @override
   String bookPercentRead(int percent) {
@@ -1430,8 +1433,8 @@ class AppLocalizationsTr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count more queued',
-      one: '1 more queued',
+      other: '$count öğe daha sıraya eklendi',
+      one: '1 öğe daha sıraya eklendi',
     );
     return '$_temp0';
   }
@@ -1598,29 +1601,29 @@ class AppLocalizationsTr extends AppLocalizations {
   String get noEpisodesLoaded => 'Hiçbir bölüm yüklenmedi';
 
   @override
-  String get downloadScopeTitle => 'What to download';
+  String get downloadScopeTitle => 'İndirilecekler';
 
   @override
-  String get downloadAllEpisodes => 'All episodes';
+  String get downloadAllEpisodes => 'Tüm bölümler';
 
   @override
-  String get downloadUnwatchedEpisodes => 'All unwatched episodes';
+  String get downloadUnwatchedEpisodes => 'Tüm izlenmemiş bölümler';
 
   @override
-  String get downloadAllMovies => 'All movies';
+  String get downloadAllMovies => 'Tüm filmler';
 
   @override
-  String get downloadUnwatchedMovies => 'All unwatched movies';
+  String get downloadUnwatchedMovies => 'Tüm izlenmemiş filmler';
 
   @override
-  String get downloadScopeLoading => 'Loading items...';
+  String get downloadScopeLoading => 'Öğeler yükleniyor...';
 
   @override
-  String get downloadScopeLoadFailed => 'Could not load items to download';
+  String get downloadScopeLoadFailed => 'İndirilecek öğeler yüklenemedi';
 
   @override
   String downloadEstimateTotal(String size) {
-    return '~$size total';
+    return 'Toplam ~$size';
   }
 
   @override
@@ -1635,12 +1638,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String downloadSizeTotal(String size) {
-    return '$size total';
+    return 'Toplam $size';
   }
 
   @override
   String downloadEstimateUnknownCount(int count) {
-    return '$count unknown';
+    return '$count bilinmeyen';
   }
 
   @override
@@ -1951,7 +1954,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String subtitleDelayAuto(String value) {
-    return 'Auto $value';
+    return 'Otomatik $value';
   }
 
   @override
@@ -1970,38 +1973,38 @@ class AppLocalizationsTr extends AppLocalizations {
   String get hideMpvStats => 'MPV İstatistiklerini Gizle (Shift+I)';
 
   @override
-  String get keyboardShortcutsTitle => 'Keyboard shortcuts';
+  String get keyboardShortcutsTitle => 'Klavye kısayolları';
 
   @override
   String get keyboardShortcutsSubtitle =>
-      'Keys for the app, video player and reader';
+      'Uygulama, video oynatıcı ve okuyucu için kısayollar';
 
   @override
   String get keyboardShortcutsPlayerHint =>
-      'Press ? or F1 while a video plays to see this list without leaving the player.';
+      'Video oynatılırken oynatıcıdan çıkmadan bu listeyi görmek için ? veya F1 tuşuna basın.';
 
   @override
-  String get keyboardShortcutsSectionApp => 'Everywhere';
+  String get keyboardShortcutsSectionApp => 'Her Yerde';
 
   @override
-  String get keyboardShortcutsSectionAppScope => 'On any screen';
+  String get keyboardShortcutsSectionAppScope => 'Herhangi bir ekranda';
 
   @override
-  String get keyboardShortcutsSectionPlayer => 'Video player';
+  String get keyboardShortcutsSectionPlayer => 'Video Oynatıcı';
 
   @override
   String get keyboardShortcutsSectionPlayerScope =>
-      'While a video is open, playing or paused';
+      'Bir video açık, oynatılıyor veya duraklatılmışken';
 
   @override
-  String get keyboardShortcutsSectionReader => 'Book and comic reader';
+  String get keyboardShortcutsSectionReader => 'Kitap ve çizgi roman okuyucusu';
 
   @override
   String get keyboardShortcutsSectionReaderScope =>
-      'While reading a book or comic';
+      'Kitap ve çizgi roman okuyucusundayken';
 
   @override
-  String get keyNameArrowKeys => 'Arrow keys';
+  String get keyNameArrowKeys => 'Yön tuşları';
 
   @override
   String get keyNameSpace => 'Space';
@@ -2037,69 +2040,70 @@ class AppLocalizationsTr extends AppLocalizations {
   String get keyNameAlt => 'Alt';
 
   @override
-  String get keyNameScrollWheel => 'Scroll wheel';
+  String get keyNameScrollWheel => 'Fare tekerleği';
 
   @override
-  String get shortcutMoveFocus => 'Move between items';
+  String get shortcutMoveFocus => 'Öğeler arasında gezin';
 
   @override
-  String get shortcutActivate => 'Open the selected item';
+  String get shortcutActivate => 'Seçili öğeyi aç';
 
   @override
-  String get shortcutGoBack => 'Go back';
+  String get shortcutGoBack => 'Geri git';
 
   @override
-  String get shortcutToggleFullscreen => 'Fullscreen on or off';
+  String get shortcutToggleFullscreen => 'Tam ekranı aç yada kapat';
 
   @override
-  String get shortcutQuit => 'Quit Moonfin';
+  String get shortcutQuit => 'Moonfin\'den çık';
 
   @override
-  String get shortcutPlayPause => 'Play or pause';
+  String get shortcutPlayPause => 'Oynat veya duraklat';
 
   @override
   String get shortcutShowControlsOrPlayPause =>
-      'Show controls, or play/pause if shown';
+      'Kontrolleri göster veya açıksa oynat/duraklat';
 
   @override
-  String get shortcutSeekBack => 'Seek back (hold for bigger jumps)';
+  String get shortcutSeekBack => 'Geri sar (büyük atlamalar için basılı tut)';
 
   @override
-  String get shortcutSeekForward => 'Seek forward (hold for bigger jumps)';
+  String get shortcutSeekForward =>
+      'İleri sar (büyük atlamalar için basılı tut)';
 
   @override
-  String get shortcutVolumeUp => 'Volume up';
+  String get shortcutVolumeUp => 'Sesi yükselt';
 
   @override
-  String get shortcutVolumeDown => 'Volume down';
+  String get shortcutVolumeDown => 'Sesi alçalt';
 
   @override
-  String get shortcutMute => 'Mute or unmute';
+  String get shortcutMute => 'Sesi kapat yada sesi aç';
 
   @override
-  String get shortcutToggleSubtitles => 'Subtitles on or off';
+  String get shortcutToggleSubtitles => 'Altyazıyı aç yada kapat';
 
   @override
-  String get shortcutSlower => 'Slow down';
+  String get shortcutSlower => 'Yavaşlat';
 
   @override
-  String get shortcutFaster => 'Speed up';
+  String get shortcutFaster => 'Hızlandır';
 
   @override
-  String get shortcutPlaybackInfo => 'Show playback information';
+  String get shortcutPlaybackInfo => 'Oynatma bilgilerini göster';
 
   @override
-  String get shortcutMpvStats => 'mpv statistics on or off';
+  String get shortcutMpvStats => 'mpv istatistiklerini aç yada kapat';
 
   @override
   String get shortcutLeaveFullscreenOrStop =>
-      'Exit fullscreen, or stop if not fullscreen';
+      'Tam ekrandan çık veya tam ekranda değilse durdur';
 
   @override
-  String get shortcutStopPlayback => 'Stop playback';
+  String get shortcutStopPlayback => 'Oynatmayı durdur';
 
   @override
-  String get shortcutNextItem => 'Next item';
+  String get shortcutNextItem => 'Sonraki öğe';
 
   @override
   String get shortcutPreviousItem => 'Previous item';
@@ -3934,6 +3938,21 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get semiTransparentBlack => 'Yarı şeffaf Siyah';
+
+  @override
+  String get semiTransparentWhite => 'Semi-transparent White';
+
+  @override
+  String get lightGray => 'Light Gray';
+
+  @override
+  String get darkGray => 'Dark Gray';
+
+  @override
+  String get blue => 'Blue';
+
+  @override
+  String get magenta => 'Magenta';
 
   @override
   String get global => 'Evrensel';

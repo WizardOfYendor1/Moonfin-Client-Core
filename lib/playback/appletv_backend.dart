@@ -316,6 +316,7 @@ class AppleTvBackend implements PlayerBackend {
       'videoCodec': payload['videoCodec']?.toString(),
       'videoDvProfile': payload['videoDvProfile'],
       'dolbyVisionBaseLayerOnly': needsBaseLayerOnlyForDolbyVisionAv1(payload),
+      'externalSubtitles': payload['externalSubtitles'] ?? const [],
       'videoFrameRate': payload['videoFrameRate'],
       'videoWidth': payload['videoWidth'],
       'videoHeight': payload['videoHeight'],

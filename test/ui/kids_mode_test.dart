@@ -25,8 +25,9 @@ Future<UserPreferences> _prefs() async {
 /// tests fail if the allow list quietly grows.
 bool _kidsModeKeeps(HomeSectionType type) =>
     type == HomeSectionType.libraryTilesSmall ||
-    type == HomeSectionType.libraryButtons ||
-    type == HomeSectionType.latestMedia;
+    type == HomeSectionType.latestMedia ||
+    type == HomeSectionType.resume ||
+    type == HomeSectionType.nextUp;
 
 Future<PreferenceStore> _store() async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -128,6 +129,41 @@ void main() {
       expect(types, isNot(contains(HomeSectionType.activeRecordings)));
     });
 
+    test('keeps what is part way through being watched', () async {
+      final prefs = await withSections(const [
+        HomeSectionConfig(
+          type: HomeSectionType.libraryTilesSmall,
+          enabled: true,
+          order: 0,
+        ),
+        HomeSectionConfig(
+          type: HomeSectionType.resume,
+          enabled: true,
+          order: 1,
+        ),
+        HomeSectionConfig(
+          type: HomeSectionType.nextUp,
+          enabled: true,
+          order: 2,
+        ),
+      ], kidsMode: true);
+
+      final types = prefs.activeHomeSectionConfigs.map((c) => c.type);
+      expect(types, contains(HomeSectionType.resume));
+      expect(types, contains(HomeSectionType.nextUp));
+    });
+
+    test('shows the two as one row whatever the account chose', () async {
+      final prefs = await _prefs();
+      await prefs.set(UserPreferences.mergeContinueWatchingNextUp, false);
+
+      await prefs.set(UserPreferences.kidsModeEnabled, false);
+      expect(prefs.effectiveMergeContinueWatchingNextUp, isFalse);
+
+      await prefs.set(UserPreferences.kidsModeEnabled, true);
+      expect(prefs.effectiveMergeContinueWatchingNextUp, isTrue);
+    });
+
     test('adds My Media when the user had turned it off', () async {
       // The navbar loses its libraries entry in Kids Mode, so without this
       // there's no way into a library at all.
@@ -152,7 +188,7 @@ void main() {
           order: 0,
         ),
         HomeSectionConfig(
-          type: HomeSectionType.libraryButtons,
+          type: HomeSectionType.libraryTilesSmall,
           enabled: true,
           order: 1,
         ),
@@ -163,13 +199,56 @@ void main() {
       final on = await withSections(sections, kidsMode: true);
       final after = on.activeHomeSectionConfigs.map((c) => c.type).toList();
 
-      // A library row is already standing, so Kids Mode only takes rows away.
-      // Anything extra here would be a second way into the same libraries.
-      expect(after, before.where(_kidsModeKeeps).toList());
-      expect(after, contains(HomeSectionType.libraryButtons));
+      // A library row is already standing, so nothing is added. It does move
+      // to the front, which is the one thing Kids Mode changes about order.
+      expect(after.toSet(), before.where(_kidsModeKeeps).toSet());
+      expect(after.first, HomeSectionType.libraryTilesSmall);
     });
 
-    test('keeps only My Media and Recently Added', () async {
+    test('puts My Media first even when the account had it last', () async {
+      final prefs = await withSections(const [
+        HomeSectionConfig(
+          type: HomeSectionType.resume,
+          enabled: true,
+          order: 0,
+        ),
+        HomeSectionConfig(
+          type: HomeSectionType.latestMedia,
+          enabled: true,
+          order: 1,
+        ),
+        HomeSectionConfig(
+          type: HomeSectionType.libraryTilesSmall,
+          enabled: true,
+          order: 2,
+        ),
+      ], kidsMode: true);
+
+      // Saved rows are merged with the defaults, so what follows is not fixed.
+      // The point is that the way into the libraries leads whatever order the
+      // account gave it.
+      final types = prefs.activeHomeSectionConfigs.map((c) => c.type).toList();
+      expect(types.first, HomeSectionType.libraryTilesSmall);
+      expect(types.skip(1), isNot(contains(HomeSectionType.libraryTilesSmall)));
+    });
+
+    test('drops the small library row in favour of the artwork one', () async {
+      // A child picks a library by what it looks like, so the row that draws
+      // artwork is the one that stays.
+      final prefs = await withSections(const [
+        HomeSectionConfig(
+          type: HomeSectionType.libraryButtons,
+          enabled: true,
+          order: 0,
+        ),
+      ], kidsMode: true);
+
+      final types = prefs.activeHomeSectionConfigs.map((c) => c.type);
+      expect(types, isNot(contains(HomeSectionType.libraryButtons)));
+      expect(types, contains(HomeSectionType.libraryTilesSmall));
+    });
+
+    test('keeps the libraries, the latest and the unfinished', () async {
       // One row of every family the home screen can show.
       final prefs = await withSections(const [
         HomeSectionConfig(
@@ -249,6 +328,8 @@ void main() {
       expect(prefs.activeHomeSectionConfigs.map((c) => c.type), [
         HomeSectionType.libraryTilesSmall,
         HomeSectionType.latestMedia,
+        HomeSectionType.resume,
+        HomeSectionType.nextUp,
       ]);
     });
 
@@ -256,11 +337,7 @@ void main() {
       // The point of an allow list: whatever gets added to the enum next is
       // hidden here until someone decides a child should see it.
       final unlisted = HomeSectionType.values.where(
-        (t) =>
-            t != HomeSectionType.none &&
-            t != HomeSectionType.libraryTilesSmall &&
-            t != HomeSectionType.libraryButtons &&
-            t != HomeSectionType.latestMedia,
+        (t) => t != HomeSectionType.none && !_kidsModeKeeps(t),
       );
 
       final prefs = await withSections([
@@ -268,8 +345,8 @@ void main() {
           HomeSectionConfig(type: type, enabled: true, order: i),
       ], kidsMode: true);
 
-      // Saved rows are merged with the defaults, so the two allowed rows can
-      // come back on their own. What must not survive is anything else.
+      // Saved rows are merged with the defaults, so the allowed rows can come
+      // back on their own. What must not survive is anything else.
       expect(
         prefs.activeHomeSectionConfigs.map((c) => c.type),
         everyElement(predicate<HomeSectionType>(_kidsModeKeeps)),

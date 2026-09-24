@@ -71,6 +71,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   final _client = GetIt.instance<MediaServerClient>();
   final _prefs = GetIt.instance<UserPreferences>();
   final _screensaverController = GetIt.instance<ScreensaverController>();
+  SubtitleStyle? _lastSubtitleStyle;
 
   MediaKitPlayerBackend? get _activeMediaKitBackend {
     final backend = _manager.backend;
@@ -185,8 +186,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _currentIndex = widget.startIndex;
     _applyPlayerDisplayMode();
     _applySubtitleStyle();
+    _prefs.addListener(_applySubtitleStyle);
     _backendSub = _manager.backendChangedStream.listen((backend) {
       if (!mounted) return;
+      _applySubtitleStyle(force: true);
       _listenForPlayerTrackChanges();
       setState(() {});
     });
@@ -229,6 +232,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _programRefreshTimer?.cancel();
     _backendSub?.cancel();
     _liveFailureSub?.cancel();
+    _prefs.removeListener(_applySubtitleStyle);
     FocusManager.instance.removeListener(_onGlobalFocusChanged);
     _tracksChangedSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -695,17 +699,10 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     final succeeded = terminalState?.phase == PlaybackBringupPhase.ready;
     _channelIsUp = succeeded;
     if (!succeeded) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context).failedToPlayChannel(channel.name),
-            ),
-          ),
-        );
-      }
+      _showChannelFailed(channel.name);
       return false;
     }
+    _applySubtitleStyle(force: true);
     unawaited(_fetchCurrentProgram());
     _warmChannelCarousel();
     return true;
@@ -718,10 +715,16 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     if (!mounted || _isStopping || !_channelIsUp) return;
     if (state.phase != PlaybackBringupPhase.failed) return;
     _channelIsUp = false;
+    _showChannelFailed(_currentChannel.name);
+  }
+
+  /// Shows the "channel failed to play" snackbar.
+  void _showChannelFailed(String channelName) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          AppLocalizations.of(context).failedToPlayChannel(_currentChannel.name),
+          AppLocalizations.of(context).failedToPlayChannel(channelName),
         ),
       ),
     );
@@ -1542,13 +1545,16 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     if (mounted) Navigator.of(context).pop();
   }
 
-  void _applySubtitleStyle() {
+  /// [force] pushes even when nothing changed, for a new stream or backend.
+  void _applySubtitleStyle({bool force = false}) {
     final backend = _manager.backend;
     if (backend == null) return;
     final style = SubtitleStyle.forResolution(
       _prefs,
       _manager.currentResolution,
     );
+    if (!force && style == _lastSubtitleStyle) return;
+    _lastSubtitleStyle = style;
     unawaited(
       backend.configureSubtitleStyle(
         textColor: style.textColor,
@@ -2072,7 +2078,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
             const SizedBox(width: AppSpacing.spaceSm),
             _buildOverlayControlButton(
               focusNode: _tvChannelsFocus,
-              icon: Icons.list_rounded,
+              icon: Icons.grid_view_rounded,
               tooltip: l10n.channels,
               onPressed: _showChannelCarousel,
             ),
@@ -2080,7 +2086,7 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
           const SizedBox(width: AppSpacing.spaceSm),
           _buildOverlayControlButton(
             focusNode: PlatformDetection.isTV ? _tvGuideFocus : null,
-            icon: Icons.grid_view_rounded,
+            icon: Icons.list_rounded,
             tooltip: l10n.guide,
             onPressed: () => unawaited(_showChannelPicker()),
           ),

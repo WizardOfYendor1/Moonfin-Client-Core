@@ -1039,8 +1039,8 @@ final class AppleTvPlayerViewController: UIViewController {
         case .quality: return "line.3.horizontal.decrease"
         case .zoom: return player.zoomMode.iconName
         case .info: return "info.circle"
-        case .channels: return "list.bullet.rectangle"
-        case .guide: return "square.grid.3x2"
+        case .channels: return "square.grid.3x2"
+        case .guide: return "list.bullet.rectangle"
         case .favorite: return isFavorite ? "heart.fill" : "heart"
         case .syncplay: return "person.2.wave.2"
         }

@@ -26,7 +26,11 @@ class MediaCard extends StatefulWidget {
   /// half the extra size past each edge of its cell, and a layout that packs
   /// cards against a clip boundary or each other has to leave that much room
   /// or the focused card loses its edges.
-  static double get focusScale => PlatformDetection.isAppleTV ? 1.12 : 1.05;
+  ///
+  /// A television gets the larger pop because it's read from across a room.
+  /// Every television lays out on the same canvas, so which television it is
+  /// doesn't come into it.
+  static double get focusScale => PlatformDetection.isTV ? 1.12 : 1.05;
 
   /// How much room to leave beside a card of [extent] so a focused one keeps
   /// its edges.

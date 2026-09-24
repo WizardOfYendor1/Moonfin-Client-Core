@@ -796,6 +796,9 @@ class AppLocalizationsMn extends AppLocalizations {
   String get extraLarge => 'Хэт том';
 
   @override
+  String get uiScaleGrandfather => 'Grandfather';
+
+  @override
   String get scrollDirection => 'Scroll Direction';
 
   @override
@@ -3933,6 +3936,21 @@ class AppLocalizationsMn extends AppLocalizations {
 
   @override
   String get semiTransparentBlack => 'Хагас тунгалаг хар';
+
+  @override
+  String get semiTransparentWhite => 'Semi-transparent White';
+
+  @override
+  String get lightGray => 'Light Gray';
+
+  @override
+  String get darkGray => 'Dark Gray';
+
+  @override
+  String get blue => 'Blue';
+
+  @override
+  String get magenta => 'Magenta';
 
   @override
   String get global => 'Глобал';

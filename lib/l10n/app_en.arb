@@ -943,6 +943,10 @@
   "@extraLarge": {
     "description": "Size option: extra large"
   },
+  "uiScaleGrandfather": "Grandfather",
+  "@uiScaleGrandfather": {
+    "description": "UI scaling option above extra large"
+  },
   "scrollDirection": "Scroll Direction",
   "@scrollDirection": {
     "description": "Section header for scroll direction selection in library display settings"
@@ -5204,6 +5208,26 @@
   "semiTransparentBlack": "Semi-transparent Black",
   "@semiTransparentBlack": {
     "description": "Color: semi-transparent black"
+  },
+  "semiTransparentWhite": "Semi-transparent White",
+  "@semiTransparentWhite": {
+    "description": "Color: semi-transparent white"
+  },
+  "lightGray": "Light Gray",
+  "@lightGray": {
+    "description": "Color: light gray"
+  },
+  "darkGray": "Dark Gray",
+  "@darkGray": {
+    "description": "Color: dark gray"
+  },
+  "blue": "Blue",
+  "@blue": {
+    "description": "Color: blue"
+  },
+  "magenta": "Magenta",
+  "@magenta": {
+    "description": "Color: magenta"
   },
   "global": "Global",
   "@global": {

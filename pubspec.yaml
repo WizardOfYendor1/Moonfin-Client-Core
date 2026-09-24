@@ -6,6 +6,8 @@ version: 2.5.1+30000149
 moonfin:
   android_tv_version: 2.5.1
   android_tv_build_number: 2000016
+  beta: false
+  beta_number: 1
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
@@ -259,6 +261,9 @@ flutter:
   uses-material-design: true
 
   assets:
+    # Bundled so AppBeta can read the beta flag back at runtime, which keeps
+    # pubspec the one place the beta number is written.
+    - pubspec.yaml
     - assets/images/
     - assets/icons/
     - assets/icons/ratings/

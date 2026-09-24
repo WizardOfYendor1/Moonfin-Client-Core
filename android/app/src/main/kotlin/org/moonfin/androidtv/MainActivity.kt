@@ -983,7 +983,12 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        requestEnterPiPIfEligible()
+        // A dream or a call taking the foreground never reaches here, which
+        // is what separates walking away from the screensaver coming on. PiP
+        // keeps the player on screen, so that is not walking away either.
+        if (!requestEnterPiPIfEligible()) {
+            methodChannel?.invokeMethod("onUserLeftApp", null)
+        }
     }
 
     override fun onPictureInPictureRequested(): Boolean {

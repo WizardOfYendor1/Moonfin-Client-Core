@@ -40,6 +40,7 @@ import '../../../widgets/logo_view.dart';
 import '../../../widgets/marquee_text.dart';
 import '../../../widgets/media_card.dart';
 import '../../../widgets/rating_display.dart';
+import '../../../widgets/focus/can_claim_initial_focus.dart';
 import '../../../widgets/focus/context_action.dart';
 import '../../../widgets/focus/context_menu_sheet.dart';
 import '../../../widgets/focus/focusable_wrapper.dart';
@@ -549,7 +550,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     _selectedTab = (_expandedTabs || _vm.item?.type == 'Season') ? 0 : -1;
     if (PlatformDetection.isTV) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.initialFocusNode?.requestFocus();
+        if (!mounted || !canClaimInitialFocus(context)) return;
+        widget.initialFocusNode?.requestFocus();
       });
       NavigationLayout.focusDetailsPlayButtonNotifier.value = widget.initialFocusNode;
     }
@@ -572,7 +574,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     super.didUpdateWidget(oldWidget);
     if (widget.initialFocusNode != oldWidget.initialFocusNode && PlatformDetection.isTV) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.initialFocusNode?.requestFocus();
+        if (!mounted || !canClaimInitialFocus(context)) return;
+        widget.initialFocusNode?.requestFocus();
       });
       NavigationLayout.focusDetailsPlayButtonNotifier.value = widget.initialFocusNode;
     }

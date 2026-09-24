@@ -783,6 +783,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get extraLarge => '특대';
 
   @override
+  String get uiScaleGrandfather => 'Grandfather';
+
+  @override
   String get scrollDirection => '스크롤 방향';
 
   @override
@@ -3858,6 +3861,21 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get semiTransparentBlack => '반투명 검정색';
+
+  @override
+  String get semiTransparentWhite => 'Semi-transparent White';
+
+  @override
+  String get lightGray => 'Light Gray';
+
+  @override
+  String get darkGray => 'Dark Gray';
+
+  @override
+  String get blue => 'Blue';
+
+  @override
+  String get magenta => 'Magenta';
 
   @override
   String get global => '글로벌';

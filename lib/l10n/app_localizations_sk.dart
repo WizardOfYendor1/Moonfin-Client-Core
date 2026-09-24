@@ -796,6 +796,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get extraLarge => 'Extra veľké';
 
   @override
+  String get uiScaleGrandfather => 'Grandfather';
+
+  @override
   String get scrollDirection => 'Scroll Direction';
 
   @override
@@ -3951,6 +3954,21 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get semiTransparentBlack => 'Čierna polopriehľadná';
+
+  @override
+  String get semiTransparentWhite => 'Semi-transparent White';
+
+  @override
+  String get lightGray => 'Light Gray';
+
+  @override
+  String get darkGray => 'Dark Gray';
+
+  @override
+  String get blue => 'Blue';
+
+  @override
+  String get magenta => 'Magenta';
 
   @override
   String get global => 'globálne';

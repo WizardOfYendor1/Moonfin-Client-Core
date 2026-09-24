@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:moonfin_native_video/moonfin_native_video.dart';
 
 /// Video surface for the AetherEngine backend: a UiKitView on iOS or an
 /// AppKitView on macOS hosting the native `AetherPlayerView` plus the native
@@ -52,22 +53,26 @@ class _AetherVideoViewState extends State<AetherVideoView> {
     // testing natively as well.
     return switch (defaultTargetPlatform) {
       TargetPlatform.iOS => IgnorePointer(
-        child: UiKitView(
-          viewType: 'moonfin/aether_video',
-          creationParams: {
-            'zoomMode': widget.zoomMode,
-            'keepClearOfHousing': widget.keepClearOfHousing,
-          },
-          creationParamsCodec: const StandardMessageCodec(),
-          onPlatformViewCreated: _onCreated,
+        child: UnscaledPlatformView(
+          child: UiKitView(
+            viewType: 'moonfin/aether_video',
+            creationParams: {
+              'zoomMode': widget.zoomMode,
+              'keepClearOfHousing': widget.keepClearOfHousing,
+            },
+            creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _onCreated,
+          ),
         ),
       ),
       TargetPlatform.macOS => IgnorePointer(
-        child: AppKitView(
-          viewType: 'moonfin/aether_video',
-          creationParams: {'zoomMode': widget.zoomMode},
-          creationParamsCodec: const StandardMessageCodec(),
-          onPlatformViewCreated: _onCreated,
+        child: UnscaledPlatformView(
+          child: AppKitView(
+            viewType: 'moonfin/aether_video',
+            creationParams: {'zoomMode': widget.zoomMode},
+            creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _onCreated,
+          ),
         ),
       ),
       _ => const ColoredBox(color: Color(0xFF000000)),

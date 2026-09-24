@@ -12,6 +12,7 @@ import '../../../data/viewmodels/live_tv_guide_view_model.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../util/error_message.dart';
 import '../../../util/platform_detection.dart';
+import '../../../util/tv_ui_scale.dart';
 import '../../../util/idiom/app_ui_idiom.dart';
 import '../../navigation/destinations.dart';
 import '../../widgets/adaptive/adaptive_dialog.dart';
@@ -138,7 +139,7 @@ class LiveTvGuideScreen extends StatefulWidget {
   /// Geometry of the mini-player video box in [embedded] mode, in the host
   /// overlay's coordinate space. Single source of truth shared with the host
   /// player so the real video surface it draws lines up with this frame:
-  /// content padding (top [_contentTopInset]=20 / left [_contentLeftInset]=24)
+  /// content padding (top [_contentTopInset]=20 / left [guideContentLeftInset]=24)
   /// plus the program-info header container padding (top 12 / left 16).
   static const double miniPlayerVideoLeft = 24 + 16;
   static const double miniPlayerVideoTop = 20 + 12;
@@ -200,9 +201,13 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
   bool _didRestoreInitialChannelFocus = false;
 
   late EpgMobileView _mobileView;
+  // A placeholder for the one frame before the first layout measures the real
+  // surface, which then replaces it. The canvas every television lays out on
+  // is the closest guess there's going to be, and naming it keeps the
+  // placeholder honest if that canvas ever moves.
   GuideLayoutProfile _layoutProfile = GuideLayoutProfile.fromAvailableArea(
-    availableWidth: 960,
-    availableHeight: 540,
+    availableWidth: kTvDesignWidth,
+    availableHeight: kTvDesignWidth * 9 / 16,
   );
   Duration? _pendingGuideWindow;
 
@@ -234,10 +239,10 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
 
   // Standalone landscape guides can reclaim the route's top breathing room.
   // Mobile and embedded guides keep their existing inset.
-  double _contentTopInset({bool landscape = false}) =>
-      landscape && !widget.miniPlayerMode ? 8.0 : 20.0;
-
-  double _contentLeftInset() => 24.0;
+  double _contentTopInset({bool landscape = false}) => guideContentTopInset(
+    landscape: landscape,
+    miniPlayerMode: widget.miniPlayerMode,
+  );
 
   @override
   void initState() {
@@ -269,12 +274,15 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       if (!mounted) return;
       final mediaQuery = MediaQuery.of(context);
       final landscape = _isLandscapeSize(mediaQuery.size);
-      final topInset = _contentTopInset(landscape: landscape);
-      final width =
-          mediaQuery.size.width - _contentLeftInset() - (landscape ? 24 : 16);
+      final area = guideAvailableArea(
+        maxWidth: mediaQuery.size.width,
+        maxHeight: mediaQuery.size.height,
+        landscape: landscape,
+        miniPlayerMode: widget.miniPlayerMode,
+      );
       final profile = GuideLayoutProfile.fromAvailableArea(
-        availableWidth: width,
-        availableHeight: mediaQuery.size.height - topInset - 16,
+        availableWidth: area.width,
+        availableHeight: area.height,
         textScaleFactor: mediaQuery.textScaler.scale(1),
       );
       _layoutProfile = profile;
@@ -925,13 +933,15 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
       builder: (context, constraints) {
         final landscape = _isLandscapeConstraints(constraints);
         final topInset = _contentTopInset(landscape: landscape);
-        final availableWidth =
-            constraints.maxWidth -
-            _contentLeftInset() -
-            (constraints.maxWidth >= constraints.maxHeight ? 24 : 16);
+        final area = guideAvailableArea(
+          maxWidth: constraints.maxWidth,
+          maxHeight: constraints.maxHeight,
+          landscape: landscape,
+          miniPlayerMode: widget.miniPlayerMode,
+        );
         final profile = GuideLayoutProfile.fromAvailableArea(
-          availableWidth: availableWidth,
-          availableHeight: constraints.maxHeight - topInset - 16,
+          availableWidth: area.width,
+          availableHeight: area.height,
           textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
         );
         _layoutProfile = profile;
@@ -958,7 +968,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
         return Padding(
           padding: EdgeInsets.only(
             top: topInset,
-            left: landscape ? _contentLeftInset() : 8,
+            left: landscape ? guideContentLeftInset : 8,
             right: landscape ? 24 : 8,
             bottom: 16,
           ),

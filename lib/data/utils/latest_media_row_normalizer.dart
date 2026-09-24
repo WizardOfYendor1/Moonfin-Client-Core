@@ -142,14 +142,33 @@ AggregatedItem? _seriesCardForLatestTvItem(AggregatedItem item) {
   final seriesPrimaryImageTag =
       item.seriesPrimaryImageTag ??
       (item.type == 'Season' ? item.parentPrimaryImageTag : null);
+  // The parent tag only fits the id below when the parent really is the
+  // series. An episode whose season has a thumb of its own would otherwise
+  // stamp the season's tag onto the series card, the mismatch the primary
+  // tag above already guards against.
+  final seriesThumbImageTag = item.parentThumbItemId == seriesId
+      ? item.parentThumbImageTag
+      : null;
+
+  final imageTags = Map<String, dynamic>.from(
+    rawData['ImageTags'] as Map? ?? const {},
+  );
+  var tagsChanged = false;
+
   if (seriesPrimaryImageTag != null && seriesPrimaryImageTag.isNotEmpty) {
-    final imageTags = Map<String, dynamic>.from(
-      rawData['ImageTags'] as Map? ?? const {},
-    );
     imageTags['Primary'] ??= seriesPrimaryImageTag;
-    rawData['ImageTags'] = imageTags;
     rawData['PrimaryImageTag'] ??= seriesPrimaryImageTag;
     rawData['PrimaryImageItemId'] ??= seriesId;
+    tagsChanged = true;
+  }
+
+  if (seriesThumbImageTag != null && seriesThumbImageTag.isNotEmpty) {
+    imageTags['Thumb'] ??= seriesThumbImageTag;
+    tagsChanged = true;
+  }
+
+  if (tagsChanged) {
+    rawData['ImageTags'] = imageTags;
   }
 
   return AggregatedItem(

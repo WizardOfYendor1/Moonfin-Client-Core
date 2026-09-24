@@ -3992,7 +3992,7 @@ class _ContentRowsState extends State<_ContentRows>
   }
 
   String _localizedRowTitle(HomeRow row, AppLocalizations l10n) {
-    final merge = widget.prefs.get(UserPreferences.mergeContinueWatchingNextUp);
+    final merge = widget.prefs.effectiveMergeContinueWatchingNextUp;
     return localizeHomeRowTitle(
       row: row,
       l10n: l10n,

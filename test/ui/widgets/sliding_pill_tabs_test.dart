@@ -185,6 +185,17 @@ void main() {
       expect(segments.last.right, lessThanOrEqualTo(strip.right));
     });
 
+    testWidgets('gives the focus ring no room of its own', (tester) async {
+      // The ring is laid out focused or not, so drawn around the pane it
+      // widens the strip on every side. Painted over, the pane's own
+      // padding is the whole inset.
+      await pumpTabs(tester, width: 1324);
+      final strip = stripRect(tester);
+      final segments = segmentRects(tester);
+
+      expect(segments.first.left - strip.left, closeTo(5, 0.01));
+    });
+
     testWidgets('lays out as tall as it says it does', (tester) async {
       // The layouts that reserve room for the strip read this before it is
       // built, so a constant that undercounts the chrome overflows them.

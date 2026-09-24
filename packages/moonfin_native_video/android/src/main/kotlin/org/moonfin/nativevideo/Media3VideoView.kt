@@ -576,6 +576,8 @@ class Media3VideoView(
         // surface more than once, so one retry is not always enough. The
         // recovery window is what stops this running on.
         private const val DISPLAY_MODE_SWITCH_MAX_RETRIES = 3
+        /** One greppable logcat tag for everything live recovery reports. */
+        private const val LIVE_TAG = "MoonfinLive"
         // An HDMI route flap pauses the player through the becoming-noisy
         // broadcast or an audio focus loss. The sink coming back inside this
         // window undoes that pause, past it the pause is left as it is.
@@ -697,6 +699,7 @@ class Media3VideoView(
     private var displayModeSwitchAtMs = 0L
     private var wasPlayingBeforeDisplayModeSwitch = false
     private var displayModeSwitchRetriesForCurrentSource = 0
+    private var decoderReclaimRetriesForCurrentSource = 0
 
     private fun newVideoView(): View =
         if (useSurfaceView) {
@@ -1051,7 +1054,8 @@ class Media3VideoView(
         override fun onPlayerError(error: PlaybackException) {
             // Recovery order matters: an error while a display mode switch is
             // in flight is most likely the dropped surface, so that retry gets
-            // the first look. An init failure under tunneling is retried
+            // the first look. A reclaimed decoder is next, since nothing else
+            // answers that code. An init failure under tunneling is retried
             // untunneled before any downmix so a tunnel failure can't stick
             // the whole session to stereo. A failure on an IEC-packed track is
             // retried with IEC disabled (raw/decode return) before anything
@@ -1059,6 +1063,7 @@ class Media3VideoView(
             // handles 7.1 PCM that the device can't open as an 8-channel
             // AudioTrack.
             val nativeRetryTriggered = retryPlaybackOnDisplayModeSwitchErrorIfNeeded(error) ||
+                retryPlaybackOnReclaimedDecoderIfNeeded(error) ||
                 retryAudioWithoutOffloadIfNeeded(error) ||
                 retryAudioWithoutTunnelingIfNeeded(error) ||
                 retryAudioWithoutIecIfNeeded(error) ||
@@ -2359,6 +2364,8 @@ class Media3VideoView(
         val startPositionMs = (args["startPositionMs"] as? Number)?.toLong() ?: 0L
         val autoPlay = args["autoPlay"] as? Boolean ?: false
         displayModeSwitchRetriesForCurrentSource = 0
+        decoderReclaimRetriesForCurrentSource = 0
+
         restorePreferredDisplayMode()
         detectedFrameRate = null
         // Most containers, mkv and ts among them, come out of the extractor
@@ -3673,12 +3680,6 @@ class Media3VideoView(
         }
     }
 
-    /** One greppable logcat tag for everything the live recovery work reports. */
-    private val LIVE_TAG = "MoonfinLive"
-
-    // How far behind the live edge a live stream aims to sit, and the gentle
-    // slow-down that gets it there. The cushion is buffered-but-unplayed media:
-    // at 5s of it, a source that hiccups for four seconds is never seen.
     /** The window the player is on, or null before it has a timeline. */
     private fun currentWindow(): Timeline.Window? {
         val timeline = player.currentTimeline
@@ -3701,20 +3702,16 @@ class Media3VideoView(
         val mimeType = inferStreamMimeType(currentUrl ?: "", currentContainer, currentMediaType)
         val fields = mapOf(
             "isLive" to currentIsLive,
-            "windowKnown" to (window != null),
             "windowIsLive" to (window?.isLive() ?: false),
             "windowIsDynamic" to (window?.isDynamic ?: false),
             "sourceMimeType" to (mimeType ?: "unknown"),
             "durationMs" to player.duration,
             "positionMs" to player.currentPosition,
             "bufferedPositionMs" to player.bufferedPosition,
-            // The player's own answer to "is this live, and how far behind the
-            // edge were we": C.TIME_UNSET means it is not treating the window
-            // as live at all, which is the question Fix 2 is gated on.
+            // C.TIME_UNSET means the player isn't treating the window as live.
             "liveOffsetMs" to player.currentLiveOffset,
-            // Whether the loader still had work in hand. A starved live source
-            // ends with loading still true; a source that genuinely ran out
-            // ends with nothing left to load.
+            // A starved live source ends with loading still true; one that ran
+            // out ends with nothing left to load.
             "isLoading" to player.isLoading,
             "playWhenReady" to player.playWhenReady,
         )
@@ -3737,23 +3734,16 @@ class Media3VideoView(
     private fun resumeLiveEdge() {
         if (isPlayerReleased) return
         val window = currentWindow()
-        // Only a dynamic window has newer media to seek into. isLive() must
-        // not be trusted here: it reports whether the *media item* carries a
-        // live configuration, which we set for the cushion, so it reads true
-        // even for a direct-streamed raw TS whose window is a fixed duration.
-        // Seeking that window's default position lands on 0, not the edge.
+        // Only a dynamic window has newer media to seek into; seeking a fixed
+        // window's default position restarts it from 0.
         val hasLiveEdge = window?.isDynamic == true
         if (hasLiveEdge) {
-            // A live window has somewhere newer to go, so jumping to the edge
-            // and re-preparing puts the player back on fresh media.
+            // Jump to the edge and re-prepare onto fresh media.
             player.seekToDefaultPosition()
             player.prepare()
         } else {
-            // Nothing newer to seek to, and prepare() on its own cannot help
-            // here: the player is ENDED and sitting at the end of everything
-            // the source gave it, so there is no media after the playhead to
-            // resume into. Only handing the source back rebuilds it and
-            // re-opens the connection the server stopped feeding.
+            // ENDED with nothing after the playhead, so only handing the
+            // source back reopens the connection.
             prepareCurrentSource(player.currentPosition, true)
         }
         player.playWhenReady = true
@@ -4325,6 +4315,23 @@ class Media3VideoView(
         val playWhenReady = wasPlayingBeforeDisplayModeSwitch || player.playWhenReady
 
         prepareCurrentSource(retryPositionMs, playWhenReady)
+        return true
+    }
+
+    /**
+     * Passing playWhenReady through rather than forcing play means a viewer who
+     * paused before the decoder went comes back paused.
+     */
+    private fun retryPlaybackOnReclaimedDecoderIfNeeded(error: PlaybackException): Boolean {
+        val shouldRetry = DecoderReclaimPolicy.shouldRetry(
+            errorCode = error.errorCode,
+            retriesSoFar = decoderReclaimRetriesForCurrentSource,
+            playerLive = isPlayerLive(),
+        )
+        if (!shouldRetry) return false
+        if (currentUrl == null) return false
+        decoderReclaimRetriesForCurrentSource++
+        prepareCurrentSource(player.currentPosition.coerceAtLeast(0L), player.playWhenReady)
         return true
     }
 
@@ -4963,13 +4970,9 @@ class Media3VideoView(
             "bufferedMs" to if (bufferedPosition > 0) bufferedPosition else 0L,
             "isPlaying" to player.isPlaying,
             "isBuffering" to (player.playbackState == Player.STATE_BUFFERING),
-            // isPlaying alone cannot say WHY the player is not playing: media3
-            // defines it as playWhenReady && READY && no suppression, so a
-            // viewer pause, a starved stream and a transient audio-focus loss
-            // all read as false. playWhenReady is the intent to play, and the
-            // suppression reason is the third case, so the pair separates them.
+            // isPlaying can't tell a viewer pause from a stall; playWhenReady
+            // is the intent to play.
             "playWhenReady" to player.playWhenReady,
-            "playbackSuppressionReason" to player.playbackSuppressionReason,
             "playbackSpeed" to player.playbackParameters.speed.toDouble(),
             "videoWidth" to videoSize.width,
             "videoHeight" to videoSize.height,

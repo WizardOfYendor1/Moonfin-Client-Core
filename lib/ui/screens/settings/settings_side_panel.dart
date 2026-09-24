@@ -38,6 +38,7 @@ import '../../../util/platform_detection.dart';
 import '../../../util/playback_time_label.dart';
 import '../../../util/tv_image_cache_stub.dart'
     if (dart.library.io) '../../../util/tv_image_cache_io.dart';
+import '../../../util/app_beta.dart';
 import '../../../util/app_distribution.dart';
 import '../../../util/pin_code_util.dart';
 import '../../widgets/pin_entry_dialog.dart';

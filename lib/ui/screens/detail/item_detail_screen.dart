@@ -98,6 +98,7 @@ import '../../widgets/track_selector_dialog.dart';
 import '../../widgets/remote_play_to_session_dialog.dart';
 import '../../widgets/fullscreen_backdrop_switcher.dart';
 import '../../widgets/seerr_icons.dart';
+import '../../widgets/focus/can_claim_initial_focus.dart';
 import '../../widgets/focus/context_action.dart';
 import '../../widgets/focus/context_menu_sheet.dart';
 import '../../widgets/focus/dpad_list_tile.dart';
@@ -1263,6 +1264,7 @@ class _DetailContentState extends State<_DetailContent> {
   void _tryRequestTvAlbumPlayFocus(String itemId, int attempt) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (!canClaimInitialFocus(context)) return;
       if (_tvAlbumPlayFocusAppliedForItemId == itemId) return;
       final node = _albumPlayFocusNode;
       if (node.context != null && node.canRequestFocus) {
@@ -6475,6 +6477,9 @@ class DetailActionButtonsState extends State<DetailActionButtons> {
   void _tryRequestPlayFocus(String itemId, int attempt) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Inside the retry rather than on the way in, since it runs for
+      // seconds and a panel can open partway through it.
+      if (!canClaimInitialFocus(context)) return;
       final node = _tvPlayFocusNode;
       if (node.context != null && node.canRequestFocus) {
         node.requestFocus();

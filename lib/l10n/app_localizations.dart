@@ -1450,6 +1450,12 @@ abstract class AppLocalizations {
   /// **'Extra Large'**
   String get extraLarge;
 
+  /// UI scaling option above extra large
+  ///
+  /// In en, this message translates to:
+  /// **'Grandfather'**
+  String get uiScaleGrandfather;
+
   /// Section header for scroll direction selection in library display settings
   ///
   /// In en, this message translates to:
@@ -6909,6 +6915,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Semi-transparent Black'**
   String get semiTransparentBlack;
+
+  /// Color: semi-transparent white
+  ///
+  /// In en, this message translates to:
+  /// **'Semi-transparent White'**
+  String get semiTransparentWhite;
+
+  /// Color: light gray
+  ///
+  /// In en, this message translates to:
+  /// **'Light Gray'**
+  String get lightGray;
+
+  /// Color: dark gray
+  ///
+  /// In en, this message translates to:
+  /// **'Dark Gray'**
+  String get darkGray;
+
+  /// Color: blue
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get blue;
+
+  /// Color: magenta
+  ///
+  /// In en, this message translates to:
+  /// **'Magenta'**
+  String get magenta;
 
   /// Profile: global
   ///

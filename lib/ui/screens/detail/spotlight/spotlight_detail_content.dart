@@ -25,6 +25,7 @@ import '../../../../util/seerr_credits.dart';
 import '../../../../util/platform_detection.dart';
 import '../../../navigation/destinations.dart';
 import '../../../navigation/playback_launcher.dart';
+import '../../../widgets/focus/can_claim_initial_focus.dart';
 import '../../../widgets/logo_view.dart';
 import '../../../widgets/navigation_layout.dart';
 import '../../../widgets/offline_aware_image.dart';
@@ -141,7 +142,8 @@ class _SpotlightDetailContentState extends State<SpotlightDetailContent> {
     if (widget.initialFocusNode != oldWidget.initialFocusNode &&
         PlatformDetection.isTV) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.initialFocusNode?.requestFocus();
+        if (!mounted || !canClaimInitialFocus(context)) return;
+        widget.initialFocusNode?.requestFocus();
       });
       NavigationLayout.focusDetailsPlayButtonNotifier.value =
           widget.initialFocusNode;

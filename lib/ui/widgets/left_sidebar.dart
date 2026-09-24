@@ -31,6 +31,7 @@ import '../navigation/route_lifecycle_observer.dart';
 import 'navigation_layout.dart';
 import 'settings/settings_panel.dart';
 import '../screens/downloads/downloads_panel.dart';
+import 'downloads_nav_slot.dart';
 import '../screens/syncplay/syncplay_screen.dart';
 import '../screens/settings/settings_side_panel.dart';
 import 'seerr_icons.dart';
@@ -817,6 +818,27 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
     );
   }
 
+  /// The downloads row, or nothing while there is nothing saved. The nav
+  /// colour is passed in so the caller decides which palette slot it takes.
+  Widget _downloadsSidebarItem({
+    required Color? navColor,
+    required String label,
+  }) {
+    return DownloadsNavSlot(
+      builder: (context) => _SidebarItem(
+        key: const ValueKey('sidebar-downloads'),
+        icon: Icons.download_for_offline,
+        label: label,
+        baseColor: navColor,
+        showLabel: _showLabels,
+        onPressed: () {
+          _onNavigate();
+          showDownloadsDialog(context);
+        },
+      ),
+    );
+  }
+
   /// The messages row, or nothing when there is nothing to show. The nav colour
   /// is passed in so the caller decides which palette slot it takes.
   Widget _serverMessagesSidebarItem({
@@ -1115,19 +1137,13 @@ class _LeftSidebarState extends State<LeftSidebar> with RouteAware {
                         : const SizedBox.shrink(),
                   ),
                 ],
-                if (_prefs.get(UserPreferences.showDownloadsButton) &&
-                    PlatformDetection.supportsOfflineDownloads &&
-                    !PlatformDetection.isWeb)
-                  _SidebarItem(
-                    key: const ValueKey('sidebar-downloads'),
-                    icon: Icons.download_for_offline,
+                // The slot is taken here rather than inside the builder, so
+                // the rows below keep their colour whether or not anything is
+                // saved right now.
+                if (DownloadsNavSlot.isOffered())
+                  _downloadsSidebarItem(
+                    navColor: nextMainSidebarColor(),
                     label: l10n.savedMedia,
-                    baseColor: nextMainSidebarColor(),
-                    showLabel: _showLabels,
-                    onPressed: () {
-                      _onNavigate();
-                      showDownloadsDialog(context);
-                    },
                   ),
                 // The slot is taken here rather than inside the builder, so the
                 // settings row keeps its colour whether or not there are any
