@@ -23,6 +23,11 @@ class _TestBackend extends Fake implements PlayerBackend {
   /// Overrides [playWhenReady] independent of [playing], so a test can
   /// model a viewer pause or a buffer stall without conflating them.
   bool? playWhenReadyOverride;
+  /// True simulates a backend that never reports its own intent (e.g.
+  /// AppleTvBackend, AetherBackend, the web video backend,
+  /// MediaKitPlayerBackend): [playWhenReady] always reads null, even while
+  /// playing.
+  bool forceNoIntent = false;
   Duration currentPosition = Duration.zero;
   Duration reportedDuration = Duration.zero;
 
@@ -41,7 +46,8 @@ class _TestBackend extends Fake implements PlayerBackend {
   @override
   // Not playing with no explicit override reads as "still trying" (null),
   // not "paused" -- a stall must not look like a viewer pause.
-  bool? get playWhenReady => playWhenReadyOverride ?? (playing ? true : null);
+  bool? get playWhenReady =>
+      forceNoIntent ? null : playWhenReadyOverride ?? (playing ? true : null);
 
   @override
   double get playbackSpeed => 1.0;
@@ -106,6 +112,12 @@ class _TestBackend extends Fake implements PlayerBackend {
     'recoverable': true,
     'message': 'Live source reset',
   });
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> resume() async {}
 
   @override
   bool get supportsRuntimeTrackSelection => false;
@@ -1498,5 +1510,152 @@ void main() {
         });
       },
     );
+  });
+
+  group('live stall watchdog, intent-less backend', () {
+    PlaybackManager fakeManager(
+      _TestBackend backend,
+      _TestResolver resolver,
+      _TestService service,
+      FakeAsync async,
+    ) => PlaybackManager()
+      ..setBackend(backend)
+      ..setResolver(resolver)
+      ..setPlayerService(service)
+      ..clock = () => DateTime(2026, 9, 15, 20).add(async.elapsed);
+
+    test(
+      'a manager pause is never treated as a stall, even after 60s',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..forceNoIntent = true;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            backend.emitPlaying();
+            async.flushMicrotasks();
+
+            unawaited(manager.pause());
+            backend.emitNotPlaying();
+            // A pause a backend renders as buffering must still not recover
+            // -- the explicit pause overrides it.
+            backend.emitBuffering(true);
+            async.flushMicrotasks();
+
+            async.elapse(const Duration(seconds: 60));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test('buffering for 15s with no pause recovers', () {
+      fakeAsync((async) {
+        final backend = _TestBackend()..forceNoIntent = true;
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          backend.emitPlaying();
+          async.flushMicrotasks();
+
+          backend.emitNotPlaying();
+          backend.emitBuffering(true);
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 15));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, 1);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test('a channel that opens and never plays recovers at 15s', () {
+      fakeAsync((async) {
+        final backend = _TestBackend()..forceNoIntent = true;
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 15));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, 1);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test(
+      'a pause from outside the app looks like "not playing, has frames" '
+      'and is never treated as a stall, even after 60s',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..forceNoIntent = true;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            backend.emitPlaying();
+            async.flushMicrotasks();
+
+            // No manager.pause() call: this models a system-remote pause the
+            // manager never heard about.
+            backend.emitNotPlaying();
+            async.flushMicrotasks();
+
+            async.elapse(const Duration(seconds: 60));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test('pause then resume then buffering for 15s recovers', () {
+      fakeAsync((async) {
+        final backend = _TestBackend()..forceNoIntent = true;
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          backend.emitPlaying();
+          async.flushMicrotasks();
+
+          unawaited(manager.pause());
+          backend.emitNotPlaying();
+          async.flushMicrotasks();
+
+          unawaited(manager.resume());
+          backend.emitBuffering(true);
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 15));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, 1);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
   });
 }

@@ -256,6 +256,32 @@ class PlaybackManager implements AudioOwnable {
   /// the watchdog and restart a channel the viewer already left.
   bool _liveStallWatchActive = false;
 
+  /// Set by [pause], cleared by [resume], [playItems], [stop] and a fresh
+  /// live open. Backends that report no `playWhenReady` (AppleTvBackend,
+  /// AetherBackend, the web video backend, MediaKitPlayerBackend) can't tell
+  /// a viewer pause from a stall on their own, so the manager tracks the
+  /// viewer's own last pause/resume call and falls back to it.
+  bool _viewerPaused = false;
+
+  /// Whether a frame has rendered since the current live stream opened.
+  /// Reset at each fresh open, set the first time `playing` reports true.
+  bool _liveFrameSeenSinceOpen = false;
+
+  /// Whether the current state looks like a stall worth recovering from,
+  /// rather than a pause. On an engine that reports its own intent
+  /// (`playWhenReady`), that intent decides. On one that doesn't, a pause
+  /// this manager itself issued always wins; short of that, only buffering
+  /// or "no frame shown yet" counts -- a quiet "not playing" with frames
+  /// already on screen is indistinguishable from a pause made outside the
+  /// app (system remote), so it must not be treated as a stall.
+  bool _liveStallSuspected() {
+    if (state.isPlaying) return false;
+    final playWhenReady = state.playWhenReady;
+    if (playWhenReady != null) return playWhenReady;
+    if (_viewerPaused) return false;
+    return state.isBuffering || !_liveFrameSeenSinceOpen;
+  }
+
   /// Arms (or re-arms) the live stall watchdog. A no-op off a live item, so
   /// every call site can invoke it without checking first. Captures the
   /// current viewer-intent generation so a timer that outlives a tune or a
@@ -270,7 +296,7 @@ class PlaybackManager implements AudioOwnable {
     _liveStallWatchdog = Timer(_liveStallTimeout, () {
       _liveStallWatchdog = null;
       if (!_liveStallWatchActive || intent != _viewerIntentGeneration) return;
-      if (state.isPlaying || state.playWhenReady == false) return;
+      if (!_liveStallSuspected()) return;
       _diagnosticLogger?.call(
         'Live stall watchdog: no frame for ${_liveStallTimeout.inSeconds}s, '
         'recovering',
@@ -303,7 +329,7 @@ class PlaybackManager implements AudioOwnable {
   void _evaluateLiveStallWatchdog() {
     if (!_liveStallWatchActive) return;
     if (!_currentItemIsLive || _isOfflinePlayback) return;
-    if (state.isPlaying || state.playWhenReady == false) {
+    if (!_liveStallSuspected()) {
       _disarmLiveStallWatchdog();
       return;
     }
@@ -998,7 +1024,10 @@ class PlaybackManager implements AudioOwnable {
         // progress report can tell a viewer pause from a starved stream.
         state.setPlayWhenReady(backend.playWhenReady);
         state.setPlaying(playing);
-        if (playing) _setLiveRecoveryStatus(null);
+        if (playing) {
+          _liveFrameSeenSinceOpen = true;
+          _setLiveRecoveryStatus(null);
+        }
         _evaluateLiveStallWatchdog();
       }),
       backend.bufferingStream.listen((buffering) {
@@ -1841,6 +1870,7 @@ class PlaybackManager implements AudioOwnable {
     bool autoPlay = true,
   }) async {
     _abandonLiveRecovery('the viewer tuned somewhere else');
+    _viewerPaused = false;
     _clearPendingItemOverrides();
     _vetoedAudioCodecs.clear();
     _lastItemId = null;
@@ -2608,9 +2638,12 @@ class PlaybackManager implements AudioOwnable {
     // The stream just opened, including one opened by a recovery re-resolve.
     // `autoPlay` is the manager's own intent, so it decides arming here
     // rather than the backend's (possibly stale) playWhenReady.
+    _liveFrameSeenSinceOpen = false;
     if (autoPlay) {
+      _viewerPaused = false;
       _startLiveStallWatch();
     } else {
+      _viewerPaused = true;
       _endLiveStallWatch();
     }
   }
@@ -2716,11 +2749,13 @@ class PlaybackManager implements AudioOwnable {
   }
 
   Future<void> resume() async {
+    _viewerPaused = false;
     if (await _maybeIntercept(TransportAction.resume)) return;
     await _backend?.resume();
   }
 
   Future<void> pause() async {
+    _viewerPaused = true;
     if (await _maybeIntercept(TransportAction.pause)) return;
     await _backend?.pause();
   }
@@ -2779,6 +2814,7 @@ class PlaybackManager implements AudioOwnable {
   Future<void> stop({bool userInitiated = true}) async {
     if (userInitiated && await _maybeIntercept(TransportAction.stop)) return;
     _abandonLiveRecovery('the viewer stopped playback');
+    _viewerPaused = false;
     await _stopAndReportCurrent();
   }
 
