@@ -10,6 +10,7 @@ class _TestBackend extends Fake implements PlayerBackend {
   final _errors = StreamController<Map<String, dynamic>>.broadcast();
   final _completed = StreamController<bool>.broadcast();
   final _playing = StreamController<bool>.broadcast();
+  final _buffering = StreamController<bool>.broadcast();
   final List<String> playedUrls = <String>[];
   int stopCalls = 0;
   int resumeLiveEdgeCalls = 0;
@@ -18,6 +19,10 @@ class _TestBackend extends Fake implements PlayerBackend {
   /// was told is live -- and the manager must escalate rather than wait.
   bool canResumeLiveEdge = true;
   bool playing = false;
+  bool buffering = false;
+  /// Overrides [playWhenReady] independent of [playing], so a test can
+  /// model a viewer pause or a buffer stall without conflating them.
+  bool? playWhenReadyOverride;
   Duration currentPosition = Duration.zero;
   Duration reportedDuration = Duration.zero;
 
@@ -34,13 +39,15 @@ class _TestBackend extends Fake implements PlayerBackend {
   bool get isPlaying => playing;
 
   @override
-  bool? get playWhenReady => playing;
+  // Not playing with no explicit override reads as "still trying" (null),
+  // not "paused" -- a stall must not look like a viewer pause.
+  bool? get playWhenReady => playWhenReadyOverride ?? (playing ? true : null);
 
   @override
   double get playbackSpeed => 1.0;
 
   @override
-  bool get isBuffering => false;
+  bool get isBuffering => buffering;
 
   @override
   Stream<Duration> get positionStream => const Stream<Duration>.empty();
@@ -60,8 +67,22 @@ class _TestBackend extends Fake implements PlayerBackend {
     _playing.add(true);
   }
 
+  /// Reports the engine stopped delivering frames without the viewer having
+  /// asked for that, e.g. a stall. Set [playWhenReady] to model a viewer
+  /// pause instead.
+  void emitNotPlaying({bool? playWhenReady}) {
+    playing = false;
+    if (playWhenReady != null) playWhenReadyOverride = playWhenReady;
+    _playing.add(false);
+  }
+
+  void emitBuffering(bool value) {
+    buffering = value;
+    _buffering.add(value);
+  }
+
   @override
-  Stream<bool> get bufferingStream => const Stream<bool>.empty();
+  Stream<bool> get bufferingStream => _buffering.stream;
 
   @override
   Stream<bool> get completedStream => _completed.stream;
@@ -133,6 +154,7 @@ class _TestBackend extends Fake implements PlayerBackend {
     _errors.close();
     _completed.close();
     _playing.close();
+    _buffering.close();
   }
 }
 
@@ -1126,6 +1148,354 @@ void main() {
         } finally {
           manager.dispose();
         }
+      },
+    );
+  });
+
+  group('live stall watchdog', () {
+    PlaybackManager fakeManager(
+      _TestBackend backend,
+      _TestResolver resolver,
+      _TestService service,
+      FakeAsync async,
+    ) => PlaybackManager()
+      ..setBackend(backend)
+      ..setResolver(resolver)
+      ..setPlayerService(service)
+      ..clock = () => DateTime(2026, 9, 15, 20).add(async.elapsed);
+
+    test(
+      'a channel that opens but never plays recovers at 15s, not before',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend();
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+
+            async.elapse(const Duration(seconds: 14));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+
+            async.elapse(const Duration(seconds: 1));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, 1);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test('a stopped channel never restarts itself', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          backend.emitPlaying();
+          async.flushMicrotasks();
+
+          unawaited(manager.stop());
+          async.flushMicrotasks();
+          // A stopped player still reports "not playing" with its intent
+          // unchanged; that must not re-arm the watchdog.
+          backend.emitNotPlaying(playWhenReady: true);
+          backend.emitBuffering(true);
+          async.flushMicrotasks();
+          final resolvesAfterStop = resolver.calls;
+
+          async.elapse(const Duration(minutes: 3));
+          async.flushMicrotasks();
+
+          expect(backend.resumeLiveEdgeCalls, isZero);
+          expect(resolver.calls, resolvesAfterStop);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test('a given-up channel stays down behind the Retry card', () {
+      fakeAsync((async) {
+        final backend = _TestBackend()..canResumeLiveEdge = false;
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          for (var i = 0; i < 20; i++) {
+            if (manager.bringupState.phase == PlaybackBringupPhase.failed) {
+              break;
+            }
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+          }
+          expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+          final resolvesAtGiveUp = resolver.calls;
+          final resumesAtGiveUp = backend.resumeLiveEdgeCalls;
+          final stopsAtGiveUp = service.stoppedResolutions.length;
+          final notes = <String>[];
+          manager.setDiagnosticLogger(notes.add);
+
+          // Media3 re-reports playing/buffering on every state update, so a
+          // stopped player keeps saying "not playing". Run long past the 60s
+          // window that would otherwise refill the budget.
+          for (var i = 0; i < 180; i++) {
+            backend.emitNotPlaying(playWhenReady: true);
+            backend.emitBuffering(true);
+            async.elapse(const Duration(seconds: 1));
+            async.flushMicrotasks();
+          }
+
+          expect(resolver.calls, resolvesAtGiveUp);
+          expect(backend.resumeLiveEdgeCalls, resumesAtGiveUp);
+          // No repeated give-ups either: each would send the server another
+          // stop report for a channel that is already down.
+          expect(service.stoppedResolutions, hasLength(stopsAtGiveUp));
+          // Nor a watchdog quietly firing on a channel that is already down.
+          expect(
+            notes.where((n) => n.startsWith('Live stall watchdog')),
+            isEmpty,
+          );
+          expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test('a channel that played then buffers for 15s recovers', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          backend.emitPlaying();
+          async.flushMicrotasks();
+
+          backend.emitNotPlaying();
+          backend.emitBuffering(true);
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, isZero);
+
+          async.elapse(const Duration(seconds: 15));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, 1);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test(
+      'a 10s buffer that resolves back into playing does not recover',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend();
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            backend.emitPlaying();
+            async.flushMicrotasks();
+
+            backend.emitNotPlaying();
+            backend.emitBuffering(true);
+            async.flushMicrotasks();
+
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+            backend.emitBuffering(false);
+            backend.emitPlaying();
+            async.flushMicrotasks();
+
+            // Past where the 15s window would have fired had it not been
+            // cancelled by the second emitPlaying above.
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test('a viewer pause never recovers, even after 60s', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          backend.emitPlaying();
+          async.flushMicrotasks();
+
+          backend.emitNotPlaying(playWhenReady: false);
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 60));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, isZero);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test('a VOD item that never plays or buffers is never watched', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_movie]));
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 60));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, isZero);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test('stopping during the countdown drops the watchdog', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 10));
+          unawaited(manager.stop());
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 10));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, isZero);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test('tuning to another channel during the countdown drops it too', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 10));
+          unawaited(manager.playItems(<dynamic>[
+            <String, dynamic>{
+              'Id': 'channel-2',
+              'Type': 'TvChannel',
+              'Name': 'WXIX',
+            },
+          ]));
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 10));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, isZero);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test(
+      'a resume that never plays escalates to a re-resolve on the next '
+      'watchdog cycle',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend();
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, 1);
+            expect(resolver.calls, 1);
+
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+            expect(backend.playedUrls.last, 'https://example.test/session-2');
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'repeated stalls exhaust the budget and give up, and the watchdog '
+      'goes quiet after',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+
+            // Drive the watchdog through enough 15s cycles to exhaust the
+            // recovery budget: the stream never plays, so every cycle
+            // re-fires it.
+            for (var i = 0; i < 8; i++) {
+              async.elapse(const Duration(seconds: 15));
+              async.flushMicrotasks();
+              if (manager.bringupState.phase ==
+                  PlaybackBringupPhase.failed) {
+                break;
+              }
+            }
+
+            expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+            expect(manager.bringupState.error, liveStreamLostError);
+
+            final callsAtGiveUp = resolver.calls;
+            async.elapse(const Duration(minutes: 2));
+            async.flushMicrotasks();
+            expect(resolver.calls, callsAtGiveUp);
+          } finally {
+            manager.dispose();
+          }
+        });
       },
     );
   });

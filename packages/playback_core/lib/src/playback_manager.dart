@@ -240,6 +240,77 @@ class PlaybackManager implements AudioOwnable {
   bool _liveRecoveryInFlight = false;
   Timer? _liveRecoveryRetry;
 
+  /// A live stream can open and keep receiving bytes without ever rendering
+  /// a frame -- weak reception trickles data, so the HTTP read never times
+  /// out and no backend error ever fires. Neither of `_recoverStalledStream`'s
+  /// usual triggers (a backend error, an end-of-stream) helps here, so this
+  /// watchdog covers the gap: it watches for a first frame after the stream
+  /// opens, and for a frame after any later stall, and treats either miss as
+  /// a stalled channel worth recovering.
+  static const _liveStallTimeout = Duration(seconds: 15);
+  Timer? _liveStallWatchdog;
+
+  /// Whether a live session is being watched at all: on when a live stream
+  /// opens or resumes, off on any stop, give-up or tune-away. A stopped
+  /// player still reports "not playing", and without this that would re-arm
+  /// the watchdog and restart a channel the viewer already left.
+  bool _liveStallWatchActive = false;
+
+  /// Arms (or re-arms) the live stall watchdog. A no-op off a live item, so
+  /// every call site can invoke it without checking first. Captures the
+  /// current viewer-intent generation so a timer that outlives a tune or a
+  /// stop fires into nothing.
+  void _armLiveStallWatchdog() {
+    _liveStallWatchdog?.cancel();
+    _liveStallWatchdog = null;
+    if (!_liveStallWatchActive || !_currentItemIsLive || _isOfflinePlayback) {
+      return;
+    }
+    final intent = _viewerIntentGeneration;
+    _liveStallWatchdog = Timer(_liveStallTimeout, () {
+      _liveStallWatchdog = null;
+      if (!_liveStallWatchActive || intent != _viewerIntentGeneration) return;
+      if (state.isPlaying || state.playWhenReady == false) return;
+      _diagnosticLogger?.call(
+        'Live stall watchdog: no frame for ${_liveStallTimeout.inSeconds}s, '
+        'recovering',
+      );
+      unawaited(_recoverStalledStream(trigger: 'stalled'));
+    });
+  }
+
+  void _disarmLiveStallWatchdog() {
+    _liveStallWatchdog?.cancel();
+    _liveStallWatchdog = null;
+  }
+
+  /// Starts watching the current live stream, from a fresh 15s window.
+  void _startLiveStallWatch() {
+    _liveStallWatchActive = true;
+    _armLiveStallWatchdog();
+  }
+
+  /// Stops watching until the next live stream opens.
+  void _endLiveStallWatch() {
+    _liveStallWatchActive = false;
+    _disarmLiveStallWatchdog();
+  }
+
+  /// Re-evaluates the watchdog after a playing or buffering change. A real
+  /// frame or a viewer pause disarms it; buffering, or "not playing" with an
+  /// unfulfilled intent to play, arms it if it isn't already running -- a
+  /// buffering flicker must not keep resetting the 15s window.
+  void _evaluateLiveStallWatchdog() {
+    if (!_liveStallWatchActive) return;
+    if (!_currentItemIsLive || _isOfflinePlayback) return;
+    if (state.isPlaying || state.playWhenReady == false) {
+      _disarmLiveStallWatchdog();
+      return;
+    }
+    if (_liveStallWatchdog?.isActive ?? false) return;
+    _armLiveStallWatchdog();
+  }
+
   /// Bumped whenever the viewer moves on: a stop, or a new queue. Recovery
   /// carries it across its own awaits so it can tell "the viewer left" from
   /// "we restarted the stream ourselves". The session token cannot do that
@@ -256,6 +327,7 @@ class PlaybackManager implements AudioOwnable {
   /// in the tune, or the timer fires inside that gap.
   void _abandonLiveRecovery(String reason) {
     _viewerIntentGeneration++;
+    _endLiveStallWatch();
     if (_liveRecoveryRetry?.isActive ?? false) {
       _diagnosticLogger?.call('Live recovery: dropping a held retry, $reason');
     }
@@ -727,6 +799,7 @@ class PlaybackManager implements AudioOwnable {
     final previous = _backend;
     _unsupportedAudioRecoveryInFlight = false;
     _suppressNextGenericBackendError = false;
+    _endLiveStallWatch();
     _disposeStreamSubs();
     _backend = backend;
     _retainedBackends.add(backend);
@@ -926,10 +999,12 @@ class PlaybackManager implements AudioOwnable {
         state.setPlayWhenReady(backend.playWhenReady);
         state.setPlaying(playing);
         if (playing) _setLiveRecoveryStatus(null);
+        _evaluateLiveStallWatchdog();
       }),
       backend.bufferingStream.listen((buffering) {
         state.setPlayWhenReady(backend.playWhenReady);
         state.setBuffering(buffering);
+        _evaluateLiveStallWatchdog();
       }),
       backend.completedStream.listen(_onTrackCompleted),
     ]);
@@ -1186,6 +1261,10 @@ class PlaybackManager implements AudioOwnable {
             'Live recovery: $trigger, attempt $attempt of '
             '$_liveRecoveryMaxAttempts, resumed the live edge',
           );
+          // A cheap resume doesn't go through bringup, so nothing else would
+          // re-arm the watchdog. Only the intent could have changed since the
+          // await above; _armLiveStallWatchdog is a no-op if it has.
+          if (intent == _viewerIntentGeneration) _startLiveStallWatch();
           return;
         }
         _diagnosticLogger?.call(
@@ -1316,6 +1395,7 @@ class PlaybackManager implements AudioOwnable {
     // its own -- so this failure would be the only thing the viewer is left
     // looking at.
     _setLiveRecoveryStatus(null);
+    _endLiveStallWatch();
     bool viewerMovedOn() => intent != _viewerIntentGeneration;
     if (viewerMovedOn()) {
       _diagnosticLogger?.call(
@@ -2525,6 +2605,14 @@ class PlaybackManager implements AudioOwnable {
         playMethod: resolution.playMethod.name,
       ),
     );
+    // The stream just opened, including one opened by a recovery re-resolve.
+    // `autoPlay` is the manager's own intent, so it decides arming here
+    // rather than the backend's (possibly stale) playWhenReady.
+    if (autoPlay) {
+      _startLiveStallWatch();
+    } else {
+      _endLiveStallWatch();
+    }
   }
 
   void _startProgressTimer() {
@@ -3647,6 +3735,7 @@ class PlaybackManager implements AudioOwnable {
       );
       _deferredStartPosition = Duration.zero;
       _deferPlaybackToExternalPlayer = false;
+      _endLiveStallWatch();
       _playbackSessionToken++;
       _stopProgressTimer();
       final backend = _backend;
@@ -3753,6 +3842,7 @@ class PlaybackManager implements AudioOwnable {
 
   void dispose() {
     _liveRecoveryRetry?.cancel();
+    _endLiveStallWatch();
     _stopProgressTimer();
     _disposeStreamSubs();
     _backendChangedController.close();
