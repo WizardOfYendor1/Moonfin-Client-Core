@@ -152,7 +152,7 @@ jobs:
       - run: |
           flutter pub get
           if grep -q '^[[:space:]]*android_tv_build_number:' pubspec.yaml; then
-            sed -i -E "s|^[[:space:]]*android_tv_build_number:.*|android_tv_build_number: ${{ needs.prepare.outputs.version_code }}|" pubspec.yaml
+            sed -i -E "s|^([[:space:]]*)android_tv_build_number:.*|android_tv_build_number: ${{ needs.prepare.outputs.version_code }}|" pubspec.yaml
           else
             printf '\nandroid_tv_build_number: %s\n' "${{ needs.prepare.outputs.version_code }}" >> pubspec.yaml
           fi
