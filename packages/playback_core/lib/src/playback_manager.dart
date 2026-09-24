@@ -199,19 +199,19 @@ class PlaybackManager implements AudioOwnable {
   bool _suppressNextGenericBackendError = false;
   bool _teardownForReResolve = false;
 
-  /// Live recovery budget. Attempts 1-2 ask the engine to resume in place,
-  /// falling through to a re-resolve when it can't; attempt 3 re-resolves;
-  /// attempt 4 (== [_liveRecoveryMaxAttempts]) re-resolves with direct play
-  /// disabled so the server may remux; attempt 5 gives up. The window is
-  /// measured from the last attempt, so a channel that runs clean for a
-  /// minute earns its budget back and one that hiccups every few seconds does
-  /// not.
+  /// Live recovery budget. Attempt 1 asks the engine to resume in place,
+  /// falling through to a re-resolve when it can't; attempt 2 re-resolves;
+  /// attempt 3 (== [_liveRecoveryMaxAttempts]) re-resolves with direct play
+  /// disabled so the server takes over the stream; attempt 4 gives up. The
+  /// window is measured from the last attempt, so a channel that runs clean
+  /// for a minute earns its budget back and one that hiccups every few
+  /// seconds does not.
   ///
   /// The debounce outlasts a hardware decoder that has to be torn down the
   /// hard way: a Fire Cube whose decoder failed took three seconds to force
   /// the release, and retrying sooner asked for a second instance the
   /// decoder couldn't grant.
-  static const _liveRecoveryMaxAttempts = 4;
+  static const _liveRecoveryMaxAttempts = 3;
   static const _liveRecoveryDebounce = Duration(seconds: 4);
   static const _liveRecoveryWindow = Duration(seconds: 60);
   int _liveRecoveryAttempts = 0;
@@ -1158,7 +1158,7 @@ class PlaybackManager implements AudioOwnable {
       // is now. Most engines cannot, and one that says so falls straight
       // through to the re-resolve rather than spending its attempt on a call
       // that did nothing, then waiting for a recovery that is never coming.
-      if (cheapResumeFirst && attempt <= 2) {
+      if (cheapResumeFirst && attempt == 1) {
         if (await _backend?.resumeLiveEdge() ?? false) {
           _diagnosticLogger?.call(
             'Live recovery: $trigger, attempt $attempt of '

@@ -356,7 +356,7 @@ void main() {
   });
 
   group('recovery budget', () {
-    test('escalates resume, resume, re-resolve, then gives up', () async {
+    test('escalates resume, re-resolve, server stream, then gives up', () async {
       final backend = _TestBackend();
       final resolver = _TestResolver();
       final service = _TestService();
@@ -367,16 +367,16 @@ void main() {
       try {
         await manager.playItems(<dynamic>[_liveChannel]);
 
-        for (var i = 0; i < 5; i++) {
+        for (var i = 0; i < 4; i++) {
           clock.advance(const Duration(seconds: 5));
           backend.emitCompleted();
           await _settle();
         }
 
-        expect(backend.resumeLiveEdgeCalls, 2);
-        // Attempt three re-resolves on the fast direct route; only attempt
-        // four, the last thing tried before the channel is given up, goes
-        // through the server transcode.
+        expect(backend.resumeLiveEdgeCalls, 1);
+        // Attempt two re-resolves on the fast direct route; only attempt
+        // three, the last thing tried before the channel is given up, hands
+        // the stream to the server.
         expect(resolver.calls, 3);
         expect(resolver.directPlayAllowed, <bool>[true, true, false]);
         expect(backend.playedUrls, <String>[
@@ -384,9 +384,9 @@ void main() {
           'https://example.test/session-2',
           'https://example.test/session-3',
         ]);
-        // The fourth is terminal: the tuner is released and the bringup is
-        // reported failed, which is how this manager says a stream could not
-        // be played.
+        // The fourth event is terminal: the tuner is released and the
+        // bringup is reported failed, which is how this manager says a stream
+        // could not be played.
         expect(service.stoppedResolutions, isNotEmpty);
         expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
         expect(manager.bringupState.error, liveStreamLostError);
@@ -455,16 +455,16 @@ void main() {
       try {
         await manager.playItems(<dynamic>[_liveChannel]);
 
-        for (var i = 0; i < 5; i++) {
+        for (var i = 0; i < 4; i++) {
           clock.advance(const Duration(seconds: 5));
           backend.emitLiveSourceReset();
           await _settle();
         }
 
         // Re-opening a reset source in place cannot help, so all three
-        // attempts re-resolve, and the fourth is still terminal.
+        // attempts re-resolve, and the fourth event is still terminal.
         expect(backend.resumeLiveEdgeCalls, isZero);
-        expect(resolver.calls, 5);
+        expect(resolver.calls, 4);
         expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
       } finally {
         await sub.cancel();
@@ -596,7 +596,7 @@ void main() {
   });
 
   group('live recovery status', () {
-    test('reports attempt 1 of 4 on the first recovery', () async {
+    test('reports attempt 1 of 3 on the first recovery', () async {
       final backend = _TestBackend();
       final resolver = _TestResolver();
       final service = _TestService();
@@ -611,7 +611,7 @@ void main() {
         await _settle();
 
         expect(manager.liveRecoveryStatus?.attempt, 1);
-        expect(manager.liveRecoveryStatus?.maxAttempts, 4);
+        expect(manager.liveRecoveryStatus?.maxAttempts, 3);
         expect(statuses.whereType<LiveRecoveryStatus>().length, 1);
       } finally {
         await sub.cancel();
@@ -633,7 +633,7 @@ void main() {
           backend.emitCompleted();
           await _settle();
           expect(manager.liveRecoveryStatus?.attempt, i + 1);
-          expect(manager.liveRecoveryStatus?.maxAttempts, 4);
+          expect(manager.liveRecoveryStatus?.maxAttempts, 3);
         }
       } finally {
         manager.dispose();
