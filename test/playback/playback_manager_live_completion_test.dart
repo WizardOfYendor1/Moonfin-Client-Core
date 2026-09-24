@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playback_core/playback_core.dart';
 
@@ -146,6 +147,23 @@ class _TestResolver extends MediaStreamResolver {
   /// escalation to a server transcode on the last attempt is observable.
   final List<bool> directPlayAllowed = <bool>[];
 
+  /// Records whether each resolve was allowed a direct stream, so a forced
+  /// transcode (both refused) is distinguishable from a plain server-served
+  /// escalation (only direct play refused).
+  final List<bool> directStreamAllowed = <bool>[];
+
+  /// 1-based call numbers that throw instead of resolving, e.g. a server
+  /// that is unreachable for the first two live-recovery re-resolves.
+  final Set<int> failOnCalls = <int>{};
+
+  /// How long each resolve takes before returning (or throwing), so a test
+  /// can model a slow re-resolve that eats into its own recovery gap.
+  Duration delay = Duration.zero;
+
+  /// The play method every successful resolve reports, so a test can model a
+  /// channel that is already direct-played, direct-streamed or transcoded.
+  StreamPlayMethod playMethod = StreamPlayMethod.transcode;
+
   @override
   Future<StreamResolutionResult> resolve(
     dynamic mediaItem, {
@@ -160,15 +178,23 @@ class _TestResolver extends MediaStreamResolver {
     bool enableTranscoding = true,
   }) async {
     calls++;
+    final thisCall = calls;
+    if (delay > Duration.zero) {
+      await Future<void>.delayed(delay);
+    }
+    if (failOnCalls.contains(thisCall)) {
+      throw StateError('server unreachable');
+    }
     directPlayAllowed.add(enableDirectPlay);
+    directStreamAllowed.add(enableDirectStream);
     final type = (mediaItem as Map<String, dynamic>)['Type'];
     final isLive = type == 'TvChannel' || type == 'LiveTvChannel';
     return StreamResolutionResult(
-      streamUrl: 'https://example.test/session-$calls',
-      mediaSourceId: 'source-$calls',
-      liveStreamId: isLive && issueLiveStreamId ? 'live-$calls' : null,
-      playSessionId: 'session-$calls',
-      playMethod: StreamPlayMethod.transcode,
+      streamUrl: 'https://example.test/session-$thisCall',
+      mediaSourceId: 'source-$thisCall',
+      liveStreamId: isLive && issueLiveStreamId ? 'live-$thisCall' : null,
+      playSessionId: 'session-$thisCall',
+      playMethod: playMethod,
       mediaStreams: const [],
     );
   }
@@ -368,7 +394,7 @@ void main() {
         await manager.playItems(<dynamic>[_liveChannel]);
 
         for (var i = 0; i < 4; i++) {
-          clock.advance(const Duration(seconds: 5));
+          clock.advance(const Duration(seconds: 25));
           backend.emitCompleted();
           await _settle();
         }
@@ -456,7 +482,7 @@ void main() {
         await manager.playItems(<dynamic>[_liveChannel]);
 
         for (var i = 0; i < 4; i++) {
-          clock.advance(const Duration(seconds: 5));
+          clock.advance(const Duration(seconds: 25));
           backend.emitLiveSourceReset();
           await _settle();
         }
@@ -481,7 +507,7 @@ void main() {
       try {
         await manager.playItems(<dynamic>[_liveChannel]);
         for (var i = 0; i < 4; i++) {
-          clock.advance(const Duration(seconds: 5));
+          clock.advance(const Duration(seconds: 25));
           backend.emitCompleted();
           await _settle();
         }
@@ -551,7 +577,7 @@ void main() {
         await manager.playItems(<dynamic>[_liveChannel]);
 
         for (var i = 0; i < 5; i++) {
-          clock.advance(const Duration(seconds: 5));
+          clock.advance(const Duration(seconds: 25));
           backend.emitSourceError();
           await _settle();
         }
@@ -575,7 +601,7 @@ void main() {
         await manager.playItems(<dynamic>[_liveChannel]);
 
         for (var i = 0; i < 6; i++) {
-          clock.advance(const Duration(seconds: 5));
+          clock.advance(const Duration(seconds: 25));
           if (i.isEven) {
             backend.emitCompleted();
           } else {
@@ -629,7 +655,7 @@ void main() {
         await manager.playItems(<dynamic>[_liveChannel]);
 
         for (var i = 0; i < 3; i++) {
-          clock.advance(const Duration(seconds: 5));
+          clock.advance(const Duration(seconds: 25));
           backend.emitCompleted();
           await _settle();
           expect(manager.liveRecoveryStatus?.attempt, i + 1);
@@ -672,7 +698,7 @@ void main() {
         await manager.playItems(<dynamic>[_liveChannel]);
 
         for (var i = 0; i < 5; i++) {
-          clock.advance(const Duration(seconds: 5));
+          clock.advance(const Duration(seconds: 25));
           backend.emitCompleted();
           await _settle();
         }
@@ -731,5 +757,376 @@ void main() {
         manager.dispose();
       }
     });
+  });
+
+  group('recovery gaps and failed re-resolves', () {
+    // The initial tune itself resolves once, so recovery's own re-resolves
+    // start counting from call 2.
+    PlaybackManager fakeManager(
+      _TestBackend backend,
+      _TestResolver resolver,
+      _TestService service,
+      FakeAsync async,
+    ) => PlaybackManager()
+      ..setBackend(backend)
+      ..setResolver(resolver)
+      ..setPlayerService(service)
+      ..clock = () => DateTime(2026, 9, 15, 20).add(async.elapsed);
+
+    test(
+      'attempt 2 waits 10s and attempt 3 waits 20s after the attempt before '
+      'it',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+
+            // A second failure 1s later is well inside the 10s gap attempt 2
+            // needs, so it is held rather than spending another attempt.
+            async.elapse(const Duration(seconds: 1));
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+
+            async.elapse(const Duration(seconds: 9));
+            async.flushMicrotasks();
+            expect(resolver.calls, 3);
+
+            // Same story for attempt 3's 20s gap.
+            async.elapse(const Duration(seconds: 5));
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 3);
+
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+            expect(resolver.calls, 4);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'a slow but successful re-resolve is not spent by the next attempt\'s '
+      'gap: the gap is measured from when it finished, not when it started',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+
+            // Attempt 1's re-resolve itself takes 12s to complete.
+            resolver.delay = const Duration(seconds: 12);
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+            expect(backend.playing, isFalse);
+
+            async.elapse(const Duration(seconds: 12));
+            async.flushMicrotasks();
+            expect(backend.playing, isTrue);
+
+            // The stream stalls again right after attempt 1 finishes. If the
+            // gap were measured from when attempt 1 started, 10s would
+            // already be spent and this would fire immediately.
+            resolver.delay = Duration.zero;
+            backend.playing = false;
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+
+            async.elapse(const Duration(seconds: 9));
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+
+            async.elapse(const Duration(seconds: 1));
+            async.flushMicrotasks();
+            expect(resolver.calls, 3);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'server down then back: attempts 1 and 2 fail to re-resolve, attempt '
+      '3 succeeds without giving the channel up',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver()..failOnCalls.addAll([2, 3]);
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+            expect(
+              manager.bringupState.phase,
+              isNot(PlaybackBringupPhase.failed),
+            );
+
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+            expect(resolver.calls, 3);
+            expect(
+              manager.bringupState.phase,
+              isNot(PlaybackBringupPhase.failed),
+            );
+
+            async.elapse(const Duration(seconds: 20));
+            async.flushMicrotasks();
+            expect(resolver.calls, 4);
+            // The last attempt, so it hands the stream to the server.
+            expect(resolver.directPlayAllowed.last, isFalse);
+            expect(backend.playing, isTrue);
+            expect(
+              manager.bringupState.phase,
+              isNot(PlaybackBringupPhase.failed),
+            );
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'server never comes back: the channel is given up after attempt 3 '
+      'fails and the resolver is not called again',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver()..failOnCalls.addAll([2, 3, 4]);
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 20));
+            async.flushMicrotasks();
+
+            expect(resolver.calls, 4);
+            expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+            expect(manager.bringupState.error, liveStreamLostError);
+
+            async.elapse(const Duration(minutes: 5));
+            async.flushMicrotasks();
+            expect(resolver.calls, 4);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'the viewer stopping during the post-failure wait cancels the '
+      'scheduled retry',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver()..failOnCalls.add(2);
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+
+            unawaited(manager.stop());
+            async.flushMicrotasks();
+
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+
+            expect(resolver.calls, 2);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+  });
+
+  group('attempt 3 escalation follows the channel\'s current route', () {
+    test(
+      'a direct-played channel is escalated to server-served without '
+      'forcing a transcode',
+      () async {
+        final backend = _TestBackend();
+        final resolver = _TestResolver()
+          ..playMethod = StreamPlayMethod.directPlay;
+        final service = _TestService();
+        final clock = _Clock();
+        final manager = _manager(backend, resolver, service, clock);
+        try {
+          await manager.playItems(<dynamic>[_liveChannel]);
+
+          for (var i = 0; i < 3; i++) {
+            clock.advance(const Duration(seconds: 25));
+            backend.emitCompleted();
+            await _settle();
+          }
+
+          // Direct play is given up on the last attempt, but direct stream
+          // -- a remux -- is still left on the table.
+          expect(resolver.directPlayAllowed.last, isFalse);
+          expect(resolver.directStreamAllowed.last, isTrue);
+        } finally {
+          manager.dispose();
+        }
+      },
+    );
+
+    test(
+      'a channel already on direct stream is escalated to a forced '
+      'transcode',
+      () async {
+        final backend = _TestBackend();
+        final resolver = _TestResolver()
+          ..playMethod = StreamPlayMethod.directStream;
+        final service = _TestService();
+        final clock = _Clock();
+        final manager = _manager(backend, resolver, service, clock);
+        try {
+          await manager.playItems(<dynamic>[_liveChannel]);
+
+          for (var i = 0; i < 3; i++) {
+            clock.advance(const Duration(seconds: 25));
+            backend.emitCompleted();
+            await _settle();
+          }
+
+          // Already server-served, so disabling direct play again would do
+          // nothing: the last attempt forces a full transcode instead.
+          expect(resolver.directPlayAllowed.last, isFalse);
+          expect(resolver.directStreamAllowed.last, isFalse);
+        } finally {
+          manager.dispose();
+        }
+      },
+    );
+
+    test(
+      'the escalation does not stick: retuning and Retry both restore the '
+      'viewer\'s own direct-play setting',
+      () async {
+        final backend = _TestBackend();
+        final resolver = _TestResolver()
+          ..playMethod = StreamPlayMethod.directPlay;
+        final service = _TestService();
+        final clock = _Clock();
+        final manager = _manager(backend, resolver, service, clock);
+        try {
+          await manager.playItems(
+            <dynamic>[_liveChannel],
+            enableDirectPlay: true,
+            enableDirectStream: true,
+          );
+
+          for (var i = 0; i < 3; i++) {
+            clock.advance(const Duration(seconds: 25));
+            backend.emitCompleted();
+            await _settle();
+          }
+          expect(resolver.directPlayAllowed.last, isFalse);
+
+          // Tuning to another channel is a fresh playItems call: nothing the
+          // escalation did should carry over to it.
+          resolver.directPlayAllowed.clear();
+          await manager.playItems(
+            <dynamic>[
+              <String, dynamic>{
+                'Id': 'channel-2',
+                'Type': 'TvChannel',
+                'Name': 'WXIX',
+              },
+            ],
+            enableDirectPlay: true,
+            enableDirectStream: true,
+          );
+          expect(resolver.directPlayAllowed, <bool>[true]);
+
+          // Retry on the original channel -- also a fresh playItems call --
+          // behaves the same way.
+          resolver.directPlayAllowed.clear();
+          await manager.playItems(
+            <dynamic>[_liveChannel],
+            enableDirectPlay: true,
+            enableDirectStream: true,
+          );
+          expect(resolver.directPlayAllowed, <bool>[true]);
+        } finally {
+          manager.dispose();
+        }
+      },
+    );
+  });
+
+  group('the queue\'s direct-play setting survives a recovery re-resolve', () {
+    test(
+      'a channel tuned with direct play off stays off through every '
+      'recovery attempt',
+      () async {
+        final backend = _TestBackend()..canResumeLiveEdge = false;
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final clock = _Clock();
+        final manager = _manager(backend, resolver, service, clock);
+        try {
+          await manager.playItems(
+            <dynamic>[_liveChannel],
+            enableDirectPlay: false,
+            enableDirectStream: true,
+          );
+
+          for (var i = 0; i < 3; i++) {
+            clock.advance(const Duration(seconds: 25));
+            backend.emitCompleted();
+            await _settle();
+          }
+
+          expect(
+            resolver.directPlayAllowed,
+            everyElement(isFalse),
+          );
+        } finally {
+          manager.dispose();
+        }
+      },
+    );
   });
 }

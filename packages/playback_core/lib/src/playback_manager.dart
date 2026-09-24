@@ -181,6 +181,10 @@ class PlaybackManager implements AudioOwnable {
   bool autoAdvanceEnabled = true;
   bool _isOfflinePlayback = false;
   bool _forceTranscodeForQueue = false;
+  // What playItems was asked to allow for this queue. A recovery re-resolve
+  // defaults enableDirectPlay to true, and without this it would silently
+  // switch a viewer who had direct play off back on.
+  bool _directPlayAllowedForQueue = true;
   bool _backendSelectionLockedForSession = false;
   PlayerBackend? _sessionLockedBackend;
   Future<void> Function()? _onOfflineStop;
@@ -199,21 +203,38 @@ class PlaybackManager implements AudioOwnable {
   bool _suppressNextGenericBackendError = false;
   bool _teardownForReResolve = false;
 
-  /// Live recovery budget. Attempt 1 asks the engine to resume in place,
-  /// falling through to a re-resolve when it can't; attempt 2 re-resolves;
-  /// attempt 3 (== [_liveRecoveryMaxAttempts]) re-resolves with direct play
-  /// disabled so the server takes over the stream; attempt 4 gives up. The
-  /// window is measured from the last attempt, so a channel that runs clean
-  /// for a minute earns its budget back and one that hiccups every few
-  /// seconds does not.
+  /// Live recovery budget. Attempt 1 resumes in place (re-resolving if the
+  /// engine can't), attempt 2 re-resolves, and attempt 3 escalates one step
+  /// past the current route: direct play hands the stream to the server,
+  /// and a server-served channel forces a transcode. The next failure gives
+  /// up. A clean minute since the last attempt restores the budget.
   ///
-  /// The debounce outlasts a hardware decoder that has to be torn down the
-  /// hard way: a Fire Cube whose decoder failed took three seconds to force
-  /// the release, and retrying sooner asked for a second instance the
-  /// decoder couldn't grant.
+  /// Gaps are measured from the end of the previous attempt, since a tune can
+  /// itself take ~10s: 4s before attempt 1 and the give-up, which outlasts a
+  /// Fire Cube decoder's forced release, then 10s and 20s so a restarting
+  /// server can come back. A re-resolve that throws schedules the next
+  /// attempt instead of giving up, and these re-resolves skip the nested
+  /// startup transcode retry so the budget alone paces them.
   static const _liveRecoveryMaxAttempts = 3;
   static const _liveRecoveryDebounce = Duration(seconds: 4);
+  static const _liveRecoveryGapAttempt2 = Duration(seconds: 10);
+  static const _liveRecoveryGapAttempt3 = Duration(seconds: 20);
   static const _liveRecoveryWindow = Duration(seconds: 60);
+
+  /// The minimum gap since the previous attempt before [attempt] may run.
+  /// Attempt 1 and the give-up step (any attempt past the budget) use the
+  /// plain debounce; attempts 2 and 3 wait longer so a restarting server has
+  /// time to come back.
+  Duration _liveRecoveryGapBefore(int attempt) {
+    switch (attempt) {
+      case 2:
+        return _liveRecoveryGapAttempt2;
+      case 3:
+        return _liveRecoveryGapAttempt3;
+      default:
+        return _liveRecoveryDebounce;
+    }
+  }
   int _liveRecoveryAttempts = 0;
   DateTime? _lastLiveRecoveryAt;
   bool _liveRecoveryInFlight = false;
@@ -1109,31 +1130,32 @@ class PlaybackManager implements AudioOwnable {
     final now = clock();
     final lastAt = _lastLiveRecoveryAt;
     final sinceLast = lastAt == null ? null : now.difference(lastAt);
+    final windowExpired =
+        sinceLast != null && sinceLast >= _liveRecoveryWindow;
+    // The attempt this event would become if it ran now, so it is held for
+    // that attempt's own gap rather than a single fixed debounce.
+    final nextAttempt =
+        (sinceLast == null || windowExpired) ? 1 : _liveRecoveryAttempts + 1;
+    final gap = _liveRecoveryGapBefore(nextAttempt);
     // Hold a burst, never drop one. By the time a second failure arrives the
     // player is usually stopped, and nothing else would ever ask again, so a
     // discarded event could strand the channel for good.
     if (_liveRecoveryInFlight ||
-        (sinceLast != null && sinceLast < _liveRecoveryDebounce)) {
-      final wait = _liveRecoveryInFlight || sinceLast == null
-          ? _liveRecoveryDebounce
-          : _liveRecoveryDebounce - sinceLast;
+        (sinceLast != null && !windowExpired && sinceLast < gap)) {
+      final wait = _liveRecoveryInFlight ? gap : gap - sinceLast!;
       _diagnosticLogger?.call(
         'Live recovery: holding a $trigger for ${wait.inMilliseconds}ms',
       );
-      _liveRecoveryRetry?.cancel();
-      _liveRecoveryRetry = Timer(wait, () {
-        unawaited(
-          _recoverStalledStream(
-            trigger: trigger,
-            cheapResumeFirst: cheapResumeFirst,
-            live: live,
-            forIntent: intent,
-          ),
-        );
-      });
+      _scheduleLiveRecoveryRetry(
+        wait,
+        trigger: trigger,
+        cheapResumeFirst: cheapResumeFirst,
+        live: live,
+        intent: intent,
+      );
       return;
     }
-    if (sinceLast != null && sinceLast >= _liveRecoveryWindow) {
+    if (windowExpired) {
       _liveRecoveryAttempts = 0;
     }
     _lastLiveRecoveryAt = now;
@@ -1184,33 +1206,94 @@ class PlaybackManager implements AudioOwnable {
 
       // A full re-resolve: new PlaybackInfo, a fresh tuner session and a fresh
       // upstream URL, which is materially different from re-opening the URL we
-      // already have. The last attempt also gives up on direct play and asks
-      // the server to serve the stream instead: a remux is what that normally
-      // means, and a remuxed live channel arrives as HLS, which has a real
-      // live window the raw transport stream never had. Transcoding is left
-      // available but not demanded -- the server decides whether it has to
-      // re-encode, and for most channels it does not.
+      // already have. The last attempt escalates one step past whatever route
+      // the channel is currently on: a direct-played channel gives up direct
+      // play and asks the server to serve the stream instead, which normally
+      // means a remux, and a remuxed live channel arrives as HLS, which has a
+      // real live window the raw transport stream never had -- transcoding is
+      // left available but not demanded, since the server decides whether it
+      // has to re-encode and for most channels it does not. A channel that is
+      // already server-served has no such step left, so that one forces a
+      // full transcode instead.
       final serverServed = attempt >= _liveRecoveryMaxAttempts;
+      final currentPlayMethod =
+          (_currentResolution ?? _lastPlaybackResolution)?.playMethod;
+      final forceTranscode =
+          serverServed && currentPlayMethod != StreamPlayMethod.directPlay;
       _diagnosticLogger?.call(
         'Live recovery: $trigger, attempt $attempt of '
         '$_liveRecoveryMaxAttempts, re-resolving the channel'
-        '${serverServed ? ' without direct play, letting the server serve it' : ''}',
+        '${forceTranscode
+            ? ', forcing a transcode -- already server-served'
+            : serverServed
+            ? ' without direct play, letting the server serve it'
+            : ''}',
       );
       await _reResolveAtCurrentPosition(
         isErrorRecovery: true,
         disableDirectPlay: serverServed,
-        reason: serverServed
+        forceTranscode: forceTranscode,
+        reason: forceTranscode
+            ? 'live-edge-recovery-transcode'
+            : serverServed
             ? 'live-edge-recovery-server-stream'
             : 'live-edge-recovery',
+        allowStartupRecovery: false,
       );
     } catch (e) {
-      _diagnosticLogger?.call(
-        'Live recovery: attempt $attempt failed, giving the channel up: $e',
-      );
-      await _giveUpOnStalledStream(live: live, intent: intent);
+      // The source is gone, not just stalled -- a re-resolve that threw
+      // didn't spend a wasted attempt on the cheap resume, so the next one
+      // goes straight to a fresh re-resolve. Only the last attempt gives up;
+      // an earlier failure still has budget left, and the viewer may not
+      // even have noticed if the channel comes back before it is spent.
+      if (attempt < _liveRecoveryMaxAttempts &&
+          intent == _viewerIntentGeneration) {
+        _diagnosticLogger?.call(
+          'Live recovery: attempt $attempt failed to re-resolve, retrying: $e',
+        );
+        _scheduleLiveRecoveryRetry(
+          _liveRecoveryGapBefore(attempt + 1),
+          trigger: 'retry-after-failure',
+          cheapResumeFirst: false,
+          live: live,
+          intent: intent,
+        );
+      } else {
+        _diagnosticLogger?.call(
+          'Live recovery: attempt $attempt failed, giving the channel up: $e',
+        );
+        await _giveUpOnStalledStream(live: live, intent: intent);
+      }
     } finally {
+      // Stamped again at the end, not just the start: a re-resolve's own tune
+      // can take several seconds, and measuring the next attempt's gap from
+      // when this one finished (rather than when it began) is what keeps a
+      // slow-but-working re-resolve from eating its own gap.
+      _lastLiveRecoveryAt = clock();
       _liveRecoveryInFlight = false;
     }
+  }
+
+  /// Schedules a held or retried recovery attempt on [_liveRecoveryRetry],
+  /// cancelling anything already waiting there.
+  void _scheduleLiveRecoveryRetry(
+    Duration wait, {
+    required String trigger,
+    required bool cheapResumeFirst,
+    required bool live,
+    required int intent,
+  }) {
+    _liveRecoveryRetry?.cancel();
+    _liveRecoveryRetry = Timer(wait, () {
+      unawaited(
+        _recoverStalledStream(
+          trigger: trigger,
+          cheapResumeFirst: cheapResumeFirst,
+          live: live,
+          forIntent: intent,
+        ),
+      );
+    });
   }
 
   /// The terminal step of [_recoverStalledStream]. Two jobs: release the
@@ -1724,6 +1807,7 @@ class PlaybackManager implements AudioOwnable {
     _subtitleSelectionExplicit = subtitleSelectionExplicit;
     _mediaSourceId = mediaSourceId;
     _forceTranscodeForQueue = !enableDirectPlay && !enableDirectStream;
+    _directPlayAllowedForQueue = enableDirectPlay;
     final adjuster = _startPositionAdjuster;
     if (adjuster != null && startPosition > Duration.zero && items.isNotEmpty) {
       final currentItem = items[startIndex.clamp(0, items.length - 1)];
@@ -1838,6 +1922,7 @@ class PlaybackManager implements AudioOwnable {
       enableDirectStream = false;
       enableTranscoding = true;
     }
+    enableDirectPlay = enableDirectPlay && _directPlayAllowedForQueue;
 
     final item = queueService.currentItem;
     if (item == null || _backend == null) {
@@ -3126,6 +3211,11 @@ class PlaybackManager implements AudioOwnable {
     // Named only by the error-recovery paths, which is what the log needs to
     // tell an automatic teardown from one the viewer asked for.
     String reason = 'track-change',
+    // Live recovery passes false: its own budget already paces the re-resolve
+    // attempts, and the nested transcode retry this would otherwise trigger
+    // on a startup failure doubles an attempt into two and forces a re-encode
+    // the budget deliberately leaves optional.
+    bool allowStartupRecovery = true,
   }) {
     final previous = _reResolveQueue;
 
@@ -3146,6 +3236,7 @@ class PlaybackManager implements AudioOwnable {
         isErrorRecovery: isErrorRecovery,
         autoPlayAfterResolve: autoPlayAfterResolve,
         reason: reason,
+        allowStartupRecovery: allowStartupRecovery,
       );
     }();
 
@@ -3159,6 +3250,7 @@ class PlaybackManager implements AudioOwnable {
     required bool isErrorRecovery,
     required bool autoPlayAfterResolve,
     required String reason,
+    bool allowStartupRecovery = true,
   }) async {
     // A re-resolve stops the backend, reports the stop and kills the server
     // job, so it is one of the few things that can clear the player's
@@ -3232,6 +3324,7 @@ class PlaybackManager implements AudioOwnable {
         enableDirectPlay: !forceTranscode && !disableDirectPlay,
         enableDirectStream: !forceTranscode,
         autoPlay: autoPlayAfterResolve,
+        allowStartupRecovery: allowStartupRecovery,
       );
     } finally {
       _teardownForReResolve = false;
@@ -3560,6 +3653,7 @@ class PlaybackManager implements AudioOwnable {
       if (_hasNoActivePlayback(backend)) {
         if (!skipQueueChange) {
           _forceTranscodeForQueue = false;
+          _directPlayAllowedForQueue = true;
           _resetBackendSelectionLock();
           queueService.clear();
           state.reset();
@@ -3579,6 +3673,7 @@ class PlaybackManager implements AudioOwnable {
         if (!skipQueueChange) {
           _isOfflinePlayback = false;
           _forceTranscodeForQueue = false;
+          _directPlayAllowedForQueue = true;
           _resetBackendSelectionLock();
           queueService.clear();
           state.reset();
@@ -3631,6 +3726,7 @@ class PlaybackManager implements AudioOwnable {
       _waitingForMedia = false;
       if (!skipQueueChange) {
         _forceTranscodeForQueue = false;
+        _directPlayAllowedForQueue = true;
         _resetBackendSelectionLock();
         queueService.clear();
         state.reset();
