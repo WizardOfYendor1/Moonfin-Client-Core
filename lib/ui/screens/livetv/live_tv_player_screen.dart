@@ -118,6 +118,13 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
   /// simply stops and the viewer is left on a still frame with no way back.
   StreamSubscription<PlaybackBringupState>? _liveFailureSub;
 
+  /// Defensive reconcile alongside [_liveFailureSub]: an intermediate
+  /// recovery failure the manager already drops can still race a stale
+  /// failure card onto the screen. If playback is actually advancing again
+  /// while the card is up, clear it rather than trust the card was right.
+  StreamSubscription<bool>? _failureCardReconcilePlayingSub;
+  StreamSubscription<bool>? _failureCardReconcileBufferingSub;
+
   /// The tune path reports its own failures, so this must not double up on
   /// them. Only a failure arriving after a channel was playing is this
   /// listener's to report.
@@ -208,6 +215,12 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     });
     _listenForPlayerTrackChanges();
     _liveFailureSub = _manager.bringupStateStream.listen(_onBringupState);
+    _failureCardReconcilePlayingSub = _state.playingStream.listen(
+      (_) => _reconcileFailureCardWithPlayback(),
+    );
+    _failureCardReconcileBufferingSub = _state.bufferingStream.listen(
+      (_) => _reconcileFailureCardWithPlayback(),
+    );
     _liveRecoveryStatusSub = _manager.liveRecoveryStatusStream.listen((
       status,
     ) {
@@ -251,6 +264,8 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     _programRefreshTimer?.cancel();
     _backendSub?.cancel();
     _liveFailureSub?.cancel();
+    _failureCardReconcilePlayingSub?.cancel();
+    _failureCardReconcileBufferingSub?.cancel();
     _liveRecoveryStatusSub?.cancel();
     _retryFocus.dispose();
     _prefs.removeListener(_applySubtitleStyle);
@@ -738,6 +753,17 @@ class _LiveTvPlayerScreenState extends State<LiveTvPlayerScreen>
     if (state.phase != PlaybackBringupPhase.failed) return;
     _channelIsUp = false;
     _showChannelFailedCard(_currentChannel.name);
+  }
+
+  /// Belt and braces: the manager suppresses an intermediate recovery
+  /// failure so this screen never sees it, but if something still leaves
+  /// the failure card up while the stream is genuinely playing again, drop
+  /// it rather than leave the viewer looking at a stale Retry card.
+  void _reconcileFailureCardWithPlayback() {
+    if (!mounted || !_channelFailed) return;
+    if (!_state.isPlaying || _state.isBuffering) return;
+    _channelIsUp = true;
+    _clearChannelFailedCard();
   }
 
   /// Shows the persistent failure card. It stays up until the viewer retries,
@@ -2521,14 +2547,14 @@ class _LiveTvRoundControlButtonState extends State<_LiveTvRoundControlButton> {
 /// pill rather than an icon -- and it owns select/enter itself so the OSD's
 /// key handler never has to special-case the card being up.
 class _LiveTvRetryButton extends StatefulWidget {
-  final FocusNode? focusNode;
+  final FocusNode focusNode;
   final VoidCallback onPressed;
   final String label;
 
   const _LiveTvRetryButton({
     required this.onPressed,
     required this.label,
-    this.focusNode,
+    required this.focusNode,
   });
 
   @override
@@ -2536,34 +2562,23 @@ class _LiveTvRetryButton extends StatefulWidget {
 }
 
 class _LiveTvRetryButtonState extends State<_LiveTvRetryButton> {
-  late FocusNode _effectiveFocusNode;
-  bool _ownsNode = false;
   bool _focused = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.focusNode != null) {
-      _effectiveFocusNode = widget.focusNode!;
-    } else {
-      _effectiveFocusNode = FocusNode();
-      _ownsNode = true;
-    }
-    _effectiveFocusNode.addListener(_onFocusChanged);
+    widget.focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
-    _effectiveFocusNode.removeListener(_onFocusChanged);
-    if (_ownsNode) {
-      _effectiveFocusNode.dispose();
-    }
+    widget.focusNode.removeListener(_onFocusChanged);
     super.dispose();
   }
 
   void _onFocusChanged() {
     if (!mounted) return;
-    final hasFocus = _effectiveFocusNode.hasFocus;
+    final hasFocus = widget.focusNode.hasFocus;
     if (_focused != hasFocus) {
       setState(() => _focused = hasFocus);
     }
@@ -2573,7 +2588,7 @@ class _LiveTvRetryButtonState extends State<_LiveTvRetryButton> {
   Widget build(BuildContext context) {
     final focusColor = ThemeRegistry.active.borders.focusBorder.color;
     return Focus(
-      focusNode: _effectiveFocusNode,
+      focusNode: widget.focusNode,
       onKeyEvent: (_, event) {
         if (event is KeyDownEvent &&
             (event.logicalKey == LogicalKeyboardKey.select ||

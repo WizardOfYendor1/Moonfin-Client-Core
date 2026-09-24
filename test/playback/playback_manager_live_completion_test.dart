@@ -31,6 +31,10 @@ class _TestBackend extends Fake implements PlayerBackend {
   Duration currentPosition = Duration.zero;
   Duration reportedDuration = Duration.zero;
 
+  /// How many more times `play` should throw instead of opening, so a test
+  /// can model a backend whose open/startup fails on the next N attempts.
+  int failOpenTimes = 0;
+
   @override
   Duration get position => currentPosition;
 
@@ -141,6 +145,10 @@ class _TestBackend extends Fake implements PlayerBackend {
     dynamic mediaItem, {
     Duration startPosition = Duration.zero,
   }) async {
+    if (failOpenTimes > 0) {
+      failOpenTimes--;
+      throw StateError('backend open failed');
+    }
     playedUrls.add((mediaItem as Map<String, dynamic>)['url'] as String);
     currentPosition = startPosition;
     playing = true;
@@ -1657,5 +1665,300 @@ void main() {
         }
       });
     });
+  });
+
+  // Web/MediaKit forward `playing` as "unpaused", not "advancing": it can
+  // report true while `buffering` is also true, unlike Media3's derived
+  // `isPlaying`. These cover the `_isActuallyPlaying` helper the watchdog,
+  // frame-seen bookkeeping and recovery-status clearing all read now.
+  group('web/MediaKit-style playing+buffering progress', () {
+    PlaybackManager fakeManager(
+      _TestBackend backend,
+      _TestResolver resolver,
+      _TestService service,
+      FakeAsync async,
+    ) => PlaybackManager()
+      ..setBackend(backend)
+      ..setResolver(resolver)
+      ..setPlayerService(service)
+      ..clock = () => DateTime(2026, 9, 15, 20).add(async.elapsed);
+
+    test(
+      'playing=true with buffering=true for 15s is still a stall and '
+      'recovers',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend();
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            // Buffering first, then playing, so the moment playing flips
+            // there is already a buffering stall under way -- not a
+            // transient "actually playing" instant in between.
+            backend.emitBuffering(true);
+            backend.emitPlaying();
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, 1);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test('playing=true with buffering=false never recovers', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          backend.emitPlaying();
+          backend.emitBuffering(false);
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 60));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, isZero);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
+
+    test(
+      'recovery status stays set while playing&&buffering, and clears '
+      'only once buffering ends',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend();
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(manager.liveRecoveryStatus, isNotNull);
+
+            // The re-resolve's own play() succeeded, but the web/MediaKit
+            // engine is still buffering: playing flips true while a
+            // buffering stall is already under way, which is not yet
+            // "actually playing". Buffering first, so there is no
+            // momentary "actually playing" instant in between.
+            backend.emitBuffering(true);
+            backend.emitPlaying();
+            async.flushMicrotasks();
+            expect(manager.liveRecoveryStatus, isNotNull);
+
+            // Buffering clears while already playing -- the moment
+            // web/MediaKit playback actually resumes.
+            backend.emitBuffering(false);
+            async.flushMicrotasks();
+            expect(manager.liveRecoveryStatus, isNull);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+  });
+
+  group('a held retry does not interrupt playback that already resumed', () {
+    PlaybackManager fakeManager(
+      _TestBackend backend,
+      _TestResolver resolver,
+      _TestService service,
+      FakeAsync async,
+    ) => PlaybackManager()
+      ..setBackend(backend)
+      ..setResolver(resolver)
+      ..setPlayerService(service)
+      ..clock = () => DateTime(2026, 9, 15, 20).add(async.elapsed);
+
+    test(
+      'a failure held during an in-flight attempt is dropped once '
+      'playback actually resumes, even past the hold',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver()
+            ..delay = const Duration(seconds: 5);
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+
+            // Attempt 1's re-resolve is in flight (5s delay).
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(resolver.calls, 2);
+
+            // A second failure arrives mid-flight and is held for attempt
+            // 2's gap rather than spending another attempt immediately.
+            backend.emitCompleted();
+            async.flushMicrotasks();
+
+            // Attempt 1 finishes and the channel actually starts playing.
+            async.elapse(const Duration(seconds: 5));
+            async.flushMicrotasks();
+            expect(backend.playing, isTrue);
+            backend.emitPlaying();
+            backend.emitBuffering(false);
+            async.flushMicrotasks();
+
+            final callsAfterResume = resolver.calls;
+            final resumesAfterResume = backend.resumeLiveEdgeCalls;
+
+            // Elapse well past attempt 2's 10s gap (and the watchdog's own
+            // fresh 15s window, which the resume above disarmed): the held
+            // retry must not fire, because it was cancelled the moment
+            // playback resumed.
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+
+            expect(resolver.calls, callsAfterResume);
+            expect(backend.resumeLiveEdgeCalls, resumesAfterResume);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+  });
+
+  group('an intermediate recovery failure does not surface as terminal', () {
+    PlaybackManager fakeManager(
+      _TestBackend backend,
+      _TestResolver resolver,
+      _TestService service,
+      FakeAsync async,
+    ) => PlaybackManager()
+      ..setBackend(backend)
+      ..setResolver(resolver)
+      ..setPlayerService(service)
+      ..clock = () => DateTime(2026, 9, 15, 20).add(async.elapsed);
+
+    test(
+      'a recovery re-resolve whose backend.open throws emits no failed '
+      'bringup state',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          final phases = <PlaybackBringupPhase>[];
+          final sub = manager.bringupStateStream.listen(
+            (s) => phases.add(s.phase),
+          );
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+
+            backend.failOpenTimes = 1;
+            backend.emitCompleted();
+            async.flushMicrotasks();
+
+            expect(phases, isNot(contains(PlaybackBringupPhase.failed)));
+            expect(
+              manager.bringupState.phase,
+              isNot(PlaybackBringupPhase.failed),
+            );
+          } finally {
+            unawaited(sub.cancel());
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'the next attempt succeeding after a failed open leaves bringup not '
+      'failed',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+
+            backend.failOpenTimes = 1;
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            expect(
+              manager.bringupState.phase,
+              isNot(PlaybackBringupPhase.failed),
+            );
+
+            // Attempt 2, after the 10s gap, opens cleanly.
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+
+            expect(backend.playing, isTrue);
+            expect(
+              manager.bringupState.phase,
+              isNot(PlaybackBringupPhase.failed),
+            );
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'exhausting the budget on repeated open failures still emits exactly '
+      'one failed state with liveStreamLostError',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          final failedCount = <void>[];
+          final sub = manager.bringupStateStream.listen((s) {
+            if (s.phase == PlaybackBringupPhase.failed) failedCount.add(null);
+          });
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+
+            // Only after the initial tune has already succeeded does every
+            // recovery attempt's own play() fail.
+            backend.failOpenTimes = 3;
+            backend.emitCompleted();
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 20));
+            async.flushMicrotasks();
+
+            expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+            expect(manager.bringupState.error, liveStreamLostError);
+            expect(failedCount, hasLength(1));
+          } finally {
+            unawaited(sub.cancel());
+            manager.dispose();
+          }
+        });
+      },
+    );
   });
 }
