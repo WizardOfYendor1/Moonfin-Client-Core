@@ -2519,6 +2519,11 @@ class AppLocalizationsSq extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => 'Ngarkimi i regjistrimeve dështoi';
 
   @override

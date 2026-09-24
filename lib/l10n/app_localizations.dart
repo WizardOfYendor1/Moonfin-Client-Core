@@ -4354,6 +4354,12 @@ abstract class AppLocalizations {
   /// **'Failed to play {name}'**
   String failedToPlayChannel(String name);
 
+  /// Overlay shown while a live channel's bounded recovery is retrying
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting… ({attempt} of {total})'**
+  String liveReconnecting(int attempt, int total);
+
   /// Error when recordings fail to load
   ///
   /// In en, this message translates to:

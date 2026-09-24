@@ -2589,6 +2589,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => 'Aufnahmen konnten nicht geladen werden';
 
   @override

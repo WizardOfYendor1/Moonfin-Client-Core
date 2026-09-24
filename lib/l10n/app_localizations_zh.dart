@@ -2451,6 +2451,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => '加载录制内容失败';
 
   @override

@@ -8,6 +8,7 @@ import 'package:playback_core/playback_core.dart';
 class _TestBackend extends Fake implements PlayerBackend {
   final _errors = StreamController<Map<String, dynamic>>.broadcast();
   final _completed = StreamController<bool>.broadcast();
+  final _playing = StreamController<bool>.broadcast();
   final List<String> playedUrls = <String>[];
   int stopCalls = 0;
   int resumeLiveEdgeCalls = 0;
@@ -32,6 +33,9 @@ class _TestBackend extends Fake implements PlayerBackend {
   bool get isPlaying => playing;
 
   @override
+  bool? get playWhenReady => playing;
+
+  @override
   double get playbackSpeed => 1.0;
 
   @override
@@ -47,7 +51,13 @@ class _TestBackend extends Fake implements PlayerBackend {
   Stream<Duration> get bufferStream => const Stream<Duration>.empty();
 
   @override
-  Stream<bool> get playingStream => const Stream<bool>.empty();
+  Stream<bool> get playingStream => _playing.stream;
+
+  /// Reports the engine has resumed playing, e.g. after a live recovery.
+  void emitPlaying() {
+    playing = true;
+    _playing.add(true);
+  }
 
   @override
   Stream<bool> get bufferingStream => const Stream<bool>.empty();
@@ -121,6 +131,7 @@ class _TestBackend extends Fake implements PlayerBackend {
   void dispose() {
     _errors.close();
     _completed.close();
+    _playing.close();
   }
 }
 
@@ -579,6 +590,144 @@ void main() {
         expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
       } finally {
         await sub.cancel();
+        manager.dispose();
+      }
+    });
+  });
+
+  group('live recovery status', () {
+    test('reports attempt 1 of 4 on the first recovery', () async {
+      final backend = _TestBackend();
+      final resolver = _TestResolver();
+      final service = _TestService();
+      final clock = _Clock();
+      final manager = _manager(backend, resolver, service, clock);
+      final statuses = <LiveRecoveryStatus?>[];
+      final sub = manager.liveRecoveryStatusStream.listen(statuses.add);
+      try {
+        await manager.playItems(<dynamic>[_liveChannel]);
+
+        backend.emitCompleted();
+        await _settle();
+
+        expect(manager.liveRecoveryStatus?.attempt, 1);
+        expect(manager.liveRecoveryStatus?.maxAttempts, 4);
+        expect(statuses.whereType<LiveRecoveryStatus>().length, 1);
+      } finally {
+        await sub.cancel();
+        manager.dispose();
+      }
+    });
+
+    test('advances with further attempts', () async {
+      final backend = _TestBackend()..canResumeLiveEdge = false;
+      final resolver = _TestResolver();
+      final service = _TestService();
+      final clock = _Clock();
+      final manager = _manager(backend, resolver, service, clock);
+      try {
+        await manager.playItems(<dynamic>[_liveChannel]);
+
+        for (var i = 0; i < 3; i++) {
+          clock.advance(const Duration(seconds: 5));
+          backend.emitCompleted();
+          await _settle();
+          expect(manager.liveRecoveryStatus?.attempt, i + 1);
+          expect(manager.liveRecoveryStatus?.maxAttempts, 4);
+        }
+      } finally {
+        manager.dispose();
+      }
+    });
+
+    test('clears when the backend reports playing', () async {
+      final backend = _TestBackend();
+      final resolver = _TestResolver();
+      final service = _TestService();
+      final clock = _Clock();
+      final manager = _manager(backend, resolver, service, clock);
+      try {
+        await manager.playItems(<dynamic>[_liveChannel]);
+
+        backend.emitCompleted();
+        await _settle();
+        expect(manager.liveRecoveryStatus, isNotNull);
+
+        backend.emitPlaying();
+        await _settle();
+
+        expect(manager.liveRecoveryStatus, isNull);
+      } finally {
+        manager.dispose();
+      }
+    });
+
+    test('clears on give-up, alongside the failed bringup state', () async {
+      final backend = _TestBackend();
+      final resolver = _TestResolver();
+      final service = _TestService();
+      final clock = _Clock();
+      final manager = _manager(backend, resolver, service, clock);
+      try {
+        await manager.playItems(<dynamic>[_liveChannel]);
+
+        for (var i = 0; i < 5; i++) {
+          clock.advance(const Duration(seconds: 5));
+          backend.emitCompleted();
+          await _settle();
+        }
+
+        expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+        expect(manager.liveRecoveryStatus, isNull);
+      } finally {
+        manager.dispose();
+      }
+    });
+
+    test('clears when the viewer stops playback', () async {
+      final backend = _TestBackend();
+      final resolver = _TestResolver();
+      final service = _TestService();
+      final clock = _Clock();
+      final manager = _manager(backend, resolver, service, clock);
+      try {
+        await manager.playItems(<dynamic>[_liveChannel]);
+
+        backend.emitCompleted();
+        await _settle();
+        expect(manager.liveRecoveryStatus, isNotNull);
+
+        await manager.stop();
+
+        expect(manager.liveRecoveryStatus, isNull);
+      } finally {
+        manager.dispose();
+      }
+    });
+
+    test('clears when the viewer tunes to another channel', () async {
+      final backend = _TestBackend();
+      final resolver = _TestResolver();
+      final service = _TestService();
+      final clock = _Clock();
+      final manager = _manager(backend, resolver, service, clock);
+      try {
+        await manager.playItems(<dynamic>[_liveChannel]);
+
+        backend.emitCompleted();
+        await _settle();
+        expect(manager.liveRecoveryStatus, isNotNull);
+
+        await manager.playItems(<dynamic>[
+          <String, dynamic>{
+            'Id': 'channel-2',
+            'Type': 'TvChannel',
+            'Name': 'WXIX',
+          },
+        ]);
+
+        expect(manager.liveRecoveryStatus, isNull);
+      } finally {
         manager.dispose();
       }
     });

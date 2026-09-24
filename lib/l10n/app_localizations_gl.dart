@@ -2525,6 +2525,11 @@ class AppLocalizationsGl extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings =>
       'Produciuse un erro ao cargar as gravacións';
 

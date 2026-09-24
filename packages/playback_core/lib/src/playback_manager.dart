@@ -248,6 +248,7 @@ class PlaybackManager implements AudioOwnable {
     _lastLiveRecoveryAt = null;
     _liveRecoveryRetry?.cancel();
     _liveRecoveryRetry = null;
+    _setLiveRecoveryStatus(null);
   }
 
   /// Clock behind the live recovery budget and playback start time. A seam
@@ -261,7 +262,19 @@ class PlaybackManager implements AudioOwnable {
   final _bringupStateController =
       StreamController<PlaybackBringupState>.broadcast();
   final _sessionEndedController = StreamController<void>.broadcast();
+  final _liveRecoveryStatusController =
+      StreamController<LiveRecoveryStatus?>.broadcast();
   PlaybackBringupState _bringupState = const PlaybackBringupState.idle();
+  LiveRecoveryStatus? _liveRecoveryStatus;
+
+  /// Updates the live recovery progress, emitting only when it actually
+  /// changes so a held retry that keeps re-announcing the same attempt does
+  /// not spam the stream.
+  void _setLiveRecoveryStatus(LiveRecoveryStatus? status) {
+    if (_liveRecoveryStatus == status) return;
+    _liveRecoveryStatus = status;
+    _liveRecoveryStatusController.add(status);
+  }
 
   PlayerBackend? get backend => _backend;
 
@@ -302,6 +315,9 @@ class PlaybackManager implements AudioOwnable {
   Stream<PlaybackBringupState> get bringupStateStream =>
       _bringupStateController.stream;
   Stream<void> get sessionEndedStream => _sessionEndedController.stream;
+  LiveRecoveryStatus? get liveRecoveryStatus => _liveRecoveryStatus;
+  Stream<LiveRecoveryStatus?> get liveRecoveryStatusStream =>
+      _liveRecoveryStatusController.stream;
   StreamResolutionResult? get currentResolution => _currentResolution;
 
   /// Item that gained a stream on the server after this session resolved. The
@@ -888,6 +904,7 @@ class PlaybackManager implements AudioOwnable {
         // progress report can tell a viewer pause from a starved stream.
         state.setPlayWhenReady(backend.playWhenReady);
         state.setPlaying(playing);
+        if (playing) _setLiveRecoveryStatus(null);
       }),
       backend.bufferingStream.listen((buffering) {
         state.setPlayWhenReady(backend.playWhenReady);
@@ -1131,6 +1148,12 @@ class PlaybackManager implements AudioOwnable {
         await _giveUpOnStalledStream(live: live, intent: intent);
         return;
       }
+      _setLiveRecoveryStatus(
+        LiveRecoveryStatus(
+          attempt: attempt,
+          maxAttempts: _liveRecoveryMaxAttempts,
+        ),
+      );
       // Cheapest tier: ask the player to re-open the source where the stream
       // is now. Most engines cannot, and one that says so falls straight
       // through to the re-resolve rather than spending its attempt on a call
@@ -1209,6 +1232,7 @@ class PlaybackManager implements AudioOwnable {
     // arrives while it is in flight is folded into it and produces no state of
     // its own -- so this failure would be the only thing the viewer is left
     // looking at.
+    _setLiveRecoveryStatus(null);
     bool viewerMovedOn() => intent != _viewerIntentGeneration;
     if (viewerMovedOn()) {
       _diagnosticLogger?.call(
@@ -3638,6 +3662,7 @@ class PlaybackManager implements AudioOwnable {
     _backendChangedController.close();
     _bringupStateController.close();
     _sessionEndedController.close();
+    _liveRecoveryStatusController.close();
     for (final backend in _retainedBackends.toList()) {
       backend.dispose();
     }
@@ -3809,6 +3834,24 @@ class PlaybackBringupState {
       backend = null,
       playMethod = null,
       error = null;
+}
+
+/// Progress of a bounded live recovery in flight, for a screen to show a
+/// reconnecting indicator instead of a plain buffering spinner.
+class LiveRecoveryStatus {
+  final int attempt;
+  final int maxAttempts;
+
+  const LiveRecoveryStatus({required this.attempt, required this.maxAttempts});
+
+  @override
+  bool operator ==(Object other) =>
+      other is LiveRecoveryStatus &&
+      other.attempt == attempt &&
+      other.maxAttempts == maxAttempts;
+
+  @override
+  int get hashCode => Object.hash(attempt, maxAttempts);
 }
 
 bool _languagesMatch(Map? stream, String? targetLanguage) {

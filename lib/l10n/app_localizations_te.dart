@@ -2515,6 +2515,11 @@ class AppLocalizationsTe extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => 'రికార్డింగ్‌లను లోడ్ చేయడంలో విఫలమైంది';
 
   @override

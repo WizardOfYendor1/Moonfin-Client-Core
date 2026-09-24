@@ -2502,6 +2502,11 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => 'রেকর্ডিং লোড করতে ব্যর্থ হয়েছে';
 
   @override

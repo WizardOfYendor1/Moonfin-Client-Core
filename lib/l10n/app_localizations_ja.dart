@@ -2470,6 +2470,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => '録音のロードに失敗しました';
 
   @override

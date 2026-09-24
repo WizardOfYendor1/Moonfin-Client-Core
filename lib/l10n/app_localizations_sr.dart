@@ -2610,6 +2610,11 @@ class AppLocalizationsSr extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => 'Учитавање снимака није успело';
 
   @override

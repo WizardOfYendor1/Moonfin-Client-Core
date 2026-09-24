@@ -2469,6 +2469,11 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => '녹음을 로드하지 못했습니다.';
 
   @override

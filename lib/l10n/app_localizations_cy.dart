@@ -2527,6 +2527,11 @@ class AppLocalizationsCy extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => 'Wedi methu llwytho recordiadau';
 
   @override

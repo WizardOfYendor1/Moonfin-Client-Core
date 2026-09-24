@@ -2513,6 +2513,11 @@ class AppLocalizationsAf extends AppLocalizations {
   }
 
   @override
+  String liveReconnecting(int attempt, int total) {
+    return 'Reconnecting… ($attempt of $total)';
+  }
+
+  @override
   String get failedToLoadRecordings => 'Kon nie opnames laai nie';
 
   @override
