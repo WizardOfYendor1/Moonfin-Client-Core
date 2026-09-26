@@ -238,7 +238,7 @@ void main() {
   );
 
   testWidgets(
-    'a session left current by a failed re-resolve is released only once',
+    'a session left current by a failed re-resolve makes one release attempt',
     (tester) async {
       final resolver = _TestResolver()..failOnCalls.add(2);
       final service = _TestService();
@@ -255,7 +255,7 @@ void main() {
       await tester.pump();
 
       // Both re-resolves stop session-1, since the failed one never replaced
-      // it, but its stream is only given back the first time.
+      // it, but only the first attempts to release its stream.
       expect(
         service.stops.where((s) => s == 'session-1'),
         hasLength(2),

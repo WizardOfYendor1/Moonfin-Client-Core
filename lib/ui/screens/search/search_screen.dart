@@ -29,6 +29,7 @@ import '../../util/error_message.dart';
 import '../../util/search_group_title_localizer.dart';
 import '../../../util/focus/grid_focus_node_mixin.dart';
 import '../../../util/focus/row_focus_coordinator.dart';
+import '../../widgets/bottom_nav/bottom_navbar.dart';
 import '../../widgets/library_row.dart';
 import '../../widgets/media_card.dart';
 import '../../widgets/navigation_layout.dart';
@@ -822,6 +823,7 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
     final scaffold = Scaffold(
       backgroundColor: AppColorScheme.background,
       body: NavigationLayout(
+        activeRoute: Destinations.search,
         showBackButton: true,
         pinTopToolbar: true,
         child: SafeArea(
@@ -1281,10 +1283,13 @@ class _SearchScreenState extends State<SearchScreen> with GridFocusNodeMixin {
       );
     }
 
-    return ListView(
-      controller: _resultsScrollController,
-      padding: EdgeInsets.fromLTRB(horizontalPadding, 8, 0, 32),
-      children: rows,
+    return BottomNavPadded(
+      fallback: 32,
+      builder: (context, bottom) => ListView(
+        controller: _resultsScrollController,
+        padding: EdgeInsets.fromLTRB(horizontalPadding, 8, 0, bottom),
+        children: rows,
+      ),
     );
   }
 

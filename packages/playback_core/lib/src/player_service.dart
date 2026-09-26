@@ -23,7 +23,7 @@ abstract class PlayerService {
   /// Reports the stop and, when [releaseLiveStream] is set, closes the
   /// session's server live stream. A stop can be reported more than once for
   /// one session, but a shared live stream counts every close as a viewer
-  /// leaving, so the caller clears it after the first.
+  /// leaving, so the caller sets it on at most one release attempt.
   Future<void> onPlaybackStop(
     dynamic mediaItem,
     StreamResolutionResult resolution,

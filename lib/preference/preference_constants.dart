@@ -102,6 +102,14 @@ enum NavbarPosition {
   bottom,
 }
 
+/// How the mobile bottom navbar is drawn. Only read while [NavbarPosition.bottom]
+/// is in effect, which is phones and tablets only.
+enum BottomNavbarStyle {
+  dock,
+  split,
+  strip,
+}
+
 enum NextUpBehavior {
   extended,
   minimal,

@@ -10149,7 +10149,7 @@
     "@trickplayModeFull": {
         "description": "Trickplay mode option: temporarily replaces the video with the trickplay image while scrubbing"
     },
-    "trickplaySettingsPreviewHint": "Vedä liukusäädintä nähdäksesi esikatselun liu’uttamisesta",
+    "trickplaySettingsPreviewHint": "Vedä liukusäädintä nähdäksesi esikatselun",
     "@trickplaySettingsPreviewHint": {
         "description": "Hint shown below the live trickplay settings preview"
     },
@@ -10932,7 +10932,7 @@
             }
         }
     },
-    "trickplayPauseWhileScrubbing": "Tauko Kelauksen Ajaksi",
+    "trickplayPauseWhileScrubbing": "Tauko Skrubbauksen Ajaksi",
     "@trickplayPauseWhileScrubbing": {
         "description": "Setting for whether seeking pauses playback so the trickplay preview holds still"
     },
@@ -12454,7 +12454,7 @@
     "@setupDetailMinimalistHint": {
         "description": "What the minimalist detail screen style gives you"
     },
-    "guideRepeatBadge": "Toista",
+    "guideRepeatBadge": "Jatkuva",
     "@guideRepeatBadge": {
         "description": "Short badge label shown on a rerun in the guide hero band"
     },

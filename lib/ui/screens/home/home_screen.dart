@@ -66,7 +66,7 @@ import '../../widgets/mediabar/banner_media_bar.dart';
 import '../../widgets/image_source.dart';
 import '../../widgets/media_card.dart';
 import '../../widgets/selector_builder.dart';
-import '../../widgets/mobile_bottom_nav_bar.dart';
+import '../../widgets/bottom_nav/bottom_navbar.dart';
 import '../../widgets/navigation_layout.dart';
 import '../../widgets/responsive_layout.dart';
 import '../../widgets/seasonal_effects.dart';
@@ -1011,12 +1011,7 @@ class _ContentRowsState extends State<_ContentRows>
 
   /// Height of the navbar the rows scroll behind, or zero when it is not
   /// along the bottom.
-  double _bottomNavbarInset() {
-    if (!NavigationLayout.allowBottomNavbar) return 0.0;
-    final position = widget.prefs.get(UserPreferences.navbarPosition);
-    if (position != NavbarPosition.bottom) return 0.0;
-    return MobileBottomNavBar.heightFor(context);
-  }
+  double _bottomNavbarInset() => BottomNavInsetScope.maybeOf(context) ?? 0.0;
 
   List<double> _rowTargetOffsetsForScroll({required bool fullScreenRows}) {
     final maxScrollExtent = _scrollController.hasClients
