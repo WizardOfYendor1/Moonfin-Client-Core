@@ -1279,6 +1279,12 @@ List<_SettingsSearchEntry> _buildSettingsSearchIndex({
     video.leaf('skipForwardLength', l10n.skipForwardLength, keywords: [
       'seek forward',
     ]),
+    video.leaf(
+      'showChapterMarkers',
+      l10n.showChapterMarkers,
+      subtitle: l10n.showChapterMarkersDescription,
+      keywords: ['seek bar', 'seekbar', 'progress bar', 'chapters', 'marks'],
+    ),
     if (PlatformDetection.useMobileUi) ...[
       video.leaf(
         'osdLockEnabled',

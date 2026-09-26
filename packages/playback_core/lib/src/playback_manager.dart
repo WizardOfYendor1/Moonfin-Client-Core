@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'chapter_steps.dart';
 import 'media_stream_resolver.dart';
 import 'playback_arbiter.dart';
 import 'player_backend.dart';
@@ -126,6 +127,18 @@ class PlaybackManager implements AudioOwnable {
   String? _clientTranscodeReason;
   Duration Function(dynamic item, Duration startPosition)?
   _startPositionAdjuster;
+
+  /// Chapter starts, and the item they were set for, so previous and next
+  /// step through chapters before they step through the queue.
+  ///
+  /// Keyed to the item rather than cleared when a stream starts, because the
+  /// same item restarts for a track switch, a transcode retry or a resume,
+  /// and clearing would drop its chapters for the rest of its playback.
+  /// Compared by identity, since the queue holds bare paths offline and
+  /// asking those for an id throws.
+  List<Duration> _chapterStarts = const [];
+  Object? _chapterStartsItem;
+
   Future<PlaybackStartupRecoveryDecision> Function(
     PlaybackStartupFailureContext context,
   )?
@@ -203,6 +216,11 @@ class PlaybackManager implements AudioOwnable {
   bool _suppressNextGenericBackendError = false;
   bool _teardownForReResolve = false;
 
+  /// Sessions whose server live stream has been closed. Keyed by resolution,
+  /// not live stream id, because the server hands a reopened channel the same
+  /// id.
+  final _liveStreamReleased = Expando<bool>();
+
   /// Live recovery budget. Attempt 1 resumes in place (re-resolving if the
   /// engine can't), attempt 2 re-resolves, and attempt 3 escalates one step
   /// past the current route: direct play hands the stream to the server,
@@ -254,7 +272,13 @@ class PlaybackManager implements AudioOwnable {
   /// watchdog covers the gap: it watches for a first frame after the stream
   /// opens, and for a frame after any later stall, and treats either miss as
   /// a stalled channel worth recovering.
-  static const _liveStallTimeout = Duration(seconds: 15);
+  ///
+  /// A first frame gets longer because a tune can take ~10s. A stall after
+  /// playing gets 8s: Media3 won't resume until 5s is re-buffered, which a
+  /// live stream only delivers in real time, so anything shorter would fire
+  /// on ordinary rebuffers.
+  static const _liveFirstFrameTimeout = Duration(seconds: 15);
+  static const _liveMidStreamStallTimeout = Duration(seconds: 8);
   Timer? _liveStallWatchdog;
 
   /// Whether a live session is being watched at all: on when a live stream
@@ -325,12 +349,15 @@ class PlaybackManager implements AudioOwnable {
       return;
     }
     final intent = _viewerIntentGeneration;
-    _liveStallWatchdog = Timer(_liveStallTimeout, () {
+    final timeout = _liveFrameSeenSinceOpen
+        ? _liveMidStreamStallTimeout
+        : _liveFirstFrameTimeout;
+    _liveStallWatchdog = Timer(timeout, () {
       _liveStallWatchdog = null;
       if (!_liveStallWatchActive || intent != _viewerIntentGeneration) return;
       if (!_liveStallSuspected()) return;
       _diagnosticLogger?.call(
-        'Live stall watchdog: no frame for ${_liveStallTimeout.inSeconds}s, '
+        'Live stall watchdog: no frame for ${timeout.inSeconds}s, '
         'recovering',
       );
       unawaited(_recoverStalledStream(trigger: 'stalled'));
@@ -646,8 +673,13 @@ class PlaybackManager implements AudioOwnable {
     bool isLive = false,
     bool autoPlay = true,
     List<ExternalSubtitle> externalSubtitles = const [],
+    bool audioLike = false,
   }) {
-    final resolvedMediaType = mediaType?.trim().toLowerCase();
+    // Music and audiobooks are audio whatever their streams say. Media3 only
+    // plays audio with no view when the payload says audio, so a stray video
+    // stream must not change that.
+    final resolvedMediaType =
+        audioLike ? 'audio' : mediaType?.trim().toLowerCase();
 
     final Map<String, dynamic>? audioStream;
     if (audioStreamIndex != null) {
@@ -943,25 +975,29 @@ class PlaybackManager implements AudioOwnable {
   @override
   AudioProducer get audioProducerId => AudioProducer.mainPlayback;
 
+  /// Whether [item] is music or an audiobook, from a library item, an offline
+  /// url's downloaded metadata, or a raw item map.
+  bool _isAudioLikeItem(dynamic item) {
+    final Map<dynamic, dynamic>? meta = switch (item) {
+      String url => _offlineMetadataByUrl[url],
+      Map map => map,
+      _ => null,
+    };
+    if (meta == null) {
+      try {
+        return item?.isAudioLike == true;
+      } catch (_) {
+        return false;
+      }
+    }
+    final type = meta['Type'];
+    return type == 'Audio' || type == 'AudioBook' || meta['MediaType'] == 'Audio';
+  }
+
   @override
   Future<void> onAudioRevoked(RevokeReason reason) async {
     if (reason == RevokeReason.background) {
-      final item = queueService.currentItem;
-      bool isAudio = false;
-      try {
-        isAudio = item?.isAudioLike == true;
-      } catch (_) {}
-      if (!isAudio && item is String) {
-        try {
-          final meta = currentOfflineMetadata;
-          if (meta != null) {
-            final type = meta['Type']?.toString();
-            final mediaType = meta['MediaType']?.toString();
-            isAudio = type == 'Audio' || type == 'AudioBook' || mediaType == 'Audio';
-          }
-        } catch (_) {}
-      }
-      if (isAudio) return;
+      if (_isAudioLikeItem(queueService.currentItem)) return;
       await pause();
     } else {
       await stop(userInitiated: false);
@@ -979,6 +1015,21 @@ class PlaybackManager implements AudioOwnable {
   ) {
     _startPositionAdjuster = adjuster;
   }
+
+  /// Set per item by whoever loaded its chapters, after playback of that
+  /// item has started.
+  void setChapterStarts(List<Duration> starts) {
+    _chapterStarts = starts;
+    _chapterStartsItem = queueService.currentItem;
+  }
+
+  /// Empty unless the starts belong to the item playing now. This manager is
+  /// one instance shared with the audio screens, which never set chapters, so
+  /// a song must not inherit a film's.
+  List<Duration> get _currentChapterStarts =>
+      identical(queueService.currentItem, _chapterStartsItem)
+      ? _chapterStarts
+      : const [];
 
   void setStartupRecoveryDecider(
     Future<PlaybackStartupRecoveryDecision> Function(
@@ -1337,6 +1388,10 @@ class PlaybackManager implements AudioOwnable {
       // through to the re-resolve rather than spending its attempt on a call
       // that did nothing, then waiting for a recovery that is never coming.
       if (cheapResumeFirst && attempt == 1) {
+        // Reset before the call, not after it returns true: the backend can
+        // emit playing/non-buffering from inside `resumeLiveEdge`, before it
+        // returns, and a reset placed after would erase that first frame.
+        _liveFrameSeenSinceOpen = false;
         if (await _backend?.resumeLiveEdge() ?? false) {
           _diagnosticLogger?.call(
             'Live recovery: $trigger, attempt $attempt of '
@@ -2460,12 +2515,17 @@ class PlaybackManager implements AudioOwnable {
         isLive: resolution.liveStreamId != null || _isLiveTvItem(item),
         autoPlay: autoPlay,
         externalSubtitles: resolution.externalSubtitles,
+        audioLike: _isAudioLikeItem(item),
       );
       await _arbiter?.acquire(AudioProducer.mainPlayback);
       if (sessionToken != _playbackSessionToken) {
         _cleanupPreemptedSession(item, resolution);
         return;
       }
+      // Reset before the source opens, not after: web (and possibly
+      // MediaKit) can emit playing/non-buffering from inside `open`, before
+      // it returns, and a reset placed after would erase that first frame.
+      _liveFrameSeenSinceOpen = false;
       await _backend!.play(
         backendMediaPayload,
         startPosition: useNativeStart ? startPosition : Duration.zero,
@@ -2608,6 +2668,14 @@ class PlaybackManager implements AudioOwnable {
           error: 'mediaNotReady',
         ),
       );
+      // Outside recovery this is a normal return -- the caller reads the
+      // failed bringup state above. During a recovery re-resolve that state
+      // was just suppressed, so returning here would look like a successful
+      // re-resolve and no further attempt would ever be scheduled. Throw
+      // instead so the recovery loop's catch schedules the next attempt.
+      if (_suppressFailedBringupDuringRecovery) {
+        throw const _MediaNotReadyDuringRecoveryException();
+      }
       return;
     }
 
@@ -2684,8 +2752,10 @@ class PlaybackManager implements AudioOwnable {
     if (resolution.playMethod == StreamPlayMethod.directPlay &&
         directLiveStreamId != null &&
         directLiveStreamId.isNotEmpty) {
-      final closeFuture = _service?.closeLiveStream(directLiveStreamId);
-      if (closeFuture != null) unawaited(closeFuture);
+      if (_claimLiveStreamRelease(resolution)) {
+        final closeFuture = _service?.closeLiveStream(directLiveStreamId);
+        if (closeFuture != null) unawaited(closeFuture);
+      }
     }
 
     _startProgressTimer();
@@ -2698,10 +2768,9 @@ class PlaybackManager implements AudioOwnable {
         playMethod: resolution.playMethod.name,
       ),
     );
-    // The stream just opened, including one opened by a recovery re-resolve.
     // `autoPlay` is the manager's own intent, so it decides arming here
-    // rather than the backend's (possibly stale) playWhenReady.
-    _liveFrameSeenSinceOpen = false;
+    // rather than the backend's (possibly stale) playWhenReady. The frame-seen
+    // flag was already reset before the source opened, above.
     if (autoPlay) {
       _viewerPaused = false;
       _startLiveStallWatch();
@@ -2800,10 +2869,19 @@ class PlaybackManager implements AudioOwnable {
               generation.item,
               generation.resolution,
               generation.stopPosition,
+              releaseLiveStream: _claimLiveStreamRelease(generation.resolution),
             )
             .catchError((_) {}),
       );
     } catch (_) {}
+  }
+
+  /// True only the first time it is asked for [resolution], so a session
+  /// gives its live stream back once however many stops it reports.
+  bool _claimLiveStreamRelease(StreamResolutionResult resolution) {
+    if (_liveStreamReleased[resolution] == true) return false;
+    _liveStreamReleased[resolution] = true;
+    return true;
   }
 
   void _stopProgressTimer() {
@@ -2917,6 +2995,30 @@ class PlaybackManager implements AudioOwnable {
 
   Future<void> next() async {
     if (await _maybeIntercept(TransportAction.next)) return;
+    final chapter = nextChapterStart(_currentChapterStarts, state.position);
+    if (chapter != null) {
+      await seekTo(chapter);
+      return;
+    }
+    await _advanceQueue();
+  }
+
+  /// Straight to the next item, without stepping chapters first. What Play
+  /// Next and the media session's next action want, since both mean the next
+  /// item however far into this one the position is.
+  Future<void> nextInQueue() async {
+    if (await _maybeIntercept(TransportAction.next)) return;
+    await _advanceQueue();
+  }
+
+  Future<void> _advanceQueue() async {
+    // Nothing queued after this, so run it to the end and let the ordinary
+    // finish handle watched state and whatever follows, rather than stopping
+    // on a dead player.
+    if (!queueService.hasNext && state.duration > Duration.zero) {
+      await seekTo(state.duration);
+      return;
+    }
     if (_isManualNexting || _isAutoNexting) return;
     _isManualNexting = true;
     _mediaSourceId = null;
@@ -2934,6 +3036,12 @@ class PlaybackManager implements AudioOwnable {
 
   Future<void> previous() async {
     if (await _maybeIntercept(TransportAction.previous)) return;
+    final chapter =
+        previousChapterStart(_currentChapterStarts, state.position);
+    if (chapter != null) {
+      await seekTo(chapter);
+      return;
+    }
     // A press this far in restarts the item, and so does one with nothing to
     // step back to.
     if (state.position.inSeconds > 3 || !queueService.hasPrevious) {
@@ -3481,7 +3589,12 @@ class PlaybackManager implements AudioOwnable {
     } catch (_) {}
 
     if (item != null && resolution != null) {
-      final stopReport = _service?.onPlaybackStop(item, resolution, currentPos);
+      final stopReport = _service?.onPlaybackStop(
+        item,
+        resolution,
+        currentPos,
+        releaseLiveStream: _claimLiveStreamRelease(resolution),
+      );
       if (resolution.playMethod == StreamPlayMethod.directPlay) {
         // No server-side job to tear down, so don't delay the restart.
         if (stopReport != null) {
@@ -3794,6 +3907,7 @@ class PlaybackManager implements AudioOwnable {
           mediaStreams: offlineStreams,
           audioStreamIndex: _audioStreamIndex,
           subtitleStreamIndex: _subtitleStreamIndex,
+          audioLike: _isAudioLikeItem(url),
         ),
         startPosition: startPosition,
       );
@@ -3893,7 +4007,12 @@ class PlaybackManager implements AudioOwnable {
           try {
             unawaited(
               _service
-                      ?.onPlaybackStop(reportItem, resolution, pos)
+                      ?.onPlaybackStop(
+                        reportItem,
+                        resolution,
+                        pos,
+                        releaseLiveStream: _claimLiveStreamRelease(resolution),
+                      )
                       .catchError((_) {}) ??
                   Future<void>.value(),
             );
@@ -3935,7 +4054,16 @@ class PlaybackManager implements AudioOwnable {
 
   void _cleanupPreemptedSession(dynamic item, StreamResolutionResult? resolution) {
     if (item != null && resolution != null) {
-      unawaited(_service?.onPlaybackStop(item, resolution, Duration.zero).catchError((_) => null));
+      unawaited(
+        _service
+            ?.onPlaybackStop(
+              item,
+              resolution,
+              Duration.zero,
+              releaseLiveStream: _claimLiveStreamRelease(resolution),
+            )
+            .catchError((_) => null),
+      );
     }
   }
 
@@ -4059,6 +4187,16 @@ class PlaybackStartupFailureContext {
     this.error,
     this.stackTrace,
   });
+}
+
+/// Thrown from `_playCurrentItem` when a recovery re-resolve's media never
+/// becomes ready, so the recovery loop's catch schedules the next attempt
+/// instead of treating the re-resolve as a success.
+class _MediaNotReadyDuringRecoveryException implements Exception {
+  const _MediaNotReadyDuringRecoveryException();
+
+  @override
+  String toString() => '_MediaNotReadyDuringRecoveryException: mediaNotReady';
 }
 
 class PlaybackStartupRecoveryAbortedException implements Exception {

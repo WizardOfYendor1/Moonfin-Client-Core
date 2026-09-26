@@ -18,8 +18,10 @@ import 'package:moonfin/preference/preference_constants.dart'
 import 'package:moonfin/preference/user_preferences.dart';
 import 'package:moonfin/auth/repositories/session_repository.dart';
 import 'package:moonfin/ui/screens/detail/minimalist/minimalist_detail_content.dart';
+import 'package:moonfin/ui/screens/detail/modern/modern_detail_content.dart';
 import 'package:moonfin/data/models/aggregated_item.dart';
 import 'package:moonfin/ui/widgets/focus/locked_focus_row.dart';
+import 'package:moonfin/ui/widgets/rating_display.dart';
 import 'package:moonfin/ui/widgets/sliding_pill_tabs.dart';
 import 'package:moonfin/ui/theme/app_theme.dart';
 import 'package:moonfin_design/moonfin_design.dart';
@@ -201,6 +203,59 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 500));
   }
+
+  Map<String, dynamic> ratedMovie() => {
+    ...itemData('Movie'),
+    'CommunityRating': 7.8,
+    'CriticRating': 91,
+  };
+
+  testWidgets('a rated item gets a ratings row', (tester) async {
+    final vm = viewModel('Movie', data: ratedMovie());
+    await pumpContent(tester, vm);
+
+    expect(find.byType(RatingsRow), findsOneWidget);
+    expect(find.text('7.8'), findsOneWidget);
+  });
+
+  testWidgets('the ratings run wider than the title measure', (tester) async {
+    // Comfortably past the 760 the title and buttons cap at.
+    final vm = viewModel('Movie', data: ratedMovie());
+    await pumpContent(tester, vm, size: const Size(1920, 1080));
+
+    final box = tester.renderObject(find.byType(RatingsRow)) as RenderBox;
+    expect(box.constraints.maxWidth, greaterThan(1000));
+  });
+
+  testWidgets('Kids Mode takes the ratings away', (tester) async {
+    await prefs.set(UserPreferences.kidsModeEnabled, true);
+
+    final vm = viewModel('Movie', data: ratedMovie());
+    await pumpContent(tester, vm);
+
+    expect(find.byType(RatingsRow), findsNothing);
+  });
+
+  testWidgets('an unrated item draws no row at all', (tester) async {
+    final vm = viewModel('Movie');
+    await pumpContent(tester, vm);
+
+    expect(find.byType(RatingsRow), findsNothing);
+  });
+
+  // A BoxSet falls through to Spotlight, which is the only route a test has to
+  // that screen without standing a second harness up.
+  testWidgets('Spotlight draws a row for a score the viewer set alone', (
+    tester,
+  ) async {
+    final vm = viewModel('BoxSet', data: {
+      ...itemData('BoxSet'),
+      'UserData': {'Rating': 9.0},
+    });
+    await pumpContent(tester, vm);
+
+    expect(find.byType(RatingsRow), findsOneWidget);
+  });
 
   testWidgets('the screen is artwork, a title and the buttons', (tester) async {
     await pumpContent(tester, viewModel('Movie'));
@@ -442,5 +497,14 @@ void main() {
 
     expect(rail.itemExtent, lessThan(266));
     expect(visible, greaterThan(4.0));
+  });
+
+  testWidgets('falls back to Modern for playlists', (tester) async {
+    when(() => itemsApi.getPlaylistItems('item-1')).thenAnswer(
+      (_) async => {'Items': []},
+    );
+    await pumpContent(tester, viewModel('Playlist'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ModernDetailContent), findsOneWidget);
   });
 }

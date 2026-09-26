@@ -35,6 +35,20 @@ class _TestBackend extends Fake implements PlayerBackend {
   /// can model a backend whose open/startup fails on the next N attempts.
   int failOpenTimes = 0;
 
+  /// Backs [requiresStartupMediaReadyCheck]; a test flips this on to model
+  /// an engine (media3) whose startup goes through the readiness poll.
+  bool startupMediaReadyCheck = false;
+
+  /// When true, `play` opens without ever reporting itself ready -- no
+  /// frame, no buffer, no duration -- so a test can model a re-resolve whose
+  /// media never becomes ready and the readiness poll has to time out.
+  bool nextPlayNeverReady = false;
+
+  /// Simulates web/MediaKit's playing+non-buffering events firing from
+  /// inside `open`, before it returns -- the scenario the frame-seen reset
+  /// has to survive.
+  bool emitFrameDuringOpen = false;
+
   @override
   Duration get position => currentPosition;
 
@@ -130,7 +144,7 @@ class _TestBackend extends Fake implements PlayerBackend {
   bool get canRenderBitmapSubtitles => false;
 
   @override
-  bool get requiresStartupMediaReadyCheck => false;
+  bool get requiresStartupMediaReadyCheck => startupMediaReadyCheck;
 
   @override
   bool get nativelyHandlesStartPosition => true;
@@ -150,8 +164,21 @@ class _TestBackend extends Fake implements PlayerBackend {
       throw StateError('backend open failed');
     }
     playedUrls.add((mediaItem as Map<String, dynamic>)['url'] as String);
+    if (nextPlayNeverReady) {
+      // A stale position or duration from before this re-open would itself
+      // satisfy the readiness poll, so both are cleared -- nothing here
+      // ever looks ready.
+      currentPosition = Duration.zero;
+      reportedDuration = Duration.zero;
+      return;
+    }
     currentPosition = startPosition;
     playing = true;
+    if (emitFrameDuringOpen) {
+      _playing.add(true);
+      buffering = false;
+      _buffering.add(false);
+    }
   }
 
   @override
@@ -1021,6 +1048,113 @@ void main() {
         });
       },
     );
+
+    test(
+      'a live re-resolve whose media never becomes ready still schedules '
+      'the next attempt, and the budget ends in one failed bringup',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver()
+            ..playMethod = StreamPlayMethod.directPlay;
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          final failedCount = <void>[];
+          final sub = manager.bringupStateStream.listen((s) {
+            if (s.phase == PlaybackBringupPhase.failed) failedCount.add(null);
+          });
+          try {
+            backend.startupMediaReadyCheck = true;
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+            expect(backend.playing, isTrue);
+
+            // From here every re-resolve's media never becomes ready.
+            backend.nextPlayNeverReady = true;
+            backend.emitCompleted();
+            async.flushMicrotasks();
+
+            // Attempt 1's readiness poll times out after 15s.
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+            expect(
+              manager.bringupState.phase,
+              isNot(PlaybackBringupPhase.failed),
+            );
+
+            // Attempt 2 waits its 10s gap, then its own 15s readiness poll.
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+            expect(resolver.calls, 3);
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+
+            // Attempt 3 waits its 20s gap, then its own 15s readiness poll.
+            async.elapse(const Duration(seconds: 20));
+            async.flushMicrotasks();
+            expect(resolver.calls, 4);
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+
+            expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+            expect(manager.bringupState.error, liveStreamLostError);
+            expect(failedCount, hasLength(1));
+          } finally {
+            unawaited(sub.cancel());
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'a starved VOD re-resolve whose media never becomes ready fails with '
+      'streamStarvedError instead of hanging',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..canResumeLiveEdge = false;
+          final resolver = _TestResolver()
+            ..playMethod = StreamPlayMethod.directPlay;
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            backend.startupMediaReadyCheck = true;
+            unawaited(manager.playItems(<dynamic>[_movie]));
+            async.flushMicrotasks();
+            expect(resolver.calls, 1);
+            expect(backend.playing, isTrue);
+
+            // Ninety minutes long, the player gave up ten minutes in, well
+            // past the settle window that ignores a completion right after
+            // start.
+            backend.reportedDuration = const Duration(minutes: 90);
+            backend.currentPosition = const Duration(minutes: 10);
+            async.elapse(const Duration(seconds: 10));
+
+            backend.nextPlayNeverReady = true;
+            backend.emitCompleted();
+            async.flushMicrotasks();
+
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 10));
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 20));
+            async.flushMicrotasks();
+            async.elapse(const Duration(seconds: 15));
+            async.flushMicrotasks();
+
+            expect(manager.bringupState.phase, PlaybackBringupPhase.failed);
+            expect(manager.bringupState.error, streamStarvedError);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
   });
 
   group('attempt 3 escalation follows the channel\'s current route', () {
@@ -1293,7 +1427,7 @@ void main() {
       });
     });
 
-    test('a channel that played then buffers for 15s recovers', () {
+    test('a channel that played then buffers for 8s recovers', () {
       fakeAsync((async) {
         final backend = _TestBackend();
         final resolver = _TestResolver();
@@ -1310,7 +1444,11 @@ void main() {
           async.flushMicrotasks();
           expect(backend.resumeLiveEdgeCalls, isZero);
 
-          async.elapse(const Duration(seconds: 15));
+          async.elapse(const Duration(seconds: 7));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, isZero);
+
+          async.elapse(const Duration(seconds: 1));
           async.flushMicrotasks();
           expect(backend.resumeLiveEdgeCalls, 1);
         } finally {
@@ -1320,7 +1458,41 @@ void main() {
     });
 
     test(
-      'a 10s buffer that resolves back into playing does not recover',
+      'a frame seen during open (web/MediaKit) still gets the 8s '
+      'mid-stream window on the next stall, not 15s',
+      () {
+        fakeAsync((async) {
+          final backend = _TestBackend()..emitFrameDuringOpen = true;
+          final resolver = _TestResolver();
+          final service = _TestService();
+          final manager = fakeManager(backend, resolver, service, async);
+          try {
+            unawaited(manager.playItems(<dynamic>[_liveChannel]));
+            async.flushMicrotasks();
+
+            // No separate emitPlaying() -- the frame was already reported
+            // from inside open(), before the tune's own await returned.
+            backend.emitNotPlaying();
+            backend.emitBuffering(true);
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+
+            async.elapse(const Duration(seconds: 7));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, isZero);
+
+            async.elapse(const Duration(seconds: 1));
+            async.flushMicrotasks();
+            expect(backend.resumeLiveEdgeCalls, 1);
+          } finally {
+            manager.dispose();
+          }
+        });
+      },
+    );
+
+    test(
+      'a 6s buffer that resolves back into playing does not recover',
       () {
         fakeAsync((async) {
           final backend = _TestBackend();
@@ -1337,13 +1509,13 @@ void main() {
             backend.emitBuffering(true);
             async.flushMicrotasks();
 
-            async.elapse(const Duration(seconds: 10));
+            async.elapse(const Duration(seconds: 6));
             async.flushMicrotasks();
             backend.emitBuffering(false);
             backend.emitPlaying();
             async.flushMicrotasks();
 
-            // Past where the 15s window would have fired had it not been
+            // Past where the 8s window would have fired had it not been
             // cancelled by the second emitPlaying above.
             async.elapse(const Duration(seconds: 10));
             async.flushMicrotasks();
@@ -1354,6 +1526,41 @@ void main() {
         });
       },
     );
+
+    test('after an in-place resume the next frame gets the 15s window', () {
+      fakeAsync((async) {
+        final backend = _TestBackend();
+        final resolver = _TestResolver();
+        final service = _TestService();
+        final manager = fakeManager(backend, resolver, service, async);
+        try {
+          unawaited(manager.playItems(<dynamic>[_liveChannel]));
+          async.flushMicrotasks();
+          backend.emitPlaying();
+          async.flushMicrotasks();
+          backend.emitNotPlaying();
+          backend.emitBuffering(true);
+          async.flushMicrotasks();
+
+          async.elapse(const Duration(seconds: 8));
+          async.flushMicrotasks();
+          expect(backend.resumeLiveEdgeCalls, 1);
+          final resolves = resolver.calls;
+
+          // The reopened source is treated like a fresh tune: 8s of no frame
+          // is not yet a stall.
+          async.elapse(const Duration(seconds: 12));
+          async.flushMicrotasks();
+          expect(resolver.calls, resolves);
+
+          async.elapse(const Duration(seconds: 4));
+          async.flushMicrotasks();
+          expect(resolver.calls, resolves + 1);
+        } finally {
+          manager.dispose();
+        }
+      });
+    });
 
     test('a viewer pause never recovers, even after 60s', () {
       fakeAsync((async) {

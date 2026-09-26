@@ -500,6 +500,10 @@ class AppleTvBackend implements PlayerBackend {
     required String topTitle,
     required String topSubtitle,
     required List<Map<String, dynamic>> chapters,
+    // Gates the marks alone. The chapter list still travels in full, since
+    // the chapters button and its menu read the same array. Off by default
+    // to match the preference.
+    bool showChapterMarkers = false,
     required bool hasPrevious,
     required bool hasNext,
     required int skipForwardMs,
@@ -528,6 +532,7 @@ class AppleTvBackend implements PlayerBackend {
       'topTitle': topTitle,
       'topSubtitle': topSubtitle,
       'chapters': chapters,
+      'showChapterMarkers': showChapterMarkers,
       'hasPrevious': hasPrevious,
       'hasNext': hasNext,
       'skipForwardMs': skipForwardMs,

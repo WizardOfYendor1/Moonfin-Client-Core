@@ -19,6 +19,8 @@ class MinimalistLandscapeLayout extends StatelessWidget {
   final Widget branding;
   final Widget actions;
 
+  final Widget? ratings;
+
   /// Built against the height it's allowed, which the layout only knows once
   /// it has its own constraints.
   final Widget Function(double maxHeight)? episodes;
@@ -32,6 +34,7 @@ class MinimalistLandscapeLayout extends StatelessWidget {
     super.key,
     required this.branding,
     required this.actions,
+    this.ratings,
     this.episodes,
     this.aside,
   });
@@ -57,13 +60,18 @@ class MinimalistLandscapeLayout extends StatelessWidget {
             (column - contentToEpisodes) * _kEpisodesShare,
           );
 
+          const measure = BoxConstraints(maxWidth: 760);
           final content = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              branding,
+              ConstrainedBox(constraints: measure, child: branding),
+              if (ratings != null) ...[
+                SizedBox(height: short ? 10 : 14),
+                ratings!,
+              ],
               SizedBox(height: brandingToActions),
-              actions,
+              ConstrainedBox(constraints: measure, child: actions),
             ],
           );
 
@@ -79,10 +87,7 @@ class MinimalistLandscapeLayout extends StatelessWidget {
                       Expanded(
                         child: Align(
                           alignment: Alignment.bottomLeft,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 760),
-                            child: content,
-                          ),
+                          child: content,
                         ),
                       ),
                       if (aside != null) ...[

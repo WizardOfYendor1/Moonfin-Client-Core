@@ -238,8 +238,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count facts',
-      one: '1 fact',
+      other: '$count informations',
+      one: '$count information',
     );
     return '$_temp0';
   }
@@ -250,7 +250,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count tags',
-      one: '1 tag',
+      one: '$count tag',
     );
     return '$_temp0';
   }
@@ -391,7 +391,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get detailScreenStyleNouveau => 'Nouveau';
 
   @override
-  String get detailScreenStyleMinimalist => 'Minimalist';
+  String get detailScreenStyleMinimalist => 'Minimaliste';
 
   @override
   String get expandedTabs => 'Onglets déployés';
@@ -798,7 +798,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get extraLarge => 'Très grand';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grand-mère';
 
   @override
   String get scrollDirection => 'Sens de défilement';
@@ -2429,7 +2429,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get premiere => 'Première';
 
   @override
-  String get guideRepeatBadge => 'Repeat';
+  String get guideRepeatBadge => 'Rediffusion';
 
   @override
   String get guideTimeline => 'Grille des Programmes';
@@ -2759,7 +2759,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get downloadedItems => 'Éléments téléchargés';
 
   @override
-  String get activeDownloads => 'Active Downloads';
+  String get activeDownloads => 'Téléchargements en cours';
 
   @override
   String savedMediaCount(int count) {
@@ -3308,6 +3308,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get dimVideoShowOverview =>
       'Assombrir la vidéo et afficher le résumé pendant la pause';
+
+  @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
 
   @override
   String get osdLockButton => 'Bouton de verrouillage OSD';
@@ -5203,6 +5210,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Lire dans Moonfin';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12502,6 +12512,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get playlistTypeVideo => 'Vidéo';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (musique)';
 
   @override
@@ -12518,6 +12531,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Playlists vidéo';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Playlists audio';

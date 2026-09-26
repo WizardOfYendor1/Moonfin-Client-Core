@@ -202,6 +202,39 @@ final class StalledStateTests: XCTestCase {
     }
 }
 
+/// A mid-play failure only goes to a server transcode when the stream is the
+/// problem. A dead connection would fail the transcode the same way.
+final class SessionErrorClassificationTests: XCTestCase {
+
+    private func kind(_ engineKind: String?, domain: String? = nil) -> String {
+        AetherPlayerWrapper.classifySessionError(engineKind: engineKind, underlyingDomain: domain)
+    }
+
+    func testADeadVODSourceIsANetworkFailure() {
+        XCTAssertEqual(kind("vodSourceFailed"), "network")
+    }
+
+    func testRateLimitingIsANetworkFailure() {
+        XCTAssertEqual(kind("sourceRateLimited"), "network")
+    }
+
+    func testANativeItemFailingOnAURLErrorIsANetworkFailure() {
+        XCTAssertEqual(kind("nativeItemFailed", domain: NSURLErrorDomain), "network")
+    }
+
+    func testANativeItemFailingInAVFoundationStillTranscodes() {
+        XCTAssertEqual(kind("nativeItemFailed", domain: "AVFoundationErrorDomain"), "unsupported_container")
+    }
+
+    func testARefusedSourceStillTranscodes() {
+        XCTAssertEqual(kind("sourceRefused"), "unsupported_container")
+    }
+
+    func testAnUnclassifiedFailureStillTranscodes() {
+        XCTAssertEqual(kind(nil), "unsupported_container")
+    }
+}
+
 /// Reading the sidecars out of a setSource payload. They are declared with the
 /// load because the engine clears its external registry when a load begins, so
 /// a file handed over afterwards is dropped.

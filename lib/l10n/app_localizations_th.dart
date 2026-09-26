@@ -794,7 +794,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get extraLarge => 'ใหญ่พิเศษ';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3256,6 +3256,13 @@ class AppLocalizationsTh extends AppLocalizations {
       'หรี่แสงวิดีโอและแสดงข้อความภาพรวมขณะหยุดชั่วคราว';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'ปุ่มล็อค OSD';
 
   @override
@@ -5111,6 +5118,9 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'เล่นใน Moonfin';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12278,6 +12288,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12294,6 +12307,9 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

@@ -164,6 +164,16 @@ void main() {
       expect(prefs.effectiveMergeContinueWatchingNextUp, isTrue);
     });
 
+    test('leaves the ratings off the screen it lands on', () async {
+      final prefs = await _prefs();
+
+      await prefs.set(UserPreferences.kidsModeEnabled, false);
+      expect(prefs.effectiveShowDetailRatings, isTrue);
+
+      await prefs.set(UserPreferences.kidsModeEnabled, true);
+      expect(prefs.effectiveShowDetailRatings, isFalse);
+    });
+
     test('adds My Media when the user had turned it off', () async {
       // The navbar loses its libraries entry in Kids Mode, so without this
       // there's no way into a library at all.

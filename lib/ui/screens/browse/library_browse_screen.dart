@@ -24,6 +24,7 @@ import '../../../util/artwork_request_size.dart';
 import '../home/home_row_prefetch.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../../util/focus/grid_focus_node_mixin.dart';
+import '../../../util/focus/grid_section_target.dart';
 import '../../../util/platform_detection.dart';
 import '../../navigation/destinations.dart';
 import '../../navigation/route_lifecycle_observer.dart';
@@ -1193,23 +1194,25 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
             crossAxisCount;
         final ar = _gridBaseAspectRatio();
         final desktopTextScale = MediaQuery.textScalerOf(context).scale(1.0);
-        final textHeight = (_hasSubtitles ? 46.0 : 26.0) * desktopTextScale;
-        final cellHeight = cellWidth / ar + textHeight;
+        final textHeight = (_hasSubtitles ? 50.0 : 26.0) * desktopTextScale;
+        final imageHeight = cellWidth / ar;
+        final cellHeight = imageHeight + textHeight;
         final childAspectRatio = cellWidth / cellHeight;
-        // A focused card grows about its center and paints past its cell, so
-        // the viewport clips the top row and the row below covers the title
-        // under the row above it. The grid reserves that much room instead.
-        // Mobile keeps its layout, since a touch press only scales while the
-        // finger is down.
-        final focusOverhang = isMobile
-            ? 0.0
-            : MediaCard.focusGap(cellHeight, minimum: 0.0);
-        final rowSpacing = math.max(8.0, focusOverhang);
+        // Artwork scales upward from the bottomCenter anchor, so reserve the full
+        // upward growth in top padding and row spacing so focused cards clear
+        // the filter header and previous row metadata lines.
+        final upwardGrowth = cardFocusExpansion && !isMobile
+            ? (imageHeight * (MediaCard.focusScale - 1))
+            : 0.0;
+        final baseRowSpacing = 16.0;
+        final rowSpacing = baseRowSpacing + upwardGrowth;
+        final baseTopPadding = 18.0;
+        final topPadding = baseTopPadding + upwardGrowth;
         _gridGeometry = (
           perLine: crossAxisCount,
           lineExtent: cellHeight,
           lineSpacing: rowSpacing,
-          leadingPad: 8 + focusOverhang,
+          leadingPad: topPadding,
         );
 
         final focusColor = _vm.isFilterBrowse
@@ -1231,11 +1234,19 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
 
         if (_vm.isPlaylistBrowse && _vm.groupByType) {
           final groupedMap = _vm.groupedPlaylists;
+          final groupEntries = groupedMap.entries.toList();
+          final sectionLengths = [
+            for (final entry in groupEntries) entry.value.length,
+          ];
           final slivers = <Widget>[];
 
-          groupedMap.forEach((categoryKey, categoryItems) {
+          for (var s = 0; s < groupEntries.length; s++) {
+            final categoryKey = groupEntries[s].key;
+            final categoryItems = groupEntries[s].value;
+
             final categoryTitle = switch (categoryKey) {
               'Video' => l10n.videoPlaylistsSection,
+              'MusicVideo' => l10n.musicVideoPlaylistsSection,
               'Audio' => l10n.audioPlaylistsSection,
               'AudioBook' => l10n.audiobookPlaylistsSection,
               'Book' => l10n.bookPlaylistsSection,
@@ -1261,7 +1272,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
 
             slivers.add(
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(gridPadding, 0, gridPadding, 16),
+                padding: EdgeInsets.fromLTRB(gridPadding, topPadding, gridPadding, 16),
                 sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
@@ -1273,6 +1284,31 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                     (context, index) {
                       final item = categoryItems[index];
                       final itemAspectRatio = _itemAspectRatio(item);
+
+                      GridSectionCell? cell({required bool down}) =>
+                          gridSectionTarget(
+                            sectionLengths: sectionLengths,
+                            crossAxisCount: crossAxisCount,
+                            section: s,
+                            index: index,
+                            down: down,
+                          );
+                      VoidCallback? focusCell(GridSectionCell? target) {
+                        if (target == null) return null;
+                        final cards = groupEntries[target.section].value;
+                        final node = indexInItems[cards[target.index].id];
+                        if (node == null) return null;
+                        return () => getGridItemFocusNode(node).requestFocus();
+                      }
+
+                      final upCell = cell(down: false);
+                      final onTvUp = upCell == null
+                          ? _focusAboveGrid
+                          : focusCell(upCell);
+                      // Nothing below leaves the bottom edge to the pagination
+                      // the card falls through to.
+                      final onTvDown = focusCell(cell(down: true));
+
                       return _buildGridCard(
                         item: item,
                         index: indexInItems[item.id] ?? index,
@@ -1285,6 +1321,8 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                         isNeon: isNeon,
                         watchedBehavior: watchedBehavior,
                         isMobile: isMobile,
+                        onTvUp: onTvUp,
+                        onTvDown: onTvDown,
                       );
                     },
                     childCount: categoryItems.length,
@@ -1292,7 +1330,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                 ),
               ),
             );
-          });
+          }
 
           if (_vm.loadingMore) {
             slivers.add(
@@ -1309,6 +1347,10 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
 
           return CustomScrollView(
             controller: _scrollController,
+            scrollCacheExtent: _gridScrollCacheExtent(
+              cellExtent: cellHeight,
+              spacing: rowSpacing,
+            ),
             slivers: slivers,
           );
         }
@@ -1326,9 +1368,9 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
                 gridPadding,
-                8 + focusOverhang,
+                topPadding,
                 gridPadding,
-                math.max(16.0, focusOverhang),
+                math.max(16.0, upwardGrowth),
               ),
               sliver: SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1386,6 +1428,16 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     );
   }
 
+  /// The alphabet bar sits directly above the grid, so it takes focus from the
+  /// top row, and the header button covers a page that shows no bar.
+  void _focusAboveGrid() {
+    if (_allLetterFocusNode.context != null) {
+      _allLetterFocusNode.requestFocus();
+    } else {
+      _homeButtonFocusNode.requestFocus();
+    }
+  }
+
   /// [index] keys the focus node and is the card's place in the full item list,
   /// so it stays put as more pages arrive. [positionInSection] and
   /// [sectionCount] describe the grid it's drawn in, which is one category once
@@ -1408,6 +1460,8 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     required bool isMobile,
     VoidCallback? onCardFocused,
     bool paginateOnEdge = true,
+    VoidCallback? onTvUp,
+    VoidCallback? onTvDown,
   }) {
     // Section headers throw off the uniform row maths in _scrollToGridRow, so a
     // grouped card asks the viewport to reveal it and needs its own context.
@@ -1458,9 +1512,20 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
         onKeyEvent: (_, event) {
           if (PlatformDetection.isTV &&
               event.isActionable &&
-              event.logicalKey.isUpKey &&
-              positionInSection < crossAxisCount) {
-            _homeButtonFocusNode.requestFocus();
+              event.logicalKey.isUpKey) {
+            if (onTvUp != null) {
+              onTvUp();
+              return KeyEventResult.handled;
+            } else if (positionInSection < crossAxisCount) {
+              _homeButtonFocusNode.requestFocus();
+              return KeyEventResult.handled;
+            }
+          }
+          if (PlatformDetection.isTV &&
+              event.isActionable &&
+              event.logicalKey.isDownKey &&
+              onTvDown != null) {
+            onTvDown();
             return KeyEventResult.handled;
           }
           if (PlatformDetection.isTV &&
@@ -3334,6 +3399,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
               ),
               for (final typeOption in [
                 ('Video', l10n.playlistTypeVideo),
+                ('MusicVideo', l10n.playlistTypeMusicVideo),
                 ('Audio', l10n.playlistTypeAudio),
                 ('AudioBook', l10n.playlistTypeAudiobook),
                 ('Book', l10n.playlistTypeBook),

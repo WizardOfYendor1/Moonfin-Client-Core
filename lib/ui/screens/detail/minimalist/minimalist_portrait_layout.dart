@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 class MinimalistPortraitLayout extends StatelessWidget {
   final Widget branding;
   final Widget actions;
+
+  final Widget? ratings;
   final Widget? episodes;
 
   /// Phone rather than tablet. Tablets have the height for more breathing
@@ -15,6 +17,7 @@ class MinimalistPortraitLayout extends StatelessWidget {
     super.key,
     required this.branding,
     required this.actions,
+    this.ratings,
     this.episodes,
     this.compact = false,
   });
@@ -35,6 +38,10 @@ class MinimalistPortraitLayout extends StatelessWidget {
           children: [
             const Spacer(),
             branding,
+            if (ratings != null) ...[
+              SizedBox(height: compact ? 10 : 14),
+              ratings!,
+            ],
             SizedBox(height: gap),
             actions,
             if (episodes != null) ...[

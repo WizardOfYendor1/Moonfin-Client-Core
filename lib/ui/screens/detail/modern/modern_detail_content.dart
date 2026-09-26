@@ -3870,7 +3870,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     final hasUpNext = _landscape && _buildUpNext(context, item) != null;
     final showRatings = _vm.ratings.isNotEmpty ||
         item.communityRating != null ||
-        item.criticRating != null;
+        item.criticRating != null ||
+        item.personalRating != null;
 
     final desktopScale = _desktopUiScale(prefs: widget.prefs);
     final logoScaleFactor = desktopScale > 1.1 ? 0.70 : 1.0;
@@ -5135,7 +5136,8 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
 
     final showRatings = _vm.ratings.isNotEmpty ||
         item.communityRating != null ||
-        item.criticRating != null;
+        item.criticRating != null ||
+        item.personalRating != null;
 
     final selectedSource = selectedMediaSourceForItem(item, widget.selectedMediaSourceId);
 

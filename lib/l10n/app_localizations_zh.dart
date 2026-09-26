@@ -770,7 +770,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get extraLarge => '超大';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => '滚动方向';
@@ -3200,6 +3200,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dimVideoShowOverview => '暂停时调暗视频并显示简介文本';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'OSD 锁定按钮';
 
   @override
@@ -4978,6 +4985,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get playInMoonfin => '在 Moonfin 中播放';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -11898,6 +11908,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get playlistTypeVideo => '视频';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => '音频（音乐）';
 
   @override
@@ -11914,6 +11927,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => '视频播放列表';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => '音频播放列表';

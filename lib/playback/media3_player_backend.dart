@@ -143,6 +143,9 @@ class Media3PlayerBackend extends PlayerBackend {
   Timer? _watchdogTimer;
   String _watchdogItemLabel = 'item';
   bool _sawFirstFrame = false;
+  // Audio draws no frames, so for it playback starting stands in for the
+  // first frame the watchdogs wait on.
+  bool _watchdogItemIsAudio = false;
   bool _firstFrameWarned = false;
   int _playStartedAtMs = 0;
   int _lastObservedPositionMs = -1;
@@ -767,6 +770,9 @@ class Media3PlayerBackend extends PlayerBackend {
     if (_isPlaying && _playStartedAtMs == 0) {
       _playStartedAtMs = nowMs;
     }
+    if (_isPlaying && _watchdogItemIsAudio) {
+      _sawFirstFrame = true;
+    }
 
     // Never-started watchdog: load was requested but the player never reached
     // "playing" and never drew a frame (the buffering-forever hang). Timed from
@@ -1030,6 +1036,7 @@ class Media3PlayerBackend extends PlayerBackend {
             payload['title']?.toString() ??
             'item',
       );
+      _watchdogItemIsAudio = mediaType == 'audio';
     }
     _skipSilenceEnabled = _prefs.get(UserPreferences.media3SkipSilence);
     _volumeBoostLevel = 0;

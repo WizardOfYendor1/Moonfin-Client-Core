@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moonfin/ui/widgets/marquee_text.dart';
 import 'package:moonfin/ui/widgets/seerr/seerr_request_tile_caption.dart';
 
-Widget _caption({required double width, required List<Widget> actions}) {
+Widget _caption({
+  required double width,
+  required List<Widget> actions,
+  bool marqueeTitle = false,
+}) {
   return MaterialApp(
     home: Scaffold(
       body: Center(
@@ -10,10 +15,12 @@ Widget _caption({required double width, required List<Widget> actions}) {
           width: width,
           child: SeerrRequestTileCaption(
             title: 'Toy Story 5',
-            requestedBy: 'Requested by Axel',
+            requestedByLabel: 'Requested by',
+            requester: 'Axel Whitfield-Mortensen',
             date: '26 August 2026',
             scale: 1,
             status: const SizedBox.shrink(),
+            marqueeTitle: marqueeTitle,
             actions: actions,
           ),
         ),
@@ -68,5 +75,29 @@ void main() {
     expect(tester.takeException(), isNull);
     final height = tester.getSize(find.byType(SeerrRequestTileCaption)).height;
     expect(height, lessThanOrEqualTo(SeerrRequestTileCaption.reservedHeight));
+  });
+
+  testWidgets('the requester sits under its own label', (tester) async {
+    await tester.pumpWidget(_caption(width: 150, actions: const []));
+    await tester.pumpAndSettle();
+
+    final label = tester.getTopLeft(find.text('Requested by'));
+    final name = tester.getTopLeft(find.text('Axel Whitfield-Mortensen'));
+    expect(name.dy, greaterThan(label.dy));
+    expect(name.dx, label.dx);
+  });
+
+  testWidgets('the title only scrolls when the tile asks for it', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_caption(width: 150, actions: const []));
+    await tester.pumpAndSettle();
+    expect(find.byType(MarqueeText), findsNothing);
+
+    await tester.pumpWidget(
+      _caption(width: 150, actions: const [], marqueeTitle: true),
+    );
+    await tester.pump();
+    expect(find.byType(MarqueeText), findsOneWidget);
   });
 }

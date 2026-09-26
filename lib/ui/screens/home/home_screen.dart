@@ -90,6 +90,16 @@ Color get _homeBackground => AppColorScheme.background;
 /// How far the rows have to scroll before the return is worth offering.
 const _kHomeStartThreshold = 20.0;
 
+/// Room for the title, subtitle and gaps that sit under classic card artwork.
+const _classicCardMetadataHeight = 50.0;
+
+/// How far a focused card grows past the top of its row. The scale is anchored
+/// at the bottom of the artwork, so all of the growth goes upward.
+double _focusHeadroom(double imageHeight, bool cardExpansion) =>
+    cardExpansion && !PlatformDetection.useMobileUi
+    ? imageHeight * (MediaCard.focusScale - 1)
+    : 0.0;
+
 /// Clips inactive Classic rows where they pass behind the pinned info area.
 ///
 /// The focused row must remain complete: it is the user's active navigation
@@ -2729,20 +2739,34 @@ class _ContentRowsState extends State<_ContentRows>
         childHeight = imageHeight + (budget * metadataScale) + (10 * metadataScale);
       } else {
         final imageHeight = posterSize.portraitHeight.toDouble() * platformScale;
-        childHeight = imageHeight + (46 * metadataScale) + (10 * metadataScale);
+        final headroom = _focusHeadroom(
+          imageHeight,
+          prefs.get(UserPreferences.cardFocusExpansion),
+        );
+        childHeight =
+            imageHeight +
+            (_classicCardMetadataHeight * metadataScale) +
+            (10 * metadataScale) +
+            headroom;
       }
     } else if (row.rowType == HomeRowType.liveTv ||
         row.rowType == HomeRowType.libraryTilesSmall) {
       final squarePosterSide = _squarePosterSide(posterSize);
-      childHeight = squarePosterSide + (56 * metadataScale);
+      final headroom = _focusHeadroom(
+        squarePosterSide,
+        prefs.get(UserPreferences.cardFocusExpansion),
+      );
+      childHeight = squarePosterSide + (56 * metadataScale) + headroom;
     } else {
       final isSeerrRowOverride = _isSeerrFilterRow(row);
       final rowImageType = isSeerrRowOverride
           ? ImageType.thumb
           : (isRowsV2 ? ImageType.poster : _homeRowImageTypeForRow(row, prefs));
       var maxCardHeight = 0.0;
+      var maxImageHeight = 0.0;
       if (isRowsV2) {
         final imageHeight = posterSize.portraitHeight.toDouble() * platformScale * 2;
+        maxImageHeight = imageHeight;
         final budget = _v2MetadataBudgetFor(row, prefs);
         maxCardHeight = imageHeight + (budget * metadataScale);
       } else {
@@ -2751,17 +2775,23 @@ class _ContentRowsState extends State<_ContentRows>
           final imageHeight = (aspectRatio > 1
               ? posterSize.landscapeHeight.toDouble()
               : posterSize.portraitHeight.toDouble()) * platformScale;
-          final cardHeight = imageHeight + (46 * metadataScale);
+          if (imageHeight > maxImageHeight) maxImageHeight = imageHeight;
+          final cardHeight = imageHeight + (_classicCardMetadataHeight * metadataScale);
           if (cardHeight > maxCardHeight) {
             maxCardHeight = cardHeight;
           }
         }
         if (maxCardHeight == 0.0) {
-          maxCardHeight = posterSize.portraitHeight.toDouble() * platformScale + (46 * metadataScale);
+          maxImageHeight = posterSize.portraitHeight.toDouble() * platformScale;
+          maxCardHeight = maxImageHeight + (_classicCardMetadataHeight * metadataScale);
         }
         maxCardHeight += _classicRowPadding(row, prefs);
       }
-      childHeight = maxCardHeight + (10 * metadataScale);
+      final headroom = _focusHeadroom(
+        maxImageHeight,
+        prefs.get(UserPreferences.cardFocusExpansion),
+      );
+      childHeight = maxCardHeight + (10 * metadataScale) + headroom;
     }
 
     final subtitle = _rowSubtitle(row, AppLocalizations.of(context));
@@ -3726,9 +3756,11 @@ class _ContentRowsState extends State<_ContentRows>
           : (isRowsV2 ? ImageType.poster : _homeRowImageTypeForRow(row, prefs));
       final platformScale = _rowPlatformScale(row, desktopScale);
       var maxCardHeight = 0.0;
+      var maxImageHeight = 0.0;
       if (isRowsV2) {
         final imageHeight =
             posterSize.portraitHeight.toDouble() * platformScale * 2;
+        maxImageHeight = imageHeight;
         final budget = _v2MetadataBudgetFor(row, prefs);
         maxCardHeight =
             imageHeight + (budget * metadataScale);
@@ -3740,17 +3772,26 @@ class _ContentRowsState extends State<_ContentRows>
                   ? posterSize.landscapeHeight.toDouble()
                   : posterSize.portraitHeight.toDouble()) *
               platformScale;
-          final cardHeight = imageHeight + (46 * metadataScale);
+          if (imageHeight > maxImageHeight) maxImageHeight = imageHeight;
+          final cardHeight = imageHeight + (_classicCardMetadataHeight * metadataScale);
           if (cardHeight > maxCardHeight) {
             maxCardHeight = cardHeight;
           }
         }
         if (maxCardHeight == 0.0) {
-          maxCardHeight = posterSize.portraitHeight.toDouble() * platformScale + (46 * metadataScale);
+          maxImageHeight = posterSize.portraitHeight.toDouble() * platformScale;
+          maxCardHeight = maxImageHeight + (_classicCardMetadataHeight * metadataScale);
         }
         maxCardHeight += _classicRowPadding(row, prefs);
       }
-      return _libraryRowExtent(maxCardHeight, metadataScale: metadataScale);
+      final headroom = _focusHeadroom(
+        maxImageHeight,
+        prefs.get(UserPreferences.cardFocusExpansion),
+      );
+      return _libraryRowExtent(
+        maxCardHeight + headroom,
+        metadataScale: metadataScale,
+      );
     }
   }
 
@@ -4617,7 +4658,8 @@ class _ContentRowsState extends State<_ContentRows>
     final l10n = AppLocalizations.of(context);
     final metadataScale = _desktopUiScaleFactor();
     final squarePosterSide = _squarePosterSide(posterSize);
-    final rowHeight = squarePosterSide + (56 * metadataScale);
+    final headroom = _focusHeadroom(squarePosterSide, cardExpansion);
+    final rowHeight = squarePosterSide + (56 * metadataScale) + headroom;
     return _buildTitledRow(
       key: _rowContainerKey(rowIndex),
       title: _localizedRowTitle(row, l10n),
@@ -4635,7 +4677,12 @@ class _ContentRowsState extends State<_ContentRows>
           itemSpacing: _rowItemSpacing(squarePosterSide, cardExpansion),
           leadingPadding: _isHomeRowsStyleV2() ? _kHomeRowLabelInset : 0,
           clipBehavior: cardExpansion ? Clip.none : Clip.hardEdge,
-          padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
+          padding: EdgeInsets.fromLTRB(
+            _kHomeRowLabelInset,
+            5 + headroom,
+            20,
+            5,
+          ),
           onIndexChanged: (_, item) {
             _onHomeRowTileFocused(item);
           },
@@ -4748,8 +4795,10 @@ class _ContentRowsState extends State<_ContentRows>
         : v2FocusedWidth;
 
     double maxCardHeight = 0;
+    double maxImageHeight = 0;
     double firstCardWidth = 0;
     if (isRowsV2) {
+      maxImageHeight = v2ImageHeight;
       maxCardHeight = v2ImageHeight + (v2MetadataHeightBudget * metadataScale);
       firstCardWidth = isModernMyMediaStatic
           ? v2FocusedWidthForCurrentViewport
@@ -4771,7 +4820,8 @@ class _ContentRowsState extends State<_ContentRows>
                 ? posterSize.landscapeHeight.toDouble()
                 : posterSize.portraitHeight.toDouble()) *
             platformScale;
-        final cardHeight = height + (46 * metadataScale);
+        if (height > maxImageHeight) maxImageHeight = height;
+        final cardHeight = height + (_classicCardMetadataHeight * metadataScale);
         if (cardHeight > maxCardHeight) maxCardHeight = cardHeight;
         if (firstCardWidth == 0) firstCardWidth = height * ar;
       }
@@ -4784,15 +4834,21 @@ class _ContentRowsState extends State<_ContentRows>
           posterSize.portraitHeight.toDouble() * platformScale * defaultAspect;
     }
     if (maxCardHeight == 0) {
+      maxImageHeight = posterSize.portraitHeight.toDouble() * platformScale;
       maxCardHeight =
-          posterSize.portraitHeight.toDouble() * platformScale +
-          (46 * metadataScale);
+          maxImageHeight +
+          (_classicCardMetadataHeight * metadataScale);
     }
+
+    final rowPadding = 5.0 * metadataScale;
+    final topPadding =
+        rowPadding + _focusHeadroom(maxImageHeight, cardExpansion);
+    final lockedRowHeight = maxCardHeight + topPadding + rowPadding;
 
     final subtitle = _rowSubtitle(row, l10n);
     final hasSubtitle = subtitle != null && subtitle.isNotEmpty;
     final rowTotalHeight =
-        maxCardHeight + (10 * metadataScale) + (hasSubtitle ? 18.0 : 0.0);
+        lockedRowHeight + (hasSubtitle ? 18.0 : 0.0);
 
     if (row.isLoading && row.items.isEmpty) {
       return _buildTitledRow(
@@ -4827,12 +4883,17 @@ class _ContentRowsState extends State<_ContentRows>
           itemKey: _rowItemIdentity,
           hubKey: _hubKeyForRow(row),
           controller: _rowHorizontalController(rowIndex),
-          height: maxCardHeight + (10 * metadataScale),
+          height: lockedRowHeight,
           itemExtent: firstCardWidth,
           itemSpacing: _rowItemSpacing(firstCardWidth, cardExpansion),
           leadingPadding: isRowsV2 ? _kHomeRowLabelInset : 0,
           clipBehavior: (isRowsV2 || cardExpansion) ? Clip.none : Clip.hardEdge,
-          padding: const EdgeInsets.fromLTRB(_kHomeRowLabelInset, 5, 20, 5),
+          padding: EdgeInsets.fromLTRB(
+            _kHomeRowLabelInset,
+            topPadding,
+            20,
+            rowPadding,
+          ),
           onFocusChange: (has) => _onRowFocusTracked(rowIndex, has),
           onVerticalNavigation: (isUp) => _onRowVerticalNavigation(
             rowIndex: rowIndex,
@@ -5767,18 +5828,6 @@ class _ContentRowsState extends State<_ContentRows>
         if (episodePrimary != null) {
           return episodePrimary;
         }
-      } else if (item.type == 'Series') {
-        final latestEpId = item.rawData['LatestEpisodeId']?.toString();
-        final latestEpTag =
-            item.rawData['LatestEpisodePrimaryImageTag'] as String?;
-        if (latestEpId != null) {
-          return imageApi.getPrimaryImageUrl(
-            latestEpId,
-            maxHeight: maxH,
-            maxWidth: maxW,
-            tag: latestEpTag,
-          );
-        }
       }
     }
     final itemThumbTag = _tagForType(item, 'Thumb');
@@ -6234,18 +6283,6 @@ class _ContentRowsState extends State<_ContentRows>
           );
           if (videoPrimary != null) {
             return videoPrimary;
-          }
-        } else if (item.type == 'Series') {
-          final latestEpId = item.rawData['LatestEpisodeId']?.toString();
-          final latestEpTag =
-              item.rawData['LatestEpisodePrimaryImageTag'] as String?;
-          if (latestEpId != null) {
-            return imageApi.getPrimaryImageUrl(
-              latestEpId,
-              maxHeight: maxH,
-              maxWidth: maxW,
-              tag: latestEpTag,
-            );
           }
         }
       }

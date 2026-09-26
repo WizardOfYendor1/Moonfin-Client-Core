@@ -384,6 +384,7 @@ class UserPreferences extends ChangeNotifier {
     'pref_studios_row_sort_by',
     'pref_studios_row_sort_order',
     'pref_syncplay_enabled',
+    'showChapterMarkers',
     'showDescriptionOnPause',
     'since_you_watched_1_enabled',
     'since_you_watched_2_enabled',
@@ -1522,6 +1523,10 @@ class UserPreferences extends ChangeNotifier {
   bool get effectiveDetailUseSeriesThumbnails =>
       get(kidsModeEnabled) ? false : get(detailUseSeriesThumbnails);
 
+  /// Kids Mode lands on the Minimalist screen, where a score means little
+  /// to a child and the row carries outside branding.
+  bool get effectiveShowDetailRatings => !get(kidsModeEnabled);
+
   /// Kids Mode shows the two as one row whatever the account chose for itself.
   /// Apart they read as two separate places to carry on from, which is a
   /// distinction that means nothing to a child.
@@ -2328,6 +2333,10 @@ class UserPreferences extends ChangeNotifier {
   );
   static final osdLockEnabled = Preference(
     key: 'osdLockEnabled',
+    defaultValue: false,
+  );
+  static final showChapterMarkers = Preference(
+    key: 'showChapterMarkers',
     defaultValue: false,
   );
   static final playerSwipeGestures = Preference(

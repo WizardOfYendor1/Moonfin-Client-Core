@@ -661,6 +661,64 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
     );
   }
 
+  Widget _buildModernContent() {
+    return ModernDetailContent(
+      viewModel: _viewModel,
+      prefs: _prefs,
+      backdropUrl: _backdropUrl,
+      selectedMediaSourceId: _selectedMediaSourceId,
+      initialFocusNode: _ensureInitialFocusNode(),
+      onSelectedMediaSourceChanged: (id) {
+        setState(() => _selectedMediaSourceId = id);
+        _viewModel.load(mediaSourceId: id);
+      },
+      onBackdropItemFocused: _onBackdropItemFocused,
+      autoPlay: widget.autoPlay,
+      onPlayFromChapter: (position) => unawaited(
+        _playFromChapter(
+          context,
+          _viewModel.item!,
+          position,
+          _selectedMediaSourceId,
+        ),
+      ),
+      onToggleNavbar: (show) => setState(() => _showNavbar = show),
+      actionsExpanded: _actionsExpanded,
+      onActionsExpandedChanged: (val) =>
+          setState(() => _actionsExpanded = val),
+      onCollapseBiography: () => setState(() {}),
+    );
+  }
+
+  Widget _buildSpotlightContent() {
+    return SpotlightDetailContent(
+      viewModel: _viewModel,
+      prefs: _prefs,
+      backdropUrl: _backdropUrl,
+      selectedMediaSourceId: _selectedMediaSourceId,
+      initialFocusNode: _ensureInitialFocusNode(),
+      onSelectedMediaSourceChanged: (id) {
+        setState(() => _selectedMediaSourceId = id);
+        _viewModel.load(mediaSourceId: id);
+      },
+      onBackdropItemFocused: _onBackdropItemFocused,
+      autoPlay: widget.autoPlay,
+      onPlayFromChapter: (position) => unawaited(
+        _playFromChapter(
+          context,
+          _viewModel.item!,
+          position,
+          _selectedMediaSourceId,
+        ),
+      ),
+      onToggleNavbar: (show) => setState(() => _showNavbar = show),
+      actionsExpanded: _actionsExpanded,
+      onActionsExpandedChanged: (val) =>
+          setState(() => _actionsExpanded = val),
+      onCollapseBiography: () => setState(() {}),
+    );
+  }
+
   Widget _buildBody(BuildContext context) {
     return switch (_viewModel.state) {
       ItemDetailState.loading => DetailScreenSkeleton(
@@ -723,59 +781,12 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
           autoPlay: widget.autoPlay,
         ),
 
-        DetailScreenStyle.modern => ModernDetailContent(
-          viewModel: _viewModel,
-          prefs: _prefs,
-          backdropUrl: _backdropUrl,
-          selectedMediaSourceId: _selectedMediaSourceId,
-          initialFocusNode: _ensureInitialFocusNode(),
-          onSelectedMediaSourceChanged: (id) {
-            setState(() => _selectedMediaSourceId = id);
-            _viewModel.load(mediaSourceId: id);
-          },
-          onBackdropItemFocused: _onBackdropItemFocused,
-          autoPlay: widget.autoPlay,
-          onPlayFromChapter: (position) => unawaited(
-            _playFromChapter(
-              context,
-              _viewModel.item!,
-              position,
-              _selectedMediaSourceId,
-            ),
-          ),
-          onToggleNavbar: (show) => setState(() => _showNavbar = show),
-          actionsExpanded: _actionsExpanded,
-          onActionsExpandedChanged: (val) =>
-              setState(() => _actionsExpanded = val),
-          onCollapseBiography: () => setState(() {}),
-        ),
+        DetailScreenStyle.modern => _buildModernContent(),
 
-        DetailScreenStyle.spotlight => SpotlightDetailContent(
-          viewModel: _viewModel,
-          prefs: _prefs,
-          backdropUrl: _backdropUrl,
-          selectedMediaSourceId: _selectedMediaSourceId,
-          initialFocusNode: _ensureInitialFocusNode(),
-          onSelectedMediaSourceChanged: (id) {
-            setState(() => _selectedMediaSourceId = id);
-            _viewModel.load(mediaSourceId: id);
-          },
-          onBackdropItemFocused: _onBackdropItemFocused,
-          autoPlay: widget.autoPlay,
-          onPlayFromChapter: (position) => unawaited(
-            _playFromChapter(
-              context,
-              _viewModel.item!,
-              position,
-              _selectedMediaSourceId,
-            ),
-          ),
-          onToggleNavbar: (show) => setState(() => _showNavbar = show),
-          actionsExpanded: _actionsExpanded,
-          onActionsExpandedChanged: (val) =>
-              setState(() => _actionsExpanded = val),
-          onCollapseBiography: () => setState(() {}),
-        ),
+        DetailScreenStyle.spotlight =>
+          detailFallsBackToModern(_viewModel.item?.type)
+            ? _buildModernContent()
+            : _buildSpotlightContent(),
 
         DetailScreenStyle.nouveau => NouveauDetailContent(
           key: _nouveauContentKey,
@@ -1232,7 +1243,11 @@ class _DetailContentState extends State<_DetailContent> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _contentFocusNode = FocusNode(debugLabel: 'detailContent');
+    _contentFocusNode = FocusNode(
+      debugLabel: 'detailContent',
+      canRequestFocus: false,
+      skipTraversal: true,
+    );
     widget.prefs.addListener(_onPrefsChanged);
     _loadSeerrAppearances();
   }
@@ -1463,28 +1478,6 @@ class _DetailContentState extends State<_DetailContent> {
       hideNavbar: true,
       child: Focus(
         focusNode: _contentFocusNode,
-        onKeyEvent: (node, event) {
-          final primaryFocus = FocusManager.instance.primaryFocus;
-          if (!identical(primaryFocus, _contentFocusNode)) {
-            return KeyEventResult.ignored;
-          }
-          if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
-              event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            final navbarPos = prefs.get(UserPreferences.navbarPosition);
-            if (navbarPos == NavbarPosition.top) {
-              _scrollMainToTop();
-              NavigationLayout.focusNavbarNotifier.value?.call();
-              return KeyEventResult.handled;
-            }
-            final isAtTop =
-                !_scrollController.hasClients || _scrollController.offset <= 0;
-            if (isAtTop) {
-              NavigationLayout.focusNavbarNotifier.value?.call();
-              return KeyEventResult.handled;
-            }
-          }
-          return KeyEventResult.ignored;
-        },
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -15906,7 +15899,6 @@ class FilmographyRow extends StatelessWidget {
             playedPercentage: item.playedPercentage,
             watchedBehavior: watchedBehavior,
             itemType: item.type,
-            autofocus: index == 0 && firstFocusNode != null,
             focusNode: index == 0 ? firstFocusNode : null,
             onKeyEvent: onItemKeyEvent == null
                 ? null
@@ -15991,7 +15983,6 @@ class SeerrAppearancesRow extends StatelessWidget {
             suppressFocusGlow: suppressFocusGlow,
             seerrMediaType: item.mediaType,
             seerrStatus: item.mediaInfo?.status,
-            autofocus: index == 0 && firstFocusNode != null,
             focusNode: index == 0 ? firstFocusNode : null,
             onKeyEvent: onItemKeyEvent == null
                 ? null
@@ -16075,7 +16066,6 @@ class SeerrCrewCreditsRow extends StatelessWidget {
             suppressFocusGlow: suppressFocusGlow,
             seerrMediaType: item.mediaType,
             seerrStatus: item.mediaInfo?.status,
-            autofocus: index == 0 && firstFocusNode != null,
             focusNode: index == 0 ? firstFocusNode : null,
             onKeyEvent: onItemKeyEvent == null
                 ? null

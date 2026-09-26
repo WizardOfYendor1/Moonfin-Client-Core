@@ -795,7 +795,7 @@ class AppLocalizationsRo extends AppLocalizations {
   String get extraLarge => 'Foarte mare';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Direcția derulării';
@@ -3292,6 +3292,13 @@ class AppLocalizationsRo extends AppLocalizations {
       'Întunecă videoclipul și arată textul de prezentare generală când este întrerupt';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'Buton de blocare OSD';
 
   @override
@@ -5177,6 +5184,9 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Joacă în Moonfin';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12447,6 +12457,9 @@ class AppLocalizationsRo extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12463,6 +12476,9 @@ class AppLocalizationsRo extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

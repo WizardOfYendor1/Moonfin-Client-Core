@@ -131,12 +131,6 @@ AggregatedItem? _seriesCardForLatestTvItem(AggregatedItem item) {
   rawData.remove('IndexNumber');
   rawData.remove('ParentIndexNumber');
 
-  if (item.type == 'Episode') {
-    rawData['LatestEpisodeId'] = item.id;
-    rawData['LatestEpisodePrimaryImageTag'] =
-        item.primaryImageTag ?? item.primaryImageTagField;
-  }
-
   // A season's parent is the series so its tag fits the id set below, but an
   // episode's parent is the season and that tag would not match the series.
   final seriesPrimaryImageTag =
@@ -150,26 +144,36 @@ AggregatedItem? _seriesCardForLatestTvItem(AggregatedItem item) {
       ? item.parentThumbImageTag
       : null;
 
+  // A tag the episode or season brought along points at one scene, so the card
+  // drops it rather than letting it stand in for the show.
+  if (item.parentBackdropItemId == seriesId &&
+      item.parentBackdropImageTags.isNotEmpty) {
+    rawData['BackdropImageTags'] = List<String>.from(
+      item.parentBackdropImageTags,
+    );
+  } else {
+    rawData.remove('BackdropImageTags');
+  }
+
   final imageTags = Map<String, dynamic>.from(
     rawData['ImageTags'] as Map? ?? const {},
   );
-  var tagsChanged = false;
-
   if (seriesPrimaryImageTag != null && seriesPrimaryImageTag.isNotEmpty) {
-    imageTags['Primary'] ??= seriesPrimaryImageTag;
-    rawData['PrimaryImageTag'] ??= seriesPrimaryImageTag;
-    rawData['PrimaryImageItemId'] ??= seriesId;
-    tagsChanged = true;
+    imageTags['Primary'] = seriesPrimaryImageTag;
+    rawData['PrimaryImageTag'] = seriesPrimaryImageTag;
+  } else {
+    imageTags.remove('Primary');
+    rawData.remove('PrimaryImageTag');
   }
+  rawData['PrimaryImageItemId'] = seriesId;
 
   if (seriesThumbImageTag != null && seriesThumbImageTag.isNotEmpty) {
-    imageTags['Thumb'] ??= seriesThumbImageTag;
-    tagsChanged = true;
+    imageTags['Thumb'] = seriesThumbImageTag;
+  } else {
+    imageTags.remove('Thumb');
   }
 
-  if (tagsChanged) {
-    rawData['ImageTags'] = imageTags;
-  }
+  rawData['ImageTags'] = imageTags;
 
   return AggregatedItem(
     id: seriesId,

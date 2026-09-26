@@ -795,7 +795,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get extraLarge => 'Очень большой';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3298,6 +3298,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Затемнять видео и показывать обзорный текст во время паузы';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'Кнопка блокировки экранного меню';
 
   @override
@@ -5176,6 +5183,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Играйте в Moonfin';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12435,6 +12445,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12451,6 +12464,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

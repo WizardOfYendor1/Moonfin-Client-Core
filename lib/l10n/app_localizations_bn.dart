@@ -793,7 +793,7 @@ class AppLocalizationsBn extends AppLocalizations {
   String get extraLarge => 'অতিরিক্ত বড়';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3266,6 +3266,13 @@ class AppLocalizationsBn extends AppLocalizations {
       'পজ করার সময় ভিডিও ম্লান করুন এবং ওভারভিউ টেক্সট দেখান';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'ওএসডি লক বোতাম';
 
   @override
@@ -5134,6 +5141,9 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Moonfin এ খেলুন';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12334,6 +12344,9 @@ class AppLocalizationsBn extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12350,6 +12363,9 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

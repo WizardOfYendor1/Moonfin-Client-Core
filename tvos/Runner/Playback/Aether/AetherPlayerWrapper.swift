@@ -337,9 +337,10 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
             state = .error
             lastErrorMessage = message
             if !didEmitLoadError {
-                // Mid-play failures rarely name a codec, so classify at the
-                // container level and let the Dart side retry via server transcode.
-                emitError(kind: "unsupported_container", recoverable: true, message: message)
+                let info = Self.sharedEngine()?.errorInfo
+                let kind = Self.classifySessionError(
+                    engineKind: info?.kind.rawValue, underlyingDomain: info?.underlyingDomain)
+                emitError(kind: kind, recoverable: true, message: message)
             }
         }
         updateStallCheckTimer()
@@ -798,6 +799,25 @@ final class AetherPlayerWrapper: NSObject, ObservableObject {
             return ("unsupported_video", message)
         }
         return ("unsupported_container", message)
+    }
+
+    /// Engine error kinds where the connection failed, not the stream.
+    private nonisolated static let transportErrorKinds: Set<String> = [
+        PlaybackErrorKind.vodSourceFailed.rawValue,
+        PlaybackErrorKind.sourceRateLimited.rawValue,
+        PlaybackErrorKind.sourceCertificateRejected.rawValue,
+        PlaybackErrorKind.liveSourceUnavailable.rawValue,
+    ]
+
+    /// A mid-play failure only carries a message, so the engine's `errorInfo`
+    /// is the only way to tell a dropped connection from a stream it can't
+    /// play. Only the second is worth a server transcode.
+    nonisolated static func classifySessionError(
+        engineKind: String?, underlyingDomain: String?
+    ) -> String {
+        if underlyingDomain == NSURLErrorDomain { return "network" }
+        if let engineKind, transportErrorKinds.contains(engineKind) { return "network" }
+        return "unsupported_container"
     }
 
     private func emitError(kind: String, recoverable: Bool, message: String) {

@@ -796,7 +796,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get extraLarge => 'கூடுதல் பெரியது';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3291,6 +3291,13 @@ class AppLocalizationsTa extends AppLocalizations {
       'வீடியோவை மங்கலாக்கி, இடைநிறுத்தப்பட்டிருக்கும் போது மேலோட்ட உரையைக் காட்டு';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'OSD பூட்டு பொத்தான்';
 
   @override
@@ -5178,6 +5185,9 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Moonfin இல் விளையாடு';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12440,6 +12450,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12456,6 +12469,9 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

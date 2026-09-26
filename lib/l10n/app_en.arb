@@ -943,8 +943,8 @@
   "@extraLarge": {
     "description": "Size option: extra large"
   },
-  "uiScaleGrandfather": "Grandfather",
-  "@uiScaleGrandfather": {
+  "uiScaleGrandparents": "Grandparents",
+  "@uiScaleGrandparents": {
     "description": "UI scaling option above extra large"
   },
   "scrollDirection": "Scroll Direction",
@@ -4422,6 +4422,14 @@
   "@dimVideoShowOverview": {
     "description": "Description for show description on pause"
   },
+  "showChapterMarkers": "Chapter Marks",
+  "@showChapterMarkers": {
+    "description": "Setting label for drawing a mark per chapter on the player seek bar"
+  },
+  "showChapterMarkersDescription": "Mark where each chapter starts on the seek bar",
+  "@showChapterMarkersDescription": {
+    "description": "Description for the chapter marks setting"
+  },
   "osdLockButton": "OSD Lock Button",
   "@osdLockButton": {
     "description": "Setting for OSD lock button"
@@ -6779,6 +6787,10 @@
   "playInMoonfin": "Play in Moonfin",
   "@playInMoonfin": {
     "description": "Button to play available media in Moonfin"
+  },
+  "requestedByLabel": "Requested by",
+  "@requestedByLabel": {
+    "description": "Label above the name of whoever requested media, where the name sits on its own line"
   },
   "requestedByName": "Requested by {name}",
   "@requestedByName": {
@@ -11272,6 +11284,10 @@
   "@playlistTypeVideo": {
     "description": "Filter checkbox label for video playlists"
   },
+  "playlistTypeMusicVideo": "Music Video",
+  "@playlistTypeMusicVideo": {
+    "description": "Filter checkbox label for music video playlists"
+  },
   "playlistTypeAudio": "Audio (Music)",
   "@playlistTypeAudio": {
     "description": "Filter checkbox label for audio/music playlists"
@@ -11295,6 +11311,10 @@
   "videoPlaylistsSection": "Video Playlists",
   "@videoPlaylistsSection": {
     "description": "Section header above video playlists when Group by Type is enabled"
+  },
+  "musicVideoPlaylistsSection": "Music Video Playlists",
+  "@musicVideoPlaylistsSection": {
+    "description": "Section header above music video playlists when Group by Type is enabled"
   },
   "audioPlaylistsSection": "Audio Playlists",
   "@audioPlaylistsSection": {

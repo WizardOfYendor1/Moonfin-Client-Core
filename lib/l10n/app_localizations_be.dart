@@ -795,7 +795,7 @@ class AppLocalizationsBe extends AppLocalizations {
   String get extraLarge => 'Вельмі вялікі';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3289,6 +3289,13 @@ class AppLocalizationsBe extends AppLocalizations {
       'Прыглушыць відэа і паказаць аглядны тэкст падчас паўзы';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'Кнопка блакіроўкі экраннага меню';
 
   @override
@@ -5163,6 +5170,9 @@ class AppLocalizationsBe extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Гуляць у Moonfin';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12425,6 +12435,9 @@ class AppLocalizationsBe extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12441,6 +12454,9 @@ class AppLocalizationsBe extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

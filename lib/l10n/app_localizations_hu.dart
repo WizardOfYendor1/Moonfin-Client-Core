@@ -797,7 +797,7 @@ class AppLocalizationsHu extends AppLocalizations {
   String get extraLarge => 'Extra nagy';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3289,6 +3289,13 @@ class AppLocalizationsHu extends AppLocalizations {
       'A videó halványítása és az áttekintő szöveg megjelenítése szüneteltetés közben';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'OSD-zárgomb';
 
   @override
@@ -5175,6 +5182,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Lejátszás a Moonfinben';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12452,6 +12462,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12468,6 +12481,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

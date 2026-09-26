@@ -783,7 +783,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get extraLarge => '특대';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => '스크롤 방향';
@@ -3223,6 +3223,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get dimVideoShowOverview => '일시중지된 동안 비디오를 어둡게 하고 개요 텍스트를 표시합니다.';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'OSD 잠금 버튼';
 
   @override
@@ -5025,6 +5032,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Moonfin에 플레이';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12013,6 +12023,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get playlistTypeVideo => '비디오';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => '오디오(음악)';
 
   @override
@@ -12029,6 +12042,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => '비디오 재생목록';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => '오디오 재생목록';

@@ -226,6 +226,7 @@ void main() {
     'seerrEnabled',
     'seerrShowMissingCollectionItems',
     'showBookDiscoverTab',
+    'showChapterMarkers',
     'showDescriptionOnPause',
     'showDownloadsButton',
     'showFavoritesButton',

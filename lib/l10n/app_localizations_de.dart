@@ -13,10 +13,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appTitle => 'Moonfin';
 
   @override
-  String get animeMarkerFiller => 'Filler';
+  String get animeMarkerFiller => 'Filler-Folge';
 
   @override
-  String get animeMarkerMixed => 'Mixed';
+  String get animeMarkerMixed => 'Gemischte Folge';
 
   @override
   String get animeMarkerAnimeCanon => 'Anime Canon';
@@ -812,7 +812,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get extraLarge => 'Sehr groß';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scrollrichtung';
@@ -1722,7 +1722,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String downloadEstimateUnknownCount(int count) {
-    return 'unbekannt';
+    return '$count unbekannt';
   }
 
   @override
@@ -2049,10 +2049,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get playbackInformation => 'Wiedergabeinformationen';
 
   @override
-  String get showMpvStats => 'Zeige MPV Statistiken (Shift+i)';
+  String get showMpvStats => 'Zeige mpv Statistiken (Shift+i)';
 
   @override
-  String get hideMpvStats => 'Verstecke MPV Statistiken (Shift+i)';
+  String get hideMpvStats => 'Verstecke mpv Statistiken (Shift+i)';
 
   @override
   String get keyboardShortcutsTitle => 'Tastaturkürzel';
@@ -3095,104 +3095,103 @@ class AppLocalizationsDe extends AppLocalizations {
       'Visuelle Effekte und saisonale Dekorationen';
 
   @override
-  String get loadingAnimation => 'Loading Animation';
+  String get loadingAnimation => 'Ladeanimation';
 
   @override
-  String get loadingAnimationDescription =>
-      'Customize the loading animations used throughout Moonfin';
+  String get loadingAnimationDescription => 'Passen Sie die Ladeanimationen an';
 
   @override
-  String get loadingAnimationConfiguration => 'Loading Animation Configuration';
+  String get loadingAnimationConfiguration => 'Ladeanimation Einstellungen';
 
   @override
-  String get loadingAnimationImage => 'Image';
+  String get loadingAnimationImage => 'Animation';
 
   @override
   String get loadingAnimationImageMoonfinLogo => 'Moonfin Logo';
 
   @override
-  String get loadingAnimationImageSpinner => 'Spinner';
+  String get loadingAnimationImageSpinner => 'Rotierender Kreisel';
 
   @override
-  String get loadingAnimationImageRunner => 'Runner';
+  String get loadingAnimationImageRunner => 'Rennendes Männchen';
 
   @override
-  String get loadingAnimationImageMoonPhases => 'Moon Phases';
+  String get loadingAnimationImageMoonPhases => 'Mondphasen';
 
   @override
-  String get loadingAnimationImageMoonfinPhases => 'Moonfin Phases';
+  String get loadingAnimationImageMoonfinPhases => 'Moonfin Phasenweise';
 
   @override
-  String get loadingAnimationImageNeonfinPhases => 'Neonfin Phases';
+  String get loadingAnimationImageNeonfinPhases => 'Neonfin Phasenweise';
 
   @override
-  String get loadingAnimationSize => 'Animation Size';
+  String get loadingAnimationSize => 'Animationsgröße';
 
   @override
-  String get loadingAnimationSizeThumbnail => 'Thumbnail';
+  String get loadingAnimationSizeThumbnail => 'Mini';
 
   @override
-  String get loadingAnimationSizeSmall => 'Small';
+  String get loadingAnimationSizeSmall => 'Klein';
 
   @override
-  String get loadingAnimationSizeMedium => 'Medium';
+  String get loadingAnimationSizeMedium => 'Mittel';
 
   @override
-  String get loadingAnimationSizeLarge => 'Large';
+  String get loadingAnimationSizeLarge => 'Groß';
 
   @override
-  String get loadingAnimationPosition => 'Animation Position';
+  String get loadingAnimationPosition => 'Positionierung der Animation';
 
   @override
-  String get loadingAnimationPositionTopLeft => 'Top-Left';
+  String get loadingAnimationPositionTopLeft => 'Oben links';
 
   @override
-  String get loadingAnimationPositionTopCenter => 'Top-Center';
+  String get loadingAnimationPositionTopCenter => 'Oben mittig';
 
   @override
-  String get loadingAnimationPositionTopRight => 'Top-Right';
+  String get loadingAnimationPositionTopRight => 'Oben rechts';
 
   @override
-  String get loadingAnimationPositionMiddleLeft => 'Middle-Left';
+  String get loadingAnimationPositionMiddleLeft => 'Mittig links';
 
   @override
-  String get loadingAnimationPositionMiddle => 'Middle';
+  String get loadingAnimationPositionMiddle => 'Mittig';
 
   @override
-  String get loadingAnimationPositionMiddleRight => 'Middle-Right';
+  String get loadingAnimationPositionMiddleRight => 'Mittig rechts';
 
   @override
-  String get loadingAnimationPositionBottomLeft => 'Bottom-Left';
+  String get loadingAnimationPositionBottomLeft => 'Unten links';
 
   @override
-  String get loadingAnimationPositionBottomCenter => 'Bottom-Center';
+  String get loadingAnimationPositionBottomCenter => 'Unten mittig';
 
   @override
-  String get loadingAnimationPositionBottomRight => 'Bottom-Right';
+  String get loadingAnimationPositionBottomRight => 'Unten rechts';
 
   @override
-  String get loadingAnimationPositionBouncing => 'Bouncing';
+  String get loadingAnimationPositionBouncing => 'Herumspringend';
 
   @override
-  String get loadingAnimationSpeed => 'Animation Speed';
+  String get loadingAnimationSpeed => 'Geschwindigkeit der Animation';
 
   @override
-  String get loadingAnimationSpeedSlow => 'Slow';
+  String get loadingAnimationSpeedSlow => 'Langsam';
 
   @override
-  String get loadingAnimationSpeedModerate => 'Moderate';
+  String get loadingAnimationSpeedModerate => 'Mittel';
 
   @override
-  String get loadingAnimationSpeedFast => 'Fast';
+  String get loadingAnimationSpeedFast => 'Schnell';
 
   @override
-  String get loadingAnimationSpeedUltra => 'Ultra';
+  String get loadingAnimationSpeedUltra => 'Sehr schnell';
 
   @override
-  String get showLoadingAnimationText => 'Show Text?';
+  String get showLoadingAnimationText => 'Text anzeigen?';
 
   @override
-  String get loadingAnimationPreview => 'Preview';
+  String get loadingAnimationPreview => 'Vorschau';
 
   @override
   String get snow => 'Schnee';
@@ -3363,6 +3362,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Video abdunkeln und Übersichtstext bei Pause anzeigen';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'OSD-Sperrtaste';
 
   @override
@@ -3381,7 +3387,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get osdButtonsDescription =>
-      'Lege fest, welche Schaltflächen im Player angezeigt werden';
+      'Wähle aus, welche Schaltflächen der Player anzeigt';
 
   @override
   String get osdButtonsSectionDescription =>
@@ -3392,7 +3398,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get detailButtonsDescription =>
-      'Legen Sie fest, welche Aktionen auf der Detailseite verfügbar sind.';
+      'Wähle aus, welche Schalttflächen die Detailansicht anzeigt';
 
   @override
   String get detailButtonsSectionDescription =>
@@ -3406,7 +3412,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Customize how many action buttons appear before folding into the More Actions menu.';
 
   @override
-  String get actionButtonsOnScreenAuto => 'Auto (Theme Default)';
+  String get actionButtonsOnScreenAuto => 'Auto (Standard-Design)';
 
   @override
   String get actionButtonsOnScreenPlayOnly => '1 (Play only)';
@@ -3681,7 +3687,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsAudioDtsHdPassthrough => 'DTS-HD MA Passthrough';
 
   @override
-  String get settingsAudioPassthroughMode => 'Durchreichen';
+  String get settingsAudioPassthroughMode => 'Passthrough';
 
   @override
   String get settingsAudioPassthroughModeDescription =>
@@ -5255,6 +5261,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get playInMoonfin => 'In Moonfin abspielen';
 
   @override
+  String get requestedByLabel => 'Requested by';
+
+  @override
   String requestedByName(String name) {
     return 'Angefordert von $name';
   }
@@ -5928,7 +5937,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sessionRewind => 'Zurückspulen';
 
   @override
-  String get sessionForward => 'Vorspulen';
+  String get sessionForward => 'Vorwärts';
 
   @override
   String get sessionNext => 'Weiter';
@@ -9497,17 +9506,18 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get kidsMode => 'Kids Mode';
+  String get kidsMode => 'Kinderfreundlicher Modus';
 
   @override
   String get kidsModeSubtitle =>
-      'Simplify the app and lock the way out with a PIN';
+      'Vereinfacht die Anwendung und sperrt die Einstellungen mit einer PIN';
 
   @override
-  String get kidsModeExit => 'Exit Kids Mode';
+  String get kidsModeExit => 'Den Kinderfreundlichen Modus verlassen';
 
   @override
-  String get kidsModeExitSubtitle => 'Enter your PIN to restore the full app';
+  String get kidsModeExitSubtitle =>
+      'Geben Sie die PIN ein um zum vollständigen Modus zurückzukehren';
 
   @override
   String get pinIncorrect => 'Falsche PIN';
@@ -9797,7 +9807,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get playerTooltipSeekBack => 'Zurückspulen';
 
   @override
-  String get playerTooltipSeekForward => 'Vorspulen';
+  String get playerTooltipSeekForward => 'Vorwärts springen';
 
   @override
   String get contextMenuMarkWatched => 'Als gesehen markieren';
@@ -12525,6 +12535,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio- und Musik';
 
   @override
@@ -12541,6 +12554,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Videowiedergabelisten';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio- und Musikwiedergabelisten';

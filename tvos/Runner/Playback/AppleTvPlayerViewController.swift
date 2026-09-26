@@ -89,8 +89,6 @@ final class AppleTvPlayerViewController: UIViewController {
 
     private var skipForwardMs = 30000
     private var skipBackMs = 10000
-    private var hasNext = false
-    private var hasPrevious = false
     private var audioTracks: [(index: Int, label: String, subtitle: String, selected: Bool)] = []
     private var subtitleTracks: [(index: Int, label: String, subtitle: String, selected: Bool)] = []
     private var streamInfoSections: [[String: Any]] = []
@@ -287,6 +285,7 @@ final class AppleTvPlayerViewController: UIViewController {
     private let pauseTextLabel = UILabel()
 
     private var chapters: [(title: String, startMs: Int)] = []
+    private var showChapterMarkers = false
 
     private var timeSlots = TimeSlotConfig()
     private var clockFormatter = makeClockFormatter(use24Hour: false)
@@ -1122,11 +1121,13 @@ final class AppleTvPlayerViewController: UIViewController {
             ids.append(.guide)
             if !streamInfoSections.isEmpty, osdShows(.info) { ids.append(.info) }
         } else {
-            if hasPrevious { ids.append(.prev) }
+            // Both always present, because they step chapters before they
+            // step the queue, so they have something to do on a lone movie.
+            ids.append(.prev)
             ids.append(.skipBack)
             ids.append(.playPause)
             ids.append(.skipForward)
-            if hasNext { ids.append(.next) }
+            ids.append(.next)
 
             // Everything past the transport answers to the player button
             // settings, both for whether it appears and where it sits.
@@ -1170,8 +1171,6 @@ final class AppleTvPlayerViewController: UIViewController {
         headerPrimary = (args["topTitle"] as? String) ?? ""
         headerSecondary = (args["topSubtitle"] as? String) ?? ""
 
-        hasNext = (args["hasNext"] as? Bool) ?? false
-        hasPrevious = (args["hasPrevious"] as? Bool) ?? false
         skipForwardMs = (args["skipForwardMs"] as? NSNumber)?.intValue ?? 30000
         skipBackMs = (args["skipBackMs"] as? NSNumber)?.intValue ?? 10000
         // A fast forward or rewind key on a remote reaches the transport
@@ -1216,6 +1215,14 @@ final class AppleTvPlayerViewController: UIViewController {
             }
             let title = (entry["title"] as? String) ?? ""
             return (title: title, startMs: startMs)
+        }
+
+        // Gates the scrubber marks alone. The chapters array still arrives in
+        // full, because the chapters button and its menu read it too.
+        let showMarkers = (args["showChapterMarkers"] as? NSNumber)?.boolValue ?? false
+        if showMarkers != showChapterMarkers {
+            showChapterMarkers = showMarkers
+            layoutChapters()
         }
 
         parseTrickplay(args["trickplay"])
@@ -1447,6 +1454,7 @@ final class AppleTvPlayerViewController: UIViewController {
 
     private func layoutChapters() {
         chapterOverlay.subviews.forEach { $0.removeFromSuperview() }
+        guard showChapterMarkers else { return }
         let width = chapterOverlay.bounds.width
         let durationMs = player.duration * 1000
         guard width > 0, durationMs > 0, chapters.count > 1 else { return }

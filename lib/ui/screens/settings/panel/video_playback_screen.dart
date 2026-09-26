@@ -127,6 +127,12 @@ class _VideoPlaybackScreen extends StatelessWidget {
                   60000: l10n.settingsSixtySeconds,
                 },
               ),
+              SwitchPreferenceTile(
+                preference: UserPreferences.showChapterMarkers,
+                title: l10n.showChapterMarkers,
+                subtitle: l10n.showChapterMarkersDescription,
+                icon: Icons.straighten,
+              ),
               if (PlatformDetection.useMobileUi) ...[
                 SwitchPreferenceTile(
                   preference: UserPreferences.osdLockEnabled,

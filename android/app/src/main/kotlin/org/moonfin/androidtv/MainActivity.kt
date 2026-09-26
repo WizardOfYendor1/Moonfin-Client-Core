@@ -337,6 +337,9 @@ class MainActivity : AudioServiceActivity(), GamepadsCompatibleActivity {
         if (cached === engineHandedToActivity || AudioServiceState.isPlaying()) return
         cache.remove(id)
         cached.destroy()
+        // The next engine is built synchronously in super.onCreate, so no car
+        // call can land between this and its attach.
+        AudioServiceState.markFlutterNotReady()
     }
 
     // Null travels back to Dart as "ask again" rather than as "not a TV".

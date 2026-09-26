@@ -800,7 +800,7 @@ class AppLocalizationsSw extends AppLocalizations {
   String get extraLarge => 'Kubwa Zaidi';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3291,6 +3291,13 @@ class AppLocalizationsSw extends AppLocalizations {
       'Fifisha video na uonyeshe maandishi ya muhtasari huku umesitishwa';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'Kitufe cha Kufunga OSD';
 
   @override
@@ -5173,6 +5180,9 @@ class AppLocalizationsSw extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Cheza katika Moonfin';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12440,6 +12450,9 @@ class AppLocalizationsSw extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12456,6 +12469,9 @@ class AppLocalizationsSw extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';

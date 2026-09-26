@@ -797,7 +797,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get extraLarge => 'Extra velké';
 
   @override
-  String get uiScaleGrandfather => 'Grandfather';
+  String get uiScaleGrandparents => 'Grandparents';
 
   @override
   String get scrollDirection => 'Scroll Direction';
@@ -3290,6 +3290,13 @@ class AppLocalizationsCs extends AppLocalizations {
       'Ztlumit video a zobrazit text přehledu při pozastavení';
 
   @override
+  String get showChapterMarkers => 'Chapter Marks';
+
+  @override
+  String get showChapterMarkersDescription =>
+      'Mark where each chapter starts on the seek bar';
+
+  @override
   String get osdLockButton => 'Tlačítko zámku OSD';
 
   @override
@@ -5155,6 +5162,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get playInMoonfin => 'Hrajte v Moonfin';
+
+  @override
+  String get requestedByLabel => 'Requested by';
 
   @override
   String requestedByName(String name) {
@@ -12399,6 +12409,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get playlistTypeVideo => 'Video';
 
   @override
+  String get playlistTypeMusicVideo => 'Music Video';
+
+  @override
   String get playlistTypeAudio => 'Audio (Music)';
 
   @override
@@ -12415,6 +12428,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get videoPlaylistsSection => 'Video Playlists';
+
+  @override
+  String get musicVideoPlaylistsSection => 'Music Video Playlists';
 
   @override
   String get audioPlaylistsSection => 'Audio Playlists';
