@@ -11693,15 +11693,58 @@ class _DetailActionButton extends StatefulWidget {
 }
 
 class _DetailActionButtonState extends State<_DetailActionButton>
-    with FocusStateMixin {
+    with FocusStateMixin, SingleTickerProviderStateMixin {
   Timer? _longPressTimer;
   bool _longPressFired = false;
   bool _selectDownSeen = false;
 
+  /// Drives the modern button's highlight, including the label pill growing
+  /// out of the circle.
+  late final AnimationController _highlight = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 150),
+  );
+  late final Animation<double> _highlightCurve = CurvedAnimation(
+    parent: _highlight,
+    curve: Curves.easeOut,
+  );
+  bool? _highlightTarget;
+
+  /// The expanded label pill is drawn here, over the neighbouring buttons,
+  /// while the button itself keeps its circle-sized slot in the row.
+  final OverlayPortalController _pillPortal = OverlayPortalController();
+
+  @override
+  void initState() {
+    super.initState();
+    _pillPortal.show();
+  }
+
   @override
   void dispose() {
     _longPressTimer?.cancel();
+    _highlight.dispose();
     super.dispose();
+  }
+
+  void _syncHighlight(bool highlighted) {
+    if (_highlightTarget == highlighted) return;
+    final first = _highlightTarget == null;
+    _highlightTarget = highlighted;
+    if (first) {
+      _highlight.value = highlighted ? 1 : 0;
+      return;
+    }
+    if (highlighted) {
+      // A pill still fading out beside this one must not paint over it.
+      // Raising the overlay is not allowed mid build, so wait for the frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _highlightTarget == true) _pillPortal.show();
+      });
+      _highlight.forward();
+    } else {
+      _highlight.reverse();
+    }
   }
 
   /// Modern detail style: primary Play renders as a high-contrast light pill,
@@ -11837,35 +11880,25 @@ class _DetailActionButtonState extends State<_DetailActionButton>
       );
     }
 
-    final double minWidth = height;
-    final double maxWidth = isExpanded ? 200.0 * scale : height;
+    final double expandedMaxWidth = 200.0 * scale;
     final double maxLabelWidth =
-        (maxWidth -
-                (isExpanded ? 22.0 * scale : 0.0) -
-                (showHighlight ? 5.0 : 3.0) -
-                (height - 4) -
-                6.0 * scale)
-            .clamp(0.0, maxWidth);
+        (expandedMaxWidth - 22.0 * scale - 5.0 - (height - 4) - 6.0 * scale)
+            .clamp(0.0, expandedMaxWidth);
 
     // Only a compact layout keeps Play filled with the accent. Everywhere else
     // it looks like the buttons beside it until it has focus.
     final accentPrimary = widget.isPrimary && isMobile;
 
-    final containerColor = showHighlight
-        ? AppColorScheme.buttonFocused
-        : (accentPrimary
-              ? AppColorScheme.accent
-              : (widget.isActive
-                    ? (widget.activeColor ?? AppColorScheme.accent).withValues(
-                        alpha: 0.18,
-                      )
-                    : Colors.white.withValues(alpha: 0.06)));
-
-    final borderColor = showHighlight
-        ? focusColor
-        : (accentPrimary
-              ? Colors.transparent
-              : AppColorScheme.onSurface.withValues(alpha: 0.35));
+    final idleColor = accentPrimary
+        ? AppColorScheme.accent
+        : (widget.isActive
+              ? (widget.activeColor ?? AppColorScheme.accent).withValues(
+                  alpha: 0.18,
+                )
+              : Colors.white.withValues(alpha: 0.06));
+    final idleBorderColor = accentPrimary
+        ? Colors.transparent
+        : AppColorScheme.onSurface.withValues(alpha: 0.35);
 
     final iconWidget = widget.isPrimary
         ? AdaptiveIcon(
@@ -11891,61 +11924,155 @@ class _DetailActionButtonState extends State<_DetailActionButton>
         ? AppColorScheme.onAccent
         : labelColor;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeOut,
-      height: height,
-      constraints: BoxConstraints(minWidth: minWidth, maxWidth: maxWidth),
-      padding: EdgeInsets.only(
-        left: isExpanded ? 6 * scale : 0,
-        right: isExpanded ? 16 * scale : 0,
+    final expands = cardFocusExpansion;
+    final showLabel = isExpanded && widget.label.isNotEmpty;
+
+    // [t] is the highlight progress: 0 is the idle circle, 1 the highlighted
+    // button, grown into a label pill when [expands].
+    Widget pill(double t) {
+      final width = expands ? lerpDouble(height, expandedMaxWidth, t)! : height;
+      return Container(
+        height: height,
+        constraints: BoxConstraints(minWidth: height, maxWidth: width),
+        padding: EdgeInsets.only(
+          left: expands ? 6 * scale * t : 0,
+          right: expands ? 16 * scale * t : 0,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.circular(height / 2),
+          color: Color.lerp(idleColor, AppColorScheme.buttonFocused, t),
+          border: Border.all(
+            color: Color.lerp(idleBorderColor, focusColor, t)!,
+            width: lerpDouble(1.5, 2.5, t)!,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: AppRadius.circular(height / 2),
+          clipBehavior: Clip.hardEdge,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: height - 4, // keep icon centered when collapsed
+                  child: Center(child: iconWidget),
+                ),
+                if (expands && showLabel) ...[
+                  SizedBox(width: 6 * scale),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxLabelWidth),
+                    child: MarqueeText(
+                      text: widget.label,
+                      style:
+                          Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: effectiveLabelColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            height: 1.1,
+                          ) ??
+                          TextStyle(
+                            color: effectiveLabelColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            height: 1.1,
+                          ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    _syncHighlight(showHighlight);
+
+    if (!expands) {
+      return AnimatedBuilder(
+        animation: _highlightCurve,
+        builder: (context, _) => pill(_highlightCurve.value),
+      );
+    }
+
+    // The row only ever sees a circle-sized slot. Growing the slot itself
+    // pushed every following button along, so moving the mouse off a wide pill
+    // let the row slide back under the cursor and skip the next button.
+    return OverlayPortal.overlayChildLayoutBuilder(
+      controller: _pillPortal,
+      overlayChildBuilder: (context, info) => AnimatedBuilder(
+        animation: _highlightCurve,
+        builder: (context, _) {
+          final t = _highlightCurve.value;
+          if (t == 0) return const SizedBox.shrink();
+          return _buildPillOverlay(info, pill(t), expandedMaxWidth);
+        },
       ),
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.circular(height / 2),
-        color: containerColor,
-        border: Border.all(
-          color: borderColor,
-          width: showHighlight ? 2.5 : 1.5,
+      // The pill drawn in the overlay is hidden from semantics, so the slot
+      // carries the label instead.
+      child: Semantics(
+        label: widget.label.isEmpty ? null : widget.label,
+        child: SizedBox(
+          width: height,
+          height: height,
+          child: AnimatedBuilder(
+          animation: _highlightCurve,
+          builder: (context, _) => _highlightCurve.value == 0
+              ? pill(0)
+              // Transparent but hit-testable, so the slot stays tappable.
+              : const ColoredBox(color: Colors.transparent),
+          ),
         ),
       ),
-      child: ClipRRect(
-        borderRadius: AppRadius.circular(height / 2),
-        clipBehavior: Clip.hardEdge,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const NeverScrollableScrollPhysics(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: height - 4, // keep icon centered when collapsed
-                child: Center(child: iconWidget),
-              ),
-              if (isExpanded && widget.label.isNotEmpty) ...[
-                SizedBox(width: 6 * scale),
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxLabelWidth),
-                  child: MarqueeText(
-                    text: widget.label,
-                    style:
-                        Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: effectiveLabelColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          height: 1.1,
-                        ) ??
-                        TextStyle(
-                          color: effectiveLabelColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          height: 1.1,
-                        ),
-                  ),
+    );
+  }
+
+  /// Places [pill] over this button's slot, growing toward the reading
+  /// direction's end, or toward its start when that side lacks the room.
+  Widget _buildPillOverlay(
+    OverlayChildLayoutInfo info,
+    Widget pill,
+    double expandedMaxWidth,
+  ) {
+    final slot = MatrixUtils.transformRect(
+      info.childPaintTransform,
+      Offset.zero & info.childSize,
+    );
+    final scaleX = info.childSize.width == 0
+        ? 1.0
+        : slot.width / info.childSize.width;
+    final needed = expandedMaxWidth * scaleX;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final roomAfter = rtl ? slot.right : info.overlaySize.width - slot.left;
+    final roomBefore = rtl ? info.overlaySize.width - slot.left : slot.right;
+    final growTowardStart = roomAfter < needed && roomBefore > roomAfter;
+
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              width: info.childSize.width,
+              height: info.childSize.height,
+              child: Transform(
+                transform: info.childPaintTransform,
+                child: OverflowBox(
+                  alignment: growTowardStart
+                      ? AlignmentDirectional.centerEnd
+                      : AlignmentDirectional.centerStart,
+                  minWidth: 0,
+                  maxWidth: double.infinity,
+                  child: pill,
                 ),
-              ],
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
