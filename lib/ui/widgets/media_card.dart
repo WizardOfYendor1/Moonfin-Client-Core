@@ -726,25 +726,25 @@ class _CardImage extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         clipBehavior: Clip.none,
+        // The glow and ring always hold a slot, even when empty. Inserting the
+        // glow only on focus would shift the artwork's index, and the unkeyed
+        // artwork subtree would then be rebuilt from scratch on every focus
+        // change, flashing the placeholder and resolving the image again.
         children: [
-          if (showGlow)
-            Positioned(
-              top: -_focusRingInset,
-              bottom: -_focusRingInset,
-              left: -_focusRingInset,
-              right: -_focusRingInset,
-              child: IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: isCircular
-                        ? AppRadius.circular(radius + _focusRingInset)
-                        : borders.cardRadius +
-                              AppRadius.circular(_focusRingInset),
-                    boxShadow: borders.focusGlow,
-                  ),
-                ),
-              ),
-            ),
+          _FocusLayer(
+            inset: _focusRingInset,
+            child: showGlow
+                ? Container(
+                    decoration: BoxDecoration(
+                      borderRadius: isCircular
+                          ? AppRadius.circular(radius + _focusRingInset)
+                          : borders.cardRadius +
+                                AppRadius.circular(_focusRingInset),
+                      boxShadow: borders.focusGlow,
+                    ),
+                  )
+                : null,
+          ),
           ClipRRect(
             borderRadius: isCircular
                 ? AppRadius.circular(radius)
@@ -888,29 +888,25 @@ class _CardImage extends StatelessWidget {
               ],
             ),
           ),
-          if (showBorder)
-            Positioned(
-              top: -_focusRingInset,
-              bottom: -_focusRingInset,
-              left: -_focusRingInset,
-              right: -_focusRingInset,
-              child: IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: isCircular
-                        ? AppRadius.circular(radius + _focusRingInset)
-                        : borders.cardRadius +
-                              AppRadius.circular(_focusRingInset),
-                    border: Border.fromBorderSide(
-                      borders.focusBorder.copyWith(
-                        color: borderColor,
-                        width: 3.0,
+          _FocusLayer(
+            inset: _focusRingInset,
+            child: showBorder
+                ? Container(
+                    decoration: BoxDecoration(
+                      borderRadius: isCircular
+                          ? AppRadius.circular(radius + _focusRingInset)
+                          : borders.cardRadius +
+                                AppRadius.circular(_focusRingInset),
+                      border: Border.fromBorderSide(
+                        borders.focusBorder.copyWith(
+                          color: borderColor,
+                          width: 3.0,
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-            ),
+                  )
+                : null,
+          ),
         ],
       ),
     );
@@ -938,6 +934,27 @@ class _CardImage extends StatelessWidget {
       return MediaUnplayedBadge(count: unplayedCount!);
     }
     return const SizedBox.shrink();
+  }
+}
+
+/// A [Positioned] slot around the card artwork that is always present in the
+/// [Stack], drawing [child] when given and nothing otherwise, so toggling it
+/// never changes the index of the artwork beside it.
+class _FocusLayer extends StatelessWidget {
+  final double inset;
+  final Widget? child;
+
+  const _FocusLayer({required this.inset, this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: -inset,
+      bottom: -inset,
+      left: -inset,
+      right: -inset,
+      child: IgnorePointer(child: child ?? const SizedBox.shrink()),
+    );
   }
 }
 
