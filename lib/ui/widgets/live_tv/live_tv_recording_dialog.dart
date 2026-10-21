@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:moonfin_design/moonfin_design.dart';
 
 import '../../../data/models/live_tv_recording_state.dart';
 import '../../../l10n/app_localizations.dart';
@@ -98,7 +97,7 @@ Future<LiveTvRecordingAction?> showLiveTvRecordingDialog({
         ),
         actions: [
           adaptiveDialogAction(
-            focusRingColor: AppColorScheme.accent,
+            focusRingColor: dialogFocusRingColor(),
             onPressed: () => choose(
               canCancelProgram
                   ? LiveTvRecordingAction.cancelProgram
@@ -114,13 +113,13 @@ Future<LiveTvRecordingAction?> showLiveTvRecordingDialog({
           ),
           if (canCancelSeries)
             adaptiveDialogAction(
-              focusRingColor: AppColorScheme.accent,
+              focusRingColor: dialogFocusRingColor(),
               onPressed: () => choose(LiveTvRecordingAction.changeSeries),
               child: Text(l10n.seriesRecordingSettings),
             ),
           if (canCancelSeries || isSeries)
             adaptiveDialogAction(
-              focusRingColor: AppColorScheme.accent,
+              focusRingColor: dialogFocusRingColor(),
               onPressed: () => choose(
                 canCancelSeries
                     ? LiveTvRecordingAction.cancelSeries
@@ -135,7 +134,7 @@ Future<LiveTvRecordingAction?> showLiveTvRecordingDialog({
           adaptiveDialogAction(
             autofocus: true,
             focusNode: closeFocusNode,
-            focusRingColor: AppColorScheme.accent,
+            focusRingColor: dialogFocusRingColor(),
             onPressed: () => choose(null),
             child: Text(l10n.close),
           ),

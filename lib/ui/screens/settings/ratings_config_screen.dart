@@ -168,13 +168,13 @@ class _RatingsConfigScreenState extends State<RatingsConfigScreen> {
           adaptiveDialogAction(
             onPressed: () => Navigator.pop(dialogContext, false),
             autofocus: true,
-            focusRingColor: AppColorScheme.accent,
+            focusRingColor: dialogFocusRingColor(),
             child: Text(l10n.cancel),
           ),
           adaptiveDialogAction(
             onPressed: () => Navigator.pop(dialogContext, true),
             isDestructive: true,
-            focusRingColor: AppColorScheme.accent,
+            focusRingColor: dialogFocusRingColor(),
             child: Text(l10n.reset),
           ),
         ],

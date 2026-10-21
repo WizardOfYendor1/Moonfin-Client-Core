@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../auth/repositories/user_repository.dart';
@@ -391,12 +390,12 @@ Future<void> _confirmAndRemoveFromCollection(
       actions: [
         adaptiveDialogAction(
           onPressed: () => Navigator.pop(ctx, false),
-          focusRingColor: AppColorScheme.accent,
+          focusRingColor: dialogFocusRingColor(),
           child: Text(l10n.cancel),
         ),
         adaptiveDialogAction(
           onPressed: () => Navigator.pop(ctx, true),
-          focusRingColor: AppColorScheme.accent,
+          focusRingColor: dialogFocusRingColor(),
           child: Text(
             l10n.remove,
             style: const TextStyle(fontWeight: FontWeight.bold),

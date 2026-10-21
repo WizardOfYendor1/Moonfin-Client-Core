@@ -1,7 +1,15 @@
 import 'package:flutter/cupertino.dart' show CupertinoDialogAction;
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
+import '../../../preference/user_preferences.dart';
 import '../../../util/idiom/app_ui_idiom.dart';
+
+/// The ring a focused dialog action draws: the user's Focus color setting,
+/// which cards and list rows also use, so focus looks the same everywhere.
+Color dialogFocusRingColor() => Color(
+  GetIt.instance<UserPreferences>().get(UserPreferences.focusColor).colorValue,
+);
 
 /// Dialog action button that keeps its native look on Apple idioms.
 ///

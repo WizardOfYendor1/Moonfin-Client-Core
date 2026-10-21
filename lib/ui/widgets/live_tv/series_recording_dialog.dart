@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
 import '../../../data/models/live_tv_recording_state.dart';
@@ -53,7 +52,7 @@ Future<SeriesRecordingEpisodes?> showSeriesRecordingEpisodesDialog({
                 adaptiveDialogAction(
                   focusNode: option == initial ? initialFocusNode : null,
                   autofocus: option == initial,
-                  focusRingColor: AppColorScheme.accent,
+                  focusRingColor: dialogFocusRingColor(),
                   onPressed: () => choose(option),
                   child: Row(
                     children: [
@@ -87,7 +86,7 @@ Future<SeriesRecordingEpisodes?> showSeriesRecordingEpisodesDialog({
         ),
         actions: [
           adaptiveDialogAction(
-            focusRingColor: AppColorScheme.accent,
+            focusRingColor: dialogFocusRingColor(),
             onPressed: () => choose(null),
             child: Text(l10n.cancel),
           ),

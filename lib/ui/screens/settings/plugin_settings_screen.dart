@@ -174,13 +174,13 @@ class _PluginSettingsSectionState extends State<PluginSettingsSection> {
           adaptiveDialogAction(
             onPressed: () => Navigator.pop(dialogContext, false),
             autofocus: true,
-            focusRingColor: AppColorScheme.accent,
+            focusRingColor: dialogFocusRingColor(),
             child: Text(l10n.cancel),
           ),
           adaptiveDialogAction(
             onPressed: () => Navigator.pop(dialogContext, true),
             isDestructive: true,
-            focusRingColor: AppColorScheme.accent,
+            focusRingColor: dialogFocusRingColor(),
             child: Text(l10n.reset),
           ),
         ],

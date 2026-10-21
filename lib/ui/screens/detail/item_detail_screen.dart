@@ -242,7 +242,7 @@ Future<bool> _showDeleteConfirmationDialog(
       actions: [
         adaptiveDialogAction(
           onPressed: () => Navigator.pop(ctx, false),
-          focusRingColor: AppColorScheme.accent,
+          focusRingColor: dialogFocusRingColor(),
           child: Text(AppLocalizations.of(ctx).cancel),
         ),
         adaptiveDialogAction(
