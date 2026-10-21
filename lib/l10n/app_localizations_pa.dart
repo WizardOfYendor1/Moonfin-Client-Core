@@ -15207,4 +15207,67 @@ class AppLocalizationsPa extends AppLocalizations {
 
   @override
   String get librarySortLength => 'Length';
+
+  @override
+  String get incompleteRecording => 'Incomplete';
+
+  @override
+  String incompleteRecordingMinutes(int recorded, int expected) {
+    return '$recorded of $expected min';
+  }
+
+  @override
+  String completeShowingScheduled(String dateTime) {
+    return 'Complete showing scheduled $dateTime';
+  }
+
+  @override
+  String completeCopyRecorded(String dateTime) {
+    return 'Complete copy recorded $dateTime';
+  }
+
+  @override
+  String get noCompleteShowingFound => 'No complete showing found';
+
+  @override
+  String get keepAsComplete => 'Keep as Complete';
+
+  @override
+  String get keptAsComplete => 'Marked as complete';
+
+  @override
+  String get unableToKeepAsComplete => 'Unable to mark as complete';
+
+  @override
+  String get recordPromptAlreadyStarted =>
+      'This program has already started. Also record a later showing?';
+
+  @override
+  String get alsoRecordLaterShowing => 'Also Record a Later Showing';
+
+  @override
+  String get justRecordNow => 'Just Record Now';
+
+  @override
+  String get laterShowingRequested =>
+      'Recording started. A later showing will be recorded too.';
+
+  @override
+  String get unableToRequestLaterShowing =>
+      'Recording started; couldn\'t request a later showing.';
+
+  @override
+  String get reRecordIncompleteEpisodes =>
+      'Re-record Incomplete Episodes Automatically';
+
+  @override
+  String get reRecordIncompleteEpisodesDescription =>
+      'When a recording looks incomplete by its schedule, record a later showing of the same episode. Applies to everyone on this server.';
+
+  @override
+  String get reRecordIncompleteEpisodesAdminOnly =>
+      'Only administrators can change this.';
+
+  @override
+  String get unableToChangeReRecordSetting => 'Unable to change this setting';
 }

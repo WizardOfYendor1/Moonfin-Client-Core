@@ -5187,6 +5187,7 @@ class _ContentRowsState extends State<_ContentRows>
                       _isSeerrFilterRow(row) && item.type == 'Genre';
                   final card = MediaCard(
                     animeMarkerItemId: isSeerrGenreCard ? null : item.id,
+                    recordingItemId: isSeerrGenreCard ? null : item.id,
                     title: cardTitle,
                     imageOverlays: isSeerrGenreCard
                         ? [Positioned.fill(child: SeerrGenreLabel(name: item.name))]

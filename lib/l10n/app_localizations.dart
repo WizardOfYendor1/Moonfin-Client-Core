@@ -26644,6 +26644,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Length'**
   String get librarySortLength;
+
+  /// Badge and detail label for a Live TV recording that was written for less than its scheduled length
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get incompleteRecording;
+
+  /// How many minutes of an incomplete Live TV recording were written, out of its scheduled length with padding
+  ///
+  /// In en, this message translates to:
+  /// **'{recorded} of {expected} min'**
+  String incompleteRecordingMinutes(int recorded, int expected);
+
+  /// Detail line status: a later complete showing of the incomplete episode will be recorded
+  ///
+  /// In en, this message translates to:
+  /// **'Complete showing scheduled {dateTime}'**
+  String completeShowingScheduled(String dateTime);
+
+  /// Detail line status: a complete copy of the incomplete episode has since been recorded
+  ///
+  /// In en, this message translates to:
+  /// **'Complete copy recorded {dateTime}'**
+  String completeCopyRecorded(String dateTime);
+
+  /// Detail line status: no later complete showing of the incomplete episode was found in the guide
+  ///
+  /// In en, this message translates to:
+  /// **'No complete showing found'**
+  String get noCompleteShowingFound;
+
+  /// Action that clears the Incomplete mark on a Live TV recording for everyone on the server
+  ///
+  /// In en, this message translates to:
+  /// **'Keep as Complete'**
+  String get keepAsComplete;
+
+  /// Snackbar confirmation after Keep as Complete
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as complete'**
+  String get keptAsComplete;
+
+  /// Snackbar shown when Keep as Complete fails
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to mark as complete'**
+  String get unableToKeepAsComplete;
+
+  /// Record prompt shown when recording a program that is already airing
+  ///
+  /// In en, this message translates to:
+  /// **'This program has already started. Also record a later showing?'**
+  String get recordPromptAlreadyStarted;
+
+  /// Record prompt choice: record now and also record a later showing of the same episode
+  ///
+  /// In en, this message translates to:
+  /// **'Also Record a Later Showing'**
+  String get alsoRecordLaterShowing;
+
+  /// Record prompt choice: only record the program that is already airing
+  ///
+  /// In en, this message translates to:
+  /// **'Just Record Now'**
+  String get justRecordNow;
+
+  /// Snackbar after recording now and asking for a later showing
+  ///
+  /// In en, this message translates to:
+  /// **'Recording started. A later showing will be recorded too.'**
+  String get laterShowingRequested;
+
+  /// Snackbar when the recording started but asking for a later showing failed
+  ///
+  /// In en, this message translates to:
+  /// **'Recording started; couldn\'t request a later showing.'**
+  String get unableToRequestLaterShowing;
+
+  /// Live TV setting: schedule a later showing when a recording comes out incomplete
+  ///
+  /// In en, this message translates to:
+  /// **'Re-record Incomplete Episodes Automatically'**
+  String get reRecordIncompleteEpisodes;
+
+  /// Description of the re-record incomplete episodes setting
+  ///
+  /// In en, this message translates to:
+  /// **'When a recording looks incomplete by its schedule, record a later showing of the same episode. Applies to everyone on this server.'**
+  String get reRecordIncompleteEpisodesDescription;
+
+  /// Shown under the re-record incomplete episodes setting for users who are not administrators
+  ///
+  /// In en, this message translates to:
+  /// **'Only administrators can change this.'**
+  String get reRecordIncompleteEpisodesAdminOnly;
+
+  /// Snackbar when saving the re-record incomplete episodes setting fails
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to change this setting'**
+  String get unableToChangeReRecordSetting;
 }
 
 class _AppLocalizationsDelegate

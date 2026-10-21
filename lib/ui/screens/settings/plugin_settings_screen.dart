@@ -3,6 +3,8 @@ import 'package:get_it/get_it.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
+import '../../../auth/repositories/user_repository.dart';
+import '../../../data/services/incomplete_recordings_service.dart';
 import '../../../data/services/plugin_sync_service.dart';
 import '../../../preference/user_preferences.dart';
 import '../../../util/focus/input_mode_tracker.dart';
@@ -235,6 +237,12 @@ class _PluginSettingsSectionState extends State<PluginSettingsSection> {
                   _buildProfileGrid(l10n),
                   const SizedBox(height: 12),
                   _buildTransferCard(theme, l10n),
+                ],
+                if (_syncService.pluginAvailable &&
+                    GetIt.instance.isRegistered<IncompleteRecordingsService>() &&
+                    GetIt.instance<IncompleteRecordingsService>().supported) ...[
+                  SettingsSectionHeader(l10n.liveTv),
+                  const _IncompleteRecordingsCard(),
                 ],
               ],
             ),
@@ -748,6 +756,110 @@ class _SyncCardState extends State<_SyncCard> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The server-wide switch for re-recording incomplete episodes. Administrators
+/// change it; everyone else sees it read-only.
+class _IncompleteRecordingsCard extends StatefulWidget {
+  const _IncompleteRecordingsCard();
+
+  @override
+  State<_IncompleteRecordingsCard> createState() =>
+      _IncompleteRecordingsCardState();
+}
+
+class _IncompleteRecordingsCardState extends State<_IncompleteRecordingsCard> {
+  final _service = GetIt.instance<IncompleteRecordingsService>();
+  IncompleteRecordingSettings? _settings;
+  bool _busy = false;
+
+  bool get _isAdmin =>
+      GetIt.instance.isRegistered<UserRepository>() &&
+      (GetIt.instance<UserRepository>().currentUser?.isAdministrator ?? false);
+
+  @override
+  void initState() {
+    super.initState();
+    _service.loadSettings().then((settings) {
+      if (mounted) setState(() => _settings = settings);
+    });
+  }
+
+  Future<void> _toggle() async {
+    final current = _settings;
+    if (current == null || _busy || !_isAdmin) return;
+    final next = IncompleteRecordingSettings(
+      autoRecordComplete: !current.autoRecordComplete,
+      thresholdPercent: current.thresholdPercent,
+    );
+    setState(() {
+      _busy = true;
+      _settings = next;
+    });
+    final ok = await _service.saveSettings(next);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (!ok) _settings = current;
+    });
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).unableToChangeReRecordSetting)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final settings = _settings;
+    return _SyncCard(
+      onTap: _toggle,
+      builder: (context, focused) {
+        final theme = Theme.of(context);
+        final inverted = _inverts(focused);
+        return Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.reRecordIncompleteEpisodes,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: _textColor(inverted),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _isAdmin
+                        ? l10n.reRecordIncompleteEpisodesDescription
+                        : '${l10n.reRecordIncompleteEpisodesDescription} '
+                              '${l10n.reRecordIncompleteEpisodesAdminOnly}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: _subtleColor(inverted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // The card takes focus and the press, so the switch only shows the
+            // state and takes a touch.
+            ExcludeFocus(
+              child: Switch.adaptive(
+                value: settings?.autoRecordComplete ?? false,
+                onChanged: settings == null || !_isAdmin || _busy
+                    ? null
+                    : (_) => _toggle(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
