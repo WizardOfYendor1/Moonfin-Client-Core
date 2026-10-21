@@ -800,6 +800,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
     } finally {
       _isOpeningRecordings = false;
     }
+    if (mounted) await _vm.reloadIfRecordingsChanged();
   }
 
   @override
@@ -2643,7 +2644,7 @@ class _LiveTvGuideScreenState extends State<LiveTvGuideScreen>
                       dialogActionInProgress = false;
                       return;
                     }
-                    await _vm.refreshPrograms();
+                    await _vm.recordingChanged();
                     if (!pageContext.mounted || !dialogContext.mounted) return;
                     Navigator.of(dialogContext).pop();
                     ScaffoldMessenger.of(pageContext).showSnackBar(

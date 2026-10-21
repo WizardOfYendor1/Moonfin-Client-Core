@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:moonfin_design/moonfin_design.dart';
 import 'package:server_core/server_core.dart';
 
+import '../../../data/models/live_tv_recording_state.dart';
 import '../../../data/models/series_recording_episodes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../adaptive/adaptive_dialog.dart';
@@ -116,6 +117,7 @@ Future<bool> changeSeriesRecordingEpisodes({
     ...timer,
     ...choice.settings,
   });
+  notifyLiveTvRecordingsChanged();
   return true;
 }
 
