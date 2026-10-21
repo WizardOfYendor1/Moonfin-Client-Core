@@ -423,7 +423,8 @@ class _AppleTvLiveTvPlayerHostScreenState
       'genre': _genreKey(program),
       'isLive': true,
       'progress': program.progressAt(now),
-      'hasTimer': program.hasTimer || program.hasSeriesTimer,
+      'hasTimer': program.hasTimer,
+      'hasSeriesTimer': program.hasSeriesTimer,
       'programLoading': false,
     };
   }
@@ -468,6 +469,7 @@ class _AppleTvLiveTvPlayerHostScreenState
       'startMs': program.startDate.millisecondsSinceEpoch,
       'endMs': program.endDate.millisecondsSinceEpoch,
       'hasTimer': program.hasTimer,
+      'hasSeriesTimer': program.hasSeriesTimer,
     };
   }
 

@@ -183,7 +183,10 @@ final class AppleTvPlayerViewController: UIViewController {
 
     private var isLive = false
     private var liveProgram:
-        (name: String, episodeTitle: String, startMs: Int, endMs: Int, hasTimer: Bool)?
+        (
+            name: String, episodeTitle: String, startMs: Int, endMs: Int, hasTimer: Bool,
+            hasSeriesTimer: Bool
+        )?
     private var liveChannelNumber = ""
     private var channelList: [ChannelCarouselEntry] = []
     private var selectedChannelIndex = 0
@@ -268,7 +271,7 @@ final class AppleTvPlayerViewController: UIViewController {
     private let liveChannelRow = UIStackView()
     private let channelBadge = PaddedLabel()
     private let channelNameLabel = UILabel()
-    private let recordingDot = UIView()
+    private let recordingDot = RecordingMarkView(diameter: 18)
     private let programLabel = UILabel()
     private let upNextLabel = UILabel()
 
@@ -800,11 +803,9 @@ final class AppleTvPlayerViewController: UIViewController {
         channelNameLabel.numberOfLines = 1
 
         recordingDot.translatesAutoresizingMaskIntoConstraints = false
-        recordingDot.backgroundColor = UIColor(red: 0.95, green: 0.2, blue: 0.2, alpha: 1)
-        recordingDot.layer.cornerRadius = 9
         recordingDot.isHidden = true
-        recordingDot.widthAnchor.constraint(equalToConstant: 18).isActive = true
-        recordingDot.heightAnchor.constraint(equalToConstant: 18).isActive = true
+        recordingDot.setContentHuggingPriority(.required, for: .horizontal)
+        recordingDot.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         let spacer = UIView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
@@ -1102,7 +1103,10 @@ final class AppleTvPlayerViewController: UIViewController {
             let programName = liveProgram?.name ?? headerSecondary
             programLabel.text = programName
             programLabel.isHidden = programName.isEmpty
-            recordingDot.isHidden = !(liveProgram?.hasTimer ?? false)
+            recordingDot.update(
+                hasTimer: liveProgram?.hasTimer ?? false,
+                hasSeriesTimer: liveProgram?.hasSeriesTimer ?? false)
+            recordingDot.isHidden = !recordingDot.shows
             return
         }
 
@@ -1363,7 +1367,8 @@ final class AppleTvPlayerViewController: UIViewController {
                 episodeTitle: (dict["episodeTitle"] as? String) ?? "",
                 startMs: (dict["startMs"] as? NSNumber)?.intValue ?? 0,
                 endMs: (dict["endMs"] as? NSNumber)?.intValue ?? 0,
-                hasTimer: (dict["hasTimer"] as? Bool) ?? false
+                hasTimer: (dict["hasTimer"] as? Bool) ?? false,
+                hasSeriesTimer: (dict["hasSeriesTimer"] as? Bool) ?? false
             )
         } else {
             liveProgram = nil
