@@ -2569,6 +2569,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Series recording is scheduled, but the guide has no upcoming episodes';
 
   @override
+  String get seriesRecordingSkipsShowing =>
+      'The series recording will skip this showing';
+
+  @override
   String get recordCurrentEpisode => 'Record This Episode';
 
   @override

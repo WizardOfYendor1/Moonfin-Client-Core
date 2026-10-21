@@ -2723,6 +2723,10 @@ class AppLocalizationsPl extends AppLocalizations {
       'Zaplanowano nagrywanie serialu, ale w programie nie ma nadchodzących odcinków';
 
   @override
+  String get seriesRecordingSkipsShowing =>
+      'The series recording will skip this showing';
+
+  @override
   String get recordCurrentEpisode => 'Nagraj ten odcinek';
 
   @override
