@@ -27,6 +27,7 @@ import '../../../util/game_artwork_cache.dart';
 import '../../../util/game_library.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../../util/focus/grid_focus_node_mixin.dart';
+import '../../../util/focus/grid_paging.dart';
 import '../../../util/platform_detection.dart';
 import '../../../util/tv_image_cache_stub.dart'
     if (dart.library.io) '../../../util/tv_image_cache_io.dart';
@@ -802,56 +803,6 @@ class _GameSystemScreenState extends State<GameSystemScreen>
     );
   }
 
-  /// Pages the grid the way FF/RW page the Live TV guide.
-  ///
-  /// A page is the rows fully on screen. Paging forward scrolls the first row
-  /// that is cut off at the bottom up to the top, and paging back does the
-  /// reverse. Focus moves the same number of rows in the same column, so it
-  /// keeps its place on screen. Rows on screen depend on the display, UI scale
-  /// and poster size, so the page is measured every time.
-  void _pageGrid(
-    int fromIndex,
-    int direction, {
-    required int itemCount,
-    required int crossAxisCount,
-    required double topPadding,
-    required double cardHeight,
-    required double rowStride,
-  }) {
-    if (!_gridScrollController.hasClients || itemCount == 0) return;
-    final position = _gridScrollController.position;
-    final current = position.pixels;
-    // Scroll offset rowIndex * rowStride puts that row's top at the viewport's
-    // top, leaving topPadding above it for the focus zoom.
-    final firstVisibleRow = ((current - 0.5) / rowStride).ceil();
-    final firstCutOffRow =
-        ((current + position.viewportDimension + 0.5 - topPadding - cardHeight) /
-                    rowStride)
-                .floor() +
-            1;
-    final fullRows = firstCutOffRow - firstVisibleRow;
-    final rows = fullRows < 1 ? 1 : fullRows;
-    final lastRow = (itemCount - 1) ~/ crossAxisCount;
-    final fromRow = fromIndex ~/ crossAxisCount;
-    final targetRow = (fromRow + direction * rows).clamp(0, lastRow);
-    final target = (targetRow * crossAxisCount + fromIndex % crossAxisCount)
-        .clamp(0, itemCount - 1);
-    if (target == fromIndex) return;
-    final topRow = (firstVisibleRow + direction * rows).clamp(0, lastRow);
-    _gridScrollController.jumpTo(
-      (topRow * rowStride).clamp(
-        position.minScrollExtent,
-        position.maxScrollExtent,
-      ),
-    );
-    // Focus once the grid has laid out at the new offset, so the target is
-    // built and the card's own focus scroll sees where it really is.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      getGridItemFocusNode(target, prefix: 'game_grid').requestFocus();
-    });
-  }
-
   void _activateHoveredGame(
     GameSummary game, {
     required bool showBackdrop,
@@ -1256,18 +1207,24 @@ class _GameSystemScreenState extends State<GameSystemScreen>
                     );
                   },
                   onKeyEvent: (_, event) {
-                    final pageDirection = event.isActionable
-                        ? event.logicalKey.pageDirection
-                        : 0;
+                    final pageDirection = event.pageDirection;
                     if (pageDirection != 0) {
-                      _pageGrid(
-                        index,
-                        pageDirection,
+                      // The card's own context unmounts once the grid
+                      // jumps away from it.
+                      pageGrid(
+                        this.context,
+                        controller: _gridScrollController,
+                        geometry: (
+                          perLine: columnCount,
+                          lineExtent: cardHeight,
+                          lineSpacing: gridMainAxisSpacing,
+                          leadingPad: topPadding,
+                        ),
+                        fromIndex: index,
+                        direction: pageDirection,
                         itemCount: games.length,
-                        crossAxisCount: columnCount,
-                        topPadding: topPadding,
-                        cardHeight: cardHeight,
-                        rowStride: rowStride,
+                        focusNodeFor: (target) =>
+                            getGridItemFocusNode(target, prefix: 'game_grid'),
                       );
                       return KeyEventResult.handled;
                     }

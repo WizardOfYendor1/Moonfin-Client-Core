@@ -25,6 +25,7 @@ import '../../../util/artwork_request_size.dart';
 import '../home/home_row_prefetch.dart';
 import '../../../util/focus/dpad_keys.dart';
 import '../../../util/focus/grid_focus_node_mixin.dart';
+import '../../../util/focus/grid_paging.dart';
 import '../../../util/focus/grid_section_target.dart';
 import '../../../util/platform_detection.dart';
 import '../../navigation/destinations.dart';
@@ -76,59 +77,6 @@ const _kChevronScrollStep = 480.0;
 /// Row height of the songs list, which the letter jump multiplies out because
 /// that list has no grid geometry to read.
 const _kSongRowHeight = 56.0;
-
-/// One line of the grid, across whichever axis it scrolls.
-typedef GridGeometry = ({
-  int perLine,
-  double lineExtent,
-  double lineSpacing,
-  double leadingPad,
-});
-
-/// Leading edge of the line holding [index], in the scroll view's own
-/// coordinates.
-double gridLineStart(GridGeometry geometry, int index) =>
-    geometry.leadingPad +
-    (index ~/ geometry.perLine) *
-        (geometry.lineExtent + geometry.lineSpacing);
-
-/// Card and scroll offset one page away, a page being the whole lines in view.
-({int index, double offset})? gridPageTarget(
-  GridGeometry geometry, {
-  required int fromIndex,
-  required int direction,
-  required int itemCount,
-  required double scrollOffset,
-  required double viewportExtent,
-  required double maxScrollExtent,
-}) {
-  if (itemCount <= 0 || direction == 0) return null;
-  final stride = geometry.lineExtent + geometry.lineSpacing;
-  if (stride <= 0) return null;
-  final perLine = geometry.perLine < 1 ? 1 : geometry.perLine;
-  final firstWhole =
-      ((scrollOffset - geometry.leadingPad - 0.5) / stride).ceil();
-  final lastWhole = ((scrollOffset +
-                  viewportExtent +
-                  0.5 -
-                  geometry.leadingPad -
-                  geometry.lineExtent) /
-              stride)
-          .floor();
-  final lines = math.max(1, lastWhole - firstWhole + 1);
-  final lastLine = (itemCount - 1) ~/ perLine;
-  final fromLine = fromIndex ~/ perLine;
-  final targetLine = (fromLine + direction * lines).clamp(0, lastLine);
-  final index = (targetLine * perLine + fromIndex % perLine).clamp(
-    0,
-    itemCount - 1,
-  );
-  if (index == fromIndex) return null;
-  final offset = (scrollOffset + (targetLine - fromLine) * stride)
-      .clamp(0.0, math.max(0.0, maxScrollExtent))
-      .toDouble();
-  return (index: index, offset: offset);
-}
 
 bool _isCompact(BuildContext context) =>
     !PlatformDetection.isTV &&
@@ -430,30 +378,18 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
     int Function(int position)? focusIndexOf,
   }) {
     final geometry = _gridGeometry;
-    if (geometry == null || !_scrollController.hasClients) return;
-    if (_scrollController.positions.length != 1) return;
-    final scroll = _scrollController.position;
-    if (!scroll.hasPixels || !scroll.hasContentDimensions) return;
-    final page = gridPageTarget(
-      geometry,
+    if (geometry == null) return;
+    final moved = pageGrid(
+      context,
+      controller: _scrollController,
+      geometry: geometry,
       fromIndex: position,
       direction: direction,
       itemCount: itemCount,
-      scrollOffset: scroll.pixels,
-      viewportExtent: scroll.viewportDimension,
-      maxScrollExtent: scroll.maxScrollExtent,
+      focusNodeFor: (index) =>
+          getGridItemFocusNode(focusIndexOf?.call(index) ?? index),
     );
-    if (page == null) {
-      if (direction > 0 && _vm.hasMore) _vm.loadMore();
-      return;
-    }
-    _scrollController.jumpTo(page.offset);
-    final focusIndex = focusIndexOf?.call(page.index) ?? page.index;
-    // Wait for the target card to be built at the new offset.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      getGridItemFocusNode(focusIndex).requestFocus();
-    });
+    if (!moved && direction > 0 && _vm.hasMore) _vm.loadMore();
   }
 
   bool _isJumpingToLetter = false;
@@ -1924,9 +1860,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
         onHoverStart: isMobile ? null : () => _onItemFocused(item),
         onHoverEnd: isMobile ? null : () => _vm.setFocusedItem(null),
         onKeyEvent: (_, event) {
-          final pageDirection = event.isActionable
-              ? event.logicalKey.pageDirection
-              : 0;
+          final pageDirection = event.pageDirection;
           if (pageDirection != 0 && onPage != null) {
             onPage(pageDirection);
             return KeyEventResult.handled;
@@ -2182,9 +2116,7 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
                         onHoverStart: () => _onItemFocused(item),
                         onHoverEnd: () => _vm.setFocusedItem(null),
                         onKeyEvent: (_, event) {
-                          final pageDirection = event.isActionable
-                              ? event.logicalKey.pageDirection
-                              : 0;
+                          final pageDirection = event.pageDirection;
                           if (pageDirection != 0) {
                             _pageGrid(
                               index,

@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moonfin/ui/screens/browse/library_browse_screen.dart';
+import 'package:moonfin/util/focus/grid_paging.dart';
 import 'package:moonfin/ui/widgets/media_card.dart';
 
 /// The vertical browse grid widens its row pitch and its leading pad to leave

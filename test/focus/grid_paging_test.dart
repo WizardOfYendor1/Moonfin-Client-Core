@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:moonfin/ui/screens/browse/library_browse_screen.dart';
+import 'package:moonfin/util/focus/grid_paging.dart';
 
 void main() {
   const GridGeometry tall = (
@@ -36,6 +36,20 @@ void main() {
     expect(page.index % 6, 63 % 6);
     expect(page.index, 63 - 5 * 6);
     expect(page.offset, 1000);
+  });
+
+  test('a part-scrolled grid pages onto a line boundary', () {
+    final page = gridPageTarget(
+      tall,
+      fromIndex: 20,
+      direction: 1,
+      itemCount: 600,
+      scrollOffset: 250,
+      viewportExtent: 1000,
+      maxScrollExtent: 20000,
+    )!;
+    expect(page.index, 20 + 4 * 6);
+    expect(page.offset, 6 * 200);
   });
 
   test('bigger cards page fewer lines', () {
@@ -107,7 +121,7 @@ void main() {
       maxScrollExtent: 900,
     )!;
     expect(last.index, 55);
-    expect(last.offset, 200);
+    expect(last.offset, 900);
 
     final first = gridPageTarget(
       tall,

@@ -2,6 +2,9 @@ import 'package:flutter/services.dart';
 
 extension KeyEventActionable on KeyEvent {
   bool get isActionable => this is KeyDownEvent || this is KeyRepeatEvent;
+
+  /// [DpadKeyExtension.pageDirection] for a press or repeat, else 0.
+  int get pageDirection => isActionable ? logicalKey.pageDirection : 0;
 }
 
 bool isActivateKey(KeyEvent event) =>
