@@ -96,6 +96,10 @@ class SuggestedShowing {
   String get description => payload['description'] as String;
   String? get channelName => payload['channelName'] as String?;
   String? get channelNumber => payload['channelNumber'] as String?;
+
+  /// A recording is already scheduled for this showing, by anyone. Confirming
+  /// it adopts that timer rather than making another.
+  bool get alreadyScheduled => payload['alreadyScheduled'] == true;
 }
 
 class CompleteShowingOptions {
