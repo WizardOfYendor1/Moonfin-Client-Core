@@ -1842,7 +1842,9 @@ class _LibraryBrowseScreenState extends State<LibraryBrowseScreen>
             ? null
             : () {
                 _onItemFocused(item);
-                if (onCardFocused != null) {
+                if (takePagedFocus(getGridItemFocusNode(index))) {
+                  // Paging already scrolled to it.
+                } else if (onCardFocused != null) {
                   onCardFocused();
                 } else if (revealContext == null) {
                   _scrollToGridRow(positionInSection);

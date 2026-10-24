@@ -129,6 +129,8 @@ import '../../../util/episode_playability.dart';
 import '../../../util/item_watch_state.dart';
 import '../../../util/season_queue_context.dart';
 import '../../../util/focus/dpad_keys.dart';
+import '../../../util/focus/grid_paging.dart';
+import '../../../util/focus/indexed_focus_nodes.dart';
 import '../../../util/focus/input_mode_tracker.dart';
 import '../../../util/language_matching.dart';
 import '../../../util/subtitle_track_logic.dart';
@@ -939,6 +941,7 @@ class _DetailContentState extends State<_DetailContent> {
   late ScrollController _scrollController;
   late FocusNode _contentFocusNode;
   final Map<String, FocusNode> _sectionFocusNodes = <String, FocusNode>{};
+  final _episodeFocusNodes = IndexedFocusNodes('detailSeasonEpisode');
 
   /// The last target this screen put on the shared toolbar notifier, so it
   /// only releases one it still owns. A screen underneath may have reclaimed
@@ -1402,6 +1405,7 @@ class _DetailContentState extends State<_DetailContent> {
     widget.prefs.removeListener(_onPrefsChanged);
     _scrollController.dispose();
     _contentFocusNode.dispose();
+    _episodeFocusNodes.dispose();
     for (final node in _sectionFocusNodes.values) {
       node.dispose();
     }
@@ -2512,18 +2516,30 @@ class _DetailContentState extends State<_DetailContent> {
         const SizedBox(height: 32),
         _SectionHeader(title: l10n.episodes),
         const SizedBox(height: 12),
-        ...viewModel.episodes.map(
-          (ep) => Padding(
+        for (var i = 0; i < viewModel.episodes.length; i++)
+          Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: DetailEpisodeCard(
-              episode: ep,
+              episode: viewModel.episodes[i],
               imageApi: viewModel.imageApi,
               onChanged: () => viewModel.load(),
-              isActive: viewModel.nextUp?.id == ep.id,
+              isActive: viewModel.nextUp?.id == viewModel.episodes[i].id,
               contextSeasonId: item.id,
+              focusNode: _episodeFocusNodes[i],
+              onKeyEvent: (_, event) {
+                final direction = event.pageDirection;
+                if (direction == 0) return KeyEventResult.ignored;
+                pageList(
+                  context,
+                  fromIndex: i,
+                  direction: direction,
+                  itemCount: viewModel.episodes.length,
+                  focusNodeFor: (index) => _episodeFocusNodes[index],
+                );
+                return KeyEventResult.handled;
+              },
             ),
           ),
-        ),
       ],
       // The episode list above is a column of cards rather than one row, so
       // this page moves by the geometry of what is on screen instead of a

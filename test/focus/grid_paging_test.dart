@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moonfin/util/focus/grid_paging.dart';
 
@@ -147,5 +148,108 @@ void main() {
       ),
       isNull,
     );
+  });
+
+  group('pageList', () {
+    const cardHeight = 100.0;
+    const gap = 8.0;
+    const headerHeight = 400.0;
+
+    late List<FocusNode> nodes;
+    late ScrollController controller;
+
+    Future<void> pumpList(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      nodes = List.generate(40, (i) => FocusNode(debugLabel: 'card$i'));
+      controller = ScrollController();
+      addTearDown(() {
+        for (final node in nodes) {
+          node.dispose();
+        }
+        controller.dispose();
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SingleChildScrollView(
+            controller: controller,
+            child: Column(
+              children: [
+                const SizedBox(height: headerHeight),
+                for (var i = 0; i < nodes.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: gap),
+                    child: Focus(
+                      focusNode: nodes[i],
+                      child: const SizedBox(height: cardHeight),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    bool page(int from, int direction) => pageList(
+      nodes[from].context!,
+      fromIndex: from,
+      direction: direction,
+      itemCount: nodes.length,
+      focusNodeFor: (i) => nodes[i],
+    );
+
+    testWidgets('pages by the whole cards in view below a header', (
+      tester,
+    ) async {
+      await pumpList(tester);
+      nodes[1].requestFocus();
+      await tester.pump();
+
+      // Five whole cards show under the header: 400 + 5 * 108 < 1000.
+      expect(page(1, 1), isTrue);
+      await tester.pump();
+      expect(nodes[6].hasFocus, isTrue);
+      // The top whole card sits 24 below the viewport top.
+      expect(controller.offset, headerHeight + 5 * (cardHeight + gap) - 24);
+
+      expect(page(6, -1), isTrue);
+      await tester.pump();
+      expect(nodes[0].hasFocus, isTrue);
+    });
+
+    testWidgets('a repeat before the next frame pages on from the target', (
+      tester,
+    ) async {
+      await pumpList(tester);
+      await tester.pump();
+      controller.jumpTo(headerHeight - 24);
+      await tester.pump();
+      nodes[0].requestFocus();
+      await tester.pump();
+
+      expect(page(0, 1), isTrue);
+      expect(page(0, 1), isTrue);
+      await tester.pump();
+      // Nine whole cards per page with no header in view.
+      expect(nodes[18].hasFocus, isTrue);
+      expect(
+        controller.offset,
+        headerHeight - 24 + 18 * (cardHeight + gap),
+      );
+    });
+
+    testWidgets('the paged-to card reports its focus came from paging', (
+      tester,
+    ) async {
+      await pumpList(tester);
+      nodes[0].requestFocus();
+      await tester.pump();
+      page(0, 1);
+      await tester.pump();
+      expect(takePagedFocus(nodes[5]), isTrue);
+      expect(takePagedFocus(nodes[5]), isFalse);
+    });
   });
 }

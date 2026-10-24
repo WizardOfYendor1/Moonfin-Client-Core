@@ -35,6 +35,8 @@ import '../../../../util/playback_time_label.dart';
 import '../../../../util/platform_detection.dart';
 import '../../../../util/focus/dpad_keys.dart';
 import '../../../../util/focus/focus_scroll.dart';
+import '../../../../util/focus/grid_paging.dart';
+import '../../../../util/focus/indexed_focus_nodes.dart';
 import '../../../navigation/destinations.dart';
 import '../../../navigation/playback_launcher.dart';
 import '../../../widgets/horizontal_scroll_section.dart';
@@ -270,6 +272,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
   final FocusNode _seasonsFirstFocusNode = FocusNode(debugLabel: 'seasonsFirst');
   final FocusNode _episodesFirstFocusNode = FocusNode(debugLabel: 'episodesFirst');
   final FocusNode _episodesCurrentFocusNode = FocusNode(debugLabel: 'episodesCurrent');
+  final _episodeFocusNodes = IndexedFocusNodes('episodes');
   final FocusNode _overviewFocusNode = FocusNode(debugLabel: 'overview');
   final FocusNode _personMoviesFirstFocusNode = FocusNode(debugLabel: 'personMoviesFirst');
   final FocusNode _personSeriesFirstFocusNode = FocusNode(debugLabel: 'personSeriesFirst');
@@ -544,7 +547,10 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     void attachAutoScroll(FocusNode node) {
       node.addListener(() {
         final ctx = node.context;
-        if (node.hasFocus && mounted && ctx != null) {
+        if (node.hasFocus &&
+            mounted &&
+            ctx != null &&
+            !takePagedFocus(node)) {
           scrollFocusIntoView(ctx);
         }
       });
@@ -730,6 +736,7 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
     _seasonsFirstFocusNode.dispose();
     _episodesFirstFocusNode.dispose();
     _episodesCurrentFocusNode.dispose();
+    _episodeFocusNodes.dispose();
     _overviewFocusNode.dispose();
     _personMoviesFirstFocusNode.dispose();
     _personSeriesFirstFocusNode.dispose();
@@ -1524,6 +1531,11 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
         ? item.id
         : _vm.nextUp?.id ??
             _vm.episodes.firstWhereOrNull((e) => !e.isPlayed)?.id;
+    FocusNode nodeFor(int i) => i == 0
+        ? _episodesFirstFocusNode
+        : _vm.episodes[i].id == item.id
+            ? _episodesCurrentFocusNode
+            : _episodeFocusNodes[i];
 
     return Focus(
       canRequestFocus: false,
@@ -1548,20 +1560,27 @@ class _ModernDetailContentState extends State<ModernDetailContent> {
                 isOnScreen: _vm.episodes[i].id == item.id,
                 contextSeasonId: _vm.effectiveSeasonId,
                 replacePage: item.type == 'Episode',
-                focusNode: i == 0
-                    ? _episodesFirstFocusNode
-                    : _vm.episodes[i].id == item.id
-                        ? _episodesCurrentFocusNode
-                        : null,
-                onKeyEvent: i == 0
-                    ? (node, event) {
-                        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                          _focusSelectedTab();
-                          return KeyEventResult.handled;
-                        }
-                        return KeyEventResult.ignored;
-                      }
-                    : null,
+                focusNode: nodeFor(i),
+                onKeyEvent: (node, event) {
+                  final direction = event.pageDirection;
+                  if (direction != 0) {
+                    pageList(
+                      context,
+                      fromIndex: i,
+                      direction: direction,
+                      itemCount: _vm.episodes.length,
+                      focusNodeFor: nodeFor,
+                    );
+                    return KeyEventResult.handled;
+                  }
+                  if (i == 0 &&
+                      event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                    _focusSelectedTab();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
               ),
             ),
         ],
