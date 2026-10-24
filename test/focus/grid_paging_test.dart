@@ -53,6 +53,68 @@ void main() {
     expect(page.offset, 6 * 200);
   });
 
+  test('the paged-to card lands whole in view at any scale and screen', () {
+    // Card extents stand in for UI scale and poster size, viewports for 720p
+    // to 4K displays and horizontal grids, pads for the focus zoom room.
+    for (final extent in [120.0, 180.0, 260.0, 420.0, 700.0]) {
+      for (final spacing in [12.0, 30.0]) {
+        for (final pad in [8.0, 40.0]) {
+          for (final viewport in [600.0, 1000.0, 1500.0, 2100.0]) {
+            for (final perLine in [1, 3, 7]) {
+              final GridGeometry geometry = (
+                perLine: perLine,
+                lineExtent: extent,
+                lineSpacing: spacing,
+                leadingPad: pad,
+              );
+              final stride = extent + spacing;
+              for (var scroll = stride * 3; scroll < stride * 6; scroll += 7) {
+                for (var line = 0; line < 12; line++) {
+                  for (final direction in [1, -1]) {
+                    final from = line * perLine + perLine ~/ 2;
+                    final page = gridPageTarget(
+                      geometry,
+                      fromIndex: from,
+                      direction: direction,
+                      itemCount: perLine * 200,
+                      scrollOffset: scroll,
+                      viewportExtent: viewport,
+                      maxScrollExtent: 1e9,
+                    );
+                    if (page == null) continue;
+                    final reason =
+                        'extent $extent, viewport $viewport, scroll $scroll, '
+                        'line $line, direction $direction';
+                    expect(page.index % perLine, from % perLine, reason: reason);
+                    expect(
+                      direction > 0 ? page.index > from : page.index < from,
+                      isTrue,
+                      reason: reason,
+                    );
+                    final start = gridLineStart(geometry, page.index);
+                    expect(
+                      start - pad,
+                      greaterThanOrEqualTo(page.offset - 0.5),
+                      reason: reason,
+                    );
+                    // A card taller than the screen can only show its start.
+                    if (extent + pad <= viewport) {
+                      expect(
+                        start + extent,
+                        lessThanOrEqualTo(page.offset + viewport + 0.5),
+                        reason: reason,
+                      );
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
   test('bigger cards page fewer lines', () {
     const GridGeometry big = (
       perLine: 4,

@@ -51,7 +51,12 @@ double gridLineStart(GridGeometry geometry, int index) =>
     itemCount - 1,
   );
   if (index == fromIndex) return null;
-  final topLine = (firstWhole + direction * lines).clamp(0, lastLine);
+  // Focus and the view step from different lines when the focused one is cut
+  // off, so keep the target among the lines the new offset shows whole.
+  final topLine = (firstWhole + direction * lines).clamp(
+    math.max(0, targetLine - lines + 1),
+    targetLine,
+  );
   final offset = (topLine * stride)
       .clamp(0.0, math.max(0.0, maxScrollExtent))
       .toDouble();
