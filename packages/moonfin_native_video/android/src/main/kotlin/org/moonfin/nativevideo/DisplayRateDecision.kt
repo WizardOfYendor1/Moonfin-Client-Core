@@ -38,6 +38,8 @@ internal object DisplayRateDecision {
     private const val MAX_RATE_FPS = 120.0
     private const val FIELD_RATE_TOLERANCE_FPS = 0.05
     private const val HEADER_MATCH_TOLERANCE = 0.01
+    private const val RATE_CHANGE_THRESHOLD = 0.01
+    private const val SNAP_TOLERANCE = 0.01
     private val RATE_29_97 = 30_000.0 / 1001.0
 
     fun choose(inputs: RateInputs): RateChoice {
@@ -80,16 +82,30 @@ internal object DisplayRateDecision {
     fun isRateChange(decided: RateChoice, reading: RateChoice): Boolean {
         val oldRate = decided.fps?.toDouble()?.takeIf(::isValidRate) ?: return false
         val newRate = reading.fps?.toDouble()?.takeIf(::isValidRate) ?: return false
-        return abs(newRate - oldRate) / oldRate > 0.01
+        return abs(newRate - oldRate) / oldRate > RATE_CHANGE_THRESHOLD
     }
 
     private fun measuredRate(cadence: FrameCadence?): Double? {
         cadence ?: return null
         return when (cadence.kind) {
-            FrameCadence.Kind.UNIFORM -> cadence.meanFps
+            FrameCadence.Kind.UNIFORM -> standardUniformRate(cadence)
             FrameCadence.Kind.GRID, FrameCadence.Kind.PULLDOWN_23 -> cadence.gridHz ?: return null
             FrameCadence.Kind.IRREGULAR -> return null
         }
+    }
+
+    /**
+     * The standard rate a uniform cadence sits on. A window that spans a
+     * programme change or holds a few odd intervals has a mean between rates,
+     * while the dominant interval still lands on the grid. The snap follows
+     * the grid and unit, never the nearest standard number, and applies only
+     * when the mean is already within [SNAP_TOLERANCE] of it.
+     */
+    private fun standardUniformRate(cadence: FrameCadence): Double {
+        val grid = cadence.gridHz ?: return cadence.meanFps
+        val unit = cadence.units.firstOrNull()?.first?.takeIf { it >= 1 } ?: return cadence.meanFps
+        val snapped = grid / unit
+        return if (abs(cadence.meanFps - snapped) / snapped <= SNAP_TOLERANCE) snapped else cadence.meanFps
     }
 
     private fun isUsable(cadence: FrameCadence, fps: Double): Boolean {
